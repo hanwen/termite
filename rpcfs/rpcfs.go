@@ -13,7 +13,7 @@ type RpcFs struct {
 	fuse.DefaultFileSystem
 
 	client *rpc.Client
-
+	
 	dirMutex sync.Mutex
 	directories map[string]*DirResponse
 
@@ -24,13 +24,9 @@ type RpcFs struct {
 	links map[string]string
 }
 
-func NewRpcFs(server string) *RpcFs {
+func NewRpcFs(server *rpc.Client) *RpcFs {
 	me := &RpcFs{}
-	client, err := rpc.DialHTTP("tcp", server)
-	if err != nil {
-		log.Fatal("dialing:", err)
-	}
-	me.client = client
+	me.client = server
 	me.directories = make(map[string]*DirResponse)
 	me.contents = make(map[string][]byte)
 	me.links = make(map[string]string)
