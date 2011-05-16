@@ -147,6 +147,10 @@ func (me *RpcFs) GetAttr(name string) (*os.FileInfo, fuse.Status) {
 	if d == nil {
 		return nil, fuse.ENOENT
 	}
+	if d.Data == nil {
+		log.Println("Nil map.", name)
+		return nil, fuse.ENOENT
+	}
 
 	fi, ok := d.Data[base]
 	if !ok {

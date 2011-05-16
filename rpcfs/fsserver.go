@@ -1,6 +1,7 @@
 package rpcfs
 
 import (
+	"log"
 	"os"
 	"path/filepath"
 	"io/ioutil"
@@ -41,9 +42,8 @@ func (me *FsServer) getPath(n string) string {
 }
 
 func (me *FsServer) ReadDir(req *DirRequest, r *DirResponse) (os.Error) {
-	
 	d, e :=  ioutil.ReadDir(me.getPath(req.Name))
-
+	log.Println("ReadDir", req)
 	r.Data = make(map[string]*os.FileInfo)
 	for _, v := range d {
 		r.Data[v.Name] = v
@@ -58,6 +58,7 @@ func (me *FsServer) Readlink(req *LinkRequest, cr *LinkResponse) (os.Error) {
 }
 
 func (me *FsServer) FileContent(req *DirRequest, cr *ContentResponse) (os.Error) {
+	log.Println("FileContent", req)
 	d, e := ioutil.ReadFile(me.getPath(req.Name))
 	cr.Data = d
 	return e

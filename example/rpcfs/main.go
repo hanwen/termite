@@ -26,7 +26,9 @@ func main() {
 
 	var fs fuse.FileSystem
 	fs = rpcfs.NewRpcFs(client)
-	state, _, err := fuse.MountFileSystem(flag.Arg(0), fs, nil)
+	conn := fuse.NewFileSystemConnector(fs, nil)
+	state := fuse.NewMountState(conn)
+	state.Mount(flag.Arg(0), &fuse.MountOptions{AllowOther: true})
 	if err != nil {
 		fmt.Printf("Mount fail: %v\n", err)
 		os.Exit(1)
