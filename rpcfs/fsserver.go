@@ -21,7 +21,6 @@ type Stamp struct {
 	Mtime int64
 }
 
-// TODO - should send timestamps for returns?
 type ContentRequest struct {
 	Name string
 }
