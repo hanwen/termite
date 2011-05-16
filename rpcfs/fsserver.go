@@ -1,12 +1,16 @@
 package rpcfs
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
 	"io/ioutil"
+	"io"
 	"strings"
 )
+
+var _ = fmt.Println
 
 type FsServer struct {
 	Root string
@@ -23,7 +27,7 @@ type ContentRequest struct {
 }
 type ContentResponse struct {
 	Stamp
-	Data []byte
+	Chunks [][]byte
 }
 
 type DirRequest struct {
@@ -55,22 +59,54 @@ func (me *FsServer) ReadDir(req *DirRequest, r *DirResponse) (os.Error) {
 			r.Symlinks[v.Name], _ = os.Readlink(filepath.Join(req.Name, v.Name))
 		}
 	}
-
+	
 	me.stamp(req.Name, &r.Stamp)
 	return e
 }
 
-func (me *FsServer) stamp(name string, st *Stamp) {
-	fi, _ := os.Stat(name)
-	st.Ctime = fi.Ctime_ns
-	st.Mtime = fi.Mtime_ns
+func (me *FsServer) stamp(name string, st *Stamp) os.Error {
+	fi, err := os.Stat(me.getPath(name))
+	if fi != nil {
+		st.Ctime = fi.Ctime_ns
+		st.Mtime = fi.Mtime_ns
+	}
+	return err
 }
 
-func (me *FsServer) FileContent(req *DirRequest, cr *ContentResponse) (os.Error) {
-	log.Println("FileContent", req)
-	d, e := ioutil.ReadFile(me.getPath(req.Name))
-	cr.Data = d
+func ReadChunks(r io.Reader, size int) (chunks [][]byte, err os.Error) {
+	for {
+		chunk := make([]byte, size)
+		n, err := r.Read(chunk)
+		if n > 0 {
+			chunk = chunk[:n]
+			chunks = append(chunks, chunk)
+		}
+		if err == os.EOF {
+			err = nil
+			break
+		}
+		if err != nil || n == 0 {
+			break
+		}
+	}
+	return chunks, err
+}
 
-	me.stamp(req.Name, &cr.Stamp)
-	return e
+func (me *FsServer) FileContent(req *DirRequest, rep *ContentResponse) (os.Error) {
+	log.Println("FileContent", req)
+
+	f, err := os.Open(me.getPath(req.Name))
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	
+	chunksize := 128 * (1<<10)
+	chunks, err := ReadChunks(f, chunksize)
+	
+	if err == nil {
+		err = me.stamp(req.Name, &rep.Stamp)
+		rep.Chunks = chunks
+	}
+	return err
 }

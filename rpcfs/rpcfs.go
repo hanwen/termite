@@ -18,22 +18,18 @@ type RpcFs struct {
 	directories map[string]*DirResponse
 
 	contentMutex sync.Mutex
-	contents map[string][]byte
-
-	linksMutex sync.Mutex
-	links map[string]string
+	contents map[string]*ContentResponse
 }
 
 func NewRpcFs(server *rpc.Client) *RpcFs {
 	me := &RpcFs{}
 	me.client = server
 	me.directories = make(map[string]*DirResponse)
-	me.contents = make(map[string][]byte)
-	me.links = make(map[string]string)
+	me.contents = make(map[string]*ContentResponse)
 	return me
 }
 
-func (me *RpcFs) GetContents(name string) []byte {
+func (me *RpcFs) GetContents(name string) *ContentResponse {
 	me.contentMutex.Lock()
 	defer me.contentMutex.Unlock()
 
@@ -52,8 +48,8 @@ func (me *RpcFs) GetContents(name string) []byte {
 		log.Println("ReadFile error", err)
 		return nil
 	}
-	me.contents[name] = rep.Data
-	return rep.Data
+	me.contents[name] = rep
+	return rep
 }
 
 func (me *RpcFs) GetDir(name string) *DirResponse {
@@ -97,11 +93,11 @@ func (me *RpcFs) OpenDir(name string) (chan fuse.DirEntry, fuse.Status) {
 }
 
 func (me *RpcFs) Open(name string, flags uint32) (fuse.File, fuse.Status) {
-	c := me.GetContents(name)
-	if c == nil {
+	cr := me.GetContents(name)
+	if cr == nil {
 		return nil, fuse.ENOENT
 	}
-	return fuse.NewReadOnlyFile(c), fuse.OK
+	return NewChunkedFile(cr.Chunks), fuse.OK
 }
 
 
