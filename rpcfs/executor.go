@@ -1,12 +1,14 @@
 package rpcfs
 
 import (
+	"fmt"
 	"os"
 	"log"
 	"io/ioutil"
 	"rpc"
 	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/go-fuse/unionfs"
+	"os/user"
 	)
 
 type Task struct {
@@ -36,14 +38,20 @@ func (me *WorkerTask) Run() os.Error {
 	rStderr, wStderr, err := os.Pipe()
 	
 	attr := os.ProcAttr{
-	Dir: me.Task.Dir,
 	Env: me.Task.Env,
         Files: []*os.File{nil, wStdout, wStderr},
 	}
 
-	// This is a security hole, but convenient for testing.
-	bin := "/tmp/chroot-suid"
-	cmd := []string{bin, me.mount}
+	nobody, err := user.Lookup("nobody")
+	if err != nil {
+		return err
+	}
+
+	// TODO - configurable.
+	bin := "/tmp/chroot"
+	cmd := []string{bin, "-dir", me.Task.Dir,
+		"-uid", fmt.Sprintf("%d", nobody.Uid), "-gid", fmt.Sprintf("%d", nobody.Gid),
+		me.mount}
 
 	newcmd := make([]string, len(cmd) + len(me.Task.Argv))
 	copy(newcmd, cmd)
