@@ -106,35 +106,26 @@ func (me *RpcFs) Open(name string, flags uint32) (fuse.File, fuse.Status) {
 
 
 func (me *RpcFs) Readlink(name string) (string, fuse.Status) {
-	v := me.Getlink(name)
-	if v == nil {
+	dir, base := filepath.Split(name)
+
+	d := me.GetDir(dir)
+	if d == nil {
 		return "", fuse.ENOENT
 	}
-	return *v, fuse.OK
-}
-
-func (me *RpcFs) Getlink(name string) (*string) {
-	me.linksMutex.Lock()
-	defer me.linksMutex.Unlock()
-
-	r, ok := me.links[name]
-	if ok {
-		return &r
-	}
 	
-	// TODO - asynchronous.
-	req := &LinkRequest{Name: "/" + name}
-	rep := &LinkResponse{}
-	err := me.client.Call("FsServer.Readlink", req, rep)
-	if err != nil {
-		log.Println("GetLink error:", err)
-		return nil
+	if d.Symlinks == nil {
+		log.Println("Nil symlink map.", name)
+		return "", fuse.ENOENT
 	}
 
-	me.links[name] = rep.Data
-	return &rep.Data
+	l, ok := d.Symlinks[base]
+	if !ok {
+		return "", fuse.ENOENT
+	}
+	return l, fuse.OK
 }
-	
+
+
 func (me *RpcFs) GetAttr(name string) (*os.FileInfo, fuse.Status) {
 	if name == "" {
 		return &os.FileInfo{
