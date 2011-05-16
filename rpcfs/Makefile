@@ -6,6 +6,7 @@ DEPS=../fuse
 
 GOFILES=fsserver.go \
 	rpcfs.go \
+	executor.go
 
 include $(GOROOT)/src/Make.pkg
 
