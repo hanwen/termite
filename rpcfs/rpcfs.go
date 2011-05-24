@@ -82,7 +82,7 @@ func (me *RpcFs) Open(name string, flags uint32) (fuse.File, fuse.Status) {
 
 	p := me.cache.Path(a.Hash)
 	if _, err := os.Lstat(p); fuse.OsErrorToErrno(err) == fuse.ENOENT {
-		log.Println("Fetching contents for file", name, a.Hash)
+		log.Printf("Fetching contents for file %s", name)
 		me.FetchHash(a.FileInfo.Size, a.Hash)
 	}
 	
