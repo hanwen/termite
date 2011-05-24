@@ -175,6 +175,15 @@ func (me *FsServer) oneGetAttr(name string) (rep *FileAttr) {
 		Status: fuse.OsErrorToErrno(err),
 		Path: name,
 	}
+
+	// We don't want to expose the master's private files to the
+	// world.
+	if fi != nil && fi.Mode & 0077 == 0 {
+		rep.FileInfo = nil
+		rep.Status = fuse.EPERM
+		fi = nil
+	}
+	
 	if fi != nil {
 		me.fillContent(rep)
 	}
