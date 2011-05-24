@@ -72,6 +72,7 @@ func (me *Mirror) Shutdown() {
 		return
 	}
 	me.shuttingDown = true
+	me.fileServer.Close()
 	me.fileServerConn.Close()
 	me.unusedFileSystems = []*WorkerFuseFs{}
 

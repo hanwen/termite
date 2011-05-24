@@ -164,7 +164,9 @@ func (me *Coordinator) killHandler(w http.ResponseWriter, req *http.Request) {
 
 	killReq := 1
 	rep := 1
-	err = rpc.NewClient(conn).Call("WorkerDaemon.Shutdown", &killReq, &rep)
+	cl := rpc.NewClient(conn)
+	err = cl.Call("WorkerDaemon.Shutdown", &killReq, &rep)
+	cl.Close()
 	if err != nil {
 		fmt.Fprintf(w, "<p><tt>RPC error: %v<tt>", err)
 		return
@@ -210,6 +212,7 @@ func (me *Coordinator) workerHandler(w http.ResponseWriter, req *http.Request) {
 
 	client := rpc.NewClient(conn)
 	err = client.Call("WorkerDaemon.Status", &statusReq, &status)
+	client.Close()
 	if err != nil {
 		fmt.Fprintf(w, "<p><tt>RPC error: %v<tt>\n", err)
 		return

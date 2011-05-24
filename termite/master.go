@@ -160,6 +160,7 @@ func (me *Master) createMirror(addr string, jobs int) (*mirrorConnection, os.Err
 	rep := CreateMirrorResponse{}
 	cl := rpc.NewClient(conn)
 	err = cl.Call("WorkerDaemon.CreateMirror", &req, &rep)
+	cl.Close()
 
 	if err != nil {
 		revConn.Close()

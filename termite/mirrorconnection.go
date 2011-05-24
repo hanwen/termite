@@ -179,6 +179,7 @@ func (me *mirrorConnections) maybeDropConnections() {
 
 func (me *mirrorConnections) dropConnections() {
 	for _, mc := range me.mirrors {
+		mc.rpcClient.Close()
 		mc.connection.Close()
 	}
 	me.mirrors = make(map[string]*mirrorConnection)
