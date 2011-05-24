@@ -18,6 +18,7 @@ type FsServer struct {
 	contentCache  *ContentCache
 	Root          string
 	excluded      map[string]bool
+	excludePrivate bool
 
 	multiplyPaths func(string) []string
 
@@ -45,6 +46,7 @@ func NewFsServer(root string, cache *ContentCache, excluded []string) *FsServer 
 
 		attrCache:     make(map[string]*FileAttr),
 		attrCacheBusy: map[string]bool{},
+		excludePrivate:true,
 	}
 
 	fs.hashCacheCond = sync.NewCond(&fs.hashCacheMutex)
@@ -178,7 +180,7 @@ func (me *FsServer) oneGetAttr(name string) (rep *FileAttr) {
 
 	// We don't want to expose the master's private files to the
 	// world.
-	if fi != nil && fi.Mode & 0077 == 0 {
+	if me.excludePrivate && fi != nil && fi.Mode & 0077 == 0 {
 		rep.FileInfo = nil
 		rep.Status = fuse.EPERM
 		fi = nil

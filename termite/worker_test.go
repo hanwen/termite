@@ -85,6 +85,7 @@ func NewTestCase(t *testing.T) *testCase {
 			masterCache, coordinatorAddr,
 			[]string{},
 			me.secret, []string{}, 1)
+		me.master.fileServer.excludePrivate = false
 		me.master.SetKeepAlive(1.0)
 		me.socket = me.tmp + "/master-socket"
 		go me.master.Start(me.socket)
