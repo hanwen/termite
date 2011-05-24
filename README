@@ -132,9 +132,7 @@ SECURITY
 
 CAVEATS
 
-* Not all file operations are supported in the workers, due to
-  limitations of Go-FUSE's UnionFs.  Some are not yet implemented, but
-  posixly correct hardlinks cannot be supported without major changes.
+* Hardlinks on the workers are translated to copies on the master.
 
 
 TODO
