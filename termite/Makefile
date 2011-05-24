@@ -12,10 +12,10 @@ MANUAL_GOFILES=\
 	counter.go \
 	devnullfs.go \
 	diskcache.go \
-	fifocache.go \
 	fsserver.go \
 	fuse.go \
 	listfiles.go \
+	lrucache.go \
 	localrun.go \
 	master.go \
 	masterstats.go \
