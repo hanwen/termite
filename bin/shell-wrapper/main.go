@@ -47,6 +47,7 @@ func Refresh() {
 	req := 1
 	rep := 1
 	err := client.Call("LocalMaster.RefreshAttributeCache", &req, &rep)
+	client.Close()
 	if err != nil {
 		log.Fatal("LocalMaster.RefreshAttributeCache: ", err)
 	}
@@ -146,6 +147,7 @@ func main() {
 
 	rep := termite.WorkReply{}
 	err = client.Call("LocalMaster.Run", &req, &rep)
+	client.Close()
 	if err != nil {
 		log.Fatal("LocalMaster.Run: ", err)
 	}
