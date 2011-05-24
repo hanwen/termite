@@ -105,11 +105,14 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string) 
 	w.MountState = fuse.NewMountState(w.fsConnector)
 
 	fuseOpts := fuse.MountOptions{
-		AllowOther: true,
 		// Compilers are not that highly parallel.  A lower
 		// number also helps stacktrace be less overwhelming.
 		MaxBackground: 4,
 	}
+	if os.Geteuid() == 0 {
+		fuseOpts.AllowOther = true
+	}
+
 	err = w.MountState.Mount(w.mount, &fuseOpts)
 	if err != nil {
 		return nil, err
