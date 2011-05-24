@@ -112,7 +112,7 @@ func TestRpcFS(t *testing.T) {
 		}
 	}()
 
-	go state.Loop(false)
+	go state.Loop()
 
 	fi, err := os.Lstat(mnt + "/subdir")
 	if fi == nil || !fi.IsDirectory() {

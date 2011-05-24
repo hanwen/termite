@@ -16,7 +16,7 @@ func setupDevNullFs() (wd string, clean func()) {
 	}
 
 	state.Debug = true
-	go state.Loop(false)
+	go state.Loop()
 	return mountPoint, func() {
 		state.Unmount()
 		os.RemoveAll(mountPoint)

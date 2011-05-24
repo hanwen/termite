@@ -182,7 +182,7 @@ nobody *user.User) (*WorkerFuseFs, os.Error) {
 		}
 	}
 
-	go w.MountState.Loop(true)
+	go w.MountState.Loop()
 
 	return &w, nil
 }
