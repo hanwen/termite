@@ -16,9 +16,9 @@ func main() {
 	cachedir := flag.String("cachedir", "/tmp/fsserver-cache", "content cache")
 	flag.Parse()
 	if flag.NArg() < 1 {
-		log.Fatal(os.Stderr, "usage: %s EXPORTED-ROOT\n", os.Args[0])
+		log.Fatalf("usage: %s EXPORTED-ROOT\n", os.Args[0])
 	}
-	
+
 	files := rpcfs.NewFsServer(flag.Arg(0), *cachedir)
 
 	rpc.Register(files)
@@ -29,5 +29,5 @@ func main() {
 	}
 	http.Serve(l, nil)
 }
-	
+
 

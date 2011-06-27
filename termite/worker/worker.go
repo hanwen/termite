@@ -38,6 +38,6 @@ func main() {
 	}
 	workertask.Run()
 
-	log.Println("done...")
+	log.Println("Done! Results in", workertask.RWDir())
 }
 

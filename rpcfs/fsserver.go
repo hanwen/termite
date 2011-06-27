@@ -14,7 +14,7 @@ var _ = fmt.Println
 
 type FsServer struct {
 	cache *DiskFileCache
-	
+
 	Root string
 }
 
@@ -36,12 +36,16 @@ type ContentRequest struct {
 	Start, End int
 }
 
+func (me *ContentRequest) String() string {
+	return fmt.Sprintf("%x [%d, %d]", me.Hash, me.Start, me.End)
+}
+
 type ContentResponse struct {
 	Chunk []byte
 }
 
 type AttrRequest struct {
-	Name string 
+	Name string
 }
 
 type AttrResponse struct {
@@ -52,7 +56,7 @@ type AttrResponse struct {
 }
 
 type DirRequest struct {
-	Name string 
+	Name string
 }
 
 type DirResponse struct {
@@ -84,11 +88,9 @@ func (me *FsServer) FileContent(req *ContentRequest, rep *ContentResponse) (os.E
 	defer f.Close()
 
 	rep.Chunk = make([]byte, req.End-req.Start)
-	log.Println(req)
 	n, err := f.ReadAt(rep.Chunk, int64(req.Start))
 	rep.Chunk = rep.Chunk[:n]
-	
-	log.Println(n)
+
 	if err == os.EOF {
 		err = nil
 	}
@@ -103,7 +105,7 @@ func (me *FsServer) GetAttr(req *AttrRequest, rep *AttrResponse) (os.Error) {
 	if fi == nil {
 		return nil
 	}
-	
+
 	if fi.IsSymlink() {
 		rep.Link, err = os.Readlink(req.Name)
 	}

@@ -34,6 +34,9 @@ func (me *WorkerTask) Stop() {
 	me.MountState.Unmount()
 }
 
+func (me *WorkerTask) RWDir() string {
+	return me.rwDir
+}
 
 func NewWorkerTask(server *rpc.Client, task *Task, cacheDir string) (*WorkerTask, os.Error) {
 	w := &WorkerTask{
