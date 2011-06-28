@@ -12,9 +12,9 @@ import (
 type RpcFs struct {
 	fuse.DefaultFileSystem
 	cache *DiskFileCache
-	
+
 	client *rpc.Client
-	
+
 	dirMutex sync.Mutex
 	directories map[string]*DirResponse
 
@@ -39,7 +39,7 @@ func (me *RpcFs) GetDir(name string) *DirResponse {
 	if ok {
 		return r
 	}
-	
+
 	// TODO - asynchronous.
 	// TODO - eliminate cut & paste
 	req := &DirRequest{Name: "/" + name}
@@ -85,16 +85,14 @@ func (me *RpcFs) Open(name string, flags uint32) (fuse.File, fuse.Status) {
 		log.Printf("Fetching contents for file %s", name)
 		me.FetchHash(a.FileInfo.Size, a.Hash)
 	}
-	
+
 	f, err := os.Open(p)
 	if err != nil {
 		return nil, fuse.OsErrorToErrno(err)
 	}
-	
+
 	return &fuse.LoopbackFile{File: f}, fuse.OK
 }
-
-
 
 func (me *RpcFs) FetchHash(size int64, hash []byte) {
 	chunkSize := 1 << 18
@@ -106,7 +104,7 @@ func (me *RpcFs) FetchHash(size int64, hash []byte) {
 		Start: buf.Len(),
 		End: buf.Len() + chunkSize,
 		}
-		
+
 		rep := &ContentResponse{}
 		err := me.client.Call("FsServer.FileContent", req, rep)
 		if err != nil && err != os.EOF {
@@ -116,7 +114,7 @@ func (me *RpcFs) FetchHash(size int64, hash []byte) {
 
 		buf.Write(rep.Chunk)
 		if len(rep.Chunk) < chunkSize {
-			break 
+			break
 		}
 	}
 

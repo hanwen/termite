@@ -6,28 +6,32 @@ import (
 	"net"
 	"rpc"
 	"log"
-	"http"
 	"os"
-	"fmt"
 )
 
 func main() {
-	port := flag.Int("port", 1234, "Port to listen to.")
 	cachedir := flag.String("cachedir", "/tmp/fsserver-cache", "content cache")
+	server := flag.String("server", "localhost:1234", "file server")
+	secret := flag.String("secret", "secr3t", "shared password for authentication")
+
 	flag.Parse()
 	if flag.NArg() < 1 {
 		log.Fatalf("usage: %s EXPORTED-ROOT\n", os.Args[0])
 	}
 
-	files := rpcfs.NewFsServer(flag.Arg(0), *cachedir)
+	fileServer := rpcfs.NewFsServer(flag.Arg(0), *cachedir)
 
-	rpc.Register(files)
-	rpc.HandleHTTP()
-	l, e := net.Listen("tcp", fmt.Sprintf("localhost:%d", *port))
-	if e != nil {
-		log.Fatal("listen error:", e)
+	out := make(chan net.Conn)
+	go rpcfs.SetupServer(*server, []byte(*secret), out)
+
+	conn := <-out
+	rpcServer := rpc.NewServer()
+	err := rpcServer.Register(fileServer)
+	if err != nil {
+		log.Fatal("could not register file server", err)
 	}
-	http.Serve(l, nil)
+	log.Println("Server started...")
+	rpcServer.ServeConn(conn)
 }
 
 

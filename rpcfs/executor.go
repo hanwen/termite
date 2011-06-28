@@ -12,22 +12,18 @@ import (
 	"os/user"
 	)
 
-type Task struct {
-	Argv []string
-	Env []string
-	Dir string
-}
-
 type WorkerTask struct {
 	fileServer *rpc.Client
 	mount string
 	rwDir string
 	cacheDir string
 	tmpDir string
-	*Task
+	*WorkRequest
+	*WorkReply
 
 	*fuse.MountState
 }
+
 
 func (me *WorkerTask) Stop() {
 	log.Println("unmounting..")
@@ -38,9 +34,12 @@ func (me *WorkerTask) RWDir() string {
 	return me.rwDir
 }
 
-func NewWorkerTask(server *rpc.Client, task *Task, cacheDir string) (*WorkerTask, os.Error) {
+func NewWorkerTask(server *rpc.Client, req *WorkRequest ,
+	rep *WorkReply, cacheDir string) (*WorkerTask, os.Error) {
 	w := &WorkerTask{
 	cacheDir: cacheDir,
+	WorkRequest: req,
+	WorkReply: rep,
 	}
 
 	tmpDir, err := ioutil.TempDir("", "rpcfs-tmp")
@@ -59,8 +58,6 @@ func NewWorkerTask(server *rpc.Client, task *Task, cacheDir string) (*WorkerTask
 			return nil, err
 		}
 	}
-
-	w.Task = task
 
 	fs := fuse.NewLoopbackFileSystem(w.rwDir)
 	roFs := NewRpcFs(server, w.cacheDir)
@@ -99,7 +96,7 @@ func (me *WorkerTask) Run() os.Error {
 	rStderr, wStderr, err := os.Pipe()
 
 	attr := os.ProcAttr{
-	Env: me.Task.Env,
+	Env: me.WorkRequest.Env,
         Files: []*os.File{nil, wStdout, wStderr},
 	}
 
@@ -110,13 +107,13 @@ func (me *WorkerTask) Run() os.Error {
 
 	// TODO - configurable.
 	bin := "termite/chroot/chroot"
-	cmd := []string{bin, "-dir", me.Task.Dir,
+	cmd := []string{bin, "-dir", me.WorkRequest.Dir,
 		"-uid", fmt.Sprintf("%d", nobody.Uid), "-gid", fmt.Sprintf("%d", nobody.Gid),
 		me.mount}
 
-	newcmd := make([]string, len(cmd) + len(me.Task.Argv))
+	newcmd := make([]string, len(cmd) + len(me.WorkRequest.Argv))
 	copy(newcmd, cmd)
-	copy(newcmd[len(cmd):], me.Task.Argv)
+	copy(newcmd[len(cmd):], me.WorkRequest.Argv)
 
 	log.Println("starting cmd", newcmd)
 	proc, err := os.StartProcess(bin, newcmd, &attr)
@@ -133,9 +130,15 @@ func (me *WorkerTask) Run() os.Error {
 
 	msg, err := proc.Wait(0)
 
+	me.WorkReply.Stdout = stdout
+	me.WorkReply.Stderr = stderr
+
 	log.Println("stdout:", string(stdout))
 	log.Println("stderr:", string(stderr))
 	log.Println("result:", msg, "dir:", me.tmpDir)
+
+	// TODO - look at rw directory, and serialize the files into WorkReply.
+
 	return err
 }
 

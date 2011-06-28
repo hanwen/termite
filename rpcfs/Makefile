@@ -7,7 +7,9 @@ DEPS=../fuse ../unionfs
 GOFILES=fsserver.go \
 	rpcfs.go \
 	executor.go \
-	diskcache.go 
+	diskcache.go \
+	connection.go \
+	workerdaemon.go
 
 include $(GOROOT)/src/Make.pkg
 
