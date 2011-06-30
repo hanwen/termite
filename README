@@ -3,3 +3,28 @@ Termite is a generic distributed compilation system.
 The master distributes the compilation to workers.  Workers run
 arbitrary binaries chrooted in a FUSE mirror of the master's file
 system, and then ship the results back to the master.
+
+
+CAVEATS
+
+Work in progress.  Do not use on machines shared with untrusted users
+
+
+INSTALL
+
+Get
+
+  git clone git://github.com/hanwen/go-fuse.git
+  cd go-fuse && sh all.bash
+  git clone git://github.com/hanwen/termite.git
+
+  # I do this, since I develop go-fuse in tandem with termite.
+  cd termite && ln -s ../go-fuse/fuse ../go-fuse/unionfs .
+  cd termite && sh all.bash
+
+Testing:
+
+  ./worker.sh >& worker.log &
+  ./master.sh path/to/compile/directory  /usr/bin/gcc gcc args
+
+
