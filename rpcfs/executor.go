@@ -6,20 +6,19 @@ import (
 	"os"
 	"log"
 	"io/ioutil"
-	"rpc"
 	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/go-fuse/unionfs"
 	"os/user"
 	)
 
 type WorkerTask struct {
-	fileServer *rpc.Client
 	mount string
 	rwDir string
 	cacheDir string
 	tmpDir string
 	*WorkRequest
 	*WorkReply
+	daemon *WorkerDaemon
 
 	*fuse.MountState
 }
@@ -34,12 +33,17 @@ func (me *WorkerTask) RWDir() string {
 	return me.rwDir
 }
 
-func NewWorkerTask(server *rpc.Client, req *WorkRequest ,
-	rep *WorkReply, cacheDir string) (*WorkerTask, os.Error) {
+func (me *WorkerDaemon) newWorkerTask(req *WorkRequest, rep *WorkReply) (*WorkerTask, os.Error) {
+	fs, err := me.GetFileServer(req.FileServer)
+	if err != nil {
+		return nil, err
+	}
+
 	w := &WorkerTask{
-	cacheDir: cacheDir,
+	cacheDir: me.cacheDir,
 	WorkRequest: req,
 	WorkReply: rep,
+	daemon: me,
 	}
 
 	tmpDir, err := ioutil.TempDir("", "rpcfs-tmp")
@@ -59,8 +63,8 @@ func NewWorkerTask(server *rpc.Client, req *WorkRequest ,
 		}
 	}
 
-	fs := fuse.NewLoopbackFileSystem(w.rwDir)
-	roFs := NewRpcFs(server, w.cacheDir)
+	rwFs := fuse.NewLoopbackFileSystem(w.rwDir)
+	roFs := NewRpcFs(fs, w.cacheDir)
 
 	// High ttl, since all writes come through fuse.
 	ttl := 100.0
@@ -75,7 +79,7 @@ func NewWorkerTask(server *rpc.Client, req *WorkRequest ,
 		NegativeTimeout: ttl,
 	}
 
-	ufs := unionfs.NewUnionFs("ufs", []fuse.FileSystem{fs, roFs}, opts)
+	ufs := unionfs.NewUnionFs("ufs", []fuse.FileSystem{rwFs, roFs}, opts)
 	conn := fuse.NewFileSystemConnector(ufs, &mOpts)
 	state := fuse.NewMountState(conn)
 	state.Mount(w.mount, &fuse.MountOptions{AllowOther: true})
@@ -105,8 +109,7 @@ func (me *WorkerTask) Run() os.Error {
 		return err
 	}
 
-	// TODO - configurable.
-	bin := "termite/chroot/chroot"
+	bin := me.daemon.ChrootBinary
 	cmd := []string{bin, "-dir", me.WorkRequest.Dir,
 		"-uid", fmt.Sprintf("%d", nobody.Uid), "-gid", fmt.Sprintf("%d", nobody.Gid),
 		me.mount}
@@ -128,14 +131,13 @@ func (me *WorkerTask) Run() os.Error {
 	stdout, err := ioutil.ReadAll(rStdout)
 	stderr, err := ioutil.ReadAll(rStderr)
 
-	msg, err := proc.Wait(0)
-
+	me.WorkReply.Waitmsg, err = proc.Wait(0)
 	me.WorkReply.Stdout = stdout
 	me.WorkReply.Stderr = stderr
 
 	log.Println("stdout:", string(stdout))
 	log.Println("stderr:", string(stderr))
-	log.Println("result:", msg, "dir:", me.tmpDir)
+	log.Println("dir:", me.tmpDir)
 
 	// TODO - look at rw directory, and serialize the files into WorkReply.
 

@@ -1,8 +1,8 @@
 package rpcfs
 
 import (
-	"os"
 	"log"
+	"os"
 	"rpc"
 	"sync"
 	)
@@ -16,6 +16,7 @@ type FileInfo struct {
 }
 
 type WorkReply struct {
+	*os.Waitmsg
 	Files  []*FileInfo
 	Stderr []byte
 	Stdout []byte
@@ -31,6 +32,7 @@ type WorkRequest struct {
 type WorkerDaemon struct {
 	secret []byte
 	fileServerMapMutex 		sync.Mutex
+	ChrootBinary string
 
 	// TODO - deal with closed connections.
 	fileServerMap 	map[string]*rpc.Client
@@ -65,11 +67,7 @@ func NewWorkerDaemon(secret []byte, cacheDir string) (*WorkerDaemon) {
 }
 
 func (me *WorkerDaemon) Run(req *WorkRequest, rep *WorkReply) os.Error {
-	fs, err := me.GetFileServer(req.FileServer)
-	if err != nil {
-		return err
-	}
-	task, err := NewWorkerTask(fs, req, rep, me.cacheDir)
+	task, err := me.newWorkerTask(req, rep)
 	if err != nil {
 		return err
 	}
