@@ -13,15 +13,13 @@ import (
 
 func main() {
 	port := flag.Int("port", 1234, "Port to listen to.")
-	
-	if flag.NArg() < 1 {
-		fmt.Fprintf(os.Stderr, "usage: %s EXPORTED-ROOT\n", os.Args[0])
-		os.Exit(2)
-	}
+	cachedir := flag.String("cachedir", "/tmp/fsserver-cache", "content cache")
 	flag.Parse()
-	files := &rpcfs.FsServer{
-	Root: 	flag.Arg(0),
+	if flag.NArg() < 1 {
+		log.Fatal(os.Stderr, "usage: %s EXPORTED-ROOT\n", os.Args[0])
 	}
+	
+	files := rpcfs.NewFsServer(flag.Arg(0), *cachedir)
 
 	rpc.Register(files)
 	rpc.HandleHTTP()

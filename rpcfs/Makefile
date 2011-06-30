@@ -2,12 +2,12 @@
 include $(GOROOT)/src/Make.inc
 
 TARG=github.com/hanwen/go-fuse/rpcfs
-DEPS=../fuse
+DEPS=../fuse ../unionfs
 
 GOFILES=fsserver.go \
 	rpcfs.go \
 	executor.go \
-	chunkedfile.go
+	diskcache.go 
 
 include $(GOROOT)/src/Make.pkg
 

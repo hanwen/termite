@@ -1,8 +1,8 @@
 package rpcfs
 
 import (
+	"bytes"
 	"os"
-	"path/filepath"
 	"log"
 	"sync"
 	"rpc"
@@ -11,45 +11,24 @@ import (
 
 type RpcFs struct {
 	fuse.DefaultFileSystem
-
+	cache *DiskFileCache
+	
 	client *rpc.Client
 	
 	dirMutex sync.Mutex
 	directories map[string]*DirResponse
 
-	contentMutex sync.Mutex
-	contents map[string]*ContentResponse
+	attrMutex sync.RWMutex
+	attrResponse map[string]*AttrResponse
 }
 
-func NewRpcFs(server *rpc.Client) *RpcFs {
+func NewRpcFs(server *rpc.Client, cacheDir string) *RpcFs {
 	me := &RpcFs{}
 	me.client = server
 	me.directories = make(map[string]*DirResponse)
-	me.contents = make(map[string]*ContentResponse)
+	me.cache = NewDiskFileCache(cacheDir)
+	me.attrResponse = make(map[string]*AttrResponse)
 	return me
-}
-
-func (me *RpcFs) GetContents(name string) *ContentResponse {
-	me.contentMutex.Lock()
-	defer me.contentMutex.Unlock()
-
-	data, ok := me.contents[name]
-	if ok {
-		return data
-	}
-
-	// TODO - asynchronous.
-	req := &ContentRequest{
-	Name: name,
-	}
-	rep := &ContentResponse{}
-	err := me.client.Call("FsServer.FileContent", &req, &rep)
-	if err != nil {
-		log.Println("ReadFile error", err)
-		return nil
-	}
-	me.contents[name] = rep
-	return rep
 }
 
 func (me *RpcFs) GetDir(name string) *DirResponse {
@@ -81,11 +60,11 @@ func (me *RpcFs) OpenDir(name string) (chan fuse.DirEntry, fuse.Status) {
 	if r == nil {
 		return nil, fuse.ENOENT
 	}
-	c := make(chan fuse.DirEntry, len(r.Data))
-	for k, fi := range r.Data {
+	c := make(chan fuse.DirEntry, len(r.NameModeMap))
+	for k, mode := range r.NameModeMap {
 		c <- fuse.DirEntry{
 		Name: k,
-		Mode: fi.Mode,
+		Mode: mode,
 		}
 	}
 	close(c)
@@ -93,34 +72,96 @@ func (me *RpcFs) OpenDir(name string) (chan fuse.DirEntry, fuse.Status) {
 }
 
 func (me *RpcFs) Open(name string, flags uint32) (fuse.File, fuse.Status) {
-	cr := me.GetContents(name)
-	if cr == nil {
-		return nil, fuse.ENOENT
+	if flags & fuse.O_ANYWRITE != 0 {
+		return nil, fuse.EPERM
 	}
-	return NewChunkedFile(cr.Chunks), fuse.OK
-}
+	a := me.getAttrResponse(name)
+	if !a.Status.Ok() {
+		return nil, a.Status
+	}
 
-
-func (me *RpcFs) Readlink(name string) (string, fuse.Status) {
-	dir, base := filepath.Split(name)
-
-	d := me.GetDir(dir)
-	if d == nil {
-		return "", fuse.ENOENT
+	p := me.cache.Path(a.Hash)
+	if _, err := os.Lstat(p); fuse.OsErrorToErrno(err) == fuse.ENOENT {
+		log.Println("Fetching contents for file", name, a.Hash)
+		me.FetchHash(a.FileInfo.Size, a.Hash)
 	}
 	
-	if d.Symlinks == nil {
-		log.Println("Nil symlink map.", name)
-		return "", fuse.ENOENT
+	f, err := os.Open(p)
+	if err != nil {
+		return nil, fuse.OsErrorToErrno(err)
 	}
-
-	l, ok := d.Symlinks[base]
-	if !ok {
-		return "", fuse.ENOENT
-	}
-	return l, fuse.OK
+	
+	return &fuse.LoopbackFile{File: f}, fuse.OK
 }
 
+
+
+func (me *RpcFs) FetchHash(size int64, hash []byte) {
+	chunkSize := 1 << 18
+
+	buf := bytes.NewBuffer(make([]byte, 0, size))
+	for {
+		req := &ContentRequest{
+		Hash: hash,
+		Start: buf.Len(),
+		End: buf.Len() + chunkSize,
+		}
+		
+		rep := &ContentResponse{}
+		err := me.client.Call("FsServer.FileContent", req, rep)
+		if err != nil && err != os.EOF {
+			log.Println("FileContent error:", err)
+			break
+		}
+
+		buf.Write(rep.Chunk)
+		if len(rep.Chunk) < chunkSize {
+			break 
+		}
+	}
+
+	if buf.Len() < int(size) {
+		log.Fatal("Size mismatch", buf.Len(), size)
+	}
+
+	me.cache.Save(buf.Bytes())
+}
+
+func (me *RpcFs) Readlink(name string) (string, fuse.Status) {
+	a := me.getAttrResponse(name)
+
+	if !a.Status.Ok() {
+		return "", a.Status
+	}
+	if !a.FileInfo.IsSymlink() {
+		return "", fuse.EINVAL
+	}
+
+	return a.Link, fuse.OK
+}
+
+func (me *RpcFs) getAttrResponse(name string) (*AttrResponse) {
+	me.attrMutex.RLock()
+	result, ok := me.attrResponse[name]
+	me.attrMutex.RUnlock()
+
+	if ok {
+		return result
+	}
+
+	req := &AttrRequest{Name: "/" + name}
+	rep := &AttrResponse{}
+	err := me.client.Call("FsServer.GetAttr", req, rep)
+	if err != nil {
+		log.Println("GetAttr error:", err)
+		return nil
+	}
+
+	me.attrMutex.Lock()
+	defer me.attrMutex.Unlock()
+	me.attrResponse[name] = rep
+	return rep
+}
 
 func (me *RpcFs) GetAttr(name string) (*os.FileInfo, fuse.Status) {
 	if name == "" {
@@ -129,20 +170,7 @@ func (me *RpcFs) GetAttr(name string) (*os.FileInfo, fuse.Status) {
 		}, fuse.OK
 	}
 
-	dir, base := filepath.Split(name)
-	d := me.GetDir(dir)
-	if d == nil {
-		return nil, fuse.ENOENT
-	}
-	if d.Data == nil {
-		log.Println("Nil map.", name)
-		return nil, fuse.ENOENT
-	}
-
-	fi, ok := d.Data[base]
-	if !ok {
-		return nil, fuse.ENOENT
-	}
-
-	return fi, fuse.OK
+	r := me.getAttrResponse(name)
+	return r.FileInfo, r.Status
 }
+

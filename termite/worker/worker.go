@@ -12,25 +12,27 @@ import (
 var _ = log.Printf
 
 func main() {
+	cachedir := flag.String("cachedir", "/tmp/cache", "content cache")
+	server := flag.String("server", "localhost:1234", "file server")
 	flag.Parse()
 	if flag.NArg() < 3 {
-		fmt.Fprintf(os.Stderr, "usage: %s SERVER CWD COMMAND ARGS\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "usage: %s CWD COMMAND ARGS\n", os.Args[0])
 		os.Exit(2)
 	}
 
-	client, err := rpc.DialHTTP("tcp", flag.Arg(0))
+	client, err := rpc.DialHTTP("tcp", *server)
 	if err != nil {
 		log.Fatal("dialing:", err)
 	}
 
 	t := rpcfs.Task{
-	Argv: flag.Args()[2:],
+	Argv: flag.Args()[1:],
 	Env: os.Environ(),
-	Dir: flag.Arg(1),
+	Dir: flag.Arg(0),
 	}
 
 	log.Println("task...")
-	workertask, err := rpcfs.NewWorkerTask(client, &t)
+	workertask, err := rpcfs.NewWorkerTask(client, &t, *cachedir)
 	if err != nil {
 		log.Fatal(err)
 	}

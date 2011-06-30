@@ -2,6 +2,7 @@ package rpcfs
 
 import (
 	"fmt"
+	"path/filepath"
 	"os"
 	"log"
 	"io/ioutil"
@@ -21,6 +22,7 @@ type WorkerTask struct {
 	fileServer *rpc.Client
 	mount string
 	rwDir string
+	cacheDir string
 	tmpDir string
 	*Task
 
@@ -48,7 +50,7 @@ func (me *WorkerTask) Run() os.Error {
 	}
 
 	// TODO - configurable.
-	bin := "/tmp/chroot"
+	bin := "termite/chroot/chroot"
 	cmd := []string{bin, "-dir", me.Task.Dir,
 		"-uid", fmt.Sprintf("%d", nobody.Uid), "-gid", fmt.Sprintf("%d", nobody.Gid),
 		me.mount}
@@ -78,28 +80,33 @@ func (me *WorkerTask) Run() os.Error {
 	return err		
 }
 
-func NewWorkerTask(server *rpc.Client, task *Task) (*WorkerTask, os.Error) {
-	w := &WorkerTask{}
+
+func NewWorkerTask(server *rpc.Client, task *Task, cacheDir string) (*WorkerTask, os.Error) {
+	w := &WorkerTask{
+	cacheDir: cacheDir,
+	}
 	
 	tmpDir, err := ioutil.TempDir("", "rpcfs-tmp")
-	w.tmpDir = tmpDir
-	if err != nil {
-		return nil, err
+	type dirInit struct {
+		dst *string
+		val string
 	}
-	w.rwDir = w.tmpDir + "/rw"
-	err = os.Mkdir(w.rwDir, 0700)
-	if err != nil {
-		return nil, err
+	
+	for _, v := range []dirInit{
+		dirInit{&w.rwDir, "rw"},
+		dirInit{&w.mount, "mnt"},
+	} {
+		*v.dst = filepath.Join(tmpDir, v.val)
+		err = os.Mkdir(*v.dst, 0700)
+		if err != nil {
+			return nil, err
+		}
 	}
-	w.mount = w.tmpDir + "/mnt"
-	err = os.Mkdir(w.mount, 0700)
-	if err != nil {
-		return nil, err
-	}
+
 	w.Task = task
 
 	fs := fuse.NewLoopbackFileSystem(w.rwDir)
-	roFs := NewRpcFs(server)
+	roFs := NewRpcFs(server, w.cacheDir)
 
 	// High ttl, since all writes come through fuse.
 	ttl := 100.0

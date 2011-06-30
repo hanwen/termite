@@ -1,0 +1,10 @@
+*~
+*.6
+8.out
+.nfs*
+_*
+6.out
+termite/chroot/chroot
+termite/worker/worker
+termite/rpcfs/rpcfs
+termite/fsserver/fsserver

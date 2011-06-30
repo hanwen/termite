@@ -6,15 +6,25 @@ import (
 	"os"
 	"path/filepath"
 	"io/ioutil"
-	"io"
 	"strings"
+	"github.com/hanwen/go-fuse/fuse"
 )
 
 var _ = fmt.Println
 
 type FsServer struct {
+	cache *DiskFileCache
+	
 	Root string
 }
+
+func NewFsServer(root, cachedir string) *FsServer {
+	return &FsServer{
+	cache: NewDiskFileCache(cachedir),
+	Root: root,
+	}
+}
+
 
 type Stamp struct {
 	Ctime int64
@@ -22,11 +32,23 @@ type Stamp struct {
 }
 
 type ContentRequest struct {
-	Name string
+	Hash []byte
+	Start, End int
 }
+
 type ContentResponse struct {
-	Stamp
-	Chunks [][]byte
+	Chunk []byte
+}
+
+type AttrRequest struct {
+	Name string 
+}
+
+type AttrResponse struct {
+	*os.FileInfo
+	fuse.Status
+	Hash []byte
+	Link string
 }
 
 type DirRequest struct {
@@ -34,12 +56,10 @@ type DirRequest struct {
 }
 
 type DirResponse struct {
-	Stamp
-	Data     map[string]*os.FileInfo
-	Symlinks map[string]string
+	NameModeMap map[string]uint32
 }
 
-func (me *FsServer) getPath(n string) string {
+func (me *FsServer) Path(n string) string {
 	if me.Root == "" {
 		return n
 	}
@@ -47,65 +67,49 @@ func (me *FsServer) getPath(n string) string {
 }
 
 func (me *FsServer) ReadDir(req *DirRequest, r *DirResponse) (os.Error) {
-	d, e :=  ioutil.ReadDir(me.getPath(req.Name))
+	d, e :=  ioutil.ReadDir(me.Path(req.Name))
 	log.Println("ReadDir", req)
-	r.Data = make(map[string]*os.FileInfo)
-	r.Symlinks = make(map[string]string)
+	r.NameModeMap = make(map[string]uint32)
 	for _, v := range d {
-		r.Data[v.Name] = v
-		if v.IsSymlink() {
-			// TODO - error handling.
-			r.Symlinks[v.Name], _ = os.Readlink(filepath.Join(req.Name, v.Name))
-		}
+		r.NameModeMap[v.Name] = v.Mode
 	}
-	
-	me.stamp(req.Name, &r.Stamp)
 	return e
 }
 
-func (me *FsServer) stamp(name string, st *Stamp) os.Error {
-	fi, err := os.Stat(me.getPath(name))
-	if fi != nil {
-		st.Ctime = fi.Ctime_ns
-		st.Mtime = fi.Mtime_ns
-	}
-	return err
-}
-
-func ReadChunks(r io.Reader, size int) (chunks [][]byte, err os.Error) {
-	for {
-		chunk := make([]byte, size)
-		n, err := r.Read(chunk)
-		if n > 0 {
-			chunk = chunk[:n]
-			chunks = append(chunks, chunk)
-		}
-		if err == os.EOF {
-			err = nil
-			break
-		}
-		if err != nil || n == 0 {
-			break
-		}
-	}
-	return chunks, err
-}
-
-func (me *FsServer) FileContent(req *DirRequest, rep *ContentResponse) (os.Error) {
-	log.Println("FileContent", req)
-
-	f, err := os.Open(me.getPath(req.Name))
+func (me *FsServer) FileContent(req *ContentRequest, rep *ContentResponse) (os.Error) {
+	f, err := os.Open(HashPath(me.cache.dir, req.Hash))
 	if err != nil {
 		return err
 	}
 	defer f.Close()
+
+	rep.Chunk = make([]byte, req.End-req.Start)
+	log.Println(req)
+	n, err := f.ReadAt(rep.Chunk, int64(req.Start))
+	rep.Chunk = rep.Chunk[:n]
 	
-	chunksize := 128 * (1<<10)
-	chunks, err := ReadChunks(f, chunksize)
-	
-	if err == nil {
-		err = me.stamp(req.Name, &rep.Stamp)
-		rep.Chunks = chunks
+	log.Println(n)
+	if err == os.EOF {
+		err = nil
 	}
 	return err
+}
+
+
+func (me *FsServer) GetAttr(req *AttrRequest, rep *AttrResponse) (os.Error) {
+	fi, err := os.Lstat(me.Path(req.Name))
+	rep.FileInfo = fi
+	rep.Status = fuse.OsErrorToErrno(err)
+	if fi == nil {
+		return nil
+	}
+	
+	if fi.IsSymlink() {
+		rep.Link, err = os.Readlink(req.Name)
+	}
+	if fi.IsRegular() {
+		rep.Hash = me.cache.SavePath(req.Name)
+	}
+	log.Println("GetAttr", req, rep)
+	return nil
 }
