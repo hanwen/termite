@@ -2,7 +2,7 @@
 include $(GOROOT)/src/Make.inc
 
 TARG=worker
-GOFILES=worker.go
+GOFILES=main.go
 
 DEPS=../../fuse ../../rpcfs
 
