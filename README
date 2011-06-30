@@ -1,0 +1,5 @@
+Termite is a generic distributed compilation system.
+
+The master distributes the compilation to workers.  Workers run
+arbitrary binaries chrooted in a FUSE mirror of the master's file
+system, and then ship the results back to the master.
