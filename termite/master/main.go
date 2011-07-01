@@ -10,7 +10,7 @@ import (
 
 func main() {
 	cachedir := flag.String("cachedir", "/tmp/fsserver-cache", "content cache")
-	serverAddress := flag.String("fileserver", "localhost:1234", "local file server")
+	port := flag.Int("port", 1234, "local file server port")
 	workers := flag.String("workers", "localhost:1235", "comma separated list of worker addresses")
 	socket := flag.String("socket", "/tmp/termite-socket", "socket to listen for commands")
 	exclude := flag.String("exclude", "/proc", "prefixes to not export.")
@@ -26,7 +26,7 @@ func main() {
 	excludeList := strings.Split(*exclude, ",", -1)
 	master := rpcfs.NewMaster(
 		*cachedir, workerList, secret, excludeList)
-	master.Start(*serverAddress, *socket)
+	master.Start(*port, *socket)
 }
 
 

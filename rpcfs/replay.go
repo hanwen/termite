@@ -2,6 +2,7 @@ package rpcfs
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net"
@@ -34,7 +35,13 @@ func NewMaster(cacheDir string, workers []string, secret []byte, excluded []stri
 	return me
 }
 
-func (me *Master) Start(myAddress, mySocket string) {
+func (me *Master) Start(port int, mySocket string) {
+	host, err := os.Hostname()
+	if err != nil {
+		log.Fatal("hostname", err)
+	}
+
+	myAddress := fmt.Sprintf("%s:%d", host, port)
 	me.fileServerAddress = myAddress
 	go me.startServer(me.fileServer, myAddress)
 	me.startLocalServer(mySocket)
