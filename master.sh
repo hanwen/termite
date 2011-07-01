@@ -2,6 +2,8 @@
 
 gomake -C termite/master
 
+set -eu
+
 CPU_COUNT=$(grep '^processor'  /proc/cpuinfo | wc -l)
 export GOMAXPROCS=${CPU_COUNT}
 
