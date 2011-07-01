@@ -1,7 +1,7 @@
 # Use "gomake install" to build and install this package.
 include $(GOROOT)/src/Make.inc
 
-TARG=github.com/hanwen/go-fuse/rpcfs
+TARG=github.com/hanwen/go-fuse/termite
 DEPS=../fuse ../unionfs
 
 GOFILES=fsserver.go \

@@ -1,10 +1,10 @@
 # Use "gomake install" to build and install this package.
 include $(GOROOT)/src/Make.inc
 
-TARG=rpcfs
+TARG=termite
 GOFILES=main.go
 
-DEPS=../../fuse ../../rpcfs
+DEPS=../../fuse ../../termite
 
 include $(GOROOT)/src/Make.cmd
 

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/hanwen/go-fuse/rpcfs"
+	"github.com/hanwen/go-fuse/termite"
 	"log"
 	"net"
 	"os"
@@ -36,7 +36,7 @@ func main() {
 	if err != nil {
 		log.Fatal("Getwd", err)
 	}
-	req := rpcfs.WorkRequest{
+	req := termite.WorkRequest{
 	Binary: binary,
 	Argv: args,
 	Env: os.Environ(),
@@ -50,7 +50,7 @@ func main() {
 
 	client := rpc.NewClient(conn)
 
-	rep := rpcfs.WorkReply{}
+	rep := termite.WorkReply{}
 	err = client.Call("LocalMaster.Run", &req, &rep)
 	if err != nil {
 		log.Fatal("LocalMaster.Run", err)

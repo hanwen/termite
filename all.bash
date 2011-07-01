@@ -2,14 +2,14 @@
 
 set -eux
 
-for d in rpcfs \
+for d in termite \
     bin/chroot bin/worker bin/fsserver \
     bin/rpcfs bin/master bin/tool ; \
 do
   gomake -C $d "$@"
 done
 
-for d in rpcfs
+for d in termite
 do
   (cd $d && gotest )
 done
