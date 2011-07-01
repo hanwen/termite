@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"rand"
 	"rpc"
 	"sort"
 )
@@ -96,8 +97,8 @@ func (me *Master) startServer(server interface{}, addr string) {
 }
 
 func (me *Master) run(req *WorkRequest, rep *WorkReply) os.Error {
-	// TODO: random pick.
-	worker := me.workServers[0]
+	idx := rand.Intn(len(me.workServers))
+	worker := me.workServers[idx]
 
 	req.FileServer = me.fileServerAddress
 	err := worker.Call("WorkerDaemon.Run", &req, &rep)
