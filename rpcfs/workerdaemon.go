@@ -77,6 +77,14 @@ func (me *WorkerDaemon) FileContent(req *ContentRequest, rep *ContentResponse) o
 	return me.contentServer.FileContent(req, rep)
 }
 
+func trim(s string) string {
+	l := 1024
+	if len(s) < l {
+		l = len(s)
+	}
+	return s[:l]
+}
+
 func (me *WorkerDaemon) Run(req *WorkRequest, rep *WorkReply) os.Error {
 	task, err := me.newWorkerTask(req, rep)
 	if err != nil {
@@ -89,11 +97,11 @@ func (me *WorkerDaemon) Run(req *WorkRequest, rep *WorkReply) os.Error {
 		return err
 	}
 
-
 	summary := rep
 	// Trim output.
-	summary.Stdout = summary.Stdout[:1024]
-	summary.Stderr = summary.Stderr[:1024]
+
+	summary.Stdout = trim(summary.Stdout)
+	summary.Stderr = trim(summary.Stderr)
 
 	log.Println("sending back", summary)
 	return nil

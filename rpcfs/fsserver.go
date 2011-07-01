@@ -75,7 +75,6 @@ func (me *FsServer) ReadDir(req *DirRequest, r *DirResponse) os.Error {
 
 func (me *FsServer) GetAttr(req *AttrRequest, rep *AttrResponse) os.Error {
 	log.Println("GetAttr req", req.Name)
-
 	if me.excluded[req.Name] {
 		rep.Status = fuse.ENOENT
 		return nil
