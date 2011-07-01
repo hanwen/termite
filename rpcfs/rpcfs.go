@@ -22,11 +22,11 @@ type RpcFs struct {
 	attrResponse map[string]*AttrResponse
 }
 
-func NewRpcFs(server *rpc.Client, cacheDir string) *RpcFs {
+func NewRpcFs(server *rpc.Client, cache *DiskFileCache) *RpcFs {
 	me := &RpcFs{}
 	me.client = server
 	me.directories = make(map[string]*DirResponse)
-	me.cache = NewDiskFileCache(cacheDir)
+	me.cache = cache
 	me.attrResponse = make(map[string]*AttrResponse)
 	return me
 }

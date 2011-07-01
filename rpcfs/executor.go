@@ -9,12 +9,12 @@ import (
 	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/go-fuse/unionfs"
 	"os/user"
+	"strings"
 	)
 
 type WorkerTask struct {
 	mount string
 	rwDir string
-	cacheDir string
 	tmpDir string
 	*WorkRequest
 	*WorkReply
@@ -23,6 +23,7 @@ type WorkerTask struct {
 	*fuse.MountState
 }
 
+const _DELETIONS = "DELETIONS"
 
 func (me *WorkerTask) Stop() {
 	log.Println("unmounting..")
@@ -34,13 +35,12 @@ func (me *WorkerTask) RWDir() string {
 }
 
 func (me *WorkerDaemon) newWorkerTask(req *WorkRequest, rep *WorkReply) (*WorkerTask, os.Error) {
-	fs, err := me.GetFileServer(req.FileServer)
+	fs, err := me.getFileServer(req.FileServer)
 	if err != nil {
 		return nil, err
 	}
 
 	w := &WorkerTask{
-	cacheDir: me.cacheDir,
 	WorkRequest: req,
 	WorkReply: rep,
 	daemon: me,
@@ -64,14 +64,14 @@ func (me *WorkerDaemon) newWorkerTask(req *WorkRequest, rep *WorkReply) (*Worker
 	}
 
 	rwFs := fuse.NewLoopbackFileSystem(w.rwDir)
-	roFs := NewRpcFs(fs, w.cacheDir)
+	roFs := NewRpcFs(fs, me.contentCache)
 
 	// High ttl, since all writes come through fuse.
 	ttl := 100.0
 	opts := unionfs.UnionFsOptions{
 		BranchCacheTTLSecs: ttl,
 		DeletionCacheTTLSecs:ttl,
-		DeletionDirName: "DELETIONS",
+		DeletionDirName: _DELETIONS,
 	}
 	mOpts := fuse.FileSystemOptions{
 		EntryTimeout: ttl,
@@ -91,7 +91,6 @@ func (me *WorkerDaemon) newWorkerTask(req *WorkRequest, rep *WorkReply) (*Worker
 	go state.Loop(true)
 	return w, nil
 }
-
 
 func (me *WorkerTask) Run() os.Error {
 	defer me.Stop()
@@ -131,7 +130,7 @@ func (me *WorkerTask) Run() os.Error {
 	stdout, err := ioutil.ReadAll(rStdout)
 	stderr, err := ioutil.ReadAll(rStderr)
 
-	me.WorkReply.Waitmsg, err = proc.Wait(0)
+	me.WorkReply.Exit, err = proc.Wait(0)
 	me.WorkReply.Stdout = stdout
 	me.WorkReply.Stderr = stderr
 
@@ -140,7 +139,60 @@ func (me *WorkerTask) Run() os.Error {
 	log.Println("dir:", me.tmpDir)
 
 	// TODO - look at rw directory, and serialize the files into WorkReply.
-
+	err = me.fillReply()
 	return err
 }
 
+func (me *WorkerTask) VisitFile(path string, osInfo *os.FileInfo) {
+	fi := FileInfo{
+		Hash: me.daemon.contentCache.SavePath(path),
+		FileInfo: *osInfo,
+	}
+
+	if !strings.HasPrefix(path, me.rwDir) {
+		log.Println("Weird file", path)
+		return
+	}
+
+	fi.Path = path[len(me.rwDir):]
+	me.WorkReply.Files = append(me.WorkReply.Files, fi)
+}
+
+func (me *WorkerTask) VisitDir(path string, osInfo *os.FileInfo) bool {
+	fi := FileInfo{
+		Path: path,
+		FileInfo: *osInfo,
+	}
+	me.WorkReply.Files = append(me.WorkReply.Files, fi)
+	return true
+}
+
+func (me *WorkerTask) fillReply() os.Error {
+	dir := filepath.Join(me.rwDir, _DELETIONS)
+	_, err := os.Lstat(dir)
+	if err == nil {
+		matches, err := filepath.Glob(dir + "/*")
+		if err != nil {
+			return err
+		}
+
+		for _, m := range matches {
+			contents, err :=  ioutil.ReadFile(filepath.Join(dir, m))
+			if err != nil {
+				return err
+			}
+
+			me.WorkReply.Files = append(me.WorkReply.Files, FileInfo{
+				Delete: true,
+				Path: string(contents),
+			})
+		}
+
+		err = os.RemoveAll(dir)
+		if err != nil {
+			return err
+		}
+	}
+	filepath.Walk(me.rwDir, me, nil)
+	return nil
+}

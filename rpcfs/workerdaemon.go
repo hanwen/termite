@@ -11,13 +11,14 @@ var _ = log.Println
 
 type FileInfo struct {
 	Delete bool
+	Path string
 	os.FileInfo
 	Hash []byte
 }
 
 type WorkReply struct {
-	*os.Waitmsg
-	Files  []*FileInfo
+	Exit   *os.Waitmsg
+	Files  []FileInfo
 	Stderr []byte
 	Stdout []byte
 }
@@ -36,10 +37,11 @@ type WorkerDaemon struct {
 
 	// TODO - deal with closed connections.
 	fileServerMap 	map[string]*rpc.Client
-	cacheDir string
+	contentCache *DiskFileCache
+	contentServer *ContentServer
 }
 
-func (me *WorkerDaemon) GetFileServer(addr string) (*rpc.Client, os.Error) {
+func (me *WorkerDaemon) getFileServer(addr string) (*rpc.Client, os.Error) {
 	me.fileServerMapMutex.Lock()
 	defer me.fileServerMapMutex.Unlock()
 
@@ -58,12 +60,18 @@ func (me *WorkerDaemon) GetFileServer(addr string) (*rpc.Client, os.Error) {
 }
 
 func NewWorkerDaemon(secret []byte, cacheDir string) (*WorkerDaemon) {
+	cache := NewDiskFileCache(cacheDir)
 	w := &WorkerDaemon{
-	secret: secret,
-	cacheDir: cacheDir,
-	fileServerMap: make(map[string]*rpc.Client),
+		secret: secret,
+		contentCache: cache,
+		fileServerMap: make(map[string]*rpc.Client),
+		contentServer: ContentServer{ Cache: cache },
 	}
 	return w
+}
+
+func (me *WorkerDaemon) FileContent(req *ContentRequest, rep *ContentResponse) (os.Error) {
+	return me.contentServer.FileContent(req, rep)
 }
 
 func (me *WorkerDaemon) Run(req *WorkRequest, rep *WorkReply) os.Error {
@@ -74,9 +82,10 @@ func (me *WorkerDaemon) Run(req *WorkRequest, rep *WorkReply) os.Error {
 
 	err = task.Run()
 	if err != nil {
+		log.Println("Error", err)
 		return err
 	}
-
+	log.Println("sending back", rep)
 	return nil
 }
 
