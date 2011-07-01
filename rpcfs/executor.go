@@ -29,6 +29,7 @@ const _DELETIONS = "DELETIONS"
 func (me *WorkerTask) Stop() {
 	log.Println("unmounting..")
 	me.MountState.Unmount()
+	os.RemoveAll(me.tmpDir)
 }
 
 func (me *WorkerTask) RWDir() string {
