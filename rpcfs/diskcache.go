@@ -94,6 +94,7 @@ func (me *DiskFileCache) SavePath(path string) (md5 []byte) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer f.Close()
 
 	dup := NewHashWriter(me.dir, crypto.MD5)
 	_, err = io.Copy(dup, f)
