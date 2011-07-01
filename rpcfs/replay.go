@@ -12,20 +12,20 @@ import (
 
 
 type Master struct {
-	cache      *DiskFileCache
-	fileServer *FsServer
+	cache             *DiskFileCache
+	fileServer        *FsServer
 	fileServerAddress string
-	secret	    []byte
-	workServers []*rpc.Client
-	masterRun   *LocalMaster
+	secret            []byte
+	workServers       []*rpc.Client
+	masterRun         *LocalMaster
 }
 
-func NewMaster(cacheDir string, workers []string, secret []byte) *Master {
+func NewMaster(cacheDir string, workers []string, secret []byte, excluded []string) *Master {
 	c := NewDiskFileCache(cacheDir)
 	me := &Master{
-	cache: c,
-	fileServer: NewFsServer("/", c),
-	secret: secret,
+		cache:      c,
+		fileServer: NewFsServer("/", c, excluded),
+		secret:     secret,
 	}
 	me.masterRun = &LocalMaster{me}
 	me.setupWorkers(workers)
@@ -130,7 +130,7 @@ func (me *Master) replayFileModifications(worker *rpc.Client, infos []FileInfo) 
 			_, err = os.Lstat(name)
 			if err != nil {
 				log.Println("Replay mkdir:", name)
-				err = os.Mkdir(name, info.FileInfo.Mode & 07777)
+				err = os.Mkdir(name, info.FileInfo.Mode&07777)
 			}
 		}
 		if info.Hash != nil {
@@ -141,7 +141,7 @@ func (me *Master) replayFileModifications(worker *rpc.Client, infos []FileInfo) 
 			if bytes.Compare(info.Hash, hash) != 0 {
 				log.Fatal("Hash mismatch.")
 			}
-			err = ioutil.WriteFile(info.Path, c, info.FileInfo.Mode & 07777)
+			err = ioutil.WriteFile(info.Path, c, info.FileInfo.Mode&07777)
 		}
 		if info.LinkContent != "" {
 			log.Println("Replay symlink:", name)

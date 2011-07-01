@@ -5,13 +5,13 @@ import (
 	"os"
 	"rpc"
 	"sync"
-	)
+)
 
 var _ = log.Println
 
 type FileInfo struct {
-	Delete bool
-	Path string
+	Delete      bool
+	Path        string
 	LinkContent string
 	os.FileInfo
 	Hash []byte
@@ -26,20 +26,20 @@ type WorkReply struct {
 
 type WorkRequest struct {
 	FileServer string
-	Binary string
-	Argv []string
-	Env []string
-	Dir string
+	Binary     string
+	Argv       []string
+	Env        []string
+	Dir        string
 }
 
 type WorkerDaemon struct {
-	secret []byte
-	fileServerMapMutex 		sync.Mutex
-	ChrootBinary string
+	secret             []byte
+	fileServerMapMutex sync.Mutex
+	ChrootBinary       string
 
 	// TODO - deal with closed connections.
-	fileServerMap 	map[string]*rpc.Client
-	contentCache *DiskFileCache
+	fileServerMap map[string]*rpc.Client
+	contentCache  *DiskFileCache
 	contentServer *ContentServer
 }
 
@@ -61,19 +61,19 @@ func (me *WorkerDaemon) getFileServer(addr string) (*rpc.Client, os.Error) {
 	return client, nil
 }
 
-func NewWorkerDaemon(secret []byte, cacheDir string) (*WorkerDaemon) {
+func NewWorkerDaemon(secret []byte, cacheDir string) *WorkerDaemon {
 	cache := NewDiskFileCache(cacheDir)
 	w := &WorkerDaemon{
-		secret: secret,
-		contentCache: cache,
+		secret:        secret,
+		contentCache:  cache,
 		fileServerMap: make(map[string]*rpc.Client),
-		contentServer: &ContentServer{ Cache: cache },
+		contentServer: &ContentServer{Cache: cache},
 	}
 	return w
 }
 
 // TODO - should expose under ContentServer name?
-func (me *WorkerDaemon) FileContent(req *ContentRequest, rep *ContentResponse) (os.Error) {
+func (me *WorkerDaemon) FileContent(req *ContentRequest, rep *ContentResponse) os.Error {
 	return me.contentServer.FileContent(req, rep)
 }
 
@@ -91,4 +91,3 @@ func (me *WorkerDaemon) Run(req *WorkRequest, rep *WorkReply) os.Error {
 	log.Println("sending back", rep)
 	return nil
 }
-

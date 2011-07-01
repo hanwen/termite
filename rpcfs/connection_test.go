@@ -10,7 +10,7 @@ import (
 
 func TestAuthenticate(t *testing.T) {
 	secret := []byte("sekr3t")
-	addr := fmt.Sprintf("localhost:%d", rand.Int31n(60000) + 1024)
+	addr := fmt.Sprintf("localhost:%d", rand.Int31n(60000)+1024)
 
 	out := make(chan net.Conn)
 	go SetupServer(addr, secret, out)
@@ -27,4 +27,3 @@ func TestAuthenticate(t *testing.T) {
 	}
 
 }
-

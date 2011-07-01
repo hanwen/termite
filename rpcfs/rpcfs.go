@@ -15,10 +15,10 @@ type RpcFs struct {
 
 	client *rpc.Client
 
-	dirMutex sync.Mutex
+	dirMutex    sync.Mutex
 	directories map[string]*DirResponse
 
-	attrMutex sync.RWMutex
+	attrMutex    sync.RWMutex
 	attrResponse map[string]*AttrResponse
 }
 
@@ -63,8 +63,8 @@ func (me *RpcFs) OpenDir(name string) (chan fuse.DirEntry, fuse.Status) {
 	c := make(chan fuse.DirEntry, len(r.NameModeMap))
 	for k, mode := range r.NameModeMap {
 		c <- fuse.DirEntry{
-		Name: k,
-		Mode: mode,
+			Name: k,
+			Mode: mode,
 		}
 	}
 	close(c)
@@ -72,7 +72,7 @@ func (me *RpcFs) OpenDir(name string) (chan fuse.DirEntry, fuse.Status) {
 }
 
 func (me *RpcFs) Open(name string, flags uint32) (fuse.File, fuse.Status) {
-	if flags & fuse.O_ANYWRITE != 0 {
+	if flags&fuse.O_ANYWRITE != 0 {
 		return nil, fuse.EPERM
 	}
 	a := me.getAttrResponse(name)
@@ -116,7 +116,7 @@ func (me *RpcFs) Readlink(name string) (string, fuse.Status) {
 	return a.Link, fuse.OK
 }
 
-func (me *RpcFs) getAttrResponse(name string) (*AttrResponse) {
+func (me *RpcFs) getAttrResponse(name string) *AttrResponse {
 	me.attrMutex.RLock()
 	result, ok := me.attrResponse[name]
 	me.attrMutex.RUnlock()
@@ -142,11 +142,10 @@ func (me *RpcFs) getAttrResponse(name string) (*AttrResponse) {
 func (me *RpcFs) GetAttr(name string) (*os.FileInfo, fuse.Status) {
 	if name == "" {
 		return &os.FileInfo{
-		Mode: fuse.S_IFDIR | 0755,
+			Mode: fuse.S_IFDIR | 0755,
 		}, fuse.OK
 	}
 
 	r := me.getAttrResponse(name)
 	return r.FileInfo, r.Status
 }
-

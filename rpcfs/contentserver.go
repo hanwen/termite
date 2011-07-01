@@ -9,7 +9,7 @@ import (
 )
 
 type ContentRequest struct {
-	Hash []byte
+	Hash       []byte
 	Start, End int
 }
 
@@ -26,7 +26,7 @@ type ContentServer struct {
 	Cache *DiskFileCache
 }
 
-func (me *ContentServer) FileContent(req *ContentRequest, rep *ContentResponse) (os.Error) {
+func (me *ContentServer) FileContent(req *ContentRequest, rep *ContentResponse) os.Error {
 	f, err := os.Open(HashPath(me.Cache.dir, req.Hash))
 	if err != nil {
 		return err
@@ -50,9 +50,9 @@ func FetchFromContentServer(client *rpc.Client, rpcName string, size int64, hash
 	buf := bytes.NewBuffer(make([]byte, 0, size))
 	for {
 		req := &ContentRequest{
-		Hash: hash,
-		Start: buf.Len(),
-		End: buf.Len() + chunkSize,
+			Hash:  hash,
+			Start: buf.Len(),
+			End:   buf.Len() + chunkSize,
 		}
 
 		rep := &ContentResponse{}

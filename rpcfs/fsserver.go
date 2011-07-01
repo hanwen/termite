@@ -14,16 +14,23 @@ var _ = fmt.Println
 
 type FsServer struct {
 	contentServer *ContentServer
-	cache *DiskFileCache
-	Root string
+	cache         *DiskFileCache
+	Root          string
+	excluded      map[string]bool
 }
 
-func NewFsServer(root string, cache *DiskFileCache) *FsServer {
-	return &FsServer{
-		cache: cache,
-		contentServer: &ContentServer{ Cache: cache },
-		Root: root,
+func NewFsServer(root string, cache *DiskFileCache, excluded []string) *FsServer {
+	fs := &FsServer{
+		cache:         cache,
+		contentServer: &ContentServer{Cache: cache},
+		Root:          root,
 	}
+
+	fs.excluded = make(map[string]bool)
+	for _, e := range excluded {
+		fs.excluded[e] = true
+	}
+	return fs
 }
 
 type AttrRequest struct {
@@ -52,12 +59,12 @@ func (me *FsServer) path(n string) string {
 	return filepath.Join(me.Root, strings.TrimLeft(n, "/"))
 }
 
-func (me *FsServer) FileContent(req *ContentRequest, rep *ContentResponse) (os.Error) {
+func (me *FsServer) FileContent(req *ContentRequest, rep *ContentResponse) os.Error {
 	return me.contentServer.FileContent(req, rep)
 }
 
-func (me *FsServer) ReadDir(req *DirRequest, r *DirResponse) (os.Error) {
-	d, e :=  ioutil.ReadDir(me.path(req.Name))
+func (me *FsServer) ReadDir(req *DirRequest, r *DirResponse) os.Error {
+	d, e := ioutil.ReadDir(me.path(req.Name))
 	log.Println("ReadDir", req)
 	r.NameModeMap = make(map[string]uint32)
 	for _, v := range d {
@@ -66,7 +73,14 @@ func (me *FsServer) ReadDir(req *DirRequest, r *DirResponse) (os.Error) {
 	return e
 }
 
-func (me *FsServer) GetAttr(req *AttrRequest, rep *AttrResponse) (os.Error) {
+func (me *FsServer) GetAttr(req *AttrRequest, rep *AttrResponse) os.Error {
+	log.Println("GetAttr req", req.Name)
+
+	if me.excluded[req.Name] {
+		rep.Status = fuse.ENOENT
+		return nil
+	}
+
 	fi, err := os.Lstat(me.path(req.Name))
 	rep.FileInfo = fi
 	rep.Status = fuse.OsErrorToErrno(err)
@@ -80,6 +94,6 @@ func (me *FsServer) GetAttr(req *AttrRequest, rep *AttrResponse) (os.Error) {
 	if fi.IsRegular() {
 		rep.Hash = me.cache.SavePath(req.Name)
 	}
-	log.Println("GetAttr", req, rep)
+	log.Println("GetAttr", req.Name, rep)
 	return nil
 }

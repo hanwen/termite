@@ -11,11 +11,11 @@ import (
 	"os/user"
 	"strings"
 	"syscall"
-	)
+)
 
 type WorkerTask struct {
-	mount string
-	rwDir string
+	mount  string
+	rwDir  string
 	tmpDir string
 	*WorkRequest
 	*WorkReply
@@ -42,9 +42,9 @@ func (me *WorkerDaemon) newWorkerTask(req *WorkRequest, rep *WorkReply) (*Worker
 	}
 
 	w := &WorkerTask{
-	WorkRequest: req,
-	WorkReply: rep,
-	daemon: me,
+		WorkRequest: req,
+		WorkReply:   rep,
+		daemon:      me,
 	}
 
 	tmpDir, err := ioutil.TempDir("", "rpcfs-tmp")
@@ -70,13 +70,13 @@ func (me *WorkerDaemon) newWorkerTask(req *WorkRequest, rep *WorkReply) (*Worker
 	// High ttl, since all writes come through fuse.
 	ttl := 100.0
 	opts := unionfs.UnionFsOptions{
-		BranchCacheTTLSecs: ttl,
-		DeletionCacheTTLSecs:ttl,
-		DeletionDirName: _DELETIONS,
+		BranchCacheTTLSecs:   ttl,
+		DeletionCacheTTLSecs: ttl,
+		DeletionDirName:      _DELETIONS,
 	}
 	mOpts := fuse.FileSystemOptions{
-		EntryTimeout: ttl,
-		AttrTimeout: ttl,
+		EntryTimeout:    ttl,
+		AttrTimeout:     ttl,
 		NegativeTimeout: ttl,
 	}
 
@@ -100,8 +100,8 @@ func (me *WorkerTask) Run() os.Error {
 	rStderr, wStderr, err := os.Pipe()
 
 	attr := os.ProcAttr{
-	Env: me.WorkRequest.Env,
-        Files: []*os.File{nil, wStdout, wStderr},
+		Env:   me.WorkRequest.Env,
+		Files: []*os.File{nil, wStdout, wStderr},
 	}
 
 	nobody, err := user.Lookup("nobody")
@@ -115,7 +115,7 @@ func (me *WorkerTask) Run() os.Error {
 		"-binary", me.WorkRequest.Binary,
 		me.mount}
 
-	newcmd := make([]string, len(cmd) + len(me.WorkRequest.Argv))
+	newcmd := make([]string, len(cmd)+len(me.WorkRequest.Argv))
 	copy(newcmd, cmd)
 	copy(newcmd[len(cmd):], me.WorkRequest.Argv)
 
@@ -143,7 +143,7 @@ func (me *WorkerTask) Run() os.Error {
 
 func (me *WorkerTask) VisitFile(path string, osInfo *os.FileInfo) {
 	fi := FileInfo{
-	FileInfo: *osInfo,
+		FileInfo: *osInfo,
 	}
 
 	ftype := osInfo.Mode &^ 07777
@@ -188,14 +188,14 @@ func (me *WorkerTask) fillReply() os.Error {
 		}
 
 		for _, m := range matches {
-			contents, err :=  ioutil.ReadFile(filepath.Join(dir, m))
+			contents, err := ioutil.ReadFile(filepath.Join(dir, m))
 			if err != nil {
 				return err
 			}
 
 			me.WorkReply.Files = append(me.WorkReply.Files, FileInfo{
 				Delete: true,
-				Path: string(contents),
+				Path:   string(contents),
 			})
 		}
 

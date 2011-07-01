@@ -49,8 +49,8 @@ func (me *DiskFileCache) Path(hash []byte) string {
 
 type HashWriter struct {
 	hasher hash.Hash
-	dest *os.File
-	hash []byte
+	dest   *os.File
+	hash   []byte
 }
 
 func NewHashWriter(dir string, hashfunc crypto.Hash) *HashWriter {
@@ -129,4 +129,3 @@ func (me *DiskFileCache) Save(content []byte) (md5 []byte) {
 	log.Printf("saved Hash %x\n", sum)
 	return sum
 }
-
