@@ -12,6 +12,9 @@ import (
 
 const challengeLength = 20
 
+// TODO - should multiplexed single connection?  Will let us pierce a
+// firewall one-way.
+
 func AuthenticateClient(conn net.Conn, secret []byte) os.Error {
 	challenge := make([]byte, 0)
 	for i := 0; i < challengeLength; i++ {
