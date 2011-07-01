@@ -4,14 +4,15 @@ include $(GOROOT)/src/Make.inc
 TARG=github.com/hanwen/go-fuse/termite
 DEPS=../fuse ../unionfs
 
-GOFILES=fsserver.go \
-	rpcfs.go \
-	executor.go \
-	diskcache.go \
+GOFILES=\
 	connection.go \
-	workerdaemon.go \
 	contentserver.go \
-	replay.go
+	diskcache.go \
+	fsserver.go \
+	master.go \
+	rpcfs.go \
+	task.go \
+	workerdaemon.go \
 
 include $(GOROOT)/src/Make.pkg
 
