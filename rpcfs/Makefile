@@ -10,7 +10,8 @@ GOFILES=fsserver.go \
 	diskcache.go \
 	connection.go \
 	workerdaemon.go \
-	contentserver.go
+	contentserver.go \
+	replay.go
 
 include $(GOROOT)/src/Make.pkg
 

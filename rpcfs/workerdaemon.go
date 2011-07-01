@@ -12,6 +12,7 @@ var _ = log.Println
 type FileInfo struct {
 	Delete bool
 	Path string
+	LinkContent string
 	os.FileInfo
 	Hash []byte
 }
@@ -65,11 +66,12 @@ func NewWorkerDaemon(secret []byte, cacheDir string) (*WorkerDaemon) {
 		secret: secret,
 		contentCache: cache,
 		fileServerMap: make(map[string]*rpc.Client),
-		contentServer: ContentServer{ Cache: cache },
+		contentServer: &ContentServer{ Cache: cache },
 	}
 	return w
 }
 
+// TODO - should expose under ContentServer name?
 func (me *WorkerDaemon) FileContent(req *ContentRequest, rep *ContentResponse) (os.Error) {
 	return me.contentServer.FileContent(req, rep)
 }

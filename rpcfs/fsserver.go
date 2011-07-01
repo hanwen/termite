@@ -18,8 +18,7 @@ type FsServer struct {
 	Root string
 }
 
-func NewFsServer(root, cachedir string) *FsServer {
-	cache := NewDiskFileCache(cachedir)
+func NewFsServer(root string, cache *DiskFileCache) *FsServer {
 	return &FsServer{
 		cache: cache,
 		contentServer: &ContentServer{ Cache: cache },

@@ -10,6 +10,7 @@ import (
 	"github.com/hanwen/go-fuse/unionfs"
 	"os/user"
 	"strings"
+	"syscall"
 	)
 
 type WorkerTask struct {
@@ -145,25 +146,38 @@ func (me *WorkerTask) Run() os.Error {
 
 func (me *WorkerTask) VisitFile(path string, osInfo *os.FileInfo) {
 	fi := FileInfo{
-		Hash: me.daemon.contentCache.SavePath(path),
-		FileInfo: *osInfo,
+	FileInfo: *osInfo,
 	}
 
+	ftype := osInfo.Mode &^ 07777
+	switch ftype {
+	case syscall.S_IFREG:
+		fi.Hash = me.daemon.contentCache.SavePath(path)
+	case syscall.S_IFLNK:
+		val, err := os.Readlink(path)
+		if err != nil {
+			// TODO - fail rpc.
+			log.Fatal("Readlink error.")
+		}
+		fi.LinkContent = val
+	default:
+		log.Fatalf("Unknown file type %o", ftype)
+	}
+
+	me.savePath(path, fi)
+}
+
+func (me *WorkerTask) savePath(path string, fi FileInfo) {
 	if !strings.HasPrefix(path, me.rwDir) {
 		log.Println("Weird file", path)
 		return
 	}
-
 	fi.Path = path[len(me.rwDir):]
 	me.WorkReply.Files = append(me.WorkReply.Files, fi)
 }
 
 func (me *WorkerTask) VisitDir(path string, osInfo *os.FileInfo) bool {
-	fi := FileInfo{
-		Path: path,
-		FileInfo: *osInfo,
-	}
-	me.WorkReply.Files = append(me.WorkReply.Files, fi)
+	me.savePath(path, FileInfo{FileInfo: *osInfo})
 	return true
 }
 

@@ -94,35 +94,13 @@ func (me *RpcFs) Open(name string, flags uint32) (fuse.File, fuse.Status) {
 	return &fuse.LoopbackFile{File: f}, fuse.OK
 }
 
+// TODO - should be streaming.
 func (me *RpcFs) FetchHash(size int64, hash []byte) {
-	chunkSize := 1 << 18
-
-	buf := bytes.NewBuffer(make([]byte, 0, size))
-	for {
-		req := &ContentRequest{
-		Hash: hash,
-		Start: buf.Len(),
-		End: buf.Len() + chunkSize,
-		}
-
-		rep := &ContentResponse{}
-		err := me.client.Call("FsServer.FileContent", req, rep)
-		if err != nil && err != os.EOF {
-			log.Println("FileContent error:", err)
-			break
-		}
-
-		buf.Write(rep.Chunk)
-		if len(rep.Chunk) < chunkSize {
-			break
-		}
+	b := FetchFromContentServer(me.client, "FsServer.FileContent", size, hash)
+	savedHash := me.cache.Save(b)
+	if bytes.Compare(hash, savedHash) != 0 {
+		log.Fatalf("Corruption: savedHash %x != requested hash %x.", savedHash, hash)
 	}
-
-	if buf.Len() < int(size) {
-		log.Fatal("Size mismatch", buf.Len(), size)
-	}
-
-	me.cache.Save(buf.Bytes())
 }
 
 func (me *RpcFs) Readlink(name string) (string, fuse.Status) {

@@ -4,40 +4,11 @@ import (
 	"flag"
 	"fmt"
 	"github.com/hanwen/go-fuse/rpcfs"
-	"net"
-	"rpc"
 	"log"
 	"os"
 	"strings"
 )
 
-func SetupWorkers(addresses string, secret []byte) (out []*rpc.Client) {
-	for _, addr := range strings.Split(addresses, ",", -1) {
-		conn, err := rpcfs.SetupClient(addr, secret)
-		if err != nil {
-			log.Println("Failed setting up connection with: ", addr, err)
-			continue
-		}
-		out = append(out, rpc.NewClient(conn))
-	}
-	return out
-}
-
-func StartServer(fileServer *rpcfs.FsServer, addr string, secret []byte) {
-	out := make(chan net.Conn)
-	go rpcfs.SetupServer(addr, secret, out)
-
-	for {
-		conn := <-out
-		rpcServer := rpc.NewServer()
-		err := rpcServer.Register(fileServer)
-		if err != nil {
-			log.Fatal("could not register file server", err)
-		}
-		log.Println("Server started...")
-		go rpcServer.ServeConn(conn)
-	}
-}
 
 func main() {
 	cachedir := flag.String("cachedir", "/tmp/fsserver-cache", "content cache")
@@ -50,23 +21,19 @@ func main() {
 		log.Fatalf("usage: %s CWD COMMAND ARGS\n", os.Args[0])
 	}
 
-	fileServer := rpcfs.NewFsServer("/", *cachedir)
+	workerList := strings.Split(*workers, ",", -1)
+	master := rpcfs.NewMaster(
+		*cachedir, *serverAddress, workerList, []byte(*secretString))
 
-	secret := []byte(*secretString)
-
-	log.Println("Starting fileserver")
-	go StartServer(fileServer, *serverAddress, secret)
-	log.Println("Started fileserver")
 	workReq := rpcfs.WorkRequest{
 	Argv: flag.Args()[1:],
 	Env: os.Environ(),
 	Dir: flag.Arg(0),
 	FileServer: *serverAddress,
 	}
-	workServers := SetupWorkers(*workers, secret)
+	workRep := &rpcfs.WorkReply{}
 
-	workRep := rpcfs.WorkReply{}
-	err := workServers[0].Call("WorkerDaemon.Run", &workReq, &workRep)
+	err := master.Run(&workReq, workRep)
 	if err != nil {
 		log.Fatal("WorkerDaemon.Run:", err)
 	} else {

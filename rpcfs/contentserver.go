@@ -1,8 +1,11 @@
 package rpcfs
 
 import (
+	"bytes"
 	"fmt"
+	"log"
 	"os"
+	"rpc"
 )
 
 type ContentRequest struct {
@@ -40,3 +43,33 @@ func (me *ContentServer) FileContent(req *ContentRequest, rep *ContentResponse) 
 	return err
 }
 
+// FetchHash issues a FileContent RPC to read an entire file.
+func FetchFromContentServer(client *rpc.Client, rpcName string, size int64, hash []byte) []byte {
+	chunkSize := 1 << 18
+
+	buf := bytes.NewBuffer(make([]byte, 0, size))
+	for {
+		req := &ContentRequest{
+		Hash: hash,
+		Start: buf.Len(),
+		End: buf.Len() + chunkSize,
+		}
+
+		rep := &ContentResponse{}
+		err := client.Call(rpcName, req, rep)
+		if err != nil && err != os.EOF {
+			log.Println("FileContent error:", err)
+			break
+		}
+
+		buf.Write(rep.Chunk)
+		if len(rep.Chunk) < chunkSize {
+			break
+		}
+	}
+
+	if buf.Len() < int(size) {
+		log.Fatal("Size mismatch", buf.Len(), size)
+	}
+	return buf.Bytes()
+}
