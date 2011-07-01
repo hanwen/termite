@@ -71,15 +71,23 @@ func AuthenticateServer(conn net.Conn, secret []byte) os.Error {
 	return nil
 }
 
-func SetupServer(address string, secret []byte, output chan net.Conn) {
-	addr, err := net.ResolveTCPAddr("tcp", address)
+func MyAddress(port int) string {
+	host, err := os.Hostname()
+	if err != nil {
+		log.Fatal("hostname", err)
+	}
+
+	return fmt.Sprintf("%s:%d", host, port)
+}
+
+func SetupServer(port int, secret []byte, output chan net.Conn) {
+	addr := MyAddress(port)
+	// TODO - also listen on localhost.
+	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		panic(err)
 	}
-	listener, err := net.ListenTCP("tcp", addr)
-	if err != nil {
-		panic(err)
-	}
+	log.Println("Listening to", addr)
 
 	for {
 		conn, err := listener.Accept()

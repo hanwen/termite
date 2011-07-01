@@ -2,7 +2,6 @@ package rpcfs
 
 import (
 	"bytes"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net"
@@ -36,14 +35,7 @@ func NewMaster(cacheDir string, workers []string, secret []byte, excluded []stri
 }
 
 func (me *Master) Start(port int, mySocket string) {
-	host, err := os.Hostname()
-	if err != nil {
-		log.Fatal("hostname", err)
-	}
-
-	myAddress := fmt.Sprintf("%s:%d", host, port)
-	me.fileServerAddress = myAddress
-	go me.startServer(me.fileServer, myAddress)
+	go me.startServer(me.fileServer, port)
 	me.startLocalServer(mySocket)
 }
 
@@ -88,9 +80,10 @@ func (me *Master) setupWorkers(addresses []string) {
 }
 
 // StartServer starts the connection listener.  Should be invoked in a coroutine.
-func (me *Master) startServer(server interface{}, addr string) {
+func (me *Master) startServer(server interface{}, port int) {
 	out := make(chan net.Conn)
-	go SetupServer(addr, me.secret, out)
+	me.fileServerAddress = MyAddress(port)
+	go SetupServer(port, me.secret, out)
 	for {
 		conn := <-out
 		rpcServer := rpc.NewServer()

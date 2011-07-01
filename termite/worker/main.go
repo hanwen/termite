@@ -14,7 +14,7 @@ var _ = log.Printf
 func main() {
 	cachedir := flag.String("cachedir", "/tmp/worker-cache", "content cache")
 	secretFile := flag.String("secret", "/tmp/secret.txt", "file containing password.")
-	serverAddress := flag.String("address", "localhost:1235", "Where to listen for work requests.")
+	port := flag.Int("port", 1235, "Where to listen for work requests.")
 	chrootBinary := flag.String("chroot", "", "binary to use for chroot'ing.")
 	flag.Parse()
 	secret, err := ioutil.ReadFile(*secretFile)
@@ -26,8 +26,7 @@ func main() {
 	daemon.ChrootBinary = *chrootBinary
 
 	out := make(chan net.Conn)
-	go rpcfs.SetupServer(*serverAddress, secret, out)
-	log.Println("Listening to", *serverAddress)
+	go rpcfs.SetupServer(*port, secret, out)
 	for {
 		conn := <-out
 		log.Println("Opening RPC channel from", conn.RemoteAddr())
