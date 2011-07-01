@@ -29,6 +29,9 @@ termite, but with some tweaks to the Makefile it should work.
 Testing:
 
   ./worker.sh >& worker.log &
-  ./master.sh path/to/compile/directory  /usr/bin/gcc gcc args
+  ./master.sh >& master.log &
+  export TERMITE_SOCKET=/tmp/termite-socket
+  export PATH=/tmp/tools/termite:${PATH}
+  make -j20
 
 
