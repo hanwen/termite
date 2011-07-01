@@ -24,14 +24,14 @@ func main() {
 		log.Fatal("ReadFile", err)
 	}
 	cache := rpcfs.NewDiskFileCache(*cachedir)
-	fileServer := rpcfs.NewFsServer(flag.Arg(0), cache)
+	fileServer := rpcfs.NewFsServer(flag.Arg(0), cache, []string{"/proc"})
 
 	out := make(chan net.Conn)
-	go rpcfs.SetupServer(*server, []byte(*secret), out)
+	go rpcfs.SetupServer(*server, secret, out)
 
 	conn := <-out
 	rpcServer := rpc.NewServer()
-	err := rpcServer.Register(fileServer)
+	err = rpcServer.Register(fileServer)
 	if err != nil {
 		log.Fatal("could not register file server", err)
 	}
