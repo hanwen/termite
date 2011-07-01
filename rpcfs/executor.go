@@ -109,9 +109,10 @@ func (me *WorkerTask) Run() os.Error {
 		return err
 	}
 
-	bin := me.daemon.ChrootBinary
-	cmd := []string{bin, "-dir", me.WorkRequest.Dir,
+	chroot := me.daemon.ChrootBinary
+	cmd := []string{chroot, "-dir", me.WorkRequest.Dir,
 		"-uid", fmt.Sprintf("%d", nobody.Uid), "-gid", fmt.Sprintf("%d", nobody.Gid),
+		"-binary", me.WorkRequest.Binary,
 		me.mount}
 
 	newcmd := make([]string, len(cmd) + len(me.WorkRequest.Argv))
@@ -119,7 +120,7 @@ func (me *WorkerTask) Run() os.Error {
 	copy(newcmd[len(cmd):], me.WorkRequest.Argv)
 
 	log.Println("starting cmd", newcmd)
-	proc, err := os.StartProcess(bin, newcmd, &attr)
+	proc, err := os.StartProcess(chroot, newcmd, &attr)
 	if err != nil {
 		log.Println("Error", err)
 		return err
@@ -132,12 +133,8 @@ func (me *WorkerTask) Run() os.Error {
 	stderr, err := ioutil.ReadAll(rStderr)
 
 	me.WorkReply.Exit, err = proc.Wait(0)
-	me.WorkReply.Stdout = stdout
-	me.WorkReply.Stderr = stderr
-
-	log.Println("stdout:", string(stdout))
-	log.Println("stderr:", string(stderr))
-	log.Println("dir:", me.tmpDir)
+	me.WorkReply.Stdout = string(stdout)
+	me.WorkReply.Stderr = string(stderr)
 
 	// TODO - look at rw directory, and serialize the files into WorkReply.
 	err = me.fillReply()

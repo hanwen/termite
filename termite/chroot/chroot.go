@@ -8,14 +8,15 @@ import (
 	)
 
 func main() {
-	exedir := flag.String("dir", "/", "directory to cwd chroot to.")
+	exedir := flag.String("dir", "/", "directory to chroot to.")
 	uid := flag.Int("uid", 0, "uid to use.")
 	gid := flag.Int("gid", 0, "gid to use.")
+	binary := flag.String("binary", "", "full path of binary.")
 	flag.Parse()
 	if len(flag.Args()) < 2 {
 		log.Fatal("use: chroot DIR COMMAND [ARG ..]")
 	}
-	
+
 	args := flag.Args()[1:]
 	dir := flag.Arg(0)
 
@@ -39,7 +40,12 @@ func main() {
 		log.Fatalln("Can't cd to", *exedir, err)
 	}
 
-	en = syscall.Exec(args[0], args, os.Environ())
+	bin := *binary
+	if bin == "" {
+		bin = args[0]
+	}
+
+	en = syscall.Exec(bin, args, os.Environ())
 	if en != 0 {
 		log.Fatalln("Can't exec", args, os.Errno(en))
 	}

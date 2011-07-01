@@ -14,25 +14,56 @@ import (
 type Master struct {
 	cache      *DiskFileCache
 	fileServer *FsServer
+	fileServerAddress string
 	secret	    []byte
 	workServers []*rpc.Client
+	masterRun   *LocalMaster
 }
 
-func NewMaster(cacheDir string, myAddress string, workers []string, secret []byte) *Master {
+func NewMaster(cacheDir string, workers []string, secret []byte) *Master {
 	c := NewDiskFileCache(cacheDir)
 	me := &Master{
 	cache: c,
 	fileServer: NewFsServer("/", c),
 	secret: secret,
 	}
-
-	me.SetupWorkers(workers)
+	me.masterRun = &LocalMaster{me}
+	me.setupWorkers(workers)
 	me.secret = secret
-	go me.StartServer(me.fileServer, myAddress)
 	return me
 }
 
-func (me *Master) SetupWorkers(addresses []string) {
+func (me *Master) Start(myAddress, mySocket string) {
+	me.fileServerAddress = myAddress
+	go me.startServer(me.fileServer, myAddress)
+	me.startLocalServer(mySocket)
+}
+
+func (me *Master) startLocalServer(sock string) {
+	listener, err := net.Listen("unix", sock)
+	if err != nil {
+		log.Fatal("startLocalServer", err)
+	}
+	err = os.Chmod(sock, 0700)
+	if err != nil {
+		log.Fatal("sock chmod", err)
+	}
+
+	for {
+		conn, err := listener.Accept()
+		if err != nil {
+			panic(err)
+		}
+		rpcServer := rpc.NewServer()
+		err = rpcServer.Register(me.masterRun)
+		if err != nil {
+			log.Fatal("could not register server", err)
+		}
+		go rpcServer.ServeConn(conn)
+	}
+}
+
+func (me *Master) setupWorkers(addresses []string) {
 	var out []*rpc.Client
 	for _, addr := range addresses {
 		conn, err := SetupClient(addr, me.secret)
@@ -49,26 +80,26 @@ func (me *Master) SetupWorkers(addresses []string) {
 }
 
 // StartServer starts the connection listener.  Should be invoked in a coroutine.
-func (me *Master) StartServer(fileServer *FsServer, addr string) {
+func (me *Master) startServer(server interface{}, addr string) {
 	out := make(chan net.Conn)
 	go SetupServer(addr, me.secret, out)
-
 	for {
 		conn := <-out
 		rpcServer := rpc.NewServer()
-		err := rpcServer.Register(fileServer)
+		err := rpcServer.Register(server)
 		if err != nil {
-			log.Fatal("could not register file server", err)
+			log.Fatal("could not register server", err)
 		}
 		log.Println("Server started...")
 		go rpcServer.ServeConn(conn)
 	}
 }
 
-func (me *Master) Run(req *WorkRequest, rep *WorkReply) os.Error {
+func (me *Master) run(req *WorkRequest, rep *WorkReply) os.Error {
 	// TODO: random pick.
 	worker := me.workServers[0]
 
+	req.FileServer = me.fileServerAddress
 	err := worker.Call("WorkerDaemon.Run", &req, &rep)
 	if err != nil {
 		return err
@@ -124,4 +155,20 @@ func (me *Master) replayFileModifications(worker *rpc.Client, infos []FileInfo) 
 			log.Fatal("Replay error", info.Path, err)
 		}
 	}
+}
+
+////////////////
+
+// Expose functionality for the local tool to use.
+type LocalMaster struct {
+	master *Master
+}
+
+func (me *LocalMaster) Run(req *WorkRequest, rep *WorkReply) os.Error {
+	return me.master.run(req, rep)
+}
+
+func (me *LocalMaster) Quit(ignoreIn *int, ignoreOut *int) os.Error {
+	// TODO - make this actually do something.
+	return nil
 }

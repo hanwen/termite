@@ -20,12 +20,13 @@ type FileInfo struct {
 type WorkReply struct {
 	Exit   *os.Waitmsg
 	Files  []FileInfo
-	Stderr []byte
-	Stdout []byte
+	Stderr string
+	Stdout string
 }
 
 type WorkRequest struct {
 	FileServer string
+	Binary string
 	Argv []string
 	Env []string
 	Dir string
