@@ -12,7 +12,7 @@ import (
 
 func main() {
 	cachedir := flag.String("cachedir", "/tmp/fsserver-cache", "content cache")
-	server := flag.String("server", "localhost:1234", "file server")
+	port := flag.Int("port", 1234, "file server")
 	secretFile := flag.String("secret", "/tmp/secret.txt", "file containing password.")
 
 	flag.Parse()
@@ -27,7 +27,7 @@ func main() {
 	fileServer := rpcfs.NewFsServer(flag.Arg(0), cache, []string{"/proc"})
 
 	out := make(chan net.Conn)
-	go rpcfs.SetupServer(*server, secret, out)
+	go rpcfs.SetupServer(*port, secret, out)
 
 	conn := <-out
 	rpcServer := rpc.NewServer()
