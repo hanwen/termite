@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/hanwen/go-fuse/rpcfs"
 	"flag"
+	"io/ioutil"
 	"log"
 	"net"
 	"rpc"
@@ -12,11 +13,14 @@ var _ = log.Printf
 
 func main() {
 	cachedir := flag.String("cachedir", "/tmp/worker-cache", "content cache")
-	secretString := flag.String("secret", "secr3t", "password")
+	secretFile := flag.String("secret", "/tmp/secret.txt", "file containing password.")
 	serverAddress := flag.String("address", "localhost:1235", "Where to listen for work requests.")
 	chrootBinary := flag.String("chroot", "", "binary to use for chroot'ing.")
 	flag.Parse()
-	secret := []byte(*secretString)
+	secret, err := ioutil.ReadFile(*secretFile)
+	if err != nil {
+		log.Fatal("ReadFile", err)
+	}
 
 	daemon := rpcfs.NewWorkerDaemon(secret, *cachedir)
 	daemon.ChrootBinary = *chrootBinary

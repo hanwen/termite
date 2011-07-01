@@ -8,28 +8,32 @@ import (
 	"log"
 	"os"
 	"rpc"
+	"io/ioutil"
 )
-
-var _ = log.Printf
 
 func main() {
 	cachedir := flag.String("cachedir", "/tmp/rpcfs-cache", "content cache")
 	server := flag.String("server", "localhost:1234", "file server")
-	secret := flag.String("secret", "secr3t", "shared password for authentication")
+	secretFile := flag.String("secret", "/tmp/secret.txt", "file containing password.")
 
 	flag.Parse()
 	if flag.NArg() < 1 {
 		fmt.Fprintf(os.Stderr, "usage: %s MOUNTPOINT\n", os.Args[0])
 		os.Exit(2)
 	}
+	secret, err := ioutil.ReadFile(*secretFile)
+	if err != nil {
+		log.Fatal("ReadFile", err)
+	}
 
-	rpcConn, err := rpcfs.SetupClient(*server, []byte(*secret))
+	rpcConn, err := rpcfs.SetupClient(*server, secret)
 	if err != nil {
 		log.Fatal("dialing:", err)
 	}
 
 	var fs fuse.FileSystem
-	fs = rpcfs.NewRpcFs(rpc.NewClient(rpcConn), *cachedir)
+	cache := rpcfs.NewDiskFileCache(*cachedir)
+	fs = rpcfs.NewRpcFs(rpc.NewClient(rpcConn), cache)
 	conn := fuse.NewFileSystemConnector(fs, nil)
 	state := fuse.NewMountState(conn)
 	opts := fuse.MountOptions{}
