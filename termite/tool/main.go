@@ -13,23 +13,25 @@ func main() {
 	socket := os.Getenv("TERMITE_SOCKET")
 	path := os.Getenv("PATH")
 
-	args := os.Args[1:]
-	if len(args) == 0 {
-		log.Fatal("Usage: tool COMMAND ARGS")
-	}
-	binary := args[0]
+	args := os.Args
+	_, base := filepath.Split(args[0])
+	binary := ""
+	for _, c := range filepath.SplitList(path) {
+		_, dirBase := filepath.Split(c)
+		if dirBase == "termite" {
+			continue
+		}
 
-	dir, base := filepath.Split(binary)
-	if dir == "" {
-		for _, c := range filepath.SplitList(path) {
-			try := filepath.Join(c, base)
-			_, err := os.Stat(try)
-			if err == nil {
-				binary = try
-			}
+		try := filepath.Join(c, base)
+		_, err := os.Stat(try)
+		if err == nil {
+			binary = try
 		}
 	}
-
+	if binary == "" {
+		log.Fatal("could not find", base)
+	}
+	args[0] = binary
 	wd, err := os.Getwd()
 	if err != nil {
 		log.Fatal("Getwd", err)

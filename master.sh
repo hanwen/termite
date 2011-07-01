@@ -3,11 +3,22 @@
 gomake -C termite/master
 
 export TERMITE_SOCKET=/tmp/termite-socket
+export TERMITE_TOOLS=/tmp/tools/termite
+rm -rf ${TERMITE_TOOLS}
+mkdir -p ${TERMITE_TOOLS}
+
+for bin in gcc g++ bison
+do
+  ln -s $(pwd)/termite/tool/tool ${TERMITE_TOOLS}/${bin}
+done
+
 echo "put this in the environment to run:"
 echo ""
 echo "  export TERMITE_SOCKET=${TERMITE_SOCKET}"
+echo "  export PATH=${TERMITE_TOOLS}:\${PATH}"
 echo ""
+
 set -eux
 
-rm -f /tmp/termite-socket
-./termite/master/master -socket /tmp/termite-socket
+rm -f ${TERMITE_SOCKET}
+./termite/master/master -socket ${TERMITE_SOCKET}
