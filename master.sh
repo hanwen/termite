@@ -24,4 +24,4 @@ echo ""
 set -eux
 
 rm -f ${TERMITE_SOCKET}
-./termite/master/master -socket ${TERMITE_SOCKET}
+./termite/master/master -socket ${TERMITE_SOCKET} "$@"
