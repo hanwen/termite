@@ -88,6 +88,13 @@ func (me *WorkerDaemon) Run(req *WorkRequest, rep *WorkReply) os.Error {
 		log.Println("Error", err)
 		return err
 	}
-	log.Println("sending back", rep)
+
+
+	summary := rep
+	// Trim output.
+	summary.Stdout = summary.Stdout[:1024]
+	summary.Stderr = summary.Stderr[:1024]
+
+	log.Println("sending back", summary)
 	return nil
 }
