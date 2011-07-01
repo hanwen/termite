@@ -1,7 +1,6 @@
 package rpcfs
 
 import (
-//	"os"
 	"crypto"
 	"testing"
 	"io/ioutil"
@@ -11,7 +10,7 @@ func TestDiskCache(t *testing.T) {
 	content := []byte("hello")
 
 	d, _ := ioutil.TempDir("", "")
-	
+
 	cache := NewDiskFileCache(d)
 
 	h := crypto.MD5.New()

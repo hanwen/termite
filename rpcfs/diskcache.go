@@ -9,7 +9,6 @@ import (
 	"log"
 	"io"
 	"io/ioutil"
-	
 )
 
 type DiskFileCache struct {
@@ -37,7 +36,6 @@ func HashPath(dir string, md5 []byte) string {
 	}
 	return dst
 }
-
 
 func (me *DiskFileCache) HasHash(hash []byte) bool {
 	p := HashPath(me.dir, hash)
@@ -91,7 +89,6 @@ func (me *HashWriter) Close() os.Error {
 	return err
 }
 
-	
 func (me *DiskFileCache) SavePath(path string) (md5 []byte) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -99,7 +96,7 @@ func (me *DiskFileCache) SavePath(path string) (md5 []byte) {
 	}
 
 	dup := NewHashWriter(me.dir, crypto.MD5)
-	_, err = io.Copy(dup, f) 
+	_, err = io.Copy(dup, f)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -112,8 +109,8 @@ func (me *DiskFileCache) SavePath(path string) (md5 []byte) {
 
 func (me *DiskFileCache) Save(content []byte) (md5 []byte) {
 	h := crypto.MD5.New()
-	
-	// TODO: make atomic. 
+
+	// TODO: make atomic.
 	h.Write(content)
 	sum := h.Sum()
 	name := me.Path(sum)

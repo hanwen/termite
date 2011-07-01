@@ -13,35 +13,18 @@ import (
 var _ = fmt.Println
 
 type FsServer struct {
+	contentServer *ContentServer
 	cache *DiskFileCache
-
 	Root string
 }
 
 func NewFsServer(root, cachedir string) *FsServer {
+	cache := NewDiskFileCache(cachedir)
 	return &FsServer{
-	cache: NewDiskFileCache(cachedir),
-	Root: root,
+		cache: cache,
+		contentServer: &ContentServer{ Cache: cache },
+		Root: root,
 	}
-}
-
-
-type Stamp struct {
-	Ctime int64
-	Mtime int64
-}
-
-type ContentRequest struct {
-	Hash []byte
-	Start, End int
-}
-
-func (me *ContentRequest) String() string {
-	return fmt.Sprintf("%x [%d, %d]", me.Hash, me.Start, me.End)
-}
-
-type ContentResponse struct {
-	Chunk []byte
 }
 
 type AttrRequest struct {
@@ -63,15 +46,19 @@ type DirResponse struct {
 	NameModeMap map[string]uint32
 }
 
-func (me *FsServer) Path(n string) string {
+func (me *FsServer) path(n string) string {
 	if me.Root == "" {
 		return n
 	}
 	return filepath.Join(me.Root, strings.TrimLeft(n, "/"))
 }
 
+func (me *FsServer) FileContent(req *ContentRequest, rep *ContentResponse) (os.Error) {
+	return me.contentServer.FileContent(req, rep)
+}
+
 func (me *FsServer) ReadDir(req *DirRequest, r *DirResponse) (os.Error) {
-	d, e :=  ioutil.ReadDir(me.Path(req.Name))
+	d, e :=  ioutil.ReadDir(me.path(req.Name))
 	log.Println("ReadDir", req)
 	r.NameModeMap = make(map[string]uint32)
 	for _, v := range d {
@@ -80,26 +67,8 @@ func (me *FsServer) ReadDir(req *DirRequest, r *DirResponse) (os.Error) {
 	return e
 }
 
-func (me *FsServer) FileContent(req *ContentRequest, rep *ContentResponse) (os.Error) {
-	f, err := os.Open(HashPath(me.cache.dir, req.Hash))
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	rep.Chunk = make([]byte, req.End-req.Start)
-	n, err := f.ReadAt(rep.Chunk, int64(req.Start))
-	rep.Chunk = rep.Chunk[:n]
-
-	if err == os.EOF {
-		err = nil
-	}
-	return err
-}
-
-
 func (me *FsServer) GetAttr(req *AttrRequest, rep *AttrResponse) (os.Error) {
-	fi, err := os.Lstat(me.Path(req.Name))
+	fi, err := os.Lstat(me.path(req.Name))
 	rep.FileInfo = fi
 	rep.Status = fuse.OsErrorToErrno(err)
 	if fi == nil {
