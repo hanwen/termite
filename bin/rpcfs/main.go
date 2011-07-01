@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/hanwen/go-fuse/fuse"
-	"github.com/hanwen/go-fuse/rpcfs"
+	"github.com/hanwen/go-fuse/termite"
 	"fmt"
 	"flag"
 	"log"
@@ -12,7 +12,7 @@ import (
 )
 
 func main() {
-	cachedir := flag.String("cachedir", "/tmp/rpcfs-cache", "content cache")
+	cachedir := flag.String("cachedir", "/tmp/termite-cache", "content cache")
 	server := flag.String("server", "localhost:1234", "file server")
 	secretFile := flag.String("secret", "/tmp/secret.txt", "file containing password.")
 
@@ -26,14 +26,14 @@ func main() {
 		log.Fatal("ReadFile", err)
 	}
 
-	rpcConn, err := rpcfs.SetupClient(*server, secret)
+	rpcConn, err := termite.SetupClient(*server, secret)
 	if err != nil {
 		log.Fatal("dialing:", err)
 	}
 
 	var fs fuse.FileSystem
-	cache := rpcfs.NewDiskFileCache(*cachedir)
-	fs = rpcfs.NewRpcFs(rpc.NewClient(rpcConn), cache)
+	cache := termite.NewDiskFileCache(*cachedir)
+	fs = termite.NewRpcFs(rpc.NewClient(rpcConn), cache)
 	conn := fuse.NewFileSystemConnector(fs, nil)
 	state := fuse.NewMountState(conn)
 	opts := fuse.MountOptions{}

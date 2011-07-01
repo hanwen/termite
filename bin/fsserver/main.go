@@ -2,7 +2,7 @@ package main
 
 import (
 	"flag"
-	"github.com/hanwen/go-fuse/rpcfs"
+	"github.com/hanwen/go-fuse/termite"
 	"io/ioutil"
 	"net"
 	"rpc"
@@ -23,11 +23,11 @@ func main() {
 	if err != nil {
 		log.Fatal("ReadFile", err)
 	}
-	cache := rpcfs.NewDiskFileCache(*cachedir)
-	fileServer := rpcfs.NewFsServer(flag.Arg(0), cache, []string{"/proc"})
+	cache := termite.NewDiskFileCache(*cachedir)
+	fileServer := termite.NewFsServer(flag.Arg(0), cache, []string{"/proc"})
 
 	out := make(chan net.Conn)
-	go rpcfs.SetupServer(*port, secret, out)
+	go termite.SetupServer(*port, secret, out)
 
 	conn := <-out
 	rpcServer := rpc.NewServer()

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/hanwen/go-fuse/rpcfs"
+	"github.com/hanwen/go-fuse/termite"
 	"flag"
 	"io/ioutil"
 	"log"
@@ -22,11 +22,11 @@ func main() {
 		log.Fatal("ReadFile", err)
 	}
 
-	daemon := rpcfs.NewWorkerDaemon(secret, *cachedir)
+	daemon := termite.NewWorkerDaemon(secret, *cachedir)
 	daemon.ChrootBinary = *chrootBinary
 
 	out := make(chan net.Conn)
-	go rpcfs.SetupServer(*port, secret, out)
+	go termite.SetupServer(*port, secret, out)
 	for {
 		conn := <-out
 		log.Println("Opening RPC channel from", conn.RemoteAddr())

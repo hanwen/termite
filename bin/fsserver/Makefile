@@ -5,7 +5,7 @@ include $(GOROOT)/src/Make.inc
 TARG=fsserver
 GOFILES=main.go
 
-DEPS=../../fuse ../../rpcfs
+DEPS=../../fuse ../../termite
 
 include $(GOROOT)/src/Make.cmd
 

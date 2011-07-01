@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"log"
-	"github.com/hanwen/go-fuse/rpcfs"
+	"github.com/hanwen/go-fuse/termite"
 	"io/ioutil"
 	"strings"
 )
@@ -25,7 +25,7 @@ func main() {
 
 	workerList := strings.Split(*workers, ",", -1)
 	excludeList := strings.Split(*exclude, ",", -1)
-	master := rpcfs.NewMaster(
+	master := termite.NewMaster(
 		*cachedir, workerList, secret, excludeList)
 	master.Start(*port, *socket)
 }

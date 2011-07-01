@@ -1,4 +1,4 @@
-package rpcfs
+package termite
 
 import (
 	"net"
