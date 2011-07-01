@@ -1,6 +1,6 @@
 #!/bin/sh
 
-gomake -C termite/master
+gomake -C bin/master
 
 set -eu
 
@@ -26,4 +26,4 @@ echo ""
 set -eux
 
 rm -f ${TERMITE_SOCKET}
-./termite/master/master -socket ${TERMITE_SOCKET} "$@"
+./bin/master/master -socket ${TERMITE_SOCKET} "$@"
