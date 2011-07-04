@@ -36,10 +36,11 @@ type WorkRequest struct {
 type MasterWorker struct {
 	daemon *WorkerDaemon
 	fileServer *rpc.Client
+	readonlyRpcFs  *RpcFs
 
 	fuseFileSystemsMutex sync.Mutex
 	fuseFileSystems []*WorkerFuseFs
-}	
+}
 
 func (me *MasterWorker) ReturnFuse(wfs *WorkerFuseFs) {
 	wfs.unionFs.DropBranchCache()
@@ -64,17 +65,19 @@ func (me *MasterWorker) getWorkerFuseFs() (f *WorkerFuseFs, err os.Error) {
 	return 	f, err
 }
 
-
-func (me *WorkerDaemon) NewMasterWorker(addr string) (*MasterWorker, os.Error) {
+func (me *WorkerDaemon) newMasterWorker(addr string) (*MasterWorker, os.Error) {
 	conn, err := SetupClient(addr, me.secret)
 	if err != nil {
 		return nil, err
 	}
 
-	return &MasterWorker{
+	w := &MasterWorker{
 		fileServer: rpc.NewClient(conn),
 		daemon: me,
-	}, nil
+	}
+	w.readonlyRpcFs = NewRpcFs(w.fileServer, me.contentCache)
+
+	return w, nil
 }
 
 func (me *MasterWorker) Run(req *WorkRequest, rep *WorkReply) os.Error {
@@ -116,7 +119,7 @@ func (me *WorkerDaemon) getMasterWorker(addr string) (*MasterWorker, os.Error) {
 		return mw, nil
 	}
 
-	mw, err := me.NewMasterWorker(addr)
+	mw, err := me.newMasterWorker(addr)
 	if err != nil {
 		return nil, err
 	}

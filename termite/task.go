@@ -31,7 +31,7 @@ const _DELETIONS = "DELETIONS"
 
 func (me *MasterWorker) newWorkerFuseFs() (*WorkerFuseFs, os.Error) {
 	w := WorkerFuseFs{}
-	
+
 	tmpDir, err := ioutil.TempDir("", "rpcfs-tmp")
 	w.tmpDir = tmpDir
 	type dirInit struct {
@@ -67,7 +67,22 @@ func (me *MasterWorker) newWorkerFuseFs() (*WorkerFuseFs, os.Error) {
 	}
 
 	w.unionFs = unionfs.NewUnionFs("ufs", []fuse.FileSystem{rwFs, roFs}, opts)
-	conn := fuse.NewFileSystemConnector(w.unionFs, &mOpts)
+
+	swFs := []fuse.SwitchedFileSystem{
+		{"dev", &DevNullFs{}, true},
+
+		// TODO - share RpcFs with writable parts.
+		{"", me.readonlyRpcFs, false},
+
+		// TODO - configurable.
+		{"tmp", w.unionFs, false},
+
+		// TODO - should use socket location as boundary.
+		{"home", w.unionFs, false},
+		{"usr/local", w.unionFs, false},
+	}
+
+	conn := fuse.NewFileSystemConnector(fuse.NewSwitchFileSystem(swFs), &mOpts)
 	w.MountState = fuse.NewMountState(conn)
 	w.MountState.Mount(w.mount, &fuse.MountOptions{AllowOther: true})
 	if err != nil {
@@ -75,7 +90,7 @@ func (me *MasterWorker) newWorkerFuseFs() (*WorkerFuseFs, os.Error) {
 	}
 
 	go w.MountState.Loop(true)
-	
+
 	return &w, nil
 }
 
@@ -94,7 +109,7 @@ func (me *MasterWorker) newWorkerTask(req *WorkRequest, rep *WorkReply) (*Worker
 		WorkReply:   rep,
 		masterWorker: me,
 		fuseFs:      fuseFs,
-	}, nil	
+	}, nil
 }
 
 func (me *WorkerTask) Run() os.Error {
@@ -146,7 +161,7 @@ func (me *WorkerTask) Run() os.Error {
 	} else {
 		me.masterWorker.ReturnFuse(me.fuseFs)
 	}
-	
+
 	return err
 }
 
@@ -181,12 +196,12 @@ func (me *WorkerTask) savePath(path string, fi FileInfo) {
 		log.Println("Weird file", path)
 		return
 	}
-	
+
 	fi.Path = path[len(me.fuseFs.rwDir):]
 	if fi.Path == "/" + _DELETIONS {
 		return
 	}
-	
+
 	me.WorkReply.Files = append(me.WorkReply.Files, fi)
 }
 
