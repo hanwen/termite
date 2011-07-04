@@ -7,7 +7,10 @@ system, and then ship the results back to the master.
 
 CAVEATS
 
-Work in progress.  Do not use on machines shared with untrusted users
+Work in progress.
+
+* Does not work with compiler invocations that read stdin.
+
 
 
 INSTALL
@@ -30,7 +33,6 @@ Testing:
 
   ./worker.sh >& worker.log &
   ./master.sh >& master.log &
-  export TERMITE_SOCKET=/tmp/termite-socket
   export PATH=/tmp/tools/termite:${PATH}
   make -j20
 
