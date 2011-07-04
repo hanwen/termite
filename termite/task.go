@@ -12,43 +12,28 @@ import (
 	"strings"
 	"syscall"
 )
-
-type WorkerTask struct {
-	mount  string
+type WorkerFuseFs struct {
 	rwDir  string
 	tmpDir string
+	mount  string
+	*fuse.MountState
+	unionFs *unionfs.UnionFs
+}
+
+type WorkerTask struct {
+	fuseFs *WorkerFuseFs
 	*WorkRequest
 	*WorkReply
-	daemon *WorkerDaemon
-
-	*fuse.MountState
+	masterWorker *MasterWorker
 }
 
 const _DELETIONS = "DELETIONS"
 
-func (me *WorkerTask) Stop() {
-	log.Println("unmounting..")
-	me.MountState.Unmount()
-	os.RemoveAll(me.tmpDir)
-}
-
-func (me *WorkerTask) RWDir() string {
-	return me.rwDir
-}
-
-func (me *WorkerDaemon) newWorkerTask(req *WorkRequest, rep *WorkReply) (*WorkerTask, os.Error) {
-	fs, err := me.getFileServer(req.FileServer)
-	if err != nil {
-		return nil, err
-	}
-
-	w := &WorkerTask{
-		WorkRequest: req,
-		WorkReply:   rep,
-		daemon:      me,
-	}
-
+func (me *MasterWorker) newWorkerFuseFs() (*WorkerFuseFs, os.Error) {
+	w := WorkerFuseFs{}
+	
 	tmpDir, err := ioutil.TempDir("", "rpcfs-tmp")
+	w.tmpDir = tmpDir
 	type dirInit struct {
 		dst *string
 		val string
@@ -58,7 +43,7 @@ func (me *WorkerDaemon) newWorkerTask(req *WorkRequest, rep *WorkReply) (*Worker
 		dirInit{&w.rwDir, "rw"},
 		dirInit{&w.mount, "mnt"},
 	} {
-		*v.dst = filepath.Join(tmpDir, v.val)
+		*v.dst = filepath.Join(w.tmpDir, v.val)
 		err = os.Mkdir(*v.dst, 0700)
 		if err != nil {
 			return nil, err
@@ -66,7 +51,7 @@ func (me *WorkerDaemon) newWorkerTask(req *WorkRequest, rep *WorkReply) (*Worker
 	}
 
 	rwFs := fuse.NewLoopbackFileSystem(w.rwDir)
-	roFs := NewRpcFs(fs, me.contentCache)
+	roFs := NewRpcFs(me.fileServer, me.daemon.contentCache)
 
 	// High ttl, since all writes come through fuse.
 	ttl := 100.0
@@ -81,22 +66,38 @@ func (me *WorkerDaemon) newWorkerTask(req *WorkRequest, rep *WorkReply) (*Worker
 		NegativeTimeout: ttl,
 	}
 
-	ufs := unionfs.NewUnionFs("ufs", []fuse.FileSystem{rwFs, roFs}, opts)
-	conn := fuse.NewFileSystemConnector(ufs, &mOpts)
-	state := fuse.NewMountState(conn)
-	state.Mount(w.mount, &fuse.MountOptions{AllowOther: true})
+	w.unionFs = unionfs.NewUnionFs("ufs", []fuse.FileSystem{rwFs, roFs}, opts)
+	conn := fuse.NewFileSystemConnector(w.unionFs, &mOpts)
+	w.MountState = fuse.NewMountState(conn)
+	w.MountState.Mount(w.mount, &fuse.MountOptions{AllowOther: true})
 	if err != nil {
 		return nil, err
 	}
 
-	w.MountState = state
-	go state.Loop(true)
-	return w, nil
+	go w.MountState.Loop(true)
+	
+	return &w, nil
+}
+
+func (me *WorkerFuseFs) Stop() {
+	me.MountState.Unmount()
+	os.RemoveAll(me.tmpDir)
+}
+
+func (me *MasterWorker) newWorkerTask(req *WorkRequest, rep *WorkReply) (*WorkerTask, os.Error) {
+	fuseFs, err := me.getWorkerFuseFs()
+	if err != nil {
+		return nil, err
+	}
+	return &WorkerTask{
+		WorkRequest: req,
+		WorkReply:   rep,
+		masterWorker: me,
+		fuseFs:      fuseFs,
+	}, nil	
 }
 
 func (me *WorkerTask) Run() os.Error {
-	defer me.Stop()
-
 	rStdout, wStdout, err := os.Pipe()
 	rStderr, wStderr, err := os.Pipe()
 
@@ -110,11 +111,11 @@ func (me *WorkerTask) Run() os.Error {
 		return err
 	}
 
-	chroot := me.daemon.ChrootBinary
+	chroot := me.masterWorker.daemon.ChrootBinary
 	cmd := []string{chroot, "-dir", me.WorkRequest.Dir,
 		"-uid", fmt.Sprintf("%d", nobody.Uid), "-gid", fmt.Sprintf("%d", nobody.Gid),
 		"-binary", me.WorkRequest.Binary,
-		me.mount}
+		me.fuseFs.mount}
 
 	newcmd := make([]string, len(cmd)+len(me.WorkRequest.Argv))
 	copy(newcmd, cmd)
@@ -139,6 +140,13 @@ func (me *WorkerTask) Run() os.Error {
 
 	// TODO - look at rw directory, and serialize the files into WorkReply.
 	err = me.fillReply()
+	if err != nil {
+		me.fuseFs.Stop()
+		// TODO - anything else needed to discard?
+	} else {
+		me.masterWorker.ReturnFuse(me.fuseFs)
+	}
+	
 	return err
 }
 
@@ -150,7 +158,7 @@ func (me *WorkerTask) VisitFile(path string, osInfo *os.FileInfo) {
 	ftype := osInfo.Mode &^ 07777
 	switch ftype {
 	case syscall.S_IFREG:
-		fi.Hash = me.daemon.contentCache.SavePath(path)
+		fi.Hash = me.masterWorker.daemon.contentCache.SavePath(path)
 	case syscall.S_IFLNK:
 		val, err := os.Readlink(path)
 		if err != nil {
@@ -163,24 +171,34 @@ func (me *WorkerTask) VisitFile(path string, osInfo *os.FileInfo) {
 	}
 
 	me.savePath(path, fi)
+
+	// TODO - error handling.
+	os.Remove(path)
 }
 
 func (me *WorkerTask) savePath(path string, fi FileInfo) {
-	if !strings.HasPrefix(path, me.rwDir) {
+	if !strings.HasPrefix(path, me.fuseFs.rwDir) {
 		log.Println("Weird file", path)
 		return
 	}
-	fi.Path = path[len(me.rwDir):]
+	
+	fi.Path = path[len(me.fuseFs.rwDir):]
+	if fi.Path == "/" + _DELETIONS {
+		return
+	}
+	
 	me.WorkReply.Files = append(me.WorkReply.Files, fi)
 }
 
 func (me *WorkerTask) VisitDir(path string, osInfo *os.FileInfo) bool {
 	me.savePath(path, FileInfo{FileInfo: *osInfo})
+
+	// TODO - save dir to delete.
 	return true
 }
 
 func (me *WorkerTask) fillReply() os.Error {
-	dir := filepath.Join(me.rwDir, _DELETIONS)
+	dir := filepath.Join(me.fuseFs.rwDir, _DELETIONS)
 	_, err := os.Lstat(dir)
 	if err == nil {
 		matches, err := filepath.Glob(dir + "/*")
@@ -189,7 +207,8 @@ func (me *WorkerTask) fillReply() os.Error {
 		}
 
 		for _, m := range matches {
-			contents, err := ioutil.ReadFile(filepath.Join(dir, m))
+			fullPath := filepath.Join(dir, m)
+			contents, err := ioutil.ReadFile(fullPath)
 			if err != nil {
 				return err
 			}
@@ -198,13 +217,16 @@ func (me *WorkerTask) fillReply() os.Error {
 				Delete: true,
 				Path:   string(contents),
 			})
+			err = os.Remove(fullPath)
+			if err != nil {
+				return err
+			}
 		}
 
-		err = os.RemoveAll(dir)
 		if err != nil {
 			return err
 		}
 	}
-	filepath.Walk(me.rwDir, me, nil)
+	filepath.Walk(me.fuseFs.rwDir, me, nil)
 	return nil
 }

@@ -32,33 +32,97 @@ type WorkRequest struct {
 	Dir        string
 }
 
-type WorkerDaemon struct {
-	secret             []byte
-	fileServerMapMutex sync.Mutex
-	ChrootBinary       string
+// State associated with one master.
+type MasterWorker struct {
+	daemon *WorkerDaemon
+	fileServer *rpc.Client
 
-	// TODO - deal with closed connections.
-	fileServerMap map[string]*rpc.Client
-	contentCache  *DiskFileCache
-	contentServer *ContentServer
+	fuseFileSystemsMutex sync.Mutex
+	fuseFileSystems []*WorkerFuseFs
+}	
+
+func (me *MasterWorker) ReturnFuse(wfs *WorkerFuseFs) {
+	wfs.unionFs.DropBranchCache()
+	wfs.unionFs.DropDeletionCache()
+
+	me.fuseFileSystemsMutex.Lock()
+	defer me.fuseFileSystemsMutex.Unlock()
+	me.fuseFileSystems = append(me.fuseFileSystems, wfs)
 }
 
-func (me *WorkerDaemon) getFileServer(addr string) (*rpc.Client, os.Error) {
-	me.fileServerMapMutex.Lock()
-	defer me.fileServerMapMutex.Unlock()
-
-	client, ok := me.fileServerMap[addr]
-	if ok {
-		return client, nil
+func (me *MasterWorker) getWorkerFuseFs() (f *WorkerFuseFs, err os.Error) {
+	me.fuseFileSystemsMutex.Lock()
+	l := len(me.fuseFileSystems)
+	if l > 0 {
+		f = me.fuseFileSystems[l-1]
+		me.fuseFileSystems = me.fuseFileSystems[:l-1]
 	}
+	me.fuseFileSystemsMutex.Unlock()
+	if f == nil {
+		f, err = me.newWorkerFuseFs()
+	}
+	return 	f, err
+}
 
+
+func (me *WorkerDaemon) NewMasterWorker(addr string) (*MasterWorker, os.Error) {
 	conn, err := SetupClient(addr, me.secret)
 	if err != nil {
 		return nil, err
 	}
 
-	client = rpc.NewClient(conn)
-	return client, nil
+	return &MasterWorker{
+		fileServer: rpc.NewClient(conn),
+		daemon: me,
+	}, nil
+}
+
+func (me *MasterWorker) Run(req *WorkRequest, rep *WorkReply) os.Error {
+	task, err := me.newWorkerTask(req, rep)
+
+	err = task.Run()
+	if err != nil {
+		log.Println("Error", err)
+		return err
+	}
+
+	summary := rep
+	// Trim output.
+
+	summary.Stdout = trim(summary.Stdout)
+	summary.Stderr = trim(summary.Stderr)
+
+	log.Println("sending back", summary)
+	return nil
+}
+
+type WorkerDaemon struct {
+	secret             []byte
+	ChrootBinary       string
+
+	// TODO - deal with closed connections.
+	masterMapMutex sync.Mutex
+	masterMap     map[string]*MasterWorker
+	contentCache  *DiskFileCache
+	contentServer *ContentServer
+}
+
+func (me *WorkerDaemon) getMasterWorker(addr string) (*MasterWorker, os.Error) {
+	me.masterMapMutex.Lock()
+	defer me.masterMapMutex.Unlock()
+
+	mw, ok := me.masterMap[addr]
+	if ok {
+		return mw, nil
+	}
+
+	mw, err := me.NewMasterWorker(addr)
+	if err != nil {
+		return nil, err
+	}
+
+	me.masterMap[addr] = mw
+	return mw, err
 }
 
 func NewWorkerDaemon(secret []byte, cacheDir string) *WorkerDaemon {
@@ -66,7 +130,7 @@ func NewWorkerDaemon(secret []byte, cacheDir string) *WorkerDaemon {
 	w := &WorkerDaemon{
 		secret:        secret,
 		contentCache:  cache,
-		fileServerMap: make(map[string]*rpc.Client),
+		masterMap:     make(map[string]*MasterWorker),
 		contentServer: &ContentServer{Cache: cache},
 	}
 	return w
@@ -86,23 +150,12 @@ func trim(s string) string {
 }
 
 func (me *WorkerDaemon) Run(req *WorkRequest, rep *WorkReply) os.Error {
-	task, err := me.newWorkerTask(req, rep)
+	wm, err := me.getMasterWorker(req.FileServer)
 	if err != nil {
 		return err
 	}
 
-	err = task.Run()
-	if err != nil {
-		log.Println("Error", err)
-		return err
-	}
-
-	summary := rep
-	// Trim output.
-
-	summary.Stdout = trim(summary.Stdout)
-	summary.Stderr = trim(summary.Stderr)
-
-	log.Println("sending back", summary)
-	return nil
+	return wm.Run(req, rep)
 }
+
+
