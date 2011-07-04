@@ -9,8 +9,9 @@ import (
 	"rpc"
 )
 
+const _SOCKET = ".termite-socket"
+
 func main() {
-	socket := os.Getenv("TERMITE_SOCKET")
 	path := os.Getenv("PATH")
 
 	args := os.Args
@@ -43,6 +44,20 @@ func main() {
 	Dir: wd,
 	}
 
+	socket := os.Getenv("TERMITE_SOCKET")
+	if socket == "" {
+		socketPath := wd
+		for socketPath != "/" {
+			cand := filepath.Join(socketPath, _SOCKET)
+			fi, _ := os.Lstat(cand)
+			if fi != nil && fi.IsSocket() {
+				socket = cand
+				break
+			}
+			socketPath = filepath.Clean(filepath.Join(socketPath, ".."))
+		}
+	}
+
 	conn, err := net.Dial("unix", socket)
 	if err != nil {
 		log.Fatal("Dial:", err)
@@ -53,7 +68,7 @@ func main() {
 	rep := termite.WorkReply{}
 	err = client.Call("LocalMaster.Run", &req, &rep)
 	if err != nil {
-		log.Fatal("LocalMaster.Run", err)
+		log.Fatal("LocalMaster.Run: ", err)
 	}
 
 	os.Stdout.Write([]byte(rep.Stdout))
