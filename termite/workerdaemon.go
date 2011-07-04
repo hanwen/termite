@@ -1,6 +1,7 @@
 package termite
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"rpc"
@@ -19,8 +20,8 @@ type FileInfo struct {
 
 // TODO - WorkReply/WorkRequest is cute and simple, but doesn't work
 // for Makefiles that use redirection, like the Makefiles of the Linux
-// kernel. We can't read stdin on the master, because we don't know if
-// is needed, and detecting it on the worker requires some sort
+// kernel. We can't read stdin on the master, because we don't know in advance if
+// it is needed, and detecting it on the worker requires some sort
 // streaming RPC.  An alternative is to use multiplexing of the
 // connection carrying the RPC to hook up the worker's
 // stdin/stdout/stderr directly with the invoking tool.
@@ -35,6 +36,7 @@ type WorkReply struct {
 
 type WorkRequest struct {
 	FileServer string
+	WritableRoot string
 	Binary     string
 	Argv       []string
 	Env        []string
@@ -46,6 +48,7 @@ type MasterWorker struct {
 	daemon *WorkerDaemon
 	fileServer *rpc.Client
 	readonlyRpcFs  *RpcFs
+	writableRoot string
 
 	fuseFileSystemsMutex sync.Mutex
 	fuseFileSystems []*WorkerFuseFs
@@ -74,7 +77,7 @@ func (me *MasterWorker) getWorkerFuseFs() (f *WorkerFuseFs, err os.Error) {
 	return 	f, err
 }
 
-func (me *WorkerDaemon) newMasterWorker(addr string) (*MasterWorker, os.Error) {
+func (me *WorkerDaemon) newMasterWorker(addr string, writableRoot string) (*MasterWorker, os.Error) {
 	conn, err := SetupClient(addr, me.secret)
 	if err != nil {
 		return nil, err
@@ -83,6 +86,7 @@ func (me *WorkerDaemon) newMasterWorker(addr string) (*MasterWorker, os.Error) {
 	w := &MasterWorker{
 		fileServer: rpc.NewClient(conn),
 		daemon: me,
+		writableRoot: writableRoot,
 	}
 	w.readonlyRpcFs = NewRpcFs(w.fileServer, me.contentCache)
 
@@ -119,21 +123,22 @@ type WorkerDaemon struct {
 	contentServer *ContentServer
 }
 
-func (me *WorkerDaemon) getMasterWorker(addr string) (*MasterWorker, os.Error) {
+func (me *WorkerDaemon) getMasterWorker(addr string, writableRoot string) (*MasterWorker, os.Error) {
 	me.masterMapMutex.Lock()
 	defer me.masterMapMutex.Unlock()
 
-	mw, ok := me.masterMap[addr]
+	key := fmt.Sprintf("%s:%s", addr, writableRoot)
+	mw, ok := me.masterMap[key]
 	if ok {
 		return mw, nil
 	}
 
-	mw, err := me.newMasterWorker(addr)
+	mw, err := me.newMasterWorker(addr, writableRoot)
 	if err != nil {
 		return nil, err
 	}
-
-	me.masterMap[addr] = mw
+	log.Println("Created new MasterWorker for", key)
+	me.masterMap[key] = mw
 	return mw, err
 }
 
@@ -162,7 +167,7 @@ func trim(s string) string {
 }
 
 func (me *WorkerDaemon) Run(req *WorkRequest, rep *WorkReply) os.Error {
-	wm, err := me.getMasterWorker(req.FileServer)
+	wm, err := me.getMasterWorker(req.FileServer, req.WritableRoot)
 	if err != nil {
 		return err
 	}

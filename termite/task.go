@@ -78,9 +78,9 @@ func (me *MasterWorker) newWorkerFuseFs() (*WorkerFuseFs, os.Error) {
 		{"tmp", w.unionFs, false},
 
 		// TODO - should use socket location as boundary.
-		{"home", w.unionFs, false},
-		{"usr/local", w.unionFs, false},
+		{me.writableRoot, w.unionFs, false},
 	}
+
 
 	conn := fuse.NewFileSystemConnector(fuse.NewSwitchFileSystem(swFs), &mOpts)
 	w.MountState = fuse.NewMountState(conn)

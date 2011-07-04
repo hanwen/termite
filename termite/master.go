@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"path/filepath"
 	"rand"
 	"rpc"
 	"sort"
@@ -19,6 +20,7 @@ type Master struct {
 	secret            []byte
 	workServers       []*rpc.Client
 	masterRun         *LocalMaster
+	writableRoot      string
 }
 
 func NewMaster(cacheDir string, workers []string, secret []byte, excluded []string) *Master {
@@ -40,14 +42,26 @@ func (me *Master) Start(port int, mySocket string) {
 }
 
 func (me *Master) startLocalServer(sock string) {
-	listener, err := net.Listen("unix", sock)
+	absSock, err := filepath.Abs(sock)
+	if err != nil {
+		log.Fatal("abs", err)
+	}
+
+	listener, err := net.Listen("unix", absSock)
 	if err != nil {
 		log.Fatal("startLocalServer", err)
 	}
-	err = os.Chmod(sock, 0700)
+	err = os.Chmod(absSock, 0700)
 	if err != nil {
 		log.Fatal("sock chmod", err)
 	}
+
+	me.writableRoot, err = filepath.EvalSymlinks(absSock)
+	if err != nil {
+		log.Fatal("EvalSymlinks", err)
+	}
+	me.writableRoot = filepath.Clean(me.writableRoot)
+	me.writableRoot, _ = filepath.Split(me.writableRoot)
 
 	for {
 		conn, err := listener.Accept()
@@ -101,6 +115,7 @@ func (me *Master) run(req *WorkRequest, rep *WorkReply) os.Error {
 	worker := me.workServers[idx]
 
 	req.FileServer = me.fileServerAddress
+	req.WritableRoot = me.writableRoot
 	err := worker.Call("WorkerDaemon.Run", &req, &rep)
 	if err != nil {
 		return err
