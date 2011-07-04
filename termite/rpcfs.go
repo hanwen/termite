@@ -76,6 +76,9 @@ func (me *RpcFs) Open(name string, flags uint32) (fuse.File, fuse.Status) {
 		return nil, fuse.EPERM
 	}
 	a := me.getAttrResponse(name)
+	if a == nil {
+		return nil, fuse.ENOENT
+	}
 	if !a.Status.Ok() {
 		return nil, a.Status
 	}
@@ -105,6 +108,9 @@ func (me *RpcFs) FetchHash(size int64, hash []byte) {
 
 func (me *RpcFs) Readlink(name string) (string, fuse.Status) {
 	a := me.getAttrResponse(name)
+	if a == nil {
+		return "", fuse.ENOENT
+	}
 
 	if !a.Status.Ok() {
 		return "", a.Status
@@ -147,5 +153,9 @@ func (me *RpcFs) GetAttr(name string) (*os.FileInfo, fuse.Status) {
 	}
 
 	r := me.getAttrResponse(name)
+	if r == nil {
+		return nil, fuse.ENOENT
+	}
+
 	return r.FileInfo, r.Status
 }
