@@ -12,10 +12,10 @@ import (
 
 const challengeLength = 20
 
-// TODO - should multiplexed single connection?  Will let us pierce a
+// TODO - should multiplex single connection.  Will let us pierce a
 // firewall one-way.
 
-func AuthenticateClient(conn net.Conn, secret []byte) os.Error {
+func Authenticate(conn net.Conn, secret []byte) os.Error {
 	challenge := make([]byte, 0)
 	for i := 0; i < challengeLength; i++ {
 		challenge = append(challenge, byte(rand.Int31n(256)))
@@ -25,12 +25,22 @@ func AuthenticateClient(conn net.Conn, secret []byte) os.Error {
 	if err != nil {
 		return err
 	}
-
 	h := hmac.NewSHA1(secret)
 	_, err = h.Write(challenge)
 	expected := h.Sum()
+	
+	remoteChallenge := make([]byte, challengeLength)
+	n, err := conn.Read(remoteChallenge)
+	if err != nil {
+		return err
+	}
+	remoteChallenge = remoteChallenge[:n]
+	remoteHash := hmac.NewSHA1(secret)
+	remoteHash.Write(remoteChallenge)
+	_, err = conn.Write(remoteHash.Sum())
+
 	response := make([]byte, len(expected))
-	n, err := conn.Read(response)
+	n, err = conn.Read(response)
 	if err != nil {
 		return err
 	}
@@ -38,28 +48,13 @@ func AuthenticateClient(conn net.Conn, secret []byte) os.Error {
 
 	if bytes.Compare(response, expected) != 0 {
 		log.Println("Authentication failure from", conn.RemoteAddr())
+		conn.Close()
 		return os.NewError("Mismatch in response")
-	}
-	conn.Write([]byte("OK"))
-	return nil
-}
-
-func AuthenticateServer(conn net.Conn, secret []byte) os.Error {
-	challenge := make([]byte, challengeLength)
-	n, err := conn.Read(challenge)
-	if err != nil {
-		return err
-	}
-	challenge = challenge[:n]
-
-	h := hmac.NewSHA1(secret)
-	h.Write(challenge)
-	_, err = conn.Write(h.Sum())
-	if err != nil {
-		return err
 	}
 
 	expectAck := []byte("OK")
+	conn.Write(expectAck)
+
 	ack := make([]byte, len(expectAck))
 	n, err = conn.Read(ack)
 	if err != nil {
@@ -71,6 +66,7 @@ func AuthenticateServer(conn net.Conn, secret []byte) os.Error {
 		fmt.Println(expectAck, ack)
 		return os.NewError("Missing ack reply")
 	}
+	
 	return nil
 }
 
@@ -98,7 +94,7 @@ func SetupServer(port int, secret []byte, output chan net.Conn) {
 			panic(err)
 		}
 
-		err = AuthenticateClient(conn, secret)
+		err = Authenticate(conn, secret)
 		if err != nil {
 			log.Println("Authentication error: ", err)
 			conn.Close()
@@ -114,7 +110,7 @@ func SetupClient(addr string, secret []byte) (net.Conn, os.Error) {
 		return nil, err
 	}
 
-	err = AuthenticateServer(conn, secret)
+	err = Authenticate(conn, secret)
 	if err != nil {
 		return nil, err
 	}
