@@ -17,6 +17,15 @@ type FileInfo struct {
 	Hash []byte
 }
 
+// TODO - WorkReply/WorkRequest is cute and simple, but doesn't work
+// for Makefiles that use redirection, like the Makefiles of the Linux
+// kernel. We can't read stdin on the master, because we don't know if
+// is needed, and detecting it on the worker requires some sort
+// streaming RPC.  An alternative is to use multiplexing of the
+// connection carrying the RPC to hook up the worker's
+// stdin/stdout/stderr directly with the invoking tool.
+//
+// For now, we can't compile the linux kernel.
 type WorkReply struct {
 	Exit   *os.Waitmsg
 	Files  []FileInfo
