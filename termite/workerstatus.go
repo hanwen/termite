@@ -8,15 +8,15 @@ import (
 func (me *WorkerDaemon) httpHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "<html><head><title>Termite worker</head></title>")
 	fmt.Fprintf(w, "<h1>Termite worker status</h1>")
-	fmt.Fprintf(w, "<body><pre>")
+	fmt.Fprintf(w, "<body>")
 	me.masterMapMutex.Lock()
 	defer me.masterMapMutex.Unlock()
 
 	for k, v := range me.masterMap {
-		fmt.Fprintf(w, "\n******\nMirror: %s\n\n", k)
+		fmt.Fprintf(w, "<h2>Mirror</h2><p><tt>%s</tt>\n", k)
 		v.httpHandler(w, r)
 	}
-	fmt.Fprintf(w, "</pre></body></html>")
+	fmt.Fprintf(w, "</body></html>")
 }
 
 func (me *Mirror) httpHandler(w http.ResponseWriter, r *http.Request) {
@@ -24,9 +24,9 @@ func (me *Mirror) httpHandler(w http.ResponseWriter, r *http.Request) {
 	defer me.fuseFileSystemsMutex.Unlock()
 
 	for _, v := range me.workingFileSystems {
-		fmt.Fprintf(w, "FS:\n%s\n", v)
+		fmt.Fprintf(w, "<p>FS:\n%s\n", v)
 	}
-	fmt.Fprintf(w, "%d unused filesystems.", len(me.fuseFileSystems))
+	fmt.Fprintf(w, "<p>%d unused filesystems.", len(me.fuseFileSystems))
 }
 
 func (me *WorkerDaemon) ServeHTTPStatus(port int) {
