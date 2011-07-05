@@ -146,3 +146,21 @@ func (me *WorkerDaemon) listen(port int) {
 		me.pending.Accept(conn)
 	}
 }
+
+type StatusRequest struct {
+}
+
+type StatusReply struct {
+	Processes int
+}
+
+func (me *WorkerDaemon) Status(req *StatusRequest, rep *StatusReply) os.Error {
+	me.masterMapMutex.Lock()
+	defer me.masterMapMutex.Unlock()
+	for _, mirror := range me.masterMap {
+		mirror.Status(req, rep)
+	}
+
+	// Always return nil, so we know any errors are due to connection problems.
+	return nil
+}

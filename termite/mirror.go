@@ -165,3 +165,10 @@ func (me *Mirror) newWorkerTask(req *WorkRequest, rep *WorkReply) (*WorkerTask, 
 	}, nil
 }
 
+func (me *Mirror) Status(req *StatusRequest, rep *StatusReply) os.Error {
+	me.fuseFileSystemsMutex.Lock()
+	defer me.fuseFileSystemsMutex.Unlock()
+
+	rep.Processes += len(me.workingFileSystems)
+	return nil
+}
