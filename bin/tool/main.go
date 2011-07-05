@@ -28,6 +28,8 @@ func OpenConn(socket string, channel string) net.Conn {
 	return conn
 }
 
+const _TEST_CONNECTION = "test-termite-connection"
+
 func main() {
 	path := os.Getenv("PATH")
 
@@ -46,23 +48,12 @@ func main() {
 			binary = try
 		}
 	}
-	if binary == "" {
+	if binary == "" && binary != _TEST_CONNECTION {
 		log.Fatal("could not find", base)
 	}
-	args[0] = binary
-	wd, err := os.Getwd()
-	if err != nil {
-		log.Fatal("Getwd", err)
-	}
 
-	id := termite.RandomBytes(4)
-	req := termite.WorkRequest{
-		StdinId: fmt.Sprintf(termite.STDIN_FMT, id),
-		Binary:  binary,
-		Argv:    args,
-		Env:     os.Environ(),
-		Dir:     wd,
-	}
+	wd, err := os.Getwd()
+	if err != nil { log.Fatal("Getwd", err) }
 
 	socket := os.Getenv("TERMITE_SOCKET")
 	if socket == "" {
@@ -77,7 +68,30 @@ func main() {
 			socketPath = filepath.Clean(filepath.Join(socketPath, ".."))
 		}
 	}
+
+	if binary == _TEST_CONNECTION {
+		conn, err := net.Dial("unix", socket)
+
+		exit := 0
+		if err != nil {
+			exit = 1
+		} else {
+			conn.Close()
+		}
+		os.Exit(exit)
+	}
+
 	conn := OpenConn(socket, termite.RPC_CHANNEL)
+	args[0] = binary
+	id := termite.RandomBytes(4)
+	req := termite.WorkRequest{
+		StdinId: fmt.Sprintf(termite.STDIN_FMT, id),
+		Binary:  binary,
+		Argv:    args,
+		Env:     os.Environ(),
+		Dir:     wd,
+	}
+
 	stdinConn := OpenConn(socket, req.StdinId)
 	go func() {
 		io.Copy(stdinConn, os.Stdin)
