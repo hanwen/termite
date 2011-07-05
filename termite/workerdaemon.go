@@ -112,6 +112,7 @@ func trim(s string) string {
 }
 
 func (me *WorkerDaemon) Run(req *WorkRequest, rep *WorkReply) os.Error {
+	log.Println("Received", req)
 	wm, err := me.getMirror(req.FileServer, req.WritableRoot)
 	if err != nil {
 		return err

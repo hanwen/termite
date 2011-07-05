@@ -122,7 +122,13 @@ func (me *Master) setupWorkers(addresses []string) {
 // StartServer starts the connection listener.  Should be invoked in a coroutine.
 func (me *Master) startServer(server interface{}, port int) {
 	out := make(chan net.Conn)
-	me.fileServerAddress = fmt.Sprintf(":%d", port)
+
+	// TODO - should look at connection.LocalAddress() instead.
+	host, err := os.Hostname()
+
+	if err != nil { log.Fatal("Hostname", err) }
+	me.fileServerAddress = fmt.Sprintf("%s:%d", host, port)
+
 	go SetupServer(port, me.secret, out)
 	for {
 		conn := <-out
@@ -137,6 +143,7 @@ func (me *Master) startServer(server interface{}, port int) {
 }
 
 func (me *Master) run(req *WorkRequest, rep *WorkReply) os.Error {
+
 	idx := rand.Intn(len(me.workServers))
 	worker := me.workServers[idx]
 
@@ -157,6 +164,7 @@ func (me *Master) run(req *WorkRequest, rep *WorkReply) os.Error {
 	}()
 
 	localRep := *rep
+	log.Println("Calling out to", me.workServerConns[idx].RemoteAddr(), req)
 	err = worker.Call("WorkerDaemon.Run", &req, &localRep)
 	if err != nil {
 		return err

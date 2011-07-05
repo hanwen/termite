@@ -79,7 +79,7 @@ func SetupServer(port int, secret []byte, output chan net.Conn) {
 	// TODO - also listen on localhost.
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
-		panic(err)
+		log.Fatal("net.Listen", err)
 	}
 	log.Println("Listening to", addr)
 
