@@ -154,13 +154,39 @@ func (me *Master) run(req *WorkRequest, rep *WorkReply) os.Error {
 		destInputConn.Close()
 		inputConn.Close()
 	}()
-	err = worker.Call("WorkerDaemon.Run", &req, &rep)
+
+	localRep := *rep
+	err = worker.Call("WorkerDaemon.Run", &req, &localRep)
 	if err != nil {
 		return err
 	}
-	me.replayFileModifications(worker, rep.Files)
+	me.replayFileModifications(worker, localRep.Files)
+	*rep = localRep
 	rep.Files = nil
+
+	go me.broadcastFiles(worker, localRep.Files)
 	return err
+}
+
+func (me *Master) broadcastFiles(origin *rpc.Client, infos []AttrResponse) {
+	for _, w := range me.workServers {
+		if w != origin {
+			go me.broadcastFilesTo(w, infos)
+		}
+	}
+}
+
+func (me *Master) broadcastFilesTo(worker *rpc.Client, infos []AttrResponse) {
+	req := UpdateRequest{
+		Files: infos,
+		FileServer: me.fileServerAddress,
+		WritableRoot: me.writableRoot,
+	}
+	rep := UpdateResponse{}
+	err := worker.Call("WorkerDaemon.Update", &req, &rep)
+	if err != nil {
+		log.Println("WorkerDaemon.Update failure", err)
+	}
 }
 
 func (me *Master) replayFileModifications(worker *rpc.Client, infos []AttrResponse) {

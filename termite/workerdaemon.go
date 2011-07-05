@@ -33,7 +33,7 @@ type WorkRequest struct {
 type MasterWorker struct {
 	daemon        *WorkerDaemon
 	fileServer    *rpc.Client
-	readonlyRpcFs *RpcFs
+	rpcFs         *RpcFs
 	writableRoot  string
 
 	fuseFileSystemsMutex sync.Mutex
@@ -74,9 +74,13 @@ func (me *WorkerDaemon) newMasterWorker(addr string, writableRoot string) (*Mast
 		daemon:       me,
 		writableRoot: writableRoot,
 	}
-	w.readonlyRpcFs = NewRpcFs(w.fileServer, me.contentCache)
+	w.rpcFs = NewRpcFs(w.fileServer, me.contentCache)
 
 	return w, nil
+}
+
+func (me *MasterWorker) Update(req *UpdateRequest, rep *UpdateResponse) os.Error {
+	return me.rpcFs.Update(req, rep)
 }
 
 func (me *MasterWorker) Run(req *WorkRequest, rep *WorkReply) os.Error {
@@ -86,6 +90,16 @@ func (me *MasterWorker) Run(req *WorkRequest, rep *WorkReply) os.Error {
 	if err != nil {
 		log.Println("Error", err)
 		return err
+	}
+
+	updateReq := UpdateRequest{
+	Files: rep.Files,
+	}
+	updateRep := UpdateResponse{}
+	err = me.rpcFs.Update(&updateReq, &updateRep)
+	if err != nil {
+		// TODO - fatal?
+		log.Println("Update failed.")
 	}
 
 	summary := rep
@@ -130,6 +144,7 @@ func (me *WorkerDaemon) getMasterWorker(addr string, writableRoot string) (*Mast
 	return mw, err
 }
 
+
 func NewWorkerDaemon(secret []byte, cacheDir string) *WorkerDaemon {
 	cache := NewDiskFileCache(cacheDir)
 	w := &WorkerDaemon{
@@ -162,6 +177,12 @@ func (me *WorkerDaemon) Run(req *WorkRequest, rep *WorkReply) os.Error {
 	}
 
 	return wm.Run(req, rep)
+}
+
+func (me *WorkerDaemon) Update(req *UpdateRequest, rep *UpdateResponse) os.Error {
+	wm, err := me.getMasterWorker(req.FileServer, req.WritableRoot)
+	if err != nil { return err }
+	return wm.rpcFs.Update(req, rep)
 }
 
 func (me *WorkerDaemon) RunWorkerServer(port int) {

@@ -53,10 +53,14 @@ func (me AttrResponse) String() string {
 	if me.Link != "" {
 		id = fmt.Sprintf(" -> %s", me.Link)
 	}
-	if me.Status == fuse.ENOENT {
+	if me.Deletion() {
 		id = " (del)"
 	}
 	return fmt.Sprintf("%s%s", me.Path, id)
+}
+
+func (me AttrResponse) Deletion() bool {
+	return me.Status == fuse.ENOENT
 }
 
 type DirRequest struct {

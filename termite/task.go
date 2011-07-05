@@ -90,7 +90,6 @@ func (me *MasterWorker) newWorkerFuseFs() (*WorkerFuseFs, os.Error) {
 	}
 
 	rwFs := fuse.NewLoopbackFileSystem(w.rwDir)
-	roFs := NewRpcFs(me.fileServer, me.daemon.contentCache)
 
 	// High ttl, since all writes come through fuse.
 	ttl := 100.0
@@ -105,13 +104,10 @@ func (me *MasterWorker) newWorkerFuseFs() (*WorkerFuseFs, os.Error) {
 		NegativeTimeout: ttl,
 	}
 
-	w.unionFs = unionfs.NewUnionFs("ufs", []fuse.FileSystem{rwFs, roFs}, opts)
-
+	w.unionFs = unionfs.NewUnionFs("ufs", []fuse.FileSystem{rwFs, me.rpcFs}, opts)
 	swFs := []fuse.SwitchedFileSystem{
 		{"dev", &DevNullFs{}, true},
-
-		// TODO - share RpcFs with writable parts.
-		{"", me.readonlyRpcFs, false},
+		{"", me.rpcFs, false},
 
 		// TODO - configurable.
 		{"tmp", w.unionFs, false},
@@ -147,7 +143,7 @@ func (me *MasterWorker) newWorkerTask(req *WorkRequest, rep *WorkReply) (*Worker
 		stdinConn:    stdin,
 		masterWorker: me,
 		fuseFs:       fuseFs,
-	},nil
+	}, nil
 }
 
 func (me *WorkerTask) Run() os.Error {

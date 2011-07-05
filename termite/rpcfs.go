@@ -7,6 +7,8 @@ import (
 	"sync"
 	"rpc"
 	"github.com/hanwen/go-fuse/fuse"
+	"strings"
+	"path/filepath"
 )
 
 type RpcFs struct {
@@ -15,11 +17,21 @@ type RpcFs struct {
 
 	client *rpc.Client
 
+	// Should be acquired before attrMutex if applicable.
 	dirMutex    sync.Mutex
 	directories map[string]*DirResponse
 
 	attrMutex    sync.RWMutex
 	attrResponse map[string]*AttrResponse
+}
+
+type UpdateRequest struct {
+	FileServer string
+	WritableRoot string
+	Files []AttrResponse
+}
+
+type UpdateResponse struct {
 }
 
 func NewRpcFs(server *rpc.Client, cache *DiskFileCache) *RpcFs {
@@ -30,6 +42,39 @@ func NewRpcFs(server *rpc.Client, cache *DiskFileCache) *RpcFs {
 	me.attrResponse = make(map[string]*AttrResponse)
 	return me
 }
+
+func (me *RpcFs) Update(req *UpdateRequest, resp *UpdateResponse) os.Error {
+	me.dirMutex.Lock()
+	defer me.dirMutex.Unlock()
+
+	me.attrMutex.Lock()
+	defer me.attrMutex.Unlock()
+
+	flushDirs := []string{}
+	for _, r := range req.Files {
+		p := strings.TrimLeft(r.Path, string(filepath.Separator))
+
+		d, _ := filepath.Split(p)
+		a, existed := me.attrResponse[p]
+
+		if r.Deletion() || (existed && a.Status != fuse.ENOENT) {
+			flushDirs = append(flushDirs, d)
+		}
+
+		if r.Deletion() {
+			me.attrResponse[p] = nil, false
+		} else {
+			newVal := r
+			me.attrResponse[p] = &newVal
+		}
+	}
+
+	for _, d := range flushDirs {
+		me.directories[d] = nil, false
+	}
+	return nil
+}
+
 
 func (me *RpcFs) GetDir(name string) *DirResponse {
 	me.dirMutex.Lock()
