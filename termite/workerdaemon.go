@@ -6,6 +6,7 @@ import (
 	"os"
 	"rpc"
 	"sync"
+	"net"
 )
 
 var _ = log.Println
@@ -35,6 +36,7 @@ type WorkReply struct {
 }
 
 type WorkRequest struct {
+	Id         string
 	FileServer string
 	WritableRoot string
 	Binary     string
@@ -121,6 +123,8 @@ type WorkerDaemon struct {
 	masterMap     map[string]*MasterWorker
 	contentCache  *DiskFileCache
 	contentServer *ContentServer
+
+	pending   *PendingConnections
 }
 
 func (me *WorkerDaemon) getMasterWorker(addr string, writableRoot string) (*MasterWorker, os.Error) {
@@ -149,6 +153,7 @@ func NewWorkerDaemon(secret []byte, cacheDir string) *WorkerDaemon {
 		contentCache:  cache,
 		masterMap:     make(map[string]*MasterWorker),
 		contentServer: &ContentServer{Cache: cache},
+		connections:   NewPendingConnections(),
 	}
 	return w
 }
@@ -175,4 +180,23 @@ func (me *WorkerDaemon) Run(req *WorkRequest, rep *WorkReply) os.Error {
 	return wm.Run(req, rep)
 }
 
+func (me *WorkerDaemon) RunWorkerServer(port int) {
+	go me.listen(port)
+
+	fmt.Println("RunWorkerServer")
+	rpcServer := rpc.NewServer()
+	rpcServer.Register(me)
+	conn := me.pending.WaitConnection(RPC_CHANNEL)
+	rpcServer.ServeConn(conn)
+}
+
+func (me *WorkerDaemon) listen(port int) {
+	out := make(chan net.Conn)
+	go SetupServer(port, me.secret, out)
+	for {
+		conn := <-out
+		log.Println("connection from", conn.RemoteAddr())
+		me.pending.Accept(conn)
+	}
+}
 

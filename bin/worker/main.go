@@ -5,8 +5,6 @@ import (
 	"flag"
 	"io/ioutil"
 	"log"
-	"net"
-	"rpc"
 )
 
 var _ = log.Printf
@@ -24,14 +22,5 @@ func main() {
 
 	daemon := termite.NewWorkerDaemon(secret, *cachedir)
 	daemon.ChrootBinary = *chrootBinary
-
-	out := make(chan net.Conn)
-	go termite.SetupServer(*port, secret, out)
-	for {
-		conn := <-out
-		log.Println("Opening RPC channel from", conn.RemoteAddr())
-		rpcServer := rpc.NewServer()
-		rpcServer.Register(daemon)
-		go rpcServer.ServeConn(conn)
-	}
+	daemon.RunWorkerServer(*port)
 }

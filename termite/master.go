@@ -21,6 +21,8 @@ type Master struct {
 	workServers       []*rpc.Client
 	masterRun         *LocalMaster
 	writableRoot      string
+
+	pending           *PendingConnections
 }
 
 func NewMaster(cacheDir string, workers []string, secret []byte, excluded []string) *Master {
@@ -33,6 +35,7 @@ func NewMaster(cacheDir string, workers []string, secret []byte, excluded []stri
 	me.masterRun = &LocalMaster{me}
 	me.setupWorkers(workers)
 	me.secret = secret
+	me.pending = NewPendingConnections()
 	return me
 }
 
@@ -41,13 +44,14 @@ func (me *Master) Start(port int, mySocket string) {
 	me.startLocalServer(mySocket)
 }
 
-func (me *Master) startLocalServer(sock string) {
+func (me *Master) listenLocal(sock string) {
 	absSock, err := filepath.Abs(sock)
 	if err != nil {
 		log.Fatal("abs", err)
 	}
 
 	listener, err := net.Listen("unix", absSock)
+	defer os.Remove(absSock)
 	if err != nil {
 		log.Fatal("startLocalServer", err)
 	}
@@ -66,27 +70,44 @@ func (me *Master) startLocalServer(sock string) {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			panic(err)
+			log.Fatal("listener.accept", err)
 		}
+		me.pending.Accept(conn)
+	}
+}
+
+func (me *Master) startLocalServer(sock string) {
+	go me.listenLocal(sock)
+
+	for {
 		rpcServer := rpc.NewServer()
-		err = rpcServer.Register(me.masterRun)
+		err := rpcServer.Register(me.masterRun)
 		if err != nil {
 			log.Fatal("could not register server", err)
 		}
+
+		conn := me.pending.WaitConnection(RPC_CHANNEL)
 		go rpcServer.ServeConn(conn)
 	}
 }
 
+func (me *Master) setupWorker(addr string)  *rpc.Client {
+	conn, err := DialTypedConnection(addr, RPC_CHANNEL, me.secret)
+	if err != nil {
+		log.Println("Failed setting up connection with: ", addr, err)
+		return nil
+	}
+	log.Println("done header")
+	return rpc.NewClient(conn)
+}
+
 func (me *Master) setupWorkers(addresses []string) {
 	var out []*rpc.Client
+
 	for _, addr := range addresses {
-		conn, err := SetupClient(addr, me.secret)
-		if err != nil {
-			log.Println("Failed setting up connection with: ", addr, err)
-			continue
-		}
-		out = append(out, rpc.NewClient(conn))
+		out = append(out, me.setupWorker(addr))
 	}
+	
 	if len(out) == 0 {
 		log.Fatal("No workers available.")
 	}

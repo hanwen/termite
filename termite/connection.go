@@ -8,18 +8,22 @@ import (
 	"os"
 	"rand"
 	"crypto/hmac"
+	"sync"
+	"io"
 )
 
 const challengeLength = 20
 
-// TODO - should multiplex single connection.  Will let us pierce a
-// firewall one-way.
+func RandomBytes(n int) []byte {
+	c := make([]byte, 0)
+	for i := 0; i < n; i++ {
+		c = append(c, byte(rand.Int31n(256)))
+	}
+	return c
+}
 
 func Authenticate(conn net.Conn, secret []byte) os.Error {
-	challenge := make([]byte, 0)
-	for i := 0; i < challengeLength; i++ {
-		challenge = append(challenge, byte(rand.Int31n(256)))
-	}
+	challenge := RandomBytes(challengeLength)
 
 	_, err := conn.Write(challenge)
 	if err != nil {
@@ -117,3 +121,92 @@ func SetupClient(addr string, secret []byte) (net.Conn, os.Error) {
 
 	return conn, nil
 }
+
+// ids:
+//
+const (
+	RPC_CHANNEL = "rpc....."
+	// Put in 4 random bytes
+	STDERR_FMT =  "id..%s"
+	HEADER_LEN = 8
+)
+
+type PendingConnection struct {
+	Id string
+	Ready sync.Cond
+	Conn net.Conn
+}
+
+type PendingConnections struct {
+	connectionsMutex sync.Mutex
+	connections map[string]*PendingConnection
+}
+
+func NewPendingConnections() *PendingConnections {
+	return &PendingConnections{
+		connections: make(map[string]*PendingConnection),
+	}
+}
+
+func (me *PendingConnections) newPendingConnection(id string) *PendingConnection {
+	p := &PendingConnection{
+	Id: id,
+	}
+	p.Ready.L = &me.connectionsMutex
+	return p
+}
+
+func (me *PendingConnections) WaitConnection(id string) net.Conn {
+	me.connectionsMutex.Lock()
+	defer me.connectionsMutex.Unlock()
+	p := me.connections[id]
+	if p == nil {
+		p = me.newPendingConnection(id)
+		me.connections[id] = p
+	}
+
+	for p.Conn == nil {
+		p.Ready.Wait()
+	}
+
+	me.connections[id] = nil
+	return p.Conn
+}
+
+func (me *PendingConnections) Accept(conn net.Conn) os.Error {
+	idBytes := make([]byte, HEADER_LEN)
+	n, err := conn.Read(idBytes)
+	if n != HEADER_LEN || err != nil {
+		return err
+	}
+	id := string(idBytes)
+
+	me.connectionsMutex.Lock()
+	defer me.connectionsMutex.Unlock()
+
+	p := me.connections[id]
+	if p == nil {
+		p = me.newPendingConnection(id)
+		me.connections[id] = p
+	}
+
+	p.Conn = conn
+	p.Ready.Signal()
+	return nil
+}
+
+func DialTypedConnection(addr string, id string, secret []byte) (net.Conn, os.Error) {
+	if len(id) != 8 {
+		log.Fatal("id != 8", id, len(id))
+	}
+	conn, err := SetupClient(addr, secret)
+	if err != nil {
+		return nil, err
+	}
+	_, err = io.WriteString(conn, id)
+	if err != nil {
+		return nil, err
+	}
+	return conn, nil
+}
+

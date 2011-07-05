@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"github.com/hanwen/go-fuse/termite"
+	"io"
 	"log"
 	"net"
 	"os"
@@ -10,6 +12,21 @@ import (
 )
 
 const _SOCKET = ".termite-socket"
+
+func OpenConn(socket string, channel string) net.Conn {
+	conn, err := net.Dial("unix", socket)
+	if err != nil {
+		log.Fatal("Dial:", err)
+	}
+	if len(channel) != 8 {
+		panic(channel)
+	}
+	_, err = io.WriteString(conn, channel)
+	if err != nil {
+		log.Fatal("WriteString", err)
+	}
+	return conn
+}
 
 func main() {
 	path := os.Getenv("PATH")
@@ -37,7 +54,10 @@ func main() {
 	if err != nil {
 		log.Fatal("Getwd", err)
 	}
+
+	id := termite.RandomBytes(4)
 	req := termite.WorkRequest{
+	Id: fmt.Sprintf(termite.STDERR_FMT, id),
 	Binary: binary,
 	Argv: args,
 	Env: os.Environ(),
@@ -57,14 +77,11 @@ func main() {
 			socketPath = filepath.Clean(filepath.Join(socketPath, ".."))
 		}
 	}
-
-	conn, err := net.Dial("unix", socket)
-	if err != nil {
-		log.Fatal("Dial:", err)
-	}
-
+	conn := OpenConn(socket, termite.RPC_CHANNEL)
+	stderrConn := OpenConn(socket, req.Id)
+	_ = stderrConn
 	client := rpc.NewClient(conn)
-
+	
 	rep := termite.WorkReply{}
 	err = client.Call("LocalMaster.Run", &req, &rep)
 	if err != nil {

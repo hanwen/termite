@@ -28,6 +28,3 @@ func main() {
 		*cachedir, workerList, secret, excludeList)
 	master.Start(*port, *socket)
 }
-
-
-
