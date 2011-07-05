@@ -36,7 +36,7 @@ type WorkReply struct {
 }
 
 type WorkRequest struct {
-	Id         string
+	StdinId   string
 	FileServer string
 	WritableRoot string
 	Binary     string
@@ -153,7 +153,7 @@ func NewWorkerDaemon(secret []byte, cacheDir string) *WorkerDaemon {
 		contentCache:  cache,
 		masterMap:     make(map[string]*MasterWorker),
 		contentServer: &ContentServer{Cache: cache},
-		connections:   NewPendingConnections(),
+		pending:   NewPendingConnections(),
 	}
 	return w
 }

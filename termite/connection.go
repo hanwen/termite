@@ -127,7 +127,7 @@ func SetupClient(addr string, secret []byte) (net.Conn, os.Error) {
 const (
 	RPC_CHANNEL = "rpc....."
 	// Put in 4 random bytes
-	STDERR_FMT =  "id..%s"
+	STDIN_FMT = "id..%s"
 	HEADER_LEN = 8
 )
 

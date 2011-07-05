@@ -2,6 +2,7 @@ package termite
 
 import (
 	"bytes"
+	"io"
 	"io/ioutil"
 	"log"
 	"net"
@@ -19,6 +20,8 @@ type Master struct {
 	fileServerAddress string
 	secret            []byte
 	workServers       []*rpc.Client
+	workServerConns   []net.Conn
+	
 	masterRun         *LocalMaster
 	writableRoot      string
 
@@ -91,27 +94,28 @@ func (me *Master) startLocalServer(sock string) {
 	}
 }
 
-func (me *Master) setupWorker(addr string)  *rpc.Client {
+func (me *Master) setupWorker(addr string) net.Conn {
 	conn, err := DialTypedConnection(addr, RPC_CHANNEL, me.secret)
 	if err != nil {
 		log.Println("Failed setting up connection with: ", addr, err)
 		return nil
 	}
 	log.Println("done header")
-	return rpc.NewClient(conn)
+	return conn
 }
 
 func (me *Master) setupWorkers(addresses []string) {
-	var out []*rpc.Client
-
 	for _, addr := range addresses {
-		out = append(out, me.setupWorker(addr))
+		c := me.setupWorker(addr)
+		if c != nil {
+			me.workServers = append(me.workServers, rpc.NewClient(c))
+			me.workServerConns = append(me.workServerConns, c)
+		}
 	}
 	
-	if len(out) == 0 {
+	if len(me.workServerConns) == 0 {
 		log.Fatal("No workers available.")
 	}
-	me.workServers = out
 }
 
 // StartServer starts the connection listener.  Should be invoked in a coroutine.
@@ -137,7 +141,16 @@ func (me *Master) run(req *WorkRequest, rep *WorkReply) os.Error {
 
 	req.FileServer = me.fileServerAddress
 	req.WritableRoot = me.writableRoot
-	err := worker.Call("WorkerDaemon.Run", &req, &rep)
+
+	inputConn := me.pending.WaitConnection(req.StdinId)
+	destInputConn, err := DialTypedConnection(me.workServerConns[idx].RemoteAddr().String(),
+		req.StdinId, me.secret)
+	if err != nil {
+		return err
+	}
+
+	go io.Copy(destInputConn, inputConn)
+	err = worker.Call("WorkerDaemon.Run", &req, &rep)
 	if err != nil {
 		return err
 	}

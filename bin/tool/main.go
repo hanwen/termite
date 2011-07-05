@@ -57,7 +57,7 @@ func main() {
 
 	id := termite.RandomBytes(4)
 	req := termite.WorkRequest{
-	Id: fmt.Sprintf(termite.STDERR_FMT, id),
+	StdinId: fmt.Sprintf(termite.STDIN_FMT, id),
 	Binary: binary,
 	Argv: args,
 	Env: os.Environ(),
@@ -78,8 +78,8 @@ func main() {
 		}
 	}
 	conn := OpenConn(socket, termite.RPC_CHANNEL)
-	stderrConn := OpenConn(socket, req.Id)
-	_ = stderrConn
+	stdinConn := OpenConn(socket, req.StdinId)
+	go io.Copy(stdinConn, os.Stdin)
 	client := rpc.NewClient(conn)
 	
 	rep := termite.WorkReply{}

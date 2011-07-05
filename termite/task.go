@@ -1,17 +1,21 @@
 package termite
 
 import (
+//	"bytes"
 	"fmt"
 	"path/filepath"
 	"os"
 	"log"
+	"net"
 	"io/ioutil"
+//	"io"
 	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/go-fuse/unionfs"
 	"os/user"
 	"strings"
 	"syscall"
 )
+
 type WorkerFuseFs struct {
 	rwDir  string
 	tmpDir string
@@ -24,6 +28,7 @@ type WorkerTask struct {
 	fuseFs *WorkerFuseFs
 	*WorkRequest
 	*WorkReply
+	stdinConn net.Conn
 	masterWorker *MasterWorker
 }
 
@@ -76,11 +81,8 @@ func (me *MasterWorker) newWorkerFuseFs() (*WorkerFuseFs, os.Error) {
 
 		// TODO - configurable.
 		{"tmp", w.unionFs, false},
-
-		// TODO - should use socket location as boundary.
 		{me.writableRoot, w.unionFs, false},
 	}
-
 
 	conn := fuse.NewFileSystemConnector(fuse.NewSwitchFileSystem(swFs), &mOpts)
 	w.MountState = fuse.NewMountState(conn)
@@ -104,9 +106,11 @@ func (me *MasterWorker) newWorkerTask(req *WorkRequest, rep *WorkReply) (*Worker
 	if err != nil {
 		return nil, err
 	}
+	stdin := me.daemon.pending.WaitConnection(req.StdinId)
 	return &WorkerTask{
 		WorkRequest: req,
 		WorkReply:   rep,
+		stdinConn:   stdin,
 		masterWorker: me,
 		fuseFs:      fuseFs,
 	}, nil
@@ -115,7 +119,7 @@ func (me *MasterWorker) newWorkerTask(req *WorkRequest, rep *WorkReply) (*Worker
 func (me *WorkerTask) Run() os.Error {
 	rStdout, wStdout, err := os.Pipe()
 	rStderr, wStderr, err := os.Pipe()
-
+	
 	attr := os.ProcAttr{
 		Env:   me.WorkRequest.Env,
 		Files: []*os.File{nil, wStdout, wStderr},
