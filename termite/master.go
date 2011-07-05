@@ -222,6 +222,9 @@ func (me *Master) replayFileModifications(worker *rpc.Client, infos []AttrRespon
 				log.Fatal("Hash mismatch.")
 			}
 			err = ioutil.WriteFile(info.Path, c, info.FileInfo.Mode&07777)
+			if err != nil {
+				err = os.Chtimes(info.Path, info.FileInfo.Atime_ns,  info.FileInfo.Mtime_ns)
+			}
 		}
 		if info.Link != "" {
 			log.Println("Replay symlink:", name)
