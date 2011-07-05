@@ -30,7 +30,7 @@ type WorkRequest struct {
 }
 
 // State associated with one master.
-type MasterWorker struct {
+type Mirror struct {
 	daemon        *WorkerDaemon
 	fileServer    *rpc.Client
 	rpcFs         *RpcFs
@@ -40,7 +40,7 @@ type MasterWorker struct {
 	fuseFileSystems      []*WorkerFuseFs
 }
 
-func (me *MasterWorker) ReturnFuse(wfs *WorkerFuseFs) {
+func (me *Mirror) ReturnFuse(wfs *WorkerFuseFs) {
 	wfs.unionFs.DropBranchCache()
 	wfs.unionFs.DropDeletionCache()
 
@@ -49,7 +49,7 @@ func (me *MasterWorker) ReturnFuse(wfs *WorkerFuseFs) {
 	me.fuseFileSystems = append(me.fuseFileSystems, wfs)
 }
 
-func (me *MasterWorker) getWorkerFuseFs() (f *WorkerFuseFs, err os.Error) {
+func (me *Mirror) getWorkerFuseFs() (f *WorkerFuseFs, err os.Error) {
 	me.fuseFileSystemsMutex.Lock()
 	l := len(me.fuseFileSystems)
 	if l > 0 {
@@ -63,13 +63,13 @@ func (me *MasterWorker) getWorkerFuseFs() (f *WorkerFuseFs, err os.Error) {
 	return f, err
 }
 
-func (me *WorkerDaemon) newMasterWorker(addr string, writableRoot string) (*MasterWorker, os.Error) {
+func (me *WorkerDaemon) newMirror(addr string, writableRoot string) (*Mirror, os.Error) {
 	conn, err := SetupClient(addr, me.secret)
 	if err != nil {
 		return nil, err
 	}
 
-	w := &MasterWorker{
+	w := &Mirror{
 		fileServer:   rpc.NewClient(conn),
 		daemon:       me,
 		writableRoot: writableRoot,
@@ -79,11 +79,11 @@ func (me *WorkerDaemon) newMasterWorker(addr string, writableRoot string) (*Mast
 	return w, nil
 }
 
-func (me *MasterWorker) Update(req *UpdateRequest, rep *UpdateResponse) os.Error {
+func (me *Mirror) Update(req *UpdateRequest, rep *UpdateResponse) os.Error {
 	return me.rpcFs.Update(req, rep)
 }
 
-func (me *MasterWorker) Run(req *WorkRequest, rep *WorkReply) os.Error {
+func (me *Mirror) Run(req *WorkRequest, rep *WorkReply) os.Error {
 	task, err := me.newWorkerTask(req, rep)
 
 	err = task.Run()
@@ -118,14 +118,14 @@ type WorkerDaemon struct {
 
 	// TODO - deal with closed connections.
 	masterMapMutex sync.Mutex
-	masterMap      map[string]*MasterWorker
+	masterMap      map[string]*Mirror
 	contentCache   *DiskFileCache
 	contentServer  *ContentServer
 
 	pending *PendingConnections
 }
 
-func (me *WorkerDaemon) getMasterWorker(addr string, writableRoot string) (*MasterWorker, os.Error) {
+func (me *WorkerDaemon) getMirror(addr string, writableRoot string) (*Mirror, os.Error) {
 	me.masterMapMutex.Lock()
 	defer me.masterMapMutex.Unlock()
 
@@ -135,11 +135,11 @@ func (me *WorkerDaemon) getMasterWorker(addr string, writableRoot string) (*Mast
 		return mw, nil
 	}
 
-	mw, err := me.newMasterWorker(addr, writableRoot)
+	mw, err := me.newMirror(addr, writableRoot)
 	if err != nil {
 		return nil, err
 	}
-	log.Println("Created new MasterWorker for", key)
+	log.Println("Created new Mirror for", key)
 	me.masterMap[key] = mw
 	return mw, err
 }
@@ -150,7 +150,7 @@ func NewWorkerDaemon(secret []byte, cacheDir string) *WorkerDaemon {
 	w := &WorkerDaemon{
 		secret:        secret,
 		contentCache:  cache,
-		masterMap:     make(map[string]*MasterWorker),
+		masterMap:     make(map[string]*Mirror),
 		contentServer: &ContentServer{Cache: cache},
 		pending:       NewPendingConnections(),
 	}
@@ -171,7 +171,7 @@ func trim(s string) string {
 }
 
 func (me *WorkerDaemon) Run(req *WorkRequest, rep *WorkReply) os.Error {
-	wm, err := me.getMasterWorker(req.FileServer, req.WritableRoot)
+	wm, err := me.getMirror(req.FileServer, req.WritableRoot)
 	if err != nil {
 		return err
 	}
@@ -180,7 +180,7 @@ func (me *WorkerDaemon) Run(req *WorkRequest, rep *WorkReply) os.Error {
 }
 
 func (me *WorkerDaemon) Update(req *UpdateRequest, rep *UpdateResponse) os.Error {
-	wm, err := me.getMasterWorker(req.FileServer, req.WritableRoot)
+	wm, err := me.getMirror(req.FileServer, req.WritableRoot)
 	if err != nil { return err }
 	return wm.rpcFs.Update(req, rep)
 }

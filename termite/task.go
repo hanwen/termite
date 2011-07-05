@@ -63,12 +63,12 @@ type WorkerTask struct {
 	*WorkRequest
 	*WorkReply
 	stdinConn    net.Conn
-	masterWorker *MasterWorker
+	masterWorker *Mirror
 }
 
 const _DELETIONS = "DELETIONS"
 
-func (me *MasterWorker) newWorkerFuseFs() (*WorkerFuseFs, os.Error) {
+func (me *Mirror) newWorkerFuseFs() (*WorkerFuseFs, os.Error) {
 	w := WorkerFuseFs{}
 
 	tmpDir, err := ioutil.TempDir("", "rpcfs-tmp")
@@ -131,7 +131,7 @@ func (me *WorkerFuseFs) Stop() {
 	os.RemoveAll(me.tmpDir)
 }
 
-func (me *MasterWorker) newWorkerTask(req *WorkRequest, rep *WorkReply) (*WorkerTask, os.Error) {
+func (me *Mirror) newWorkerTask(req *WorkRequest, rep *WorkReply) (*WorkerTask, os.Error) {
 	fuseFs, err := me.getWorkerFuseFs()
 	if err != nil {
 		return nil, err
