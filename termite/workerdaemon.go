@@ -57,8 +57,8 @@ type WorkerDaemon struct {
 	ChrootBinary string
 
 	// TODO - deal with closed connections.
-	masterMapMutex sync.Mutex
-	masterMap      map[string]*Mirror
+	mirrorMapMutex sync.Mutex
+	mirrorMap      map[string]*Mirror
 
 	contentCache   *DiskFileCache
 	contentServer  *ContentServer
@@ -67,11 +67,11 @@ type WorkerDaemon struct {
 }
 
 func (me *WorkerDaemon) getMirror(addr string, writableRoot string) (*Mirror, os.Error) {
-	me.masterMapMutex.Lock()
-	defer me.masterMapMutex.Unlock()
+	me.mirrorMapMutex.Lock()
+	defer me.mirrorMapMutex.Unlock()
 
 	key := fmt.Sprintf("%s:%s", addr, writableRoot)
-	mw, ok := me.masterMap[key]
+	mw, ok := me.mirrorMap[key]
 	if ok {
 		return mw, nil
 	}
@@ -81,7 +81,7 @@ func (me *WorkerDaemon) getMirror(addr string, writableRoot string) (*Mirror, os
 		return nil, err
 	}
 	log.Println("Created new Mirror for", key)
-	me.masterMap[key] = mw
+	me.mirrorMap[key] = mw
 	return mw, err
 }
 
@@ -91,7 +91,7 @@ func NewWorkerDaemon(secret []byte, cacheDir string) *WorkerDaemon {
 	w := &WorkerDaemon{
 		secret:        secret,
 		contentCache:  cache,
-		masterMap:     make(map[string]*Mirror),
+		mirrorMap:     make(map[string]*Mirror),
 		contentServer: &ContentServer{Cache: cache},
 		pending:       NewPendingConnections(),
 	}
@@ -155,9 +155,9 @@ type StatusReply struct {
 }
 
 func (me *WorkerDaemon) Status(req *StatusRequest, rep *StatusReply) os.Error {
-	me.masterMapMutex.Lock()
-	defer me.masterMapMutex.Unlock()
-	for _, mirror := range me.masterMap {
+	me.mirrorMapMutex.Lock()
+	defer me.mirrorMapMutex.Unlock()
+	for _, mirror := range me.mirrorMap {
 		mirror.Status(req, rep)
 	}
 
