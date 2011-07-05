@@ -108,8 +108,7 @@ func (me *Mirror) newWorkerFuseFs() (*WorkerFuseFs, os.Error) {
 
 	rwFs := fuse.NewLoopbackFileSystem(w.rwDir)
 
-	// High ttl, since all writes come through fuse.
-	ttl := 100.0
+	ttl := 5.0
 	opts := unionfs.UnionFsOptions{
 		BranchCacheTTLSecs:   ttl,
 		DeletionCacheTTLSecs: ttl,
@@ -118,7 +117,7 @@ func (me *Mirror) newWorkerFuseFs() (*WorkerFuseFs, os.Error) {
 	mOpts := fuse.FileSystemOptions{
 		EntryTimeout:    ttl,
 		AttrTimeout:     ttl,
-		NegativeTimeout: ttl,
+		NegativeTimeout: 0.01,
 	}
 
 	w.unionFs = unionfs.NewUnionFs("ufs", []fuse.FileSystem{rwFs, me.rpcFs}, opts)
