@@ -84,6 +84,7 @@ func (me *WorkerTask) Run() os.Error {
 
 	wStdout.Close()
 	wStderr.Close()
+	rStdin.Close()
 
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
@@ -100,14 +101,15 @@ func (me *WorkerTask) Run() os.Error {
 	}()
 	go func() {
 		HookedCopy(wStdin, me.stdinConn, PrintStdinSliceLen)
-
 		// No waiting: if the process exited, we kill the connection.
 		wStdin.Close()
-		me.stdinConn.Close()
 	}()
 
 	me.WorkReply.Exit, err = proc.Wait(0)
 	wg.Wait()
+
+	// No waiting: if the process exited, we kill the connection.
+	me.stdinConn.Close()
 
 	// TODO - should use a connection here too? What if the output
 	// is large?
