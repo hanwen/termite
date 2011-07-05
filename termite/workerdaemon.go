@@ -18,6 +18,7 @@ type WorkReply struct {
 	Stdout string
 }
 
+
 type WorkRequest struct {
 	// Id of connection streaming stdin.
 	StdinId      string
@@ -27,6 +28,11 @@ type WorkRequest struct {
 	Argv         []string
 	Env          []string
 	Dir          string
+}
+
+func (me WorkRequest) String() string {
+	return fmt.Sprintf("%x %s:%s.\ncmd %s", me.StdinId, me.FileServer, me.WritableRoot,
+		me.Argv)
 }
 
 func (me *WorkerDaemon) newMirror(addr string, writableRoot string) (*Mirror, os.Error) {
@@ -53,6 +59,7 @@ type WorkerDaemon struct {
 	// TODO - deal with closed connections.
 	masterMapMutex sync.Mutex
 	masterMap      map[string]*Mirror
+
 	contentCache   *DiskFileCache
 	contentServer  *ContentServer
 
