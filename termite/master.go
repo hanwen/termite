@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"github.com/hanwen/go-fuse/fuse"
 	"rand"
 	"rpc"
 	"sort"
@@ -162,8 +163,8 @@ func (me *Master) run(req *WorkRequest, rep *WorkReply) os.Error {
 	return err
 }
 
-func (me *Master) replayFileModifications(worker *rpc.Client, infos []FileInfo) {
-	entries := make(map[string]*FileInfo)
+func (me *Master) replayFileModifications(worker *rpc.Client, infos []AttrResponse) {
+	entries := make(map[string]*AttrResponse)
 	names := []string{}
 	for i, info := range infos {
 		names = append(names, info.Path)
@@ -196,14 +197,18 @@ func (me *Master) replayFileModifications(worker *rpc.Client, infos []FileInfo) 
 			}
 			err = ioutil.WriteFile(info.Path, c, info.FileInfo.Mode&07777)
 		}
-		if info.LinkContent != "" {
+		if info.Link != "" {
 			log.Println("Replay symlink:", name)
-			err = os.Symlink(info.LinkContent, info.Path)
+			err = os.Symlink(info.Link, info.Path)
 		}
-		if info.Delete {
+		if info.Status == fuse.ENOENT {
 			log.Println("Replay delete:", name)
 			err = os.Remove(info.Path)
 		}
+		if !info.Status.Ok() {
+			log.Fatal("Unknown status for replay", info.Status)
+		}
+
 		if err != nil {
 			log.Fatal("Replay error", info.Path, err)
 		}

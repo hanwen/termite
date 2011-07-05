@@ -236,8 +236,8 @@ func (me *WorkerTask) Run() os.Error {
 }
 
 func (me *WorkerTask) VisitFile(path string, osInfo *os.FileInfo) {
-	fi := FileInfo{
-		FileInfo: *osInfo,
+	fi := AttrResponse{
+		FileInfo: osInfo,
 	}
 
 	ftype := osInfo.Mode &^ 07777
@@ -250,7 +250,7 @@ func (me *WorkerTask) VisitFile(path string, osInfo *os.FileInfo) {
 			// TODO - fail rpc.
 			log.Fatal("Readlink error.")
 		}
-		fi.LinkContent = val
+		fi.Link = val
 	default:
 		log.Fatalf("Unknown file type %o", ftype)
 	}
@@ -261,7 +261,7 @@ func (me *WorkerTask) VisitFile(path string, osInfo *os.FileInfo) {
 	os.Remove(path)
 }
 
-func (me *WorkerTask) savePath(path string, fi FileInfo) {
+func (me *WorkerTask) savePath(path string, fi AttrResponse) {
 	if !strings.HasPrefix(path, me.fuseFs.rwDir) {
 		log.Println("Weird file", path)
 		return
@@ -276,7 +276,7 @@ func (me *WorkerTask) savePath(path string, fi FileInfo) {
 }
 
 func (me *WorkerTask) VisitDir(path string, osInfo *os.FileInfo) bool {
-	me.savePath(path, FileInfo{FileInfo: *osInfo})
+	me.savePath(path, AttrResponse{FileInfo: osInfo})
 
 	// TODO - save dir to delete.
 	return true
@@ -298,8 +298,8 @@ func (me *WorkerTask) fillReply() os.Error {
 				return err
 			}
 
-			me.WorkReply.Files = append(me.WorkReply.Files, FileInfo{
-				Delete: true,
+			me.WorkReply.Files = append(me.WorkReply.Files, AttrResponse{
+				Status: fuse.ENOENT,
 				Path:   string(contents),
 			})
 			err = os.Remove(fullPath)

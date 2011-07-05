@@ -11,14 +11,6 @@ import (
 
 var _ = log.Println
 
-type FileInfo struct {
-	Delete      bool
-	Path        string
-	LinkContent string
-	os.FileInfo
-	Hash []byte
-}
-
 // TODO - WorkReply/WorkRequest is cute and simple, but doesn't work
 // for Makefiles that use redirection, like the Makefiles of the Linux
 // kernel. We can't read stdin on the master, because we don't know in advance if
@@ -30,7 +22,7 @@ type FileInfo struct {
 // For now, we can't compile the linux kernel.
 type WorkReply struct {
 	Exit   *os.Waitmsg
-	Files  []FileInfo
+	Files  []AttrResponse
 	Stderr string
 	Stdout string
 }

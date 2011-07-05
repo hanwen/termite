@@ -38,10 +38,25 @@ type AttrRequest struct {
 }
 
 type AttrResponse struct {
+	Path string		// Used in WorkReply
 	*os.FileInfo
 	fuse.Status
 	Hash []byte
 	Link string
+}
+
+func (me AttrResponse) String() string {
+	id := ""
+	if me.Hash != nil {
+		id = fmt.Sprintf(" sz %d", me.FileInfo.Size)
+	}
+	if me.Link != "" {
+		id = fmt.Sprintf(" -> %s", me.Link)
+	}
+	if me.Status == fuse.ENOENT {
+		id = " (del)"
+	}
+	return fmt.Sprintf("%s%s", me.Path, id)
 }
 
 type DirRequest struct {
