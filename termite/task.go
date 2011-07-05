@@ -117,8 +117,8 @@ func (me *WorkerTask) Run() os.Error {
 	// TODO - look at rw directory, and serialize the files into WorkReply.
 	err = me.fillReply()
 	if err != nil {
-		me.fuseFs.Stop()
 		// TODO - anything else needed to discard?
+		me.masterWorker.DiscardFuse(me.fuseFs)
 	} else {
 		me.masterWorker.ReturnFuse(me.fuseFs)
 	}

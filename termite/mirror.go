@@ -34,6 +34,14 @@ func (me *Mirror) ReturnFuse(wfs *WorkerFuseFs) {
 	me.workingFileSystems[wfs] = "", false
 }
 
+func (me *Mirror) DiscardFuse(wfs *WorkerFuseFs) {
+	wfs.Stop()
+
+	me.fuseFileSystemsMutex.Lock()
+	defer me.fuseFileSystemsMutex.Unlock()
+	me.workingFileSystems[wfs] = "", false
+}
+
 func (me *Mirror) getWorkerFuseFs(name string) (f *WorkerFuseFs, err os.Error) {
 	me.fuseFileSystemsMutex.Lock()
 	defer me.fuseFileSystemsMutex.Unlock()
@@ -156,3 +164,4 @@ func (me *Mirror) newWorkerTask(req *WorkRequest, rep *WorkReply) (*WorkerTask, 
 		fuseFs:       fuseFs,
 	}, nil
 }
+
