@@ -2,6 +2,7 @@ package termite
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net"
@@ -121,7 +122,7 @@ func (me *Master) setupWorkers(addresses []string) {
 // StartServer starts the connection listener.  Should be invoked in a coroutine.
 func (me *Master) startServer(server interface{}, port int) {
 	out := make(chan net.Conn)
-	me.fileServerAddress = MyAddress(port)
+	me.fileServerAddress = fmt.Sprintf(":%d", port)
 	go SetupServer(port, me.secret, out)
 	for {
 		conn := <-out
