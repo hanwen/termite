@@ -80,7 +80,7 @@ func main() {
 	conn := OpenConn(socket, termite.RPC_CHANNEL)
 	stdinConn := OpenConn(socket, req.StdinId)
 	go func() {
-		err := io.Copy(stdinConn, os.Stdin)
+		io.Copy(stdinConn, os.Stdin)
 		stdinConn.Close()
 	}()
 	client := rpc.NewClient(conn)
