@@ -2,7 +2,6 @@ package termite
 
 import (
 	"bytes"
-	"io"
 	"io/ioutil"
 	"log"
 	"net"
@@ -149,7 +148,11 @@ func (me *Master) run(req *WorkRequest, rep *WorkReply) os.Error {
 		return err
 	}
 
-	go io.Copy(destInputConn, inputConn)
+	go func() {
+		HookedCopy(destInputConn, inputConn, PrintStdinSliceLen)
+		destInputConn.Close()
+		inputConn.Close()
+	}()
 	err = worker.Call("WorkerDaemon.Run", &req, &rep)
 	if err != nil {
 		return err

@@ -79,7 +79,10 @@ func main() {
 	}
 	conn := OpenConn(socket, termite.RPC_CHANNEL)
 	stdinConn := OpenConn(socket, req.StdinId)
-	go io.Copy(stdinConn, os.Stdin)
+	go func() {
+		err := io.Copy(stdinConn, os.Stdin)
+		stdinConn.Close()
+	}()
 	client := rpc.NewClient(conn)
 	
 	rep := termite.WorkReply{}

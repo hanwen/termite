@@ -1,20 +1,54 @@
 package termite
 
+// TODO - this list of imports is scary; split up?
+
 import (
-//	"bytes"
+	"bytes"
 	"fmt"
 	"path/filepath"
 	"os"
 	"log"
 	"net"
 	"io/ioutil"
-//	"io"
+	"io"
 	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/go-fuse/unionfs"
 	"os/user"
 	"strings"
 	"syscall"
+	"sync"
 )
+
+func PrintStdinSliceLen(s []byte) {
+	log.Printf("Copied %d bytes of stdin", len(s))
+}
+
+// Useful for debugging.
+func HookedCopy(w io.Writer, r io.Reader, proc func([]byte)) os.Error {
+	buf := make([]byte, 32*1024)
+	for {
+		n, err := r.Read(buf)
+		if n > 0 && proc != nil {
+			proc(buf[:n])
+		}
+		todo := buf[:n]
+		for len(todo) > 0 {
+			n, err = w.Write(todo)
+			if err != nil {
+				break
+			}
+			todo = todo[n:]
+		}
+		if len(todo) > 0 {
+			return err
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+	
 
 type WorkerFuseFs struct {
 	rwDir  string
@@ -118,17 +152,19 @@ func (me *MasterWorker) newWorkerTask(req *WorkRequest, rep *WorkReply) (*Worker
 
 func (me *WorkerTask) Run() os.Error {
 	rStdout, wStdout, err := os.Pipe()
+	if err != nil { return err }
 	rStderr, wStderr, err := os.Pipe()
+	if err != nil { return err }
+	rStdin, wStdin, err := os.Pipe()
+	if err != nil { return err }
 	
 	attr := os.ProcAttr{
 		Env:   me.WorkRequest.Env,
-		Files: []*os.File{nil, wStdout, wStderr},
+		Files: []*os.File{rStdin, wStdout, wStderr},
 	}
 
 	nobody, err := user.Lookup("nobody")
-	if err != nil {
-		return err
-	}
+	if err != nil { return err }
 
 	chroot := me.masterWorker.daemon.ChrootBinary
 	cmd := []string{chroot, "-dir", me.WorkRequest.Dir,
@@ -149,13 +185,35 @@ func (me *WorkerTask) Run() os.Error {
 
 	wStdout.Close()
 	wStderr.Close()
+	
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
 
-	stdout, err := ioutil.ReadAll(rStdout)
-	stderr, err := ioutil.ReadAll(rStderr)
-
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		io.Copy(stdout, rStdout)
+		wg.Done()
+	}()
+	go func() {
+		io.Copy(stderr, rStderr)
+		wg.Done()
+	}()
+	go func() {
+		HookedCopy(wStdin, me.stdinConn, PrintStdinSliceLen)
+		
+		// No waiting: if the process exited, we kill the connection.
+		wStdin.Close()
+		me.stdinConn.Close()
+	}()
+	
 	me.WorkReply.Exit, err = proc.Wait(0)
-	me.WorkReply.Stdout = string(stdout)
-	me.WorkReply.Stderr = string(stderr)
+	wg.Wait()
+	
+	// TODO - should use a connection here too? What if the output
+	// is large?
+	me.WorkReply.Stdout = stdout.String()
+	me.WorkReply.Stderr = stderr.String()
 
 	// TODO - look at rw directory, and serialize the files into WorkReply.
 	err = me.fillReply()

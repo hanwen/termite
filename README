@@ -9,9 +9,6 @@ CAVEATS
 
 Work in progress.
 
-* Does not work with compiler invocations that read stdin.
-
-
 
 INSTALL
 
