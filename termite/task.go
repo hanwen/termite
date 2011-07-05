@@ -19,37 +19,6 @@ import (
 	"sync"
 )
 
-func PrintStdinSliceLen(s []byte) {
-	log.Printf("Copied %d bytes of stdin", len(s))
-}
-
-// Useful for debugging.
-func HookedCopy(w io.Writer, r io.Reader, proc func([]byte)) os.Error {
-	buf := make([]byte, 32*1024)
-	for {
-		n, err := r.Read(buf)
-		if n > 0 && proc != nil {
-			proc(buf[:n])
-		}
-		todo := buf[:n]
-		for len(todo) > 0 {
-			n, err = w.Write(todo)
-			if err != nil {
-				break
-			}
-			todo = todo[n:]
-		}
-		if len(todo) > 0 {
-			return err
-		}
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-
 type WorkerFuseFs struct {
 	rwDir  string
 	tmpDir string
@@ -66,85 +35,11 @@ type WorkerTask struct {
 	masterWorker *Mirror
 }
 
-const _DELETIONS = "DELETIONS"
-
-func (me *Mirror) newWorkerFuseFs() (*WorkerFuseFs, os.Error) {
-	w := WorkerFuseFs{}
-
-	tmpDir, err := ioutil.TempDir("", "rpcfs-tmp")
-	w.tmpDir = tmpDir
-	type dirInit struct {
-		dst *string
-		val string
-	}
-
-	for _, v := range []dirInit{
-		dirInit{&w.rwDir, "rw"},
-		dirInit{&w.mount, "mnt"},
-	} {
-		*v.dst = filepath.Join(w.tmpDir, v.val)
-		err = os.Mkdir(*v.dst, 0700)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	rwFs := fuse.NewLoopbackFileSystem(w.rwDir)
-
-	// High ttl, since all writes come through fuse.
-	ttl := 100.0
-	opts := unionfs.UnionFsOptions{
-		BranchCacheTTLSecs:   ttl,
-		DeletionCacheTTLSecs: ttl,
-		DeletionDirName:      _DELETIONS,
-	}
-	mOpts := fuse.FileSystemOptions{
-		EntryTimeout:    ttl,
-		AttrTimeout:     ttl,
-		NegativeTimeout: ttl,
-	}
-
-	w.unionFs = unionfs.NewUnionFs("ufs", []fuse.FileSystem{rwFs, me.rpcFs}, opts)
-	swFs := []fuse.SwitchedFileSystem{
-		{"dev", &DevNullFs{}, true},
-		{"", me.rpcFs, false},
-
-		// TODO - configurable.
-		{"tmp", w.unionFs, false},
-		{me.writableRoot, w.unionFs, false},
-	}
-
-	conn := fuse.NewFileSystemConnector(fuse.NewSwitchFileSystem(swFs), &mOpts)
-	w.MountState = fuse.NewMountState(conn)
-	w.MountState.Mount(w.mount, &fuse.MountOptions{AllowOther: true})
-	if err != nil {
-		return nil, err
-	}
-
-	go w.MountState.Loop(true)
-
-	return &w, nil
-}
-
 func (me *WorkerFuseFs) Stop() {
 	me.MountState.Unmount()
 	os.RemoveAll(me.tmpDir)
 }
 
-func (me *Mirror) newWorkerTask(req *WorkRequest, rep *WorkReply) (*WorkerTask, os.Error) {
-	fuseFs, err := me.getWorkerFuseFs()
-	if err != nil {
-		return nil, err
-	}
-	stdin := me.daemon.pending.WaitConnection(req.StdinId)
-	return &WorkerTask{
-		WorkRequest:  req,
-		WorkReply:    rep,
-		stdinConn:    stdin,
-		masterWorker: me,
-		fuseFs:       fuseFs,
-	}, nil
-}
 
 func (me *WorkerTask) Run() os.Error {
 	rStdout, wStdout, err := os.Pipe()

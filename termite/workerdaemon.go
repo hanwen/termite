@@ -29,40 +29,6 @@ type WorkRequest struct {
 	Dir          string
 }
 
-// State associated with one master.
-type Mirror struct {
-	daemon        *WorkerDaemon
-	fileServer    *rpc.Client
-	rpcFs         *RpcFs
-	writableRoot  string
-
-	fuseFileSystemsMutex sync.Mutex
-	fuseFileSystems      []*WorkerFuseFs
-}
-
-func (me *Mirror) ReturnFuse(wfs *WorkerFuseFs) {
-	wfs.unionFs.DropBranchCache()
-	wfs.unionFs.DropDeletionCache()
-
-	me.fuseFileSystemsMutex.Lock()
-	defer me.fuseFileSystemsMutex.Unlock()
-	me.fuseFileSystems = append(me.fuseFileSystems, wfs)
-}
-
-func (me *Mirror) getWorkerFuseFs() (f *WorkerFuseFs, err os.Error) {
-	me.fuseFileSystemsMutex.Lock()
-	l := len(me.fuseFileSystems)
-	if l > 0 {
-		f = me.fuseFileSystems[l-1]
-		me.fuseFileSystems = me.fuseFileSystems[:l-1]
-	}
-	me.fuseFileSystemsMutex.Unlock()
-	if f == nil {
-		f, err = me.newWorkerFuseFs()
-	}
-	return f, err
-}
-
 func (me *WorkerDaemon) newMirror(addr string, writableRoot string) (*Mirror, os.Error) {
 	conn, err := SetupClient(addr, me.secret)
 	if err != nil {
@@ -73,43 +39,11 @@ func (me *WorkerDaemon) newMirror(addr string, writableRoot string) (*Mirror, os
 		fileServer:   rpc.NewClient(conn),
 		daemon:       me,
 		writableRoot: writableRoot,
+		workingFileSystems: make(map[*WorkerFuseFs]string),
 	}
 	w.rpcFs = NewRpcFs(w.fileServer, me.contentCache)
 
 	return w, nil
-}
-
-func (me *Mirror) Update(req *UpdateRequest, rep *UpdateResponse) os.Error {
-	return me.rpcFs.Update(req, rep)
-}
-
-func (me *Mirror) Run(req *WorkRequest, rep *WorkReply) os.Error {
-	task, err := me.newWorkerTask(req, rep)
-
-	err = task.Run()
-	if err != nil {
-		log.Println("Error", err)
-		return err
-	}
-
-	updateReq := UpdateRequest{
-	Files: rep.Files,
-	}
-	updateRep := UpdateResponse{}
-	err = me.rpcFs.Update(&updateReq, &updateRep)
-	if err != nil {
-		// TODO - fatal?
-		log.Println("Update failed.")
-	}
-
-	summary := rep
-	// Trim output.
-
-	summary.Stdout = trim(summary.Stdout)
-	summary.Stderr = trim(summary.Stderr)
-
-	log.Println("sending back", summary)
-	return nil
 }
 
 type WorkerDaemon struct {

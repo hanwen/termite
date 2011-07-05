@@ -11,6 +11,8 @@ GOFILES=\
 	diskcache.go \
 	fsserver.go \
 	master.go \
+	mirror.go \
+	misc.go \
 	rpcfs.go \
 	task.go \
 	workerdaemon.go \
