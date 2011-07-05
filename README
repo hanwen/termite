@@ -34,13 +34,12 @@ Testing:
   make -j20
 
 
-
 SECURITY
 
 * Worker and master use plaintext TCP/IP, and use a shared secret to
   authenticate the connection with HMAC-SHA1.
 
-* If this scheme is broken,
+* If this connection scheme gets broken,
 
   - a malicious user may request all files from the master with UID
     running the master.
@@ -48,14 +47,17 @@ SECURITY
   - a malicious user may try to run a binary on the worker that tries
     to break out of chroot.
 
-* Worker runs as nobody in a chroot of a FUSE file system.
+* Worker runs binaries as nobody in a chroot of a FUSE file system.
 
-* Wrapper and master run as the same user and use IPC sockets to
-  communicate.  The socket mode 0700.
+* Wrapper and master run as the same user and use IPC unix domain
+  sockets to communicate.  The socket mode is 0700.
 
 * TODO - /tmp files are played back from worker to master.  This is
   still a security problem.
 
 
+TODO
 
+* Coordinator
 
+* Load throttling on worker.
