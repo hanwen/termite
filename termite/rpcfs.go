@@ -149,7 +149,7 @@ func (me *RpcFs) GetAttr(name string) (*os.FileInfo, fuse.Status) {
 	if name == "" {
 		return &os.FileInfo{
 			Mode: fuse.S_IFDIR | 0755,
-		}, fuse.OK
+		},fuse.OK
 	}
 
 	r := me.getAttrResponse(name)

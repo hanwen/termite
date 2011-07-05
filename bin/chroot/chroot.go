@@ -1,11 +1,11 @@
-
 package main
+
 import (
 	"log"
 	"flag"
 	"syscall"
 	"os"
-	)
+)
 
 func main() {
 	exedir := flag.String("dir", "/", "directory to chroot to.")

@@ -36,24 +36,24 @@ type WorkReply struct {
 }
 
 type WorkRequest struct {
-	StdinId   string
-	FileServer string
+	StdinId      string
+	FileServer   string
 	WritableRoot string
-	Binary     string
-	Argv       []string
-	Env        []string
-	Dir        string
+	Binary       string
+	Argv         []string
+	Env          []string
+	Dir          string
 }
 
 // State associated with one master.
 type MasterWorker struct {
-	daemon *WorkerDaemon
-	fileServer *rpc.Client
-	readonlyRpcFs  *RpcFs
-	writableRoot string
+	daemon        *WorkerDaemon
+	fileServer    *rpc.Client
+	readonlyRpcFs *RpcFs
+	writableRoot  string
 
 	fuseFileSystemsMutex sync.Mutex
-	fuseFileSystems []*WorkerFuseFs
+	fuseFileSystems      []*WorkerFuseFs
 }
 
 func (me *MasterWorker) ReturnFuse(wfs *WorkerFuseFs) {
@@ -76,7 +76,7 @@ func (me *MasterWorker) getWorkerFuseFs() (f *WorkerFuseFs, err os.Error) {
 	if f == nil {
 		f, err = me.newWorkerFuseFs()
 	}
-	return 	f, err
+	return f, err
 }
 
 func (me *WorkerDaemon) newMasterWorker(addr string, writableRoot string) (*MasterWorker, os.Error) {
@@ -86,8 +86,8 @@ func (me *WorkerDaemon) newMasterWorker(addr string, writableRoot string) (*Mast
 	}
 
 	w := &MasterWorker{
-		fileServer: rpc.NewClient(conn),
-		daemon: me,
+		fileServer:   rpc.NewClient(conn),
+		daemon:       me,
 		writableRoot: writableRoot,
 	}
 	w.readonlyRpcFs = NewRpcFs(w.fileServer, me.contentCache)
@@ -115,16 +115,16 @@ func (me *MasterWorker) Run(req *WorkRequest, rep *WorkReply) os.Error {
 }
 
 type WorkerDaemon struct {
-	secret             []byte
-	ChrootBinary       string
+	secret       []byte
+	ChrootBinary string
 
 	// TODO - deal with closed connections.
 	masterMapMutex sync.Mutex
-	masterMap     map[string]*MasterWorker
-	contentCache  *DiskFileCache
-	contentServer *ContentServer
+	masterMap      map[string]*MasterWorker
+	contentCache   *DiskFileCache
+	contentServer  *ContentServer
 
-	pending   *PendingConnections
+	pending *PendingConnections
 }
 
 func (me *WorkerDaemon) getMasterWorker(addr string, writableRoot string) (*MasterWorker, os.Error) {
@@ -153,7 +153,7 @@ func NewWorkerDaemon(secret []byte, cacheDir string) *WorkerDaemon {
 		contentCache:  cache,
 		masterMap:     make(map[string]*MasterWorker),
 		contentServer: &ContentServer{Cache: cache},
-		pending:   NewPendingConnections(),
+		pending:       NewPendingConnections(),
 	}
 	return w
 }
@@ -199,4 +199,3 @@ func (me *WorkerDaemon) listen(port int) {
 		me.pending.Accept(conn)
 	}
 }
-

@@ -48,7 +48,7 @@ func HookedCopy(w io.Writer, r io.Reader, proc func([]byte)) os.Error {
 	}
 	return nil
 }
-	
+
 
 type WorkerFuseFs struct {
 	rwDir  string
@@ -62,7 +62,7 @@ type WorkerTask struct {
 	fuseFs *WorkerFuseFs
 	*WorkRequest
 	*WorkReply
-	stdinConn net.Conn
+	stdinConn    net.Conn
 	masterWorker *MasterWorker
 }
 
@@ -142,29 +142,37 @@ func (me *MasterWorker) newWorkerTask(req *WorkRequest, rep *WorkReply) (*Worker
 	}
 	stdin := me.daemon.pending.WaitConnection(req.StdinId)
 	return &WorkerTask{
-		WorkRequest: req,
-		WorkReply:   rep,
-		stdinConn:   stdin,
+		WorkRequest:  req,
+		WorkReply:    rep,
+		stdinConn:    stdin,
 		masterWorker: me,
-		fuseFs:      fuseFs,
-	}, nil
+		fuseFs:       fuseFs,
+	},nil
 }
 
 func (me *WorkerTask) Run() os.Error {
 	rStdout, wStdout, err := os.Pipe()
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	rStderr, wStderr, err := os.Pipe()
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	rStdin, wStdin, err := os.Pipe()
-	if err != nil { return err }
-	
+	if err != nil {
+		return err
+	}
+
 	attr := os.ProcAttr{
 		Env:   me.WorkRequest.Env,
 		Files: []*os.File{rStdin, wStdout, wStderr},
 	}
 
 	nobody, err := user.Lookup("nobody")
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 
 	chroot := me.masterWorker.daemon.ChrootBinary
 	cmd := []string{chroot, "-dir", me.WorkRequest.Dir,
@@ -185,7 +193,7 @@ func (me *WorkerTask) Run() os.Error {
 
 	wStdout.Close()
 	wStderr.Close()
-	
+
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
 
@@ -201,15 +209,15 @@ func (me *WorkerTask) Run() os.Error {
 	}()
 	go func() {
 		HookedCopy(wStdin, me.stdinConn, PrintStdinSliceLen)
-		
+
 		// No waiting: if the process exited, we kill the connection.
 		wStdin.Close()
 		me.stdinConn.Close()
 	}()
-	
+
 	me.WorkReply.Exit, err = proc.Wait(0)
 	wg.Wait()
-	
+
 	// TODO - should use a connection here too? What if the output
 	// is large?
 	me.WorkReply.Stdout = stdout.String()
@@ -260,7 +268,7 @@ func (me *WorkerTask) savePath(path string, fi FileInfo) {
 	}
 
 	fi.Path = path[len(me.fuseFs.rwDir):]
-	if fi.Path == "/" + _DELETIONS {
+	if fi.Path == "/"+_DELETIONS {
 		return
 	}
 

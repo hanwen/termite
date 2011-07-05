@@ -12,7 +12,7 @@ import (
 
 func TestAuthenticate(t *testing.T) {
 	secret := []byte("sekr3t")
-	port := int(rand.Int31n(60000)+1024)
+	port := int(rand.Int31n(60000) + 1024)
 
 	out := make(chan net.Conn)
 	go SetupServer(int(port), secret, out)
@@ -29,6 +29,7 @@ func TestAuthenticate(t *testing.T) {
 		t.Error("expect failure")
 	}
 }
+
 type DummyConn struct {
 	*os.File
 }
@@ -36,7 +37,7 @@ type DummyConn struct {
 func (me *DummyConn) LocalAddr() net.Addr {
 	return &net.UnixAddr{}
 }
-		
+
 func (me *DummyConn) RemoteAddr() net.Addr {
 	return &net.UnixAddr{}
 }
@@ -59,13 +60,13 @@ func TestPendingConnection(t *testing.T) {
 
 	conn1 := &DummyConn{b1}
 	conn2 := &DummyConn{b2}
-	
-	id1 :=  "pqrxyzab"
-	id2 :=  "pqrxy111"
+
+	id1 := "pqrxyzab"
+	id2 := "pqrxy111"
 
 	io.WriteString(a1, id1)
 	io.WriteString(a2, id2)
-	
+
 	pc := NewPendingConnections()
 
 	out := make(chan net.Conn)
@@ -76,7 +77,7 @@ func TestPendingConnection(t *testing.T) {
 	go pc.Accept(conn2)
 	io.WriteString(a1, "hello")
 
-	other1 := <-out 
+	other1 := <-out
 	b := make([]byte, 100)
 	n, err := other1.Read(b)
 	if string(b[:n]) != "hello" || err != nil {
@@ -85,10 +86,10 @@ func TestPendingConnection(t *testing.T) {
 
 	other2 := pc.WaitConnection(id2)
 	io.WriteString(a2, "hallo")
-	
+
 	b = make([]byte, 100)
 	n, err = other2.Read(b)
 	if string(b[:n]) != "hallo" || err != nil {
 		t.Error("unexpected", string(b[:n]), err)
-	}	
+	}
 }

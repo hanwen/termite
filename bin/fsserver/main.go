@@ -38,5 +38,3 @@ func main() {
 	log.Println("Server started...")
 	rpcServer.ServeConn(conn)
 }
-
-

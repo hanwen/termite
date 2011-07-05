@@ -20,11 +20,11 @@ type Master struct {
 	secret            []byte
 	workServers       []*rpc.Client
 	workServerConns   []net.Conn
-	
-	masterRun         *LocalMaster
-	writableRoot      string
 
-	pending           *PendingConnections
+	masterRun    *LocalMaster
+	writableRoot string
+
+	pending *PendingConnections
 }
 
 func NewMaster(cacheDir string, workers []string, secret []byte, excluded []string) *Master {
@@ -111,7 +111,7 @@ func (me *Master) setupWorkers(addresses []string) {
 			me.workServerConns = append(me.workServerConns, c)
 		}
 	}
-	
+
 	if len(me.workServerConns) == 0 {
 		log.Fatal("No workers available.")
 	}

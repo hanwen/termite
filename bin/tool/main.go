@@ -57,11 +57,11 @@ func main() {
 
 	id := termite.RandomBytes(4)
 	req := termite.WorkRequest{
-	StdinId: fmt.Sprintf(termite.STDIN_FMT, id),
-	Binary: binary,
-	Argv: args,
-	Env: os.Environ(),
-	Dir: wd,
+		StdinId: fmt.Sprintf(termite.STDIN_FMT, id),
+		Binary:  binary,
+		Argv:    args,
+		Env:     os.Environ(),
+		Dir:     wd,
 	}
 
 	socket := os.Getenv("TERMITE_SOCKET")
@@ -84,7 +84,7 @@ func main() {
 		stdinConn.Close()
 	}()
 	client := rpc.NewClient(conn)
-	
+
 	rep := termite.WorkReply{}
 	err = client.Call("LocalMaster.Run", &req, &rep)
 	if err != nil {
@@ -96,6 +96,3 @@ func main() {
 	// TODO -something with signals.
 	os.Exit(rep.Exit.ExitStatus())
 }
-
-
-

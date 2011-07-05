@@ -32,7 +32,7 @@ func Authenticate(conn net.Conn, secret []byte) os.Error {
 	h := hmac.NewSHA1(secret)
 	_, err = h.Write(challenge)
 	expected := h.Sum()
-	
+
 	remoteChallenge := make([]byte, challengeLength)
 	n, err := conn.Read(remoteChallenge)
 	if err != nil {
@@ -70,7 +70,7 @@ func Authenticate(conn net.Conn, secret []byte) os.Error {
 		fmt.Println(expectAck, ack)
 		return os.NewError("Missing ack reply")
 	}
-	
+
 	return nil
 }
 
@@ -127,19 +127,19 @@ func SetupClient(addr string, secret []byte) (net.Conn, os.Error) {
 const (
 	RPC_CHANNEL = "rpc....."
 	// Put in 4 random bytes
-	STDIN_FMT = "id..%s"
+	STDIN_FMT  = "id..%s"
 	HEADER_LEN = 8
 )
 
 type PendingConnection struct {
-	Id string
+	Id    string
 	Ready sync.Cond
-	Conn net.Conn
+	Conn  net.Conn
 }
 
 type PendingConnections struct {
 	connectionsMutex sync.Mutex
-	connections map[string]*PendingConnection
+	connections      map[string]*PendingConnection
 }
 
 func NewPendingConnections() *PendingConnections {
@@ -150,7 +150,7 @@ func NewPendingConnections() *PendingConnections {
 
 func (me *PendingConnections) newPendingConnection(id string) *PendingConnection {
 	p := &PendingConnection{
-	Id: id,
+		Id: id,
 	}
 	p.Ready.L = &me.connectionsMutex
 	return p
@@ -209,4 +209,3 @@ func DialTypedConnection(addr string, id string, secret []byte) (net.Conn, os.Er
 	}
 	return conn, nil
 }
-
