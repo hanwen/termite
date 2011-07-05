@@ -25,6 +25,7 @@ type Mirror struct {
 }
 
 func (me *Mirror) ReturnFuse(wfs *WorkerFuseFs) {
+	// TODO - could be more fine-grained here.
 	wfs.unionFs.DropBranchCache()
 	wfs.unionFs.DropDeletionCache()
 
