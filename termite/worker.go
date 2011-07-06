@@ -29,7 +29,7 @@ type WorkRequest struct {
 	Dir          string
 }
 
-func (me *WorkRequest) String() string {
+func (me *WorkRequest) Summary() string {
 	return fmt.Sprintf("stdin %s cmd %s", me.StdinId, me.Argv)
 }
 

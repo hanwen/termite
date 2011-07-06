@@ -102,8 +102,6 @@ func (me *Mirror) Shutdown() {
 }
 
 func (me *Mirror) getWorkerFuseFs(name string) (f *WorkerFuseFs, err os.Error) {
-	log.Println("getWorkerFuseFs", name)
-	
 	me.fuseFileSystemsMutex.Lock()
 	defer me.fuseFileSystemsMutex.Unlock()
 
@@ -229,7 +227,7 @@ func (me *Mirror) newWorkerFuseFs() (*WorkerFuseFs, os.Error) {
 }
 
 func (me *Mirror) newWorkerTask(req *WorkRequest, rep *WorkReply) (*WorkerTask, os.Error) {
-	fuseFs, err := me.getWorkerFuseFs(req.String())
+	fuseFs, err := me.getWorkerFuseFs(req.Summary())
 	if err != nil {
 		return nil, err
 	}
