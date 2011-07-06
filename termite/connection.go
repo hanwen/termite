@@ -23,6 +23,19 @@ func RandomBytes(n int) []byte {
 	return c
 }
 
+func sign(conn net.Conn, challenge[] byte, secret []byte, local bool) []byte {
+	h := hmac.NewSHA1(secret)
+	h.Write(challenge)
+	l := conn.LocalAddr()
+	r := conn.RemoteAddr()
+	if local {
+		h.Write([]byte(fmt.Sprintf("%v-%v",  l, r)))
+	} else {
+		h.Write([]byte(fmt.Sprintf("%v-%v",  r, l)))
+	}
+	return h.Sum()
+}
+
 // Symmetrical authentication using HMAC-SHA1.
 //
 // TODO - should probably use SSL/TLS? Figure out what is useful and
@@ -34,20 +47,16 @@ func Authenticate(conn net.Conn, secret []byte) os.Error {
 	if err != nil {
 		return err
 	}
-	h := hmac.NewSHA1(secret)
-	_, err = h.Write(challenge)
-	expected := h.Sum()
-
+	expected := sign(conn, challenge, secret, true)
+	
 	remoteChallenge := make([]byte, challengeLength)
 	n, err := conn.Read(remoteChallenge)
 	if err != nil {
 		return err
 	}
 	remoteChallenge = remoteChallenge[:n]
-	remoteHash := hmac.NewSHA1(secret)
-	remoteHash.Write(remoteChallenge)
-	_, err = conn.Write(remoteHash.Sum())
-
+	_, err = conn.Write(sign(conn, remoteChallenge, secret, false))
+	
 	response := make([]byte, len(expected))
 	n, err = conn.Read(response)
 	if err != nil {
@@ -80,7 +89,8 @@ func Authenticate(conn net.Conn, secret []byte) os.Error {
 }
 
 func SetupServer(port int, secret []byte, output chan net.Conn) {
-	addr := fmt.Sprintf(":%d", port)
+	host, _  := os.Hostname()
+	addr := fmt.Sprintf("%s:%d", host, port)
 	// TODO - also listen on localhost.
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {

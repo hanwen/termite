@@ -20,14 +20,15 @@ func TestAuthenticate(t *testing.T) {
 	out := make(chan net.Conn)
 	go SetupServer(int(port), secret, out)
 	time.Sleep(1e9)
-	addr := fmt.Sprintf(":%d", port)
-	_, err := SetupClient(addr, secret)
+	hostname, _ := os.Hostname()
+	addr := fmt.Sprintf("%s:%d", hostname, port)
+	_, err := DialTypedConnection(addr, RPC_CHANNEL, secret)
 	if err != nil {
 		t.Fatal("unexpected failure", err)
 	}
 	<-out
 
-	c, err := SetupClient(addr, []byte("foobar"))
+	c, err := DialTypedConnection(addr, RPC_CHANNEL, []byte("foobar"))
 	if c != nil {
 		t.Error("expect failure")
 	}
