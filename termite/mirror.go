@@ -141,7 +141,14 @@ func (me *Mirror) newWorkerFuseFs() (*WorkerFuseFs, os.Error) {
 
 	conn := fuse.NewFileSystemConnector(fuse.NewSwitchFileSystem(swFs), &mOpts)
 	w.MountState = fuse.NewMountState(conn)
-	w.MountState.Mount(w.mount, &fuse.MountOptions{AllowOther: true})
+
+	fuseOpts := fuse.MountOptions{
+		AllowOther: true,
+		// Compilers are not that highly parallel.  A lower
+		// number also helps stacktrace be less overwhelming.
+		MaxBackground: 4,
+	}
+	w.MountState.Mount(w.mount, &fuseOpts)
 	if err != nil {
 		return nil, err
 	}
