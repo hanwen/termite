@@ -22,16 +22,18 @@ Get
     ln -s ../go-fuse/fuse ../go-fuse/unionfs .
     sh all.bash
 
-
 I do not goinstall go-fuse, since I develop go-fuse in tandem with
 termite, but with some tweaks to the Makefile it should work.
 
-Testing:
 
-  ./worker.sh >& worker.log &
-  ./master.sh >& master.log &
-  export PATH=/tmp/tools/termite:${PATH}
-  make -j20
+RUNNING
+
+  sudo ${TERMITE_DIR}/bin/worker/worker -jobs 4 \
+    -chroot ${TERMITE_DIR}/bin/chroot/chroot &
+  cd ${PROJECT}
+  ${TERMITE_DIR}/bin/master/master -jobs 4 &
+  ln -s ${TERMITE_DIR}/bin/tool/tool gcc
+  ./gcc 
 
 
 SECURITY
@@ -70,3 +72,5 @@ TODO
 * Reconnecting.
 
 * More sophisticated exclusion for exporting file systems.
+
+* Security review for the connection scheme.
