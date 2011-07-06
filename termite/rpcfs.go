@@ -132,7 +132,9 @@ func (me *RpcFs) Open(name string, flags uint32) (fuse.File, fuse.Status) {
 	p := me.cache.Path(a.Hash)
 	if _, err := os.Lstat(p); fuse.OsErrorToErrno(err) == fuse.ENOENT {
 		log.Printf("Fetching contents for file %s", name)
-		me.FetchHash(a.FileInfo.Size, a.Hash)
+		err = me.FetchHash(a.FileInfo.Size, a.Hash)
+		// should return something else?
+		if err != nil { return nil, fuse.ENOENT }
 	}
 
 	f, err := os.Open(p)
@@ -144,12 +146,15 @@ func (me *RpcFs) Open(name string, flags uint32) (fuse.File, fuse.Status) {
 }
 
 // TODO - should be streaming.
-func (me *RpcFs) FetchHash(size int64, hash []byte) {
-	b := FetchFromContentServer(me.client, "FsServer.FileContent", size, hash)
+func (me *RpcFs) FetchHash(size int64, hash []byte) os.Error {
+	b, err := FetchFromContentServer(me.client, "FsServer.FileContent", size, hash)
+	if err != nil { return err }
 	savedHash := me.cache.Save(b)
+	
 	if bytes.Compare(hash, savedHash) != 0 {
 		log.Fatalf("Corruption: savedHash %x != requested hash %x.", savedHash, hash)
 	}
+	return nil
 }
 
 func (me *RpcFs) Readlink(name string) (string, fuse.Status) {

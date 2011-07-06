@@ -44,7 +44,7 @@ func (me *ContentServer) FileContent(req *ContentRequest, rep *ContentResponse) 
 }
 
 // FetchHash issues a FileContent RPC to read an entire file.
-func FetchFromContentServer(client *rpc.Client, rpcName string, size int64, hash []byte) []byte {
+func FetchFromContentServer(client *rpc.Client, rpcName string, size int64, hash []byte) ([]byte, os.Error) {
 	chunkSize := 1 << 18
 
 	buf := bytes.NewBuffer(make([]byte, 0, size))
@@ -57,9 +57,9 @@ func FetchFromContentServer(client *rpc.Client, rpcName string, size int64, hash
 
 		rep := &ContentResponse{}
 		err := client.Call(rpcName, req, rep)
-		if err != nil && err != os.EOF {
+		if err != nil {
 			log.Println("FileContent error:", err)
-			break
+			return nil, err
 		}
 
 		buf.Write(rep.Chunk)
@@ -69,7 +69,8 @@ func FetchFromContentServer(client *rpc.Client, rpcName string, size int64, hash
 	}
 
 	if buf.Len() < int(size) {
-		log.Fatal("Size mismatch", buf.Len(), size)
+		return nil, os.NewError(
+			fmt.Sprintf("Size mismatch %d != %d", buf.Len(), size))
 	}
-	return buf.Bytes()
+	return buf.Bytes(), nil
 }

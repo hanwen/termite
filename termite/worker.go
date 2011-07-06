@@ -18,12 +18,10 @@ type WorkReply struct {
 	Stdout string
 }
 
-
 type WorkRequest struct {
 	// Id of connection streaming stdin.
 	StdinId      string
 	Debug        bool
-	FileServer   string
 	WritableRoot string
 	Binary       string
 	Argv         []string
@@ -31,36 +29,52 @@ type WorkRequest struct {
 	Dir          string
 }
 
-func (me WorkRequest) String() string {
-	return fmt.Sprintf("%x %s:%s.\ncmd %s", me.StdinId, me.FileServer, me.WritableRoot,
-		me.Argv)
+func (me *WorkRequest) String() string {
+	return fmt.Sprintf("stdin %s cmd %s", me.StdinId, me.Argv)
 }
 
 type WorkerDaemon struct {
 	secret       []byte
 	ChrootBinary string
 
+	contentCache  *DiskFileCache
+	contentServer *ContentServer
+	maxJobCount int
+	pending *PendingConnections
+
 	// TODO - deal with closed connections.
 	mirrorMapMutex sync.Mutex
 	mirrorMap      map[string]*Mirror
-
-	contentCache  *DiskFileCache
-	contentServer *ContentServer
-
-	pending *PendingConnections
 }
 
-func (me *WorkerDaemon) getMirror(rpcConn, revConn net.Conn) (*Mirror, os.Error) {
-	mirror := NewMirror(me, rpcConn, revConn)
+func (me *WorkerDaemon) getMirror(rpcConn, revConn net.Conn, reserveCount int) (*Mirror, os.Error) {
 	me.mirrorMapMutex.Lock()
 	defer me.mirrorMapMutex.Unlock()
+	used := 0
+	for _, v := range me.mirrorMap {
+		used += v.maxJobCount
+	}
+	if reserveCount <= 0 {
+		return nil, os.NewError("must ask positive jobcount")
+	}
+
+	remaining := me.maxJobCount - used
+	if remaining <= 0 {
+		return nil, os.NewError("no processes available")
+	}
+	if remaining < reserveCount {
+		reserveCount = remaining
+	}
+	
+	mirror := NewMirror(me, rpcConn, revConn)
+	mirror.maxJobCount = reserveCount
 	key := fmt.Sprintf("%v", rpcConn.RemoteAddr())
 	me.mirrorMap[key] = mirror
 	mirror.key = key
 	return mirror, nil
 }
 
-func NewWorkerDaemon(secret []byte, cacheDir string) *WorkerDaemon {
+func NewWorkerDaemon(secret []byte, cacheDir string, jobs int) *WorkerDaemon {
 	cache := NewDiskFileCache(cacheDir)
 	w := &WorkerDaemon{
 		secret:        secret,
@@ -68,6 +82,7 @@ func NewWorkerDaemon(secret []byte, cacheDir string) *WorkerDaemon {
 		mirrorMap:     make(map[string]*Mirror),
 		contentServer: &ContentServer{Cache: cache},
 		pending:       NewPendingConnections(),
+		maxJobCount:   jobs,
 	}
 	return w
 }
@@ -89,21 +104,23 @@ type CreateMirrorRequest struct {
 	RpcId        string
 	RevRpcId     string
 	WritableRoot string
+	// Max number of processes to reserve.
+	MaxJobCount int
 }
 
 type CreateMirrorResponse struct {
-
+	MaxJobCount int
 }
 
 func (me *WorkerDaemon) CreateMirror(req *CreateMirrorRequest, rep *CreateMirrorResponse) os.Error {
 	log.Println("CreateMirror")
 	rpcConn := me.pending.WaitConnection(req.RpcId)
 	revConn := me.pending.WaitConnection(req.RevRpcId)
-	mirror, err := me.getMirror(rpcConn, revConn)
-	if err != nil {
-		return err
-	}
+	mirror, err := me.getMirror(rpcConn, revConn, req.MaxJobCount)
+	if err != nil { return err }
 	mirror.writableRoot = req.WritableRoot
+
+	rep.MaxJobCount = mirror.maxJobCount
 	return nil
 }
 func (me *WorkerDaemon) DropMirror(mirror *Mirror) {

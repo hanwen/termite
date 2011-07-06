@@ -24,4 +24,4 @@ echo ""
 
 set -eux
 
-./bin/master/master "$@"
+./bin/master/master -jobs 100 "$@"

@@ -1,7 +1,6 @@
 package termite
 
 import (
-	"fmt"
 	"path/filepath"
 	"net"
 	"os"
@@ -24,12 +23,14 @@ type Mirror struct {
 
 	// key in WorkerDaemon's map.
 	key          string
-	
+
+	Waiting     int
+	maxJobCount int
 	fuseFileSystemsMutex sync.Mutex
 	fuseFileSystems      []*WorkerFuseFs
 	workingFileSystems   map[*WorkerFuseFs]string
 	shuttingDown         bool
-	shutdownCond         sync.Cond
+	cond sync.Cond
 }
 
 func NewMirror(daemon *WorkerDaemon, rpcConn, revConn net.Conn) *Mirror {
@@ -43,7 +44,7 @@ func NewMirror(daemon *WorkerDaemon, rpcConn, revConn net.Conn) *Mirror {
 		workingFileSystems: make(map[*WorkerFuseFs]string),
 	}
 	mirror.rpcFs = NewRpcFs(mirror.fileServer, daemon.contentCache)
-	mirror.shutdownCond.L = &mirror.fuseFileSystemsMutex
+	mirror.cond.L = &mirror.fuseFileSystemsMutex
 
 	go mirror.serveRpc()
 	return mirror
@@ -63,7 +64,7 @@ func (me *Mirror) ReturnFuse(wfs *WorkerFuseFs) {
 		me.fuseFileSystems = append(me.fuseFileSystems, wfs)
 	}
 	me.workingFileSystems[wfs] = "", false
-	me.shutdownCond.Signal()
+	me.cond.Signal()
 }
 
 func (me *Mirror) DiscardFuse(wfs *WorkerFuseFs) {
@@ -72,7 +73,7 @@ func (me *Mirror) DiscardFuse(wfs *WorkerFuseFs) {
 	me.fuseFileSystemsMutex.Lock()
 	defer me.fuseFileSystemsMutex.Unlock()
 	me.workingFileSystems[wfs] = "", false
-	me.shutdownCond.Signal()
+	me.cond.Signal()
 }
 
 func (me *Mirror) serveRpc() {
@@ -93,7 +94,7 @@ func (me *Mirror) Shutdown() {
 	me.fuseFileSystems = []*WorkerFuseFs{}
 
 	for len(me.workingFileSystems) > 0 {
-		me.shutdownCond.Wait()
+		me.cond.Wait()
 	}
 	me.rpcConn.Close()
 
@@ -101,8 +102,20 @@ func (me *Mirror) Shutdown() {
 }
 
 func (me *Mirror) getWorkerFuseFs(name string) (f *WorkerFuseFs, err os.Error) {
+	log.Println("getWorkerFuseFs", name)
+	
 	me.fuseFileSystemsMutex.Lock()
 	defer me.fuseFileSystemsMutex.Unlock()
+
+	me.Waiting++
+	for len(me.workingFileSystems) >= me.maxJobCount {
+		me.cond.Wait()
+	}
+	me.Waiting--
+	if me.shuttingDown {
+		return nil, os.NewError("shutting down")
+	}
+	
 	l := len(me.fuseFileSystems)
 	if l > 0 {
 		f = me.fuseFileSystems[l-1]
@@ -216,7 +229,7 @@ func (me *Mirror) newWorkerFuseFs() (*WorkerFuseFs, os.Error) {
 }
 
 func (me *Mirror) newWorkerTask(req *WorkRequest, rep *WorkReply) (*WorkerTask, os.Error) {
-	fuseFs, err := me.getWorkerFuseFs(fmt.Sprintf("%v", req))
+	fuseFs, err := me.getWorkerFuseFs(req.String())
 	if err != nil {
 		return nil, err
 	}
