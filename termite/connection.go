@@ -23,6 +23,10 @@ func RandomBytes(n int) []byte {
 	return c
 }
 
+// Symmetrical authentication using HMAC-SHA1.
+//
+// TODO - should probably use SSL/TLS? Figure out what is useful and
+// necessary here.
 func Authenticate(conn net.Conn, secret []byte) os.Error {
 	challenge := RandomBytes(challengeLength)
 
@@ -123,6 +127,8 @@ type PendingConnection struct {
 	Conn  net.Conn
 }
 
+// PendingConnections manages a list of connections, indexed by ID.
+// The id is sent as the first 8 bytes, after the authentication.
 type PendingConnections struct {
 	connectionsMutex sync.Mutex
 	connections      map[string]*PendingConnection
