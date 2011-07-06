@@ -90,6 +90,7 @@ func main() {
 		Argv:    args,
 		Env:     os.Environ(),
 		Dir:     wd,
+		Debug:   os.Getenv("TERMITE_DEBUG") != "",
 	}
 
 	stdinConn := OpenConn(socket, req.StdinId)
