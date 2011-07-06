@@ -36,7 +36,12 @@ Testing:
 
 SECURITY
 
-* The worker runs binaries as nobody in a chroot of a FUSE file system.
+* The worker runs binaries as user 'nobody' in a chroot of a FUSE file
+  system.  It needs root permission for the following actions:
+  
+  - mount a FUSE fs as allow_other
+  - chroot to FUSE fs
+  - change uid to user 'nobody'
 
 * Worker and master use plaintext TCP/IP, and use a shared secret +
   HMAC-SHA1 to authenticate the connection.
@@ -63,3 +68,5 @@ TODO
 * Load throttling on worker.
 
 * Reconnecting.
+
+* More sophisticated exclusion for exporting file systems.
