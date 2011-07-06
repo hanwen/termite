@@ -38,7 +38,7 @@ type AttrRequest struct {
 }
 
 type AttrResponse struct {
-	Path string		// Used in WorkReply
+	Path string // Used in WorkReply
 	*os.FileInfo
 	fuse.Status
 	Hash []byte

@@ -35,6 +35,3 @@ func (me *WorkerDaemon) ServeHTTPStatus(port int) {
 	})
 	http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
 }
-
-
-

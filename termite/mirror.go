@@ -14,10 +14,10 @@ import (
 
 // State associated with one master.
 type Mirror struct {
-	daemon        *WorkerDaemon
-	fileServer    *rpc.Client
-	rpcFs         *RpcFs
-	writableRoot  string
+	daemon       *WorkerDaemon
+	fileServer   *rpc.Client
+	rpcFs        *RpcFs
+	writableRoot string
 
 	fuseFileSystemsMutex sync.Mutex
 	fuseFileSystems      []*WorkerFuseFs
@@ -72,7 +72,7 @@ func (me *Mirror) Run(req *WorkRequest, rep *WorkReply) os.Error {
 	}
 
 	updateReq := UpdateRequest{
-	Files: rep.Files,
+		Files: rep.Files,
 	}
 	updateRep := UpdateResponse{}
 	err = me.rpcFs.Update(&updateReq, &updateRep)
@@ -170,7 +170,7 @@ func (me *Mirror) newWorkerTask(req *WorkRequest, rep *WorkReply) (*WorkerTask, 
 		stdinConn:    stdin,
 		masterWorker: me,
 		fuseFs:       fuseFs,
-	}, nil
+	},nil
 }
 
 func (me *Mirror) Status(req *StatusRequest, rep *StatusReply) os.Error {

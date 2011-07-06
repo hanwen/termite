@@ -35,4 +35,3 @@ func HookedCopy(w io.Writer, r io.Reader, proc func([]byte)) os.Error {
 	}
 	return nil
 }
-

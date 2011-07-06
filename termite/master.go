@@ -15,24 +15,24 @@ import (
 )
 
 type mirrorConnection struct {
-	rpcClient *rpc.Client
+	rpcClient  *rpc.Client
 	connection net.Conn
 }
 
 type Master struct {
-	cache             *DiskFileCache
-	fileServer        *FsServer
-	fileServerRpc     *rpc.Server
-	secret            []byte
+	cache         *DiskFileCache
+	fileServer    *FsServer
+	fileServerRpc *rpc.Server
+	secret        []byte
 
-	workServers       []string
-	
-	mirrorsMutex      sync.Mutex
-	mirrors           []mirrorConnection
+	workServers []string
 
-	localRpcServer    *rpc.Server
-	localServer         *LocalMaster
-	writableRoot      string
+	mirrorsMutex sync.Mutex
+	mirrors      []mirrorConnection
+
+	localRpcServer *rpc.Server
+	localServer    *LocalMaster
+	writableRoot   string
 
 	pending *PendingConnections
 }
@@ -100,8 +100,10 @@ func (me *Master) Start(sock string) {
 
 func (me *Master) createMirror(addr string) (net.Conn, os.Error) {
 	conn, err := DialTypedConnection(addr, RPC_CHANNEL, me.secret)
-	if err != nil { return nil, err }
-	
+	if err != nil {
+		return nil, err
+	}
+
 	rpcId := ConnectionId()
 	rpcConn, err := DialTypedConnection(addr, rpcId, me.secret)
 	if err != nil {
@@ -115,16 +117,16 @@ func (me *Master) createMirror(addr string) (net.Conn, os.Error) {
 		rpcConn.Close()
 		return nil, err
 	}
-	
+
 	req := CreateMirrorRequest{
-	RpcId: rpcId,
-	RevRpcId: revId,
-	WritableRoot: me.writableRoot,
+		RpcId:        rpcId,
+		RevRpcId:     revId,
+		WritableRoot: me.writableRoot,
 	}
 	rep := CreateMirrorResponse{}
 	cl := rpc.NewClient(conn)
 	err = cl.Call("WorkerDaemon.CreateMirror", &req, &rep)
-	
+
 	if err != nil {
 		revConn.Close()
 		rpcConn.Close()
@@ -143,10 +145,10 @@ func (me *Master) createMirrors() os.Error {
 	if len(me.mirrors) > 0 {
 		return nil
 	}
-	
+
 	out := make(chan net.Conn, 1)
 	for _, addr := range me.workServers {
-		go func(a string){
+		go func(a string) {
 			conn, err := me.createMirror(a)
 			if err != nil {
 				log.Println("nonfatal", err)
@@ -174,15 +176,19 @@ func (me *Master) createMirrors() os.Error {
 
 func (me *Master) run(req *WorkRequest, rep *WorkReply) os.Error {
 	err := me.createMirrors()
-	if err != nil { return err }
-	
+	if err != nil {
+		return err
+	}
+
 	idx := rand.Intn(len(me.mirrors))
 
 	// Tunnel stdin.
 	inputConn := me.pending.WaitConnection(req.StdinId)
 	destInputConn, err := DialTypedConnection(me.mirrors[idx].connection.RemoteAddr().String(),
 		req.StdinId, me.secret)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 
 	go func() {
 		HookedCopy(destInputConn, inputConn, PrintStdinSliceLen)
@@ -257,7 +263,7 @@ func (me *Master) replayFileModifications(worker *rpc.Client, infos []AttrRespon
 			}
 			err = ioutil.WriteFile(info.Path, c, info.FileInfo.Mode&07777)
 			if err != nil {
-				err = os.Chtimes(info.Path, info.FileInfo.Atime_ns,  info.FileInfo.Mtime_ns)
+				err = os.Chtimes(info.Path, info.FileInfo.Atime_ns, info.FileInfo.Mtime_ns)
 			}
 		}
 		if info.Link != "" {

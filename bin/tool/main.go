@@ -52,7 +52,9 @@ func main() {
 	}
 
 	wd, err := os.Getwd()
-	if err != nil { log.Fatal("Getwd", err) }
+	if err != nil {
+		log.Fatal("Getwd", err)
+	}
 
 	socket := os.Getenv("TERMITE_SOCKET")
 	if socket == "" {

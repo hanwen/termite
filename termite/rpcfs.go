@@ -26,12 +26,13 @@ type RpcFs struct {
 }
 
 type UpdateRequest struct {
-	FileServer string
+	FileServer   string
 	WritableRoot string
-	Files []AttrResponse
+	Files        []AttrResponse
 }
 
 type UpdateResponse struct {
+
 }
 
 func NewRpcFs(server *rpc.Client, cache *DiskFileCache) *RpcFs {

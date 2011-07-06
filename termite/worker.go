@@ -43,10 +43,10 @@ type WorkerDaemon struct {
 	mirrorMapMutex sync.Mutex
 	mirrorMap      map[string]*Mirror
 
-	contentCache   *DiskFileCache
-	contentServer  *ContentServer
+	contentCache  *DiskFileCache
+	contentServer *ContentServer
 
-	pending        *PendingConnections
+	pending *PendingConnections
 }
 
 func (me *WorkerDaemon) getMirror(rpcConn, revConn net.Conn) (*Mirror, os.Error) {
@@ -61,11 +61,11 @@ func (me *WorkerDaemon) getMirror(rpcConn, revConn net.Conn) (*Mirror, os.Error)
 	}
 
 	mirror = &Mirror{
-		fileServer:   rpc.NewClient(revConn),
-		daemon:       me,
+		fileServer:         rpc.NewClient(revConn),
+		daemon:             me,
 		workingFileSystems: make(map[*WorkerFuseFs]string),
 	}
-	mirror.rpcFs = NewRpcFs(mirror.fileServer, me.contentCache) 
+	mirror.rpcFs = NewRpcFs(mirror.fileServer, me.contentCache)
 	me.mirrorMap[key] = mirror
 	server := rpc.NewServer()
 	server.Register(mirror)
@@ -99,12 +99,13 @@ func trim(s string) string {
 }
 
 type CreateMirrorRequest struct {
-	RpcId string
-	RevRpcId string
+	RpcId        string
+	RevRpcId     string
 	WritableRoot string
 }
 
 type CreateMirrorResponse struct {
+
 }
 
 func (me *WorkerDaemon) CreateMirror(req *CreateMirrorRequest, rep *CreateMirrorResponse) os.Error {
@@ -112,7 +113,9 @@ func (me *WorkerDaemon) CreateMirror(req *CreateMirrorRequest, rep *CreateMirror
 	rpcConn := me.pending.WaitConnection(req.RpcId)
 	revConn := me.pending.WaitConnection(req.RevRpcId)
 	mirror, err := me.getMirror(rpcConn, revConn)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	mirror.writableRoot = req.WritableRoot
 	return nil
 }
