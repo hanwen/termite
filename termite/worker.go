@@ -51,28 +51,12 @@ type WorkerDaemon struct {
 }
 
 func (me *WorkerDaemon) getMirror(rpcConn, revConn net.Conn) (*Mirror, os.Error) {
-	log.Println("Mirror for", rpcConn, revConn)
+	mirror := NewMirror(me, rpcConn, revConn)
 	me.mirrorMapMutex.Lock()
 	defer me.mirrorMapMutex.Unlock()
-
 	key := fmt.Sprintf("%v", rpcConn.RemoteAddr())
-	mirror, ok := me.mirrorMap[key]
-	if ok {
-		panic("huh")
-	}
-
-	mirror = &Mirror{
-		fileServerConn: revConn,
-		rpcConn: 	rpcConn,
-		fileServer:         rpc.NewClient(revConn),
-		daemon:             me,
-		workingFileSystems: make(map[*WorkerFuseFs]string),
-	}
-	mirror.rpcFs = NewRpcFs(mirror.fileServer, me.contentCache)
-	mirror.shutdownCond.L = &mirror.fuseFileSystemsMutex
 	me.mirrorMap[key] = mirror
 	mirror.key = key
-	go mirror.serveRpc()
 	return mirror, nil
 }
 

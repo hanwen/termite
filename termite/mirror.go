@@ -32,6 +32,23 @@ type Mirror struct {
 	shutdownCond         sync.Cond
 }
 
+func NewMirror(daemon *WorkerDaemon, rpcConn, revConn net.Conn) *Mirror {
+	log.Println("Mirror for", rpcConn, revConn)
+
+	mirror := &Mirror{
+		fileServerConn: revConn,
+		rpcConn: 	rpcConn,
+		fileServer:         rpc.NewClient(revConn),
+		daemon:             daemon,
+		workingFileSystems: make(map[*WorkerFuseFs]string),
+	}
+	mirror.rpcFs = NewRpcFs(mirror.fileServer, daemon.contentCache)
+	mirror.shutdownCond.L = &mirror.fuseFileSystemsMutex
+
+	go mirror.serveRpc()
+	return mirror
+}
+
 func (me *Mirror) ReturnFuse(wfs *WorkerFuseFs) {
 	// TODO - could be more fine-grained here.
 	wfs.unionFs.DropBranchCache()
