@@ -10,6 +10,7 @@ import (
 	"crypto/hmac"
 	"sync"
 	"io"
+	"time"
 )
 
 const challengeLength = 20
@@ -107,6 +108,10 @@ const (
 	HEADER_LEN  = 8
 )
 
+func init () {
+	rand.Seed(time.Nanoseconds() ^ int64(os.Getpid()))
+}
+
 func ConnectionId() string {
 	id := rand.Intn(1e6)
 	return fmt.Sprintf(_ID_FMT, id)
@@ -170,7 +175,9 @@ func (me *PendingConnections) Accept(conn net.Conn) os.Error {
 		p = me.newPendingConnection(id)
 		me.connections[id] = p
 	}
-
+	if p.Conn != nil {
+		panic("accepted the same connection id twice")
+	}
 	p.Conn = conn
 	p.Ready.Signal()
 	return nil
