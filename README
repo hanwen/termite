@@ -65,8 +65,6 @@ TODO
 
 * Coordinator
 
-* Load throttling on worker.
-
 * Reconnecting.
 
 * More sophisticated exclusion for exporting file systems.
