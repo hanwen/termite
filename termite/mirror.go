@@ -173,3 +173,7 @@ func (me *Mirror) Status(req *StatusRequest, rep *StatusReply) os.Error {
 	rep.Processes += len(me.workingFileSystems)
 	return nil
 }
+
+func (me *Mirror) FileContent(req *ContentRequest, rep *ContentResponse) os.Error {
+	return me.daemon.contentServer.FileContent(req, rep)
+}

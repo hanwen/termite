@@ -99,28 +99,18 @@ func SetupServer(port int, secret []byte, output chan net.Conn) {
 	}
 }
 
-func SetupClient(addr string, secret []byte) (net.Conn, os.Error) {
-	conn, err := net.Dial("tcp", addr)
-	if err != nil {
-		return nil, err
-	}
-
-	err = Authenticate(conn, secret)
-	if err != nil {
-		return nil, err
-	}
-
-	return conn, nil
-}
-
 // ids:
 //
 const (
 	RPC_CHANNEL = "rpc....."
-	// Put in 4 random bytes
-	STDIN_FMT  = "id..%s"
-	HEADER_LEN = 8
+	_ID_FMT     = "id%06d"
+	HEADER_LEN  = 8
 )
+
+func ConnectionId() string {
+	id := rand.Intn(1e6)
+	return fmt.Sprintf(_ID_FMT, id)
+}
 
 type PendingConnection struct {
 	Id    string
@@ -132,6 +122,7 @@ type PendingConnections struct {
 	connectionsMutex sync.Mutex
 	connections      map[string]*PendingConnection
 }
+
 
 func NewPendingConnections() *PendingConnections {
 	return &PendingConnections{
@@ -174,7 +165,6 @@ func (me *PendingConnections) Accept(conn net.Conn) os.Error {
 
 	me.connectionsMutex.Lock()
 	defer me.connectionsMutex.Unlock()
-
 	p := me.connections[id]
 	if p == nil {
 		p = me.newPendingConnection(id)
@@ -187,10 +177,15 @@ func (me *PendingConnections) Accept(conn net.Conn) os.Error {
 }
 
 func DialTypedConnection(addr string, id string, secret []byte) (net.Conn, os.Error) {
-	if len(id) != 8 {
+	if len(id) != HEADER_LEN {
 		log.Fatal("id != 8", id, len(id))
 	}
-	conn, err := SetupClient(addr, secret)
+	conn, err := net.Dial("tcp", addr)
+	if err != nil {
+		return nil, err
+	}
+
+	err = Authenticate(conn, secret)
 	if err != nil {
 		return nil, err
 	}

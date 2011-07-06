@@ -35,23 +35,6 @@ func (me WorkRequest) String() string {
 		me.Argv)
 }
 
-func (me *WorkerDaemon) newMirror(addr string, writableRoot string) (*Mirror, os.Error) {
-	conn, err := SetupClient(addr, me.secret)
-	if err != nil {
-		return nil, err
-	}
-
-	w := &Mirror{
-		fileServer:   rpc.NewClient(conn),
-		daemon:       me,
-		writableRoot: writableRoot,
-		workingFileSystems: make(map[*WorkerFuseFs]string),
-	}
-	w.rpcFs = NewRpcFs(w.fileServer, me.contentCache)
-
-	return w, nil
-}
-
 type WorkerDaemon struct {
 	secret       []byte
 	ChrootBinary string
@@ -63,28 +46,32 @@ type WorkerDaemon struct {
 	contentCache   *DiskFileCache
 	contentServer  *ContentServer
 
-	pending *PendingConnections
+	pending        *PendingConnections
 }
 
-func (me *WorkerDaemon) getMirror(addr string, writableRoot string) (*Mirror, os.Error) {
+func (me *WorkerDaemon) getMirror(rpcConn, revConn net.Conn) (*Mirror, os.Error) {
+	log.Println("Mirror for", rpcConn, revConn)
 	me.mirrorMapMutex.Lock()
 	defer me.mirrorMapMutex.Unlock()
 
-	key := fmt.Sprintf("%s:%s", addr, writableRoot)
-	mw, ok := me.mirrorMap[key]
+	key := fmt.Sprintf("%v", rpcConn.RemoteAddr())
+	mirror, ok := me.mirrorMap[key]
 	if ok {
-		return mw, nil
+		panic("huh")
 	}
 
-	mw, err := me.newMirror(addr, writableRoot)
-	if err != nil {
-		return nil, err
+	mirror = &Mirror{
+		fileServer:   rpc.NewClient(revConn),
+		daemon:       me,
+		workingFileSystems: make(map[*WorkerFuseFs]string),
 	}
-	log.Println("Created new Mirror for", key)
-	me.mirrorMap[key] = mw
-	return mw, err
+	mirror.rpcFs = NewRpcFs(mirror.fileServer, me.contentCache) 
+	me.mirrorMap[key] = mirror
+	server := rpc.NewServer()
+	server.Register(mirror)
+	go server.ServeConn(rpcConn)
+	return mirror, nil
 }
-
 
 func NewWorkerDaemon(secret []byte, cacheDir string) *WorkerDaemon {
 	cache := NewDiskFileCache(cacheDir)
@@ -111,20 +98,23 @@ func trim(s string) string {
 	return s[:l]
 }
 
-func (me *WorkerDaemon) Run(req *WorkRequest, rep *WorkReply) os.Error {
-	log.Println("Received", req)
-	wm, err := me.getMirror(req.FileServer, req.WritableRoot)
-	if err != nil {
-		return err
-	}
-
-	return wm.Run(req, rep)
+type CreateMirrorRequest struct {
+	RpcId string
+	RevRpcId string
+	WritableRoot string
 }
 
-func (me *WorkerDaemon) Update(req *UpdateRequest, rep *UpdateResponse) os.Error {
-	wm, err := me.getMirror(req.FileServer, req.WritableRoot)
+type CreateMirrorResponse struct {
+}
+
+func (me *WorkerDaemon) CreateMirror(req *CreateMirrorRequest, rep *CreateMirrorResponse) os.Error {
+	log.Println("CreateMirror")
+	rpcConn := me.pending.WaitConnection(req.RpcId)
+	revConn := me.pending.WaitConnection(req.RevRpcId)
+	mirror, err := me.getMirror(rpcConn, revConn)
 	if err != nil { return err }
-	return wm.rpcFs.Update(req, rep)
+	mirror.writableRoot = req.WritableRoot
+	return nil
 }
 
 func (me *WorkerDaemon) RunWorkerServer(port int) {
@@ -142,12 +132,13 @@ func (me *WorkerDaemon) listen(port int) {
 	go SetupServer(port, me.secret, out)
 	for {
 		conn := <-out
-		log.Println("connection from", conn.RemoteAddr())
+		log.Println("Authenticated connection from", conn.RemoteAddr())
 		me.pending.Accept(conn)
 	}
 }
 
 type StatusRequest struct {
+
 }
 
 type StatusReply struct {

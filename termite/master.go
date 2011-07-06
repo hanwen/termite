@@ -2,7 +2,6 @@ package termite
 
 import (
 	"bytes"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net"
@@ -12,19 +11,28 @@ import (
 	"rand"
 	"rpc"
 	"sort"
+	"sync"
 )
 
+type mirrorConnection struct {
+	rpcClient *rpc.Client
+	connection net.Conn
+}
 
 type Master struct {
 	cache             *DiskFileCache
 	fileServer        *FsServer
-	fileServerAddress string
+	fileServerRpc     *rpc.Server
 	secret            []byte
-	workServers       []*rpc.Client
-	workServerConns   []net.Conn
 
-	masterRun    *LocalMaster
-	writableRoot string
+	workServers       []string
+	
+	mirrorsMutex      sync.Mutex
+	mirrors           []mirrorConnection
+
+	localRpcServer    *rpc.Server
+	localServer         *LocalMaster
+	writableRoot      string
 
 	pending *PendingConnections
 }
@@ -36,16 +44,16 @@ func NewMaster(cacheDir string, workers []string, secret []byte, excluded []stri
 		fileServer: NewFsServer("/", c, excluded),
 		secret:     secret,
 	}
-	me.masterRun = &LocalMaster{me}
-	me.setupWorkers(workers)
+	me.localServer = &LocalMaster{me}
+	me.workServers = workers
 	me.secret = secret
 	me.pending = NewPendingConnections()
-	return me
-}
+	me.fileServerRpc = rpc.NewServer()
+	me.fileServerRpc.Register(me.fileServer)
 
-func (me *Master) Start(port int, mySocket string) {
-	go me.startServer(me.fileServer, port)
-	me.startLocalServer(mySocket)
+	me.localRpcServer = rpc.NewServer()
+	me.localRpcServer.Register(me.localServer)
+	return me
 }
 
 func (me *Master) listenLocal(sock string) {
@@ -71,6 +79,7 @@ func (me *Master) listenLocal(sock string) {
 	me.writableRoot = filepath.Clean(me.writableRoot)
 	me.writableRoot, _ = filepath.Split(me.writableRoot)
 
+	log.Println("Accepting connections on", absSock)
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
@@ -80,82 +89,100 @@ func (me *Master) listenLocal(sock string) {
 	}
 }
 
-func (me *Master) startLocalServer(sock string) {
+func (me *Master) Start(sock string) {
 	go me.listenLocal(sock)
 
 	for {
-		rpcServer := rpc.NewServer()
-		err := rpcServer.Register(me.masterRun)
-		if err != nil {
-			log.Fatal("could not register server", err)
-		}
-
 		conn := me.pending.WaitConnection(RPC_CHANNEL)
-		go rpcServer.ServeConn(conn)
+		go me.localRpcServer.ServeConn(conn)
 	}
 }
 
-func (me *Master) setupWorker(addr string) net.Conn {
+func (me *Master) createMirror(addr string) (net.Conn, os.Error) {
 	conn, err := DialTypedConnection(addr, RPC_CHANNEL, me.secret)
+	if err != nil { return nil, err }
+	
+	rpcId := ConnectionId()
+	rpcConn, err := DialTypedConnection(addr, rpcId, me.secret)
 	if err != nil {
-		log.Println("Failed setting up connection with: ", addr, err)
+		conn.Close()
+		return nil, err
+	}
+
+	revId := ConnectionId()
+	revConn, err := DialTypedConnection(addr, revId, me.secret)
+	if err != nil {
+		rpcConn.Close()
+		return nil, err
+	}
+	
+	req := CreateMirrorRequest{
+	RpcId: rpcId,
+	RevRpcId: revId,
+	WritableRoot: me.writableRoot,
+	}
+	rep := CreateMirrorResponse{}
+	cl := rpc.NewClient(conn)
+	err = cl.Call("WorkerDaemon.CreateMirror", &req, &rep)
+	
+	if err != nil {
+		revConn.Close()
+		rpcConn.Close()
+		return nil, err
+	}
+
+	go me.fileServerRpc.ServeConn(revConn)
+	return rpcConn, nil
+}
+
+func (me *Master) createMirrors() os.Error {
+	me.mirrorsMutex.Lock()
+	defer me.mirrorsMutex.Unlock()
+
+	// TODO - check if they are alive.
+	if len(me.mirrors) > 0 {
 		return nil
 	}
-	log.Println("done header")
-	return conn
-}
+	
+	out := make(chan net.Conn, 1)
+	for _, addr := range me.workServers {
+		go func(a string){
+			conn, err := me.createMirror(a)
+			if err != nil {
+				log.Println("nonfatal", err)
+			}
+			out <- conn
+		}(addr)
+	}
 
-func (me *Master) setupWorkers(addresses []string) {
-	for _, addr := range addresses {
-		c := me.setupWorker(addr)
+	for _, _ = range me.workServers {
+		c := <-out
 		if c != nil {
-			me.workServers = append(me.workServers, rpc.NewClient(c))
-			me.workServerConns = append(me.workServerConns, c)
+			mc := mirrorConnection{
+				rpc.NewClient(c),
+				c,
+			}
+			me.mirrors = append(me.mirrors, mc)
 		}
 	}
 
-	if len(me.workServerConns) == 0 {
-		log.Fatal("No workers available.")
+	if len(me.mirrors) == 0 {
+		return os.NewError("No workers available")
 	}
-}
-
-// StartServer starts the connection listener.  Should be invoked in a coroutine.
-func (me *Master) startServer(server interface{}, port int) {
-	out := make(chan net.Conn)
-
-	// TODO - should look at connection.LocalAddress() instead.
-	host, err := os.Hostname()
-
-	if err != nil { log.Fatal("Hostname", err) }
-	me.fileServerAddress = fmt.Sprintf("%s:%d", host, port)
-
-	go SetupServer(port, me.secret, out)
-	for {
-		conn := <-out
-		rpcServer := rpc.NewServer()
-		err := rpcServer.Register(server)
-		if err != nil {
-			log.Fatal("could not register server", err)
-		}
-		log.Println("Server started...")
-		go rpcServer.ServeConn(conn)
-	}
+	return nil
 }
 
 func (me *Master) run(req *WorkRequest, rep *WorkReply) os.Error {
+	err := me.createMirrors()
+	if err != nil { return err }
+	
+	idx := rand.Intn(len(me.mirrors))
 
-	idx := rand.Intn(len(me.workServers))
-	worker := me.workServers[idx]
-
-	req.FileServer = me.fileServerAddress
-	req.WritableRoot = me.writableRoot
-
+	// Tunnel stdin.
 	inputConn := me.pending.WaitConnection(req.StdinId)
-	destInputConn, err := DialTypedConnection(me.workServerConns[idx].RemoteAddr().String(),
+	destInputConn, err := DialTypedConnection(me.mirrors[idx].connection.RemoteAddr().String(),
 		req.StdinId, me.secret)
-	if err != nil {
-		return err
-	}
+	if err != nil { return err }
 
 	go func() {
 		HookedCopy(destInputConn, inputConn, PrintStdinSliceLen)
@@ -163,24 +190,24 @@ func (me *Master) run(req *WorkRequest, rep *WorkReply) os.Error {
 		inputConn.Close()
 	}()
 
+	mirror := me.mirrors[idx].rpcClient
 	localRep := *rep
-	log.Println("Calling out to", me.workServerConns[idx].RemoteAddr(), req)
-	err = worker.Call("WorkerDaemon.Run", &req, &localRep)
+	err = mirror.Call("Mirror.Run", &req, &localRep)
 	if err != nil {
 		return err
 	}
-	me.replayFileModifications(worker, localRep.Files)
+	me.replayFileModifications(mirror, localRep.Files)
 	*rep = localRep
 	rep.Files = nil
 
-	go me.broadcastFiles(worker, localRep.Files)
+	go me.broadcastFiles(mirror, localRep.Files)
 	return err
 }
 
 func (me *Master) broadcastFiles(origin *rpc.Client, infos []AttrResponse) {
-	for _, w := range me.workServers {
-		if w != origin {
-			go me.broadcastFilesTo(w, infos)
+	for _, w := range me.mirrors {
+		if origin != w.rpcClient {
+			go me.broadcastFilesTo(w.rpcClient, infos)
 		}
 	}
 }
@@ -188,13 +215,11 @@ func (me *Master) broadcastFiles(origin *rpc.Client, infos []AttrResponse) {
 func (me *Master) broadcastFilesTo(worker *rpc.Client, infos []AttrResponse) {
 	req := UpdateRequest{
 		Files: infos,
-		FileServer: me.fileServerAddress,
-		WritableRoot: me.writableRoot,
 	}
 	rep := UpdateResponse{}
-	err := worker.Call("WorkerDaemon.Update", &req, &rep)
+	err := worker.Call("Mirror.Update", &req, &rep)
 	if err != nil {
-		log.Println("WorkerDaemon.Update failure", err)
+		log.Println("Mirror.Update failure", err)
 	}
 }
 
@@ -225,7 +250,7 @@ func (me *Master) replayFileModifications(worker *rpc.Client, infos []AttrRespon
 		if info.Hash != nil {
 			log.Printf("Replay file content %s %x", name, info.Hash)
 			c := FetchFromContentServer(
-				worker, "WorkerDaemon.FileContent", info.FileInfo.Size, info.Hash)
+				worker, "Mirror.FileContent", info.FileInfo.Size, info.Hash)
 			hash := me.cache.Save(c)
 			if bytes.Compare(info.Hash, hash) != 0 {
 				log.Fatal("Hash mismatch.")
@@ -262,9 +287,4 @@ type LocalMaster struct {
 
 func (me *LocalMaster) Run(req *WorkRequest, rep *WorkReply) os.Error {
 	return me.master.run(req, rep)
-}
-
-func (me *LocalMaster) Quit(ignoreIn *int, ignoreOut *int) os.Error {
-	// TODO - make this actually do something.
-	return nil
 }

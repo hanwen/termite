@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"github.com/hanwen/go-fuse/termite"
 	"io"
 	"log"
@@ -18,7 +17,7 @@ func OpenConn(socket string, channel string) net.Conn {
 	if err != nil {
 		log.Fatal("Dial:", err)
 	}
-	if len(channel) != 8 {
+	if len(channel) != termite.HEADER_LEN {
 		panic(channel)
 	}
 	_, err = io.WriteString(conn, channel)
@@ -83,9 +82,8 @@ func main() {
 
 	conn := OpenConn(socket, termite.RPC_CHANNEL)
 	args[0] = binary
-	id := termite.RandomBytes(4)
 	req := termite.WorkRequest{
-		StdinId: fmt.Sprintf(termite.STDIN_FMT, id),
+		StdinId: termite.ConnectionId(),
 		Binary:  binary,
 		Argv:    args,
 		Env:     os.Environ(),
