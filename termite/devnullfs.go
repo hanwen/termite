@@ -56,3 +56,10 @@ func (me *DevNullFs) Access(name string, mode uint32) (code fuse.Status) {
 
 	return fuse.ENOENT
 }
+
+func (me *DevNullFs) Truncate(name string, offset uint64) (code fuse.Status) {
+	if name == _NULL {
+		return fuse.OK
+	}
+	return fuse.ENOENT
+}
