@@ -9,9 +9,9 @@ func (me *WorkerDaemon) httpHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "<html><head><title>Termite worker</head></title>")
 	fmt.Fprintf(w, "<h1>Termite worker status</h1>")
 	fmt.Fprintf(w, "<body>")
+
 	me.mirrorMapMutex.Lock()
 	defer me.mirrorMapMutex.Unlock()
-
 	for k, v := range me.mirrorMap {
 		fmt.Fprintf(w, "<h2>Mirror</h2><p><tt>%s</tt>\n", k)
 		v.httpHandler(w, r)

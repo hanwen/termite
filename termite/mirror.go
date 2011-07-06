@@ -3,6 +3,7 @@ package termite
 import (
 	"fmt"
 	"path/filepath"
+	"net"
 	"os"
 	"log"
 	"io/ioutil"
@@ -16,12 +17,19 @@ import (
 type Mirror struct {
 	daemon       *WorkerDaemon
 	fileServer   *rpc.Client
+	fileServerConn net.Conn
+	rpcConn      net.Conn
 	rpcFs        *RpcFs
 	writableRoot string
 
+	// key in WorkerDaemon's map.
+	key          string
+	
 	fuseFileSystemsMutex sync.Mutex
 	fuseFileSystems      []*WorkerFuseFs
 	workingFileSystems   map[*WorkerFuseFs]string
+	shuttingDown         bool
+	shutdownCond         sync.Cond
 }
 
 func (me *Mirror) ReturnFuse(wfs *WorkerFuseFs) {
@@ -31,8 +39,14 @@ func (me *Mirror) ReturnFuse(wfs *WorkerFuseFs) {
 
 	me.fuseFileSystemsMutex.Lock()
 	defer me.fuseFileSystemsMutex.Unlock()
-	me.fuseFileSystems = append(me.fuseFileSystems, wfs)
+
+	if !me.shuttingDown {
+		wfs.Stop()
+	} else {
+		me.fuseFileSystems = append(me.fuseFileSystems, wfs)
+	}
 	me.workingFileSystems[wfs] = "", false
+	me.shutdownCond.Signal()
 }
 
 func (me *Mirror) DiscardFuse(wfs *WorkerFuseFs) {
@@ -41,6 +55,32 @@ func (me *Mirror) DiscardFuse(wfs *WorkerFuseFs) {
 	me.fuseFileSystemsMutex.Lock()
 	defer me.fuseFileSystemsMutex.Unlock()
 	me.workingFileSystems[wfs] = "", false
+	me.shutdownCond.Signal()
+}
+
+func (me *Mirror) serveRpc() {
+	server := rpc.NewServer()
+	server.Register(me)
+	server.ServeConn(me.rpcConn)
+	me.Shutdown()
+}
+
+func (me *Mirror) Shutdown() {
+	me.fuseFileSystemsMutex.Lock()
+	defer me.fuseFileSystemsMutex.Unlock()
+	if me.shuttingDown {
+		return
+	}
+	me.shuttingDown = true
+	me.fileServerConn.Close()
+	me.fuseFileSystems = []*WorkerFuseFs{}
+
+	for len(me.workingFileSystems) > 0 {
+		me.shutdownCond.Wait()
+	}
+	me.rpcConn.Close()
+
+	go me.daemon.DropMirror(me)
 }
 
 func (me *Mirror) getWorkerFuseFs(name string) (f *WorkerFuseFs, err os.Error) {

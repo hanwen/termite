@@ -22,6 +22,7 @@ type WorkReply struct {
 type WorkRequest struct {
 	// Id of connection streaming stdin.
 	StdinId      string
+	Debug        bool
 	FileServer   string
 	WritableRoot string
 	Binary       string
@@ -61,15 +62,17 @@ func (me *WorkerDaemon) getMirror(rpcConn, revConn net.Conn) (*Mirror, os.Error)
 	}
 
 	mirror = &Mirror{
+		fileServerConn: revConn,
+		rpcConn: 	rpcConn,
 		fileServer:         rpc.NewClient(revConn),
 		daemon:             me,
 		workingFileSystems: make(map[*WorkerFuseFs]string),
 	}
 	mirror.rpcFs = NewRpcFs(mirror.fileServer, me.contentCache)
+	mirror.shutdownCond.L = &mirror.fuseFileSystemsMutex
 	me.mirrorMap[key] = mirror
-	server := rpc.NewServer()
-	server.Register(mirror)
-	go server.ServeConn(rpcConn)
+	mirror.key = key
+	go mirror.serveRpc()
 	return mirror, nil
 }
 
@@ -118,6 +121,13 @@ func (me *WorkerDaemon) CreateMirror(req *CreateMirrorRequest, rep *CreateMirror
 	}
 	mirror.writableRoot = req.WritableRoot
 	return nil
+}
+func (me *WorkerDaemon) DropMirror(mirror *Mirror) {
+	me.mirrorMapMutex.Lock()
+	defer me.mirrorMapMutex.Unlock()
+	
+	log.Println("dropping mirror", mirror.key)
+	me.mirrorMap[mirror.key] = nil, false
 }
 
 func (me *WorkerDaemon) RunWorkerServer(port int) {
