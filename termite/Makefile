@@ -15,7 +15,7 @@ GOFILES=\
 	misc.go \
 	rpcfs.go \
 	task.go \
-	workerdaemon.go \
+	worker.go \
 	workerstatus.go \
 
 include $(GOROOT)/src/Make.pkg
