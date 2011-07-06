@@ -38,6 +38,12 @@ func sign(conn net.Conn, challenge[] byte, secret []byte, local bool) []byte {
 
 // Symmetrical authentication using HMAC-SHA1.
 //
+// To authenticate, we do  the following:
+//
+// * Receive 20-byte random challenge
+// * Using the secret, sign (challenge + remote address + local address)
+// * Return the signature
+//
 // TODO - should probably use SSL/TLS? Figure out what is useful and
 // necessary here.
 func Authenticate(conn net.Conn, secret []byte) os.Error {

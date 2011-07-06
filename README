@@ -44,7 +44,9 @@ SECURITY
   - change uid to user 'nobody'
 
 * Worker and master use plaintext TCP/IP, and use a shared secret +
-  HMAC-SHA1 to authenticate the connection.
+  HMAC-SHA1 to authenticate the connection.  See
+  https://github.com/hanwen/termite/blob/master/termite/connection.go
+  for details.
 
   If this connection scheme gets broken,
 
