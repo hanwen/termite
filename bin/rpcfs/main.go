@@ -26,7 +26,7 @@ func main() {
 		log.Fatal("ReadFile", err)
 	}
 
-	rpcConn, err := termite.SetupClient(*server, secret)
+	rpcConn, err := termite.DialTypedConnection(*server, termite.RPC_CHANNEL, secret)
 	if err != nil {
 		log.Fatal("dialing:", err)
 	}
