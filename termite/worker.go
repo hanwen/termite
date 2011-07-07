@@ -136,11 +136,15 @@ func (me *WorkerDaemon) DropMirror(mirror *Mirror) {
 func (me *WorkerDaemon) RunWorkerServer(port int) {
 	go me.listen(port)
 
-	fmt.Println("RunWorkerServer")
-	rpcServer := rpc.NewServer()
-	rpcServer.Register(me)
-	conn := me.pending.WaitConnection(RPC_CHANNEL)
-	rpcServer.ServeConn(conn)
+	for {
+		fmt.Println("RunWorkerServer")
+		rpcServer := rpc.NewServer()
+		rpcServer.Register(me)
+		// TODO - this will crash if two clients connect with
+		// RPC_CHANNEL in a short timespan
+		conn := me.pending.WaitConnection(RPC_CHANNEL)
+		rpcServer.ServeConn(conn)
+	}
 }
 
 func (me *WorkerDaemon) listen(port int) {
