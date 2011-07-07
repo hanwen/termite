@@ -185,7 +185,7 @@ func NewMaster(cache *DiskFileCache, workers []string, secret []byte, excluded [
 	return me
 }
 
-func (me *Master) listenLocal(sock string) {
+func (me *Master) Start(sock string) {
 	absSock, err := filepath.Abs(sock)
 	if err != nil {
 		log.Fatal("abs", err)
@@ -194,7 +194,7 @@ func (me *Master) listenLocal(sock string) {
 	listener, err := net.Listen("unix", absSock)
 	defer os.Remove(absSock)
 	if err != nil {
-		log.Fatal("startLocalServer", err)
+		log.Fatal("startLocalServer: ", err)
 	}
 	err = os.Chmod(absSock, 0700)
 	if err != nil {
@@ -214,19 +214,12 @@ func (me *Master) listenLocal(sock string) {
 		if err != nil {
 			log.Fatal("listener.accept", err)
 		}
-		me.pending.Accept(conn)
-	}
-}
-
-func (me *Master) Start(sock string) {
-	go me.listenLocal(sock)
-
-	for {
-		conn := me.pending.WaitConnection(RPC_CHANNEL)
-		go func(c net.Conn) {
-			me.localRpcServer.ServeConn(conn)
-			c.Close()
-		}(conn)
+		if !me.pending.Accept(conn) {
+			go func() {
+				me.localRpcServer.ServeConn(conn)
+				conn.Close()
+			}()
+		}
 	}
 }
 

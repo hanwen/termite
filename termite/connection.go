@@ -182,14 +182,19 @@ func (me *PendingConnections) WaitConnection(id string) net.Conn {
 	return p.Conn
 }
 
-func (me *PendingConnections) Accept(conn net.Conn) os.Error {
+func (me *PendingConnections) Accept(conn net.Conn) bool {
 	idBytes := make([]byte, HEADER_LEN)
 	n, err := conn.Read(idBytes)
 	if n != HEADER_LEN || err != nil {
-		return err
+		// TODO -an error?
+		conn.Close()
+		return true
 	}
 	id := string(idBytes)
-
+	if id == RPC_CHANNEL {
+		return false
+	}
+	
 	me.connectionsMutex.Lock()
 	defer me.connectionsMutex.Unlock()
 	p := me.connections[id]
@@ -202,7 +207,7 @@ func (me *PendingConnections) Accept(conn net.Conn) os.Error {
 	}
 	p.Conn = conn
 	p.Ready.Signal()
-	return nil
+	return true
 }
 
 func DialTypedConnection(addr string, id string, secret []byte) (net.Conn, os.Error) {

@@ -134,26 +134,16 @@ func (me *WorkerDaemon) DropMirror(mirror *Mirror) {
 }
 
 func (me *WorkerDaemon) RunWorkerServer(port int) {
-	go me.listen(port)
-
-	for {
-		fmt.Println("RunWorkerServer")
-		rpcServer := rpc.NewServer()
-		rpcServer.Register(me)
-		// TODO - this will crash if two clients connect with
-		// RPC_CHANNEL in a short timespan
-		conn := me.pending.WaitConnection(RPC_CHANNEL)
-		rpcServer.ServeConn(conn)
-	}
-}
-
-func (me *WorkerDaemon) listen(port int) {
 	out := make(chan net.Conn)
 	go SetupServer(port, me.secret, out)
 	for {
 		conn := <-out
 		log.Println("Authenticated connection from", conn.RemoteAddr())
-		me.pending.Accept(conn)
+		if !me.pending.Accept(conn) {
+			rpcServer := rpc.NewServer()
+			rpcServer.Register(me)
+			go rpcServer.ServeConn(conn)
+		}
 	}
 }
 
