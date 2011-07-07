@@ -69,8 +69,6 @@ TODO
 
 * Coordinator
 
-* Reconnecting.
-
 * More sophisticated exclusion for exporting file systems.
 
 * Security review for the connection scheme.

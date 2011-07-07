@@ -143,9 +143,10 @@ func (me *mirrorConnections) tryConnect() {
 	for _, addr := range me.workers {
 		_, ok := me.mirrors[addr]
 		if ok { continue }
+		log.Println("Creating mirror on", addr)
 		mc, err := me.master.createMirror(addr, wanted)
 		if err != nil {
-			log.Println("nonfatal", err)
+			log.Println("nonfatal error creating mirror", err)
 			continue
 		}
 		mc.workerAddr = addr
@@ -160,6 +161,7 @@ type Master struct {
 	fileServerRpc *rpc.Server
 	secret        []byte
 
+	retryCount    int
 	mirrors        *mirrorConnections
 	localRpcServer *rpc.Server
 	localServer    *LocalMaster
@@ -173,6 +175,7 @@ func NewMaster(cache *DiskFileCache, workers []string, secret []byte, excluded [
 		cache:      cache,
 		fileServer: NewFsServer("/", cache, excluded),
 		secret:     secret,
+		retryCount: 3,
 	}
 	me.mirrors = newMirrorConnections(me, workers, maxJobs)
 	me.localServer = &LocalMaster{me}
@@ -289,7 +292,7 @@ func (me *Master) runOnMirror(mirror *mirrorConnection, req *WorkRequest, rep *W
 	return err
 }
 
-func (me *Master) run(req *WorkRequest, rep *WorkReply) os.Error {
+func (me *Master) runOnce(req *WorkRequest, rep *WorkReply) os.Error {
 	localRep := *rep
 	mirror, err := me.mirrors.pick()
 	if err != nil {
@@ -307,6 +310,15 @@ func (me *Master) run(req *WorkRequest, rep *WorkReply) os.Error {
 	rep.Files = nil
 
 	go me.mirrors.broadcastFiles(mirror, localRep.Files)
+	return err
+}
+
+func (me *Master) run(req *WorkRequest, rep *WorkReply) (err os.Error) {
+	err = me.runOnce(req, rep)
+	for i := 0; i < me.retryCount && err != nil; i++ {
+		log.Println("Retrying; last error:", err)
+		err = me.runOnce(req, rep)
+	}
 	return err
 }
 
