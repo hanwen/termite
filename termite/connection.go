@@ -129,7 +129,7 @@ const (
 )
 
 func init() {
-	rand.Seed(time.Nanoseconds() ^ int64(os.Getpid()))
+	rand.Seed(time.Nanoseconds() ^ (int64(os.Getpid()) << 32))
 }
 
 func ConnectionId() string {
@@ -198,7 +198,7 @@ func (me *PendingConnections) Accept(conn net.Conn) os.Error {
 		me.connections[id] = p
 	}
 	if p.Conn != nil {
-		panic("accepted the same connection id twice")
+		panic(fmt.Sprintf("accepted the same connection id twice: %s", id))
 	}
 	p.Conn = conn
 	p.Ready.Signal()
