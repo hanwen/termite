@@ -8,15 +8,17 @@ import (
 	"os"
 	"path/filepath"
 	"github.com/hanwen/go-fuse/fuse"
-	"rand"
 	"rpc"
 	"sort"
 	"sync"
 )
 
 type mirrorConnection struct {
+	workerAddr    string	// key in map.
 	rpcClient     *rpc.Client
 	connection    net.Conn
+
+	// Protected by mirrorConnections.Mutex.
 	maxJobs       int
 	availableJobs int
 }
@@ -33,24 +35,44 @@ func (me *mirrorConnection) sendFiles(infos []AttrResponse) {
 }
 
 type mirrorConnections struct {
-	sync.Mutex
-	sync.Cond
-	mirrors       []*mirrorConnection
 	master        *Master
-	availableJobs int
-	maxJobs       int
 	workers       []string
+
+	// Condition for mutex below.
+	sync.Cond
+
+	// Protects all of the below.
+	sync.Mutex
+	mirrors       map[string]*mirrorConnection
+	wantedMaxJobs int
 }
 
 func newMirrorConnections(m *Master, workers []string, maxJobs int) *mirrorConnections {
 	mc := &mirrorConnections{
 		master:  m,
-		maxJobs: maxJobs,
+		wantedMaxJobs: maxJobs,
 		workers: workers,
+		mirrors: make(map[string]*mirrorConnection),
 	}
 
 	mc.Cond.L = &mc.Mutex
 	return mc
+}
+
+func (me *mirrorConnections) availableJobs() int {
+	a := 0
+	for _, mc := range me.mirrors {
+		a += mc.availableJobs
+	}
+	return a
+}
+
+func (me *mirrorConnections) maxJobs() int {
+	a := 0
+	for _, mc := range me.mirrors {
+		a += mc.maxJobs
+	}
+	return a
 }
 
 func (me *mirrorConnections) broadcastFiles(origin *mirrorConnection, infos []AttrResponse) {
@@ -61,72 +83,74 @@ func (me *mirrorConnections) broadcastFiles(origin *mirrorConnection, infos []At
 	}
 }
 
-
 // Gets a mirrorConnection to run on.  Will block if none available
 func (me *mirrorConnections) pick() (*mirrorConnection, os.Error) {
 	me.Mutex.Lock()
 	defer me.Mutex.Unlock()
 
-	// TODO - check if they are alive.
-	if len(me.mirrors) == 0 {
-		err := me.connectAll()
-		if err != nil {
-			return nil, err
-		}
+	if me.availableJobs() <= 0 {
+		me.tryConnect()
 	}
 
-	for me.availableJobs <= 0 {
+	if me.maxJobs() == 0 {
+		// Didn't connect to anything.  Should
+		// probably direct the wrapper to compile
+		// locally.
+		return nil, os.NewError("No workers found at all.")
+	}
+
+	for me.availableJobs() == 0 {
 		me.Cond.Wait()
 	}
 
-	l := len(me.mirrors)
-	start := rand.Intn(l)
 	var found *mirrorConnection
-	for i := 0; i < l && found == nil; i++ {
-		j := (i + start) % l
-		if me.mirrors[j].availableJobs > 0 {
-			found = me.mirrors[j]
+	for _, v := range me.mirrors {
+		if v.availableJobs > 0 {
+			found = v
 		}
 	}
 	found.availableJobs--
-	me.availableJobs--
 	return found, nil
 }
 
-func (me *mirrorConnections) done(mc *mirrorConnection) {
+func (me *mirrorConnections) drop(mc *mirrorConnection, err os.Error) {
 	me.Mutex.Lock()
 	defer me.Mutex.Unlock()
-	me.availableJobs++
+
+	// TODO - should blacklist the address.
+	log.Printf("Dropping mirror %s. Reason: %s", mc.workerAddr, err)
+	mc.connection.Close()
+	me.mirrors[mc.workerAddr] = nil, false
+}
+
+func (me *mirrorConnections) jobDone(mc *mirrorConnection) {
+	me.Mutex.Lock()
+	defer me.Mutex.Unlock()
+
 	mc.availableJobs++
 	me.Cond.Signal()
 }
 
-func (me *mirrorConnections) connectAll() os.Error {
-	out := make(chan *mirrorConnection, 1)
-	workerJobs := 1 + me.maxJobs/len(me.workers)
+// Tries to connect to one extra worker.
+func (me *mirrorConnections) tryConnect() {
+	// We want to max out capacity of each worker, as that helps
+	// with cache hit rates on the worker.
+	wanted := me.wantedMaxJobs - me.maxJobs()
+	if wanted <= 0 {
+		return
+	}
+
 	for _, addr := range me.workers {
-		go func(a string) {
-			conn, err := me.master.createMirror(a, workerJobs)
-			if err != nil {
-				log.Println("nonfatal", err)
-			}
-			out <- conn
-		}(addr)
-	}
-
-	me.availableJobs = 0
-	for _, _ = range me.workers {
-		c := <-out
-		if c != nil {
-			me.mirrors = append(me.mirrors, c)
-			me.availableJobs += c.availableJobs
+		_, ok := me.mirrors[addr]
+		if ok { continue }
+		mc, err := me.master.createMirror(addr, wanted)
+		if err != nil {
+			log.Println("nonfatal", err)
+			continue
 		}
+		mc.workerAddr = addr
+		me.mirrors[addr] = mc
 	}
-
-	if len(me.mirrors) == 0 {
-		return os.NewError("No workers available")
-	}
-	return nil
 }
 
 
@@ -252,20 +276,15 @@ func (me *Master) createMirror(addr string, jobs int) (*mirrorConnection, os.Err
 	}, nil
 }
 
-func (me *Master) runOnMirror(req *WorkRequest, rep *WorkReply) (*mirrorConnection, os.Error) {
-	mirror, err := me.mirrors.pick()
-	if err != nil {
-		return nil, err
-	}
-	defer me.mirrors.done(mirror)
+func (me *Master) runOnMirror(mirror *mirrorConnection, req *WorkRequest, rep *WorkReply) os.Error {
+	defer me.mirrors.jobDone(mirror)
 
 	// Tunnel stdin.
 	inputConn := me.pending.WaitConnection(req.StdinId)
-
 	destInputConn, err := DialTypedConnection(mirror.connection.RemoteAddr().String(),
 		req.StdinId, me.secret)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	go func() {
 		HookedCopy(destInputConn, inputConn, PrintStdinSliceLen)
@@ -274,16 +293,22 @@ func (me *Master) runOnMirror(req *WorkRequest, rep *WorkReply) (*mirrorConnecti
 	}()
 
 	err = mirror.rpcClient.Call("Mirror.Run", &req, &rep)
-	// TODO - should disconnect mirror in case of error?
-	return mirror, err
+	return err
 }
 
 func (me *Master) run(req *WorkRequest, rep *WorkReply) os.Error {
 	localRep := *rep
-	mirror, err := me.runOnMirror(req, &localRep)
+	mirror, err := me.mirrors.pick()
 	if err != nil {
 		return err
 	}
+
+	err = me.runOnMirror(mirror, req, &localRep)
+	if err != nil {
+		me.mirrors.drop(mirror, err)
+		return err
+	}
+
 	me.replayFileModifications(mirror.rpcClient, localRep.Files)
 	*rep = localRep
 	rep.Files = nil
