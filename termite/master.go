@@ -15,8 +15,8 @@ import (
 )
 
 type mirrorConnection struct {
-	rpcClient  *rpc.Client
-	connection net.Conn
+	rpcClient     *rpc.Client
+	connection    net.Conn
 	maxJobs       int
 	availableJobs int
 }
@@ -32,21 +32,21 @@ func (me *mirrorConnection) sendFiles(infos []AttrResponse) {
 	}
 }
 
-type mirrorConnections struct {	
+type mirrorConnections struct {
 	sync.Mutex
 	sync.Cond
-	mirrors      []*mirrorConnection
-	master       *Master
+	mirrors       []*mirrorConnection
+	master        *Master
 	availableJobs int
 	maxJobs       int
-	workers  []string
+	workers       []string
 }
 
 func newMirrorConnections(m *Master, workers []string, maxJobs int) *mirrorConnections {
 	mc := &mirrorConnections{
-	master: m,
-	maxJobs: maxJobs,
-	workers: workers,
+		master:  m,
+		maxJobs: maxJobs,
+		workers: workers,
 	}
 
 	mc.Cond.L = &mc.Mutex
@@ -70,18 +70,20 @@ func (me *mirrorConnections) pick() (*mirrorConnection, os.Error) {
 	// TODO - check if they are alive.
 	if len(me.mirrors) == 0 {
 		err := me.connectAll()
-		if err != nil { return nil, err }
+		if err != nil {
+			return nil, err
+		}
 	}
-	
+
 	for me.availableJobs <= 0 {
 		me.Cond.Wait()
 	}
-	
+
 	l := len(me.mirrors)
 	start := rand.Intn(l)
-	var found *mirrorConnection 
+	var found *mirrorConnection
 	for i := 0; i < l && found == nil; i++ {
-		j := (i+start) % l
+		j := (i + start) % l
 		if me.mirrors[j].availableJobs > 0 {
 			found = me.mirrors[j]
 		}
@@ -101,7 +103,7 @@ func (me *mirrorConnections) done(mc *mirrorConnection) {
 
 func (me *mirrorConnections) connectAll() os.Error {
 	out := make(chan *mirrorConnection, 1)
-	workerJobs := 1+me.maxJobs/len(me.workers)
+	workerJobs := 1 + me.maxJobs/len(me.workers)
 	for _, addr := range me.workers {
 		go func(a string) {
 			conn, err := me.master.createMirror(a, workerJobs)
@@ -126,7 +128,6 @@ func (me *mirrorConnections) connectAll() os.Error {
 	}
 	return nil
 }
-
 
 
 type Master struct {
@@ -240,14 +241,14 @@ func (me *Master) createMirror(addr string, jobs int) (*mirrorConnection, os.Err
 		rpcConn.Close()
 		return nil, err
 	}
-	
+
 	go me.fileServerRpc.ServeConn(revConn)
 
 	return &mirrorConnection{
-	rpcClient: rpc.NewClient(rpcConn),
-	connection: rpcConn,
-	maxJobs: rep.MaxJobCount,
-	availableJobs: rep.MaxJobCount,
+		rpcClient:     rpc.NewClient(rpcConn),
+		connection:    rpcConn,
+		maxJobs:       rep.MaxJobCount,
+		availableJobs: rep.MaxJobCount,
 	}, nil
 }
 
@@ -257,13 +258,15 @@ func (me *Master) runOnMirror(req *WorkRequest, rep *WorkReply) (*mirrorConnecti
 		return nil, err
 	}
 	defer me.mirrors.done(mirror)
-	
+
 	// Tunnel stdin.
 	inputConn := me.pending.WaitConnection(req.StdinId)
 
 	destInputConn, err := DialTypedConnection(mirror.connection.RemoteAddr().String(),
 		req.StdinId, me.secret)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	go func() {
 		HookedCopy(destInputConn, inputConn, PrintStdinSliceLen)
 		destInputConn.Close()
@@ -278,7 +281,9 @@ func (me *Master) runOnMirror(req *WorkRequest, rep *WorkReply) (*mirrorConnecti
 func (me *Master) run(req *WorkRequest, rep *WorkReply) os.Error {
 	localRep := *rep
 	mirror, err := me.runOnMirror(req, &localRep)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	me.replayFileModifications(mirror.rpcClient, localRep.Files)
 	*rep = localRep
 	rep.Files = nil

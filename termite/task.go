@@ -42,7 +42,7 @@ func (me *WorkerFuseFs) Stop() {
 
 func (me *WorkerTask) Run() os.Error {
 	me.fuseFs.MountState.Debug = me.WorkRequest.Debug
-	
+
 	rStdout, wStdout, err := os.Pipe()
 	if err != nil {
 		return err

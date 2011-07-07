@@ -28,7 +28,7 @@ func (me *Mirror) httpHandler(w http.ResponseWriter, r *http.Request) {
 	if me.shuttingDown {
 		fmt.Fprintf(w, "<p><b>shutting down</b>")
 	}
-	
+
 	for _, v := range me.workingFileSystems {
 		fmt.Fprintf(w, "<p>FS:\n%s\n", v)
 	}

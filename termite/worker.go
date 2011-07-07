@@ -39,8 +39,8 @@ type WorkerDaemon struct {
 
 	contentCache  *DiskFileCache
 	contentServer *ContentServer
-	maxJobCount int
-	pending *PendingConnections
+	maxJobCount   int
+	pending       *PendingConnections
 
 	// TODO - deal with closed connections.
 	mirrorMapMutex sync.Mutex
@@ -65,7 +65,7 @@ func (me *WorkerDaemon) getMirror(rpcConn, revConn net.Conn, reserveCount int) (
 	if remaining < reserveCount {
 		reserveCount = remaining
 	}
-	
+
 	mirror := NewMirror(me, rpcConn, revConn)
 	mirror.maxJobCount = reserveCount
 	key := fmt.Sprintf("%v", rpcConn.RemoteAddr())
@@ -117,7 +117,9 @@ func (me *WorkerDaemon) CreateMirror(req *CreateMirrorRequest, rep *CreateMirror
 	rpcConn := me.pending.WaitConnection(req.RpcId)
 	revConn := me.pending.WaitConnection(req.RevRpcId)
 	mirror, err := me.getMirror(rpcConn, revConn, req.MaxJobCount)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	mirror.writableRoot = req.WritableRoot
 
 	rep.MaxJobCount = mirror.maxJobCount
@@ -126,7 +128,7 @@ func (me *WorkerDaemon) CreateMirror(req *CreateMirrorRequest, rep *CreateMirror
 func (me *WorkerDaemon) DropMirror(mirror *Mirror) {
 	me.mirrorMapMutex.Lock()
 	defer me.mirrorMapMutex.Unlock()
-	
+
 	log.Println("dropping mirror", mirror.key)
 	me.mirrorMap[mirror.key] = nil, false
 }

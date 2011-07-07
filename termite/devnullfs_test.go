@@ -27,7 +27,7 @@ func TestDevNullFs(t *testing.T) {
 	wd, clean := setupDevNullFs()
 	defer clean()
 
-	err := ioutil.WriteFile(wd + "/null", []byte("ignored"), 0644)
+	err := ioutil.WriteFile(wd+"/null", []byte("ignored"), 0644)
 	if err != nil {
 		t.Error(err)
 	}
@@ -40,4 +40,3 @@ func TestDevNullFs(t *testing.T) {
 		t.Error("Should have 0 length read.")
 	}
 }
-	

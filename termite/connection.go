@@ -23,15 +23,15 @@ func RandomBytes(n int) []byte {
 	return c
 }
 
-func sign(conn net.Conn, challenge[] byte, secret []byte, local bool) []byte {
+func sign(conn net.Conn, challenge []byte, secret []byte, local bool) []byte {
 	h := hmac.NewSHA1(secret)
 	h.Write(challenge)
 	l := conn.LocalAddr()
 	r := conn.RemoteAddr()
 	if local {
-		h.Write([]byte(fmt.Sprintf("%v-%v",  l, r)))
+		h.Write([]byte(fmt.Sprintf("%v-%v", l, r)))
 	} else {
-		h.Write([]byte(fmt.Sprintf("%v-%v",  r, l)))
+		h.Write([]byte(fmt.Sprintf("%v-%v", r, l)))
 	}
 	return h.Sum()
 }
@@ -54,7 +54,7 @@ func Authenticate(conn net.Conn, secret []byte) os.Error {
 		return err
 	}
 	expected := sign(conn, challenge, secret, true)
-	
+
 	remoteChallenge := make([]byte, challengeLength)
 	n, err := conn.Read(remoteChallenge)
 	if err != nil {
@@ -62,7 +62,7 @@ func Authenticate(conn net.Conn, secret []byte) os.Error {
 	}
 	remoteChallenge = remoteChallenge[:n]
 	_, err = conn.Write(sign(conn, remoteChallenge, secret, false))
-	
+
 	response := make([]byte, len(expected))
 	n, err = conn.Read(response)
 	if err != nil {
@@ -95,7 +95,7 @@ func Authenticate(conn net.Conn, secret []byte) os.Error {
 }
 
 func SetupServer(port int, secret []byte, output chan net.Conn) {
-	host, _  := os.Hostname()
+	host, _ := os.Hostname()
 	addr := fmt.Sprintf("%s:%d", host, port)
 	// TODO - also listen on localhost.
 	listener, err := net.Listen("tcp", addr)
@@ -128,7 +128,7 @@ const (
 	HEADER_LEN  = 8
 )
 
-func init () {
+func init() {
 	rand.Seed(time.Nanoseconds() ^ int64(os.Getpid()))
 }
 

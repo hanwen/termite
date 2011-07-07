@@ -14,31 +14,31 @@ import (
 
 // State associated with one master.
 type Mirror struct {
-	daemon       *WorkerDaemon
-	fileServer   *rpc.Client
+	daemon         *WorkerDaemon
+	fileServer     *rpc.Client
 	fileServerConn net.Conn
-	rpcConn      net.Conn
-	rpcFs        *RpcFs
-	writableRoot string
+	rpcConn        net.Conn
+	rpcFs          *RpcFs
+	writableRoot   string
 
 	// key in WorkerDaemon's map.
-	key          string
+	key string
 
-	Waiting     int
-	maxJobCount int
+	Waiting              int
+	maxJobCount          int
 	fuseFileSystemsMutex sync.Mutex
 	fuseFileSystems      []*WorkerFuseFs
 	workingFileSystems   map[*WorkerFuseFs]string
 	shuttingDown         bool
-	cond sync.Cond
+	cond                 sync.Cond
 }
 
 func NewMirror(daemon *WorkerDaemon, rpcConn, revConn net.Conn) *Mirror {
 	log.Println("Mirror for", rpcConn, revConn)
 
 	mirror := &Mirror{
-		fileServerConn: revConn,
-		rpcConn: 	rpcConn,
+		fileServerConn:     revConn,
+		rpcConn:            rpcConn,
 		fileServer:         rpc.NewClient(revConn),
 		daemon:             daemon,
 		workingFileSystems: make(map[*WorkerFuseFs]string),
@@ -113,7 +113,7 @@ func (me *Mirror) getWorkerFuseFs(name string) (f *WorkerFuseFs, err os.Error) {
 	if me.shuttingDown {
 		return nil, os.NewError("shutting down")
 	}
-	
+
 	l := len(me.fuseFileSystems)
 	if l > 0 {
 		f = me.fuseFileSystems[l-1]
@@ -238,7 +238,7 @@ func (me *Mirror) newWorkerTask(req *WorkRequest, rep *WorkReply) (*WorkerTask, 
 		stdinConn:    stdin,
 		masterWorker: me,
 		fuseFs:       fuseFs,
-	},nil
+	}, nil
 }
 
 func (me *Mirror) Status(req *StatusRequest, rep *StatusReply) os.Error {
