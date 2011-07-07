@@ -130,13 +130,37 @@ func (me *WorkerTask) Run() os.Error {
 }
 
 func (me *WorkerTask) VisitFile(path string, osInfo *os.FileInfo) {
+	me.savePath(path, osInfo) 
+}
+
+func (me *WorkerTask) VisitDir(path string, osInfo *os.FileInfo) bool {
+	me.savePath(path, osInfo)
+
+	// TODO - save dir to delete.
+	return true
+}
+
+func (me *WorkerTask) savePath(path string, osInfo *os.FileInfo) {
+	if !strings.HasPrefix(path, me.fuseFs.rwDir + string(filepath.Separator)) {
+		log.Println("Weird file", path)
+		return
+	}
+
 	fi := AttrResponse{
 		FileInfo: osInfo,
+		Path: path[len(me.fuseFs.rwDir):],
+	}
+	if !strings.HasPrefix(fi.Path, me.masterWorker.writableRoot) || fi.Path == "/"+_DELETIONS {
+		return
 	}
 
 	ftype := osInfo.Mode &^ 07777
 	switch ftype {
+	case syscall.S_IFDIR:
+		// nothing.
 	case syscall.S_IFREG:
+		// TODO - Rename directly into content cache to skip
+		// the write.
 		fi.Hash = me.masterWorker.daemon.contentCache.SavePath(path)
 	case syscall.S_IFLNK:
 		val, err := os.Readlink(path)
@@ -149,31 +173,11 @@ func (me *WorkerTask) VisitFile(path string, osInfo *os.FileInfo) {
 		log.Fatalf("Unknown file type %o", ftype)
 	}
 
-	me.savePath(path, fi)
-
-	// TODO - error handling.
-	os.Remove(path)
-}
-
-func (me *WorkerTask) savePath(path string, fi AttrResponse) {
-	if !strings.HasPrefix(path, me.fuseFs.rwDir) {
-		log.Println("Weird file", path)
-		return
+	if !osInfo.IsDirectory() {
+		// TODO - error handling.
+		os.Remove(path)
 	}
-
-	fi.Path = path[len(me.fuseFs.rwDir):]
-	if fi.Path == "/"+_DELETIONS {
-		return
-	}
-
 	me.WorkReply.Files = append(me.WorkReply.Files, fi)
-}
-
-func (me *WorkerTask) VisitDir(path string, osInfo *os.FileInfo) bool {
-	me.savePath(path, AttrResponse{FileInfo: osInfo})
-
-	// TODO - save dir to delete.
-	return true
 }
 
 func (me *WorkerTask) fillReply() os.Error {
