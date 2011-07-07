@@ -24,7 +24,6 @@ func main() {
 
 	daemon := termite.NewWorkerDaemon(secret, *cachedir, *jobs)
 	daemon.ChrootBinary = *chrootBinary
-	go daemon.RunWorkerServer(*port)
-
-	daemon.ServeHTTPStatus(*httpPort)
+	go daemon.ServeHTTPStatus(*httpPort)
+	daemon.RunWorkerServer(*port)
 }
