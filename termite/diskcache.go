@@ -1,6 +1,7 @@
 package termite
 
 import (
+	"bytes"
 	"os"
 	"fmt"
 	"crypto"
@@ -68,7 +69,7 @@ func NewHashWriter(dir string, hashfunc crypto.Hash) *HashWriter {
 
 func (me *HashWriter) Write(p []byte) (n int, err os.Error) {
 	n, err = me.dest.Write(p)
-	me.hasher.Write(p)
+	me.hasher.Write(p[:n])
 	return n, err
 }
 
@@ -80,11 +81,16 @@ func (me *HashWriter) Close() os.Error {
 	}
 	src := me.dest.Name()
 	dir, _ := filepath.Split(src)
-	sumpath := HashPath(dir, me.hasher.Sum())
-	if fi, _ := os.Lstat(sumpath); fi == nil {
-		err = os.Rename(src, sumpath)
-	} else {
-		os.Remove(src)
+	sum := me.hasher.Sum()
+	sumpath := HashPath(dir, sum)
+
+	log.Printf("saving hash %x\n", sum)
+	err = os.Rename(src, sumpath)
+	if err != nil {
+		if fi, _ := os.Lstat(sumpath); fi == nil {
+			log.Println("already have", sumpath)
+			os.Remove(src)
+		}
 	}
 	return err
 }
@@ -96,8 +102,17 @@ func (me *DiskFileCache) SavePath(path string) (md5 []byte) {
 	}
 	defer f.Close()
 
+	return me.SaveStream(f)
+}
+
+func (me *DiskFileCache) Save(content []byte) (md5 []byte) {
+	buf := bytes.NewBuffer(content)
+	return me.SaveStream(buf)
+}
+
+func (me *DiskFileCache) SaveStream(input io.Reader) (md5 []byte) {
 	dup := NewHashWriter(me.dir, crypto.MD5)
-	_, err = io.Copy(dup, f)
+	_, err := io.Copy(dup, input)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -106,27 +121,4 @@ func (me *DiskFileCache) SavePath(path string) (md5 []byte) {
 		log.Fatal(err)
 	}
 	return dup.hasher.Sum()
-}
-
-func (me *DiskFileCache) Save(content []byte) (md5 []byte) {
-	h := crypto.MD5.New()
-
-	// TODO: make atomic.
-	h.Write(content)
-	sum := h.Sum()
-	name := me.Path(sum)
-	fi, err := os.Lstat(name)
-	if fi != nil {
-		return sum
-	}
-
-	f, err := os.Create(name)
-	if err != nil {
-		log.Fatal("Create err:", err)
-	}
-	f.Write(content)
-	f.Close()
-
-	log.Printf("saved Hash %x\n", sum)
-	return sum
 }

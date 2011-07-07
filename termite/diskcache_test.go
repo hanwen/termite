@@ -1,6 +1,7 @@
 package termite
 
 import (
+	"bytes"
 	"crypto"
 	"testing"
 	"io/ioutil"
@@ -28,4 +29,33 @@ func TestDiskCache(t *testing.T) {
 	if !cache.HasHash(checksum) {
 		t.Fatal("path gone")
 	}
+}
+
+func TestDiskCacheStream(t *testing.T) {
+	content := []byte("hello")
+
+	d, _ := ioutil.TempDir("", "")
+	cache := NewDiskFileCache(d)
+
+	h := crypto.MD5.New()
+	h.Write(content)
+	checksum := h.Sum()
+
+	b := bytes.NewBuffer(content)
+	savedSum := cache.SaveStream(b)
+	if string(savedSum) != string(checksum) {
+		t.Fatal("mismatch")
+	}
+	if !cache.HasHash(checksum) {
+		t.Fatal("path gone")
+	}
+	
+	data, err := ioutil.ReadFile(cache.Path(checksum))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if bytes.Compare(data, content) != 0 {
+		t.Error("compare.")
+	}		
 }
