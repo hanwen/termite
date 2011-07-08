@@ -12,7 +12,7 @@ func main() {
 	cachedir := flag.String("cachedir", "/tmp/fsserver-cache", "content cache")
 	workers := flag.String("workers", "localhost:1235", "comma separated list of worker addresses")
 	socket := flag.String("socket", ".termite-socket", "socket to listen for commands")
-	exclude := flag.String("exclude", "/sys,/proc,/dev,/selinux", "prefixes to not export.")
+	exclude := flag.String("exclude", "/sys,/proc,/dev,/selinux,/cgroup", "prefixes to not export.")
 	secretFile := flag.String("secret", "/tmp/secret.txt", "file containing password.")
 	jobs := flag.Int("jobs", 1, "number of jobs to run")
 
