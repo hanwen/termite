@@ -37,7 +37,7 @@ func (me *Mirror) ReturnFuse(wfs *WorkerFuseFs) {
 	me.fuseFileSystemsMutex.Lock()
 	defer me.fuseFileSystemsMutex.Unlock()
 
-	if !me.shuttingDown {
+	if me.shuttingDown {
 		wfs.Stop()
 	} else {
 		me.fuseFileSystems = append(me.fuseFileSystems, wfs)

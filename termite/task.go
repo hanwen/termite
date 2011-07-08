@@ -106,6 +106,7 @@ func (me *WorkerTask) Run() os.Error {
 	err = me.fillReply()
 	if err != nil {
 		// TODO - anything else needed to discard?
+		log.Println("discarding FUSE due to error:", err)
 		me.mirror.DiscardFuse(me.fuseFs)
 	} else {
 		me.mirror.ReturnFuse(me.fuseFs)
