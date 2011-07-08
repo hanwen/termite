@@ -95,6 +95,29 @@ func (me *HashWriter) Close() os.Error {
 	return err
 }
 
+func (me *DiskFileCache) DestructiveSavePath(path string) (md5 []byte) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil
+	}
+	h := crypto.MD5.New()
+	_, err = io.Copy(h, f)
+	if err != nil {
+		log.Fatal("DestructiveSavePath:", err)
+	}
+
+	s := h.Sum()
+	p := me.Path(s)
+	err = os.Rename(path, p)
+	if err != nil {
+		if fi, _ := os.Lstat(p); fi != nil {
+			return s
+		}
+		log.Fatal("DestructiveSavePath:", err)
+	}
+	return s
+}
+
 func (me *DiskFileCache) SavePath(path string) (md5 []byte) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -122,3 +145,4 @@ func (me *DiskFileCache) SaveStream(input io.Reader) (md5 []byte) {
 	}
 	return dup.hasher.Sum()
 }
+
