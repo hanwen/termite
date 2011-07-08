@@ -1,4 +1,5 @@
 package termite
+
 import (
 	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/go-fuse/unionfs"
@@ -40,11 +41,13 @@ func (me *Mirror) ReturnFuse(wfs *WorkerFuseFs) {
 func newWorkerFuseFs(workerDir string, rpcFs fuse.FileSystem, writableRoot string) (*WorkerFuseFs, os.Error) {
 	tmpDir, err := ioutil.TempDir(
 		filepath.Join(workerDir, "tmp"), "task")
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	w := WorkerFuseFs{
 		tmpDir: tmpDir,
 	}
-	
+
 	type dirInit struct {
 		dst *string
 		val string

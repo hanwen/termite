@@ -19,7 +19,7 @@ func TestDiskCache(t *testing.T) {
 
 	d, _ := ioutil.TempDir("", "")
 	defer os.RemoveAll(d)
-	
+
 	cache := NewDiskFileCache(d)
 	checksum := md5(content)
 
@@ -38,14 +38,16 @@ func TestDiskCache(t *testing.T) {
 
 func TestDiskCacheDestructiveSave(t *testing.T) {
 	content := []byte("hello")
-	
+
 	d, _ := ioutil.TempDir("", "")
 	defer os.RemoveAll(d)
 	cache := NewDiskFileCache(d)
 
 	fn := d + "/test"
 	err := ioutil.WriteFile(fn, content, 0644)
-	if err != nil { t.Error(err) }
+	if err != nil {
+		t.Error(err)
+	}
 
 	saved := cache.DestructiveSavePath(fn)
 	if string(saved) != string(md5(content)) {
@@ -57,7 +59,9 @@ func TestDiskCacheDestructiveSave(t *testing.T) {
 	}
 
 	err = ioutil.WriteFile(fn, content, 0644)
-	if err != nil { t.Error(err) }
+	if err != nil {
+		t.Error(err)
+	}
 
 	saved = cache.DestructiveSavePath(fn)
 	if saved == nil || string(saved) != string(md5(content)) {
@@ -84,7 +88,7 @@ func TestDiskCacheStream(t *testing.T) {
 	if !cache.HasHash(checksum) {
 		t.Fatal("path gone")
 	}
-	
+
 	data, err := ioutil.ReadFile(cache.Path(checksum))
 	if err != nil {
 		t.Fatal(err)
@@ -92,5 +96,5 @@ func TestDiskCacheStream(t *testing.T) {
 
 	if bytes.Compare(data, content) != 0 {
 		t.Error("compare.")
-	}		
+	}
 }

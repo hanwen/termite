@@ -14,9 +14,9 @@ import (
 )
 
 type mirrorConnection struct {
-	workerAddr    string	// key in map.
-	rpcClient     *rpc.Client
-	connection    net.Conn
+	workerAddr string // key in map.
+	rpcClient  *rpc.Client
+	connection net.Conn
 
 	// Protected by mirrorConnections.Mutex.
 	maxJobs       int
@@ -35,8 +35,8 @@ func (me *mirrorConnection) sendFiles(infos []AttrResponse) {
 }
 
 type mirrorConnections struct {
-	master        *Master
-	workers       []string
+	master  *Master
+	workers []string
 
 	// Condition for mutex below.
 	sync.Cond
@@ -49,10 +49,10 @@ type mirrorConnections struct {
 
 func newMirrorConnections(m *Master, workers []string, maxJobs int) *mirrorConnections {
 	mc := &mirrorConnections{
-		master:  m,
+		master:        m,
 		wantedMaxJobs: maxJobs,
-		workers: workers,
-		mirrors: make(map[string]*mirrorConnection),
+		workers:       workers,
+		mirrors:       make(map[string]*mirrorConnection),
 	}
 
 	mc.Cond.L = &mc.Mutex
@@ -142,7 +142,9 @@ func (me *mirrorConnections) tryConnect() {
 
 	for _, addr := range me.workers {
 		_, ok := me.mirrors[addr]
-		if ok { continue }
+		if ok {
+			continue
+		}
 		log.Println("Creating mirror on", addr)
 		mc, err := me.master.createMirror(addr, wanted)
 		if err != nil {
@@ -161,7 +163,7 @@ type Master struct {
 	fileServerRpc *rpc.Server
 	secret        []byte
 
-	retryCount    int
+	retryCount     int
 	mirrors        *mirrorConnections
 	localRpcServer *rpc.Server
 	localServer    *LocalMaster

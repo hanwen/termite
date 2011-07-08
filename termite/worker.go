@@ -85,7 +85,7 @@ func NewWorkerDaemon(secret []byte, workerDir string, jobs int) *WorkerDaemon {
 		contentServer: &ContentServer{Cache: cache},
 		pending:       NewPendingConnections(),
 		maxJobCount:   jobs,
-		workerDir: workerDir,
+		workerDir:     workerDir,
 	}
 	return w
 }

@@ -194,7 +194,7 @@ func (me *PendingConnections) Accept(conn net.Conn) bool {
 	if id == RPC_CHANNEL {
 		return false
 	}
-	
+
 	me.connectionsMutex.Lock()
 	defer me.connectionsMutex.Unlock()
 	p := me.connections[id]

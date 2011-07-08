@@ -22,8 +22,8 @@ type WorkerTask struct {
 	fuseFs *WorkerFuseFs
 	*WorkRequest
 	*WorkReply
-	stdinConn    net.Conn
-	mirror *Mirror
+	stdinConn net.Conn
+	mirror    *Mirror
 }
 
 func (me *WorkerTask) Run() os.Error {
@@ -117,9 +117,9 @@ func (me *WorkerTask) Run() os.Error {
 
 func (me *WorkerTask) fillReply() os.Error {
 	saver := &fileSaver{
-	rwDir: me.fuseFs.rwDir,
-	prefix: me.mirror.writableRoot,
-	cache: me.mirror.daemon.contentCache,
+		rwDir:  me.fuseFs.rwDir,
+		prefix: me.mirror.writableRoot,
+		cache:  me.mirror.daemon.contentCache,
 	}
 	saver.scanBackingStore()
 	me.WorkReply.Files = saver.files
@@ -127,15 +127,15 @@ func (me *WorkerTask) fillReply() os.Error {
 }
 
 type fileSaver struct {
-	rwDir string
+	rwDir  string
 	prefix string
-	err os.Error
-	files []AttrResponse
-	cache *DiskFileCache
+	err    os.Error
+	files  []AttrResponse
+	cache  *DiskFileCache
 }
 
 func (me *fileSaver) VisitFile(path string, osInfo *os.FileInfo) {
-	me.savePath(path, osInfo) 
+	me.savePath(path, osInfo)
 }
 
 func (me *fileSaver) VisitDir(path string, osInfo *os.FileInfo) bool {
@@ -156,7 +156,7 @@ func (me *fileSaver) savePath(path string, osInfo *os.FileInfo) {
 
 	fi := AttrResponse{
 		FileInfo: osInfo,
-		Path: path[len(me.rwDir):],
+		Path:     path[len(me.rwDir):],
 	}
 	if !strings.HasPrefix(fi.Path, me.prefix) || fi.Path == "/"+_DELETIONS {
 		return
@@ -215,7 +215,7 @@ func (me *fileSaver) scanBackingStore() os.Error {
 			return err
 		}
 	}
-	
+
 	filepath.Walk(me.rwDir, me, nil)
 	return nil
 }

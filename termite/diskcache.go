@@ -151,4 +151,3 @@ func (me *DiskFileCache) SaveStream(input io.Reader) (md5 []byte) {
 	}
 	return dup.hasher.Sum()
 }
-

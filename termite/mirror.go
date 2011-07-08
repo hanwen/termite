@@ -153,11 +153,11 @@ func (me *Mirror) newWorkerTask(req *WorkRequest, rep *WorkReply) (*WorkerTask, 
 	}
 	stdin := me.daemon.pending.WaitConnection(req.StdinId)
 	return &WorkerTask{
-		WorkRequest:  req,
-		WorkReply:    rep,
-		stdinConn:    stdin,
-		mirror: me,
-		fuseFs:       fuseFs,
+		WorkRequest: req,
+		WorkReply:   rep,
+		stdinConn:   stdin,
+		mirror:      me,
+		fuseFs:      fuseFs,
 	}, nil
 }
 
