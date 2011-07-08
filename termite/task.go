@@ -12,32 +12,18 @@ import (
 	"io/ioutil"
 	"io"
 	"github.com/hanwen/go-fuse/fuse"
-	"github.com/hanwen/go-fuse/unionfs"
 	"os/user"
 	"strings"
 	"syscall"
 	"sync"
 )
 
-type WorkerFuseFs struct {
-	rwDir  string
-	tmpDir string
-	mount  string
-	*fuse.MountState
-	unionFs *unionfs.UnionFs
-}
-
 type WorkerTask struct {
 	fuseFs *WorkerFuseFs
 	*WorkRequest
 	*WorkReply
 	stdinConn    net.Conn
-	masterWorker *Mirror
-}
-
-func (me *WorkerFuseFs) Stop() {
-	me.MountState.Unmount()
-	os.RemoveAll(me.tmpDir)
+	mirror *Mirror
 }
 
 func (me *WorkerTask) Run() os.Error {
@@ -66,7 +52,7 @@ func (me *WorkerTask) Run() os.Error {
 		return err
 	}
 
-	chroot := me.masterWorker.daemon.ChrootBinary
+	chroot := me.mirror.daemon.ChrootBinary
 	cmd := []string{chroot, "-dir", me.WorkRequest.Dir,
 		"-uid", fmt.Sprintf("%d", nobody.Uid), "-gid", fmt.Sprintf("%d", nobody.Gid),
 		"-binary", me.WorkRequest.Binary,
@@ -121,36 +107,58 @@ func (me *WorkerTask) Run() os.Error {
 	err = me.fillReply()
 	if err != nil {
 		// TODO - anything else needed to discard?
-		me.masterWorker.DiscardFuse(me.fuseFs)
+		me.mirror.DiscardFuse(me.fuseFs)
 	} else {
-		me.masterWorker.ReturnFuse(me.fuseFs)
+		me.mirror.ReturnFuse(me.fuseFs)
 	}
 
 	return err
 }
 
-func (me *WorkerTask) VisitFile(path string, osInfo *os.FileInfo) {
+func (me *WorkerTask) fillReply() os.Error {
+	saver := &fileSaver{
+	rwDir: me.fuseFs.rwDir,
+	prefix: me.mirror.writableRoot,
+	cache: me.mirror.daemon.contentCache,
+	}
+	saver.scanBackingStore()
+	me.WorkReply.Files = saver.files
+	return saver.err
+}
+
+type fileSaver struct {
+	rwDir string
+	prefix string
+	err os.Error
+	files []AttrResponse
+	cache *DiskFileCache
+}
+
+func (me *fileSaver) VisitFile(path string, osInfo *os.FileInfo) {
 	me.savePath(path, osInfo) 
 }
 
-func (me *WorkerTask) VisitDir(path string, osInfo *os.FileInfo) bool {
+func (me *fileSaver) VisitDir(path string, osInfo *os.FileInfo) bool {
 	me.savePath(path, osInfo)
 
 	// TODO - save dir to delete.
-	return true
+	return me.err == nil
 }
 
-func (me *WorkerTask) savePath(path string, osInfo *os.FileInfo) {
-	if !strings.HasPrefix(path, me.fuseFs.rwDir + string(filepath.Separator)) {
+func (me *fileSaver) savePath(path string, osInfo *os.FileInfo) {
+	if me.err != nil {
+		return
+	}
+	if !strings.HasPrefix(path, me.rwDir) {
 		log.Println("Weird file", path)
 		return
 	}
 
 	fi := AttrResponse{
 		FileInfo: osInfo,
-		Path: path[len(me.fuseFs.rwDir):],
+		Path: path[len(me.rwDir):],
 	}
-	if !strings.HasPrefix(fi.Path, me.masterWorker.writableRoot) || fi.Path == "/"+_DELETIONS {
+	if !strings.HasPrefix(fi.Path, me.prefix) || fi.Path == "/"+_DELETIONS {
 		return
 	}
 
@@ -159,15 +167,13 @@ func (me *WorkerTask) savePath(path string, osInfo *os.FileInfo) {
 	case syscall.S_IFDIR:
 		// nothing.
 	case syscall.S_IFREG:
-		// TODO - Rename directly into content cache to skip
-		// the write.
-		fi.Hash = me.masterWorker.daemon.contentCache.SavePath(path)
+		fi.Hash = me.cache.DestructiveSavePath(path)
+		if fi.Hash == nil {
+			me.err = os.NewError("DestructiveSavePath fail")
+		}
 	case syscall.S_IFLNK:
 		val, err := os.Readlink(path)
-		if err != nil {
-			// TODO - fail rpc.
-			log.Fatal("Readlink error.")
-		}
+		me.err = err
 		fi.Link = val
 	default:
 		log.Fatalf("Unknown file type %o", ftype)
@@ -177,11 +183,11 @@ func (me *WorkerTask) savePath(path string, osInfo *os.FileInfo) {
 		// TODO - error handling.
 		os.Remove(path)
 	}
-	me.WorkReply.Files = append(me.WorkReply.Files, fi)
+	me.files = append(me.files, fi)
 }
 
-func (me *WorkerTask) fillReply() os.Error {
-	dir := filepath.Join(me.fuseFs.rwDir, _DELETIONS)
+func (me *fileSaver) scanBackingStore() os.Error {
+	dir := filepath.Join(me.rwDir, _DELETIONS)
 	_, err := os.Lstat(dir)
 	if err == nil {
 		matches, err := filepath.Glob(dir + "/*")
@@ -189,14 +195,13 @@ func (me *WorkerTask) fillReply() os.Error {
 			return err
 		}
 
-		for _, m := range matches {
-			fullPath := filepath.Join(dir, m)
+		for _, fullPath := range matches {
 			contents, err := ioutil.ReadFile(fullPath)
 			if err != nil {
 				return err
 			}
 
-			me.WorkReply.Files = append(me.WorkReply.Files, AttrResponse{
+			me.files = append(me.files, AttrResponse{
 				Status: fuse.ENOENT,
 				Path:   string(contents),
 			})
@@ -210,6 +215,7 @@ func (me *WorkerTask) fillReply() os.Error {
 			return err
 		}
 	}
-	filepath.Walk(me.fuseFs.rwDir, me, nil)
+	
+	filepath.Walk(me.rwDir, me, nil)
 	return nil
 }

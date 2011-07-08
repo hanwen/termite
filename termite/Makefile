@@ -10,6 +10,7 @@ GOFILES=\
 	devnullfs.go \
 	diskcache.go \
 	fsserver.go \
+	fuse.go \
 	master.go \
 	mirror.go \
 	misc.go \

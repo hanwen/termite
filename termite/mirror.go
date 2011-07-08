@@ -1,13 +1,9 @@
 package termite
 
 import (
-	"path/filepath"
 	"net"
 	"os"
 	"log"
-	"io/ioutil"
-	"github.com/hanwen/go-fuse/fuse"
-	"github.com/hanwen/go-fuse/unionfs"
 	"rpc"
 	"sync"
 )
@@ -50,22 +46,6 @@ func NewMirror(daemon *WorkerDaemon, rpcConn, revConn net.Conn) *Mirror {
 	return mirror
 }
 
-func (me *Mirror) ReturnFuse(wfs *WorkerFuseFs) {
-	// TODO - could be more fine-grained here.
-	wfs.unionFs.DropBranchCache()
-	wfs.unionFs.DropDeletionCache()
-
-	me.fuseFileSystemsMutex.Lock()
-	defer me.fuseFileSystemsMutex.Unlock()
-
-	if !me.shuttingDown {
-		wfs.Stop()
-	} else {
-		me.fuseFileSystems = append(me.fuseFileSystems, wfs)
-	}
-	me.workingFileSystems[wfs] = "", false
-	me.cond.Signal()
-}
 
 func (me *Mirror) DiscardFuse(wfs *WorkerFuseFs) {
 	wfs.Stop()
@@ -163,67 +143,7 @@ func (me *Mirror) Run(req *WorkRequest, rep *WorkReply) os.Error {
 const _DELETIONS = "DELETIONS"
 
 func (me *Mirror) newWorkerFuseFs() (*WorkerFuseFs, os.Error) {
-	w := WorkerFuseFs{}
-
-	tmpDir, err := ioutil.TempDir("", "rpcfs-tmp")
-	w.tmpDir = tmpDir
-	type dirInit struct {
-		dst *string
-		val string
-	}
-
-	for _, v := range []dirInit{
-		dirInit{&w.rwDir, "rw"},
-		dirInit{&w.mount, "mnt"},
-	} {
-		*v.dst = filepath.Join(w.tmpDir, v.val)
-		err = os.Mkdir(*v.dst, 0700)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	rwFs := fuse.NewLoopbackFileSystem(w.rwDir)
-
-	ttl := 5.0
-	opts := unionfs.UnionFsOptions{
-		BranchCacheTTLSecs:   ttl,
-		DeletionCacheTTLSecs: ttl,
-		DeletionDirName:      _DELETIONS,
-	}
-	mOpts := fuse.FileSystemOptions{
-		EntryTimeout:    ttl,
-		AttrTimeout:     ttl,
-		NegativeTimeout: 0.01,
-	}
-
-	w.unionFs = unionfs.NewUnionFs("ufs", []fuse.FileSystem{rwFs, me.rpcFs}, opts)
-	swFs := []fuse.SwitchedFileSystem{
-		{"dev", &DevNullFs{}, true},
-		{"", me.rpcFs, false},
-
-		// TODO - configurable.
-		{"tmp", w.unionFs, false},
-		{me.writableRoot, w.unionFs, false},
-	}
-
-	conn := fuse.NewFileSystemConnector(fuse.NewSwitchFileSystem(swFs), &mOpts)
-	w.MountState = fuse.NewMountState(conn)
-
-	fuseOpts := fuse.MountOptions{
-		AllowOther: true,
-		// Compilers are not that highly parallel.  A lower
-		// number also helps stacktrace be less overwhelming.
-		MaxBackground: 4,
-	}
-	w.MountState.Mount(w.mount, &fuseOpts)
-	if err != nil {
-		return nil, err
-	}
-
-	go w.MountState.Loop(true)
-
-	return &w, nil
+	return newWorkerFuseFs(me.daemon.workerDir, me.rpcFs, me.writableRoot)
 }
 
 func (me *Mirror) newWorkerTask(req *WorkRequest, rep *WorkReply) (*WorkerTask, os.Error) {
@@ -236,7 +156,7 @@ func (me *Mirror) newWorkerTask(req *WorkRequest, rep *WorkReply) (*WorkerTask, 
 		WorkRequest:  req,
 		WorkReply:    rep,
 		stdinConn:    stdin,
-		masterWorker: me,
+		mirror: me,
 		fuseFs:       fuseFs,
 	}, nil
 }

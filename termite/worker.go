@@ -3,10 +3,11 @@ package termite
 import (
 	"fmt"
 	"log"
+	"net"
 	"os"
+	"path/filepath"
 	"rpc"
 	"sync"
-	"net"
 )
 
 var _ = log.Println
@@ -41,7 +42,7 @@ type WorkerDaemon struct {
 	contentServer *ContentServer
 	maxJobCount   int
 	pending       *PendingConnections
-
+	workerDir     string
 	// TODO - deal with closed connections.
 	mirrorMapMutex sync.Mutex
 	mirrorMap      map[string]*Mirror
@@ -74,7 +75,8 @@ func (me *WorkerDaemon) getMirror(rpcConn, revConn net.Conn, reserveCount int) (
 	return mirror, nil
 }
 
-func NewWorkerDaemon(secret []byte, cacheDir string, jobs int) *WorkerDaemon {
+func NewWorkerDaemon(secret []byte, workerDir string, jobs int) *WorkerDaemon {
+	cacheDir := filepath.Join(workerDir, "cache")
 	cache := NewDiskFileCache(cacheDir)
 	w := &WorkerDaemon{
 		secret:        secret,
@@ -83,6 +85,7 @@ func NewWorkerDaemon(secret []byte, cacheDir string, jobs int) *WorkerDaemon {
 		contentServer: &ContentServer{Cache: cache},
 		pending:       NewPendingConnections(),
 		maxJobCount:   jobs,
+		workerDir: workerDir,
 	}
 	return w
 }
