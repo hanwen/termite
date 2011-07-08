@@ -12,6 +12,12 @@ import (
 	"io/ioutil"
 )
 
+
+// Content based addressing cache.
+//
+// TODO - a successful GetAttr() will often be followed by a read.  we
+// should have a small LRU cache for the content so we can serve the
+// contents from memory.
 type DiskFileCache struct {
 	dir string
 }
