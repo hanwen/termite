@@ -12,6 +12,8 @@ import (
 
 var _ = fmt.Println
 
+// TODO - should have a path -> md5 cache so we can answer the 2nd
+// getattr quickly.
 type FsServer struct {
 	contentServer *ContentServer
 	cache         *DiskFileCache
