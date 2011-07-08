@@ -3,6 +3,7 @@ package termite
 import (
 	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/go-fuse/unionfs"
+	"log"
 	"os"
 	"path/filepath"
 	"io/ioutil"
@@ -17,8 +18,15 @@ type WorkerFuseFs struct {
 }
 
 func (me *WorkerFuseFs) Stop() {
-	me.MountState.Unmount()
-	os.RemoveAll(me.tmpDir)
+	err := me.MountState.Unmount()
+	if err != nil {
+		// TODO - Should be fatal?
+		log.Println("Unmount fail:", err)
+	} else {
+		// If the unmount fails, the RemoveAll will stat all
+		// of the FUSE file system.
+		os.RemoveAll(me.tmpDir)
+	}
 }
 
 func (me *Mirror) ReturnFuse(wfs *WorkerFuseFs) {
@@ -38,9 +46,8 @@ func (me *Mirror) ReturnFuse(wfs *WorkerFuseFs) {
 	me.cond.Signal()
 }
 
-func newWorkerFuseFs(workerDir string, rpcFs fuse.FileSystem, writableRoot string) (*WorkerFuseFs, os.Error) {
-	tmpDir, err := ioutil.TempDir(
-		filepath.Join(workerDir, "tmp"), "task")
+func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string) (*WorkerFuseFs, os.Error) {
+	tmpDir, err := ioutil.TempDir(tmpDir, "termite-task")
 	if err != nil {
 		return nil, err
 	}
@@ -97,7 +104,7 @@ func newWorkerFuseFs(workerDir string, rpcFs fuse.FileSystem, writableRoot strin
 		// number also helps stacktrace be less overwhelming.
 		MaxBackground: 4,
 	}
-	w.MountState.Mount(w.mount, &fuseOpts)
+	err = w.MountState.Mount(w.mount, &fuseOpts)
 	if err != nil {
 		return nil, err
 	}

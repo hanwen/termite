@@ -11,6 +11,8 @@ var _ = log.Printf
 
 func main() {
 	cachedir := flag.String("cachedir", "/var/cache/termite/worker-cache", "content cache")
+	tmpdir := flag.String("tmpdir", "/var/tmp",
+		"where to create FUSE mounts; should be on same partition as cachedir..")
 	secretFile := flag.String("secret", "/tmp/secret.txt", "file containing password.")
 	port := flag.Int("port", 1235, "Where to listen for work requests.")
 	httpPort := flag.Int("http-port", 1296, "Where to serve HTTP status.")
@@ -22,7 +24,7 @@ func main() {
 		log.Fatal("ReadFile", err)
 	}
 
-	daemon := termite.NewWorkerDaemon(secret, *cachedir, *jobs)
+	daemon := termite.NewWorkerDaemon(secret, *tmpdir, *cachedir, *jobs)
 	daemon.ChrootBinary = *chrootBinary
 	go daemon.ServeHTTPStatus(*httpPort)
 	daemon.RunWorkerServer(*port)
