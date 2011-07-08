@@ -5,7 +5,6 @@ import (
 	"log"
 	"net"
 	"os"
-	"path/filepath"
 	"rpc"
 	"sync"
 )
@@ -42,7 +41,8 @@ type WorkerDaemon struct {
 	contentServer *ContentServer
 	maxJobCount   int
 	pending       *PendingConnections
-	workerDir     string
+	cacheDir      string
+	tmpDir        string
 	// TODO - deal with closed connections.
 	mirrorMapMutex sync.Mutex
 	mirrorMap      map[string]*Mirror
@@ -75,8 +75,7 @@ func (me *WorkerDaemon) getMirror(rpcConn, revConn net.Conn, reserveCount int) (
 	return mirror, nil
 }
 
-func NewWorkerDaemon(secret []byte, workerDir string, jobs int) *WorkerDaemon {
-	cacheDir := filepath.Join(workerDir, "cache")
+func NewWorkerDaemon(secret []byte, tmpDir string, cacheDir string, jobs int) *WorkerDaemon {
 	cache := NewDiskFileCache(cacheDir)
 	w := &WorkerDaemon{
 		secret:        secret,
@@ -85,7 +84,7 @@ func NewWorkerDaemon(secret []byte, workerDir string, jobs int) *WorkerDaemon {
 		contentServer: &ContentServer{Cache: cache},
 		pending:       NewPendingConnections(),
 		maxJobCount:   jobs,
-		workerDir:     workerDir,
+		tmpDir:        tmpDir,
 	}
 	return w
 }

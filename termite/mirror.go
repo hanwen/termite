@@ -143,7 +143,7 @@ func (me *Mirror) Run(req *WorkRequest, rep *WorkReply) os.Error {
 const _DELETIONS = "DELETIONS"
 
 func (me *Mirror) newWorkerFuseFs() (*WorkerFuseFs, os.Error) {
-	return newWorkerFuseFs(me.daemon.workerDir, me.rpcFs, me.writableRoot)
+	return newWorkerFuseFs(me.daemon.tmpDir, me.rpcFs, me.writableRoot)
 }
 
 func (me *Mirror) newWorkerTask(req *WorkRequest, rep *WorkReply) (*WorkerTask, os.Error) {

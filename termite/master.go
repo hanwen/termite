@@ -350,16 +350,19 @@ func (me *Master) replayFileModifications(worker *rpc.Client, infos []AttrRespon
 		}
 		if info.Hash != nil {
 			log.Printf("Replay file content %s %x", name, info.Hash)
-			// TODO - stream directly from network connection to file.
-			c, err := FetchFromContentServer(
-				worker, "Mirror.FileContent", info.FileInfo.Size, info.Hash)
+			content := info.Content
+			if content == nil {
+				// TODO - stream directly from network connection to file.
+				content, err = FetchFromContentServer(
+					worker, "Mirror.FileContent", info.FileInfo.Size, info.Hash)
+			} 
 			if err == nil {
-				hash := me.cache.Save(c)
+				hash := me.cache.Save(content)
 				if bytes.Compare(info.Hash, hash) != 0 {
 					log.Fatal("Hash mismatch.")
 				}
 				// TODO - should allow a mode to set a hard or symbolic link.
-				err = ioutil.WriteFile(info.Path, c, info.FileInfo.Mode&07777)
+				err = ioutil.WriteFile(info.Path, content, info.FileInfo.Mode&07777)
 			}
 			if err == nil {
 				err = os.Chtimes(info.Path, info.FileInfo.Atime_ns, info.FileInfo.Mtime_ns)

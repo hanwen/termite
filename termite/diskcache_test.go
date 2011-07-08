@@ -27,7 +27,7 @@ func TestDiskCache(t *testing.T) {
 	f.Write(content)
 	f.Close()
 
-	savedSum := cache.SavePath(f.Name())
+	savedSum, _ := cache.SavePath(f.Name())
 	if string(savedSum) != string(checksum) {
 		t.Fatal("mismatch")
 	}
@@ -49,7 +49,7 @@ func TestDiskCacheDestructiveSave(t *testing.T) {
 		t.Error(err)
 	}
 
-	saved := cache.DestructiveSavePath(fn)
+	saved, _ := cache.DestructiveSavePath(fn)
 	if string(saved) != string(md5(content)) {
 		t.Error("mismatch")
 	}
@@ -64,7 +64,7 @@ func TestDiskCacheDestructiveSave(t *testing.T) {
 		t.Error(err)
 	}
 
-	saved = cache.DestructiveSavePath(fn)
+	saved, _ = cache.DestructiveSavePath(fn)
 	if saved == nil || string(saved) != string(md5(content)) {
 		t.Error("mismatch")
 	}
@@ -85,7 +85,7 @@ func TestDiskCacheStream(t *testing.T) {
 	checksum := h.Sum()
 
 	b := bytes.NewBuffer(content)
-	savedSum := cache.SaveStream(b)
+	savedSum, _ := cache.SaveStream(b)
 	if string(savedSum) != string(md5(content)) {
 		t.Fatal("mismatch")
 	}
@@ -101,4 +101,32 @@ func TestDiskCacheStream(t *testing.T) {
 	if bytes.Compare(data, content) != 0 {
 		t.Error("compare.")
 	}
+}
+
+func TestDiskCacheStreamReturnContent(t *testing.T) {
+	content := make([]byte, _BUFSIZE-1)
+	for i, _ := range content {
+		content[i] = 'x'
+	}
+	
+	d, _ := ioutil.TempDir("", "")
+	defer os.RemoveAll(d)
+	cache := NewDiskFileCache(d)
+
+	b := bytes.NewBuffer(content)
+	_, c := cache.SaveStream(b)
+	if string(content) != string(c) {
+		t.Error("content mismatch")
+	}
+	
+	content = make([]byte, _BUFSIZE+1)
+	for i, _ := range content {
+		content[i] = 'y'
+	}
+
+	b = bytes.NewBuffer(content)
+	_, c = cache.SaveStream(b)
+	if c != nil {
+		t.Error("should not save")
+	}	
 }

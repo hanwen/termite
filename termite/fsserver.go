@@ -43,8 +43,9 @@ type AttrResponse struct {
 	Path string // Used in WorkReply
 	*os.FileInfo
 	fuse.Status
-	Hash []byte
-	Link string
+	Hash    []byte
+	Link    string
+	Content []byte		// optional.
 }
 
 func (me AttrResponse) String() string {
@@ -112,8 +113,9 @@ func (me *FsServer) GetAttr(req *AttrRequest, rep *AttrResponse) os.Error {
 		rep.Link, err = os.Readlink(req.Name)
 	}
 	if fi.IsRegular() {
-		rep.Hash = me.cache.SavePath(req.Name)
+		rep.Hash, rep.Content = me.cache.SavePath(req.Name)
 	}
 	log.Println("GetAttr", req.Name, rep)
 	return nil
 }
+

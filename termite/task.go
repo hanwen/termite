@@ -103,7 +103,6 @@ func (me *WorkerTask) Run() os.Error {
 	me.WorkReply.Stdout = stdout.String()
 	me.WorkReply.Stderr = stderr.String()
 
-	// TODO - look at rw directory, and serialize the files into WorkReply.
 	err = me.fillReply()
 	if err != nil {
 		// TODO - anything else needed to discard?
@@ -168,7 +167,7 @@ func (me *fileSaver) savePath(path string, osInfo *os.FileInfo) {
 		// nothing.
 		// TODO - remove dir.
 	case syscall.S_IFREG:
-		fi.Hash = me.cache.DestructiveSavePath(path)
+		fi.Hash, fi.Content = me.cache.DestructiveSavePath(path)
 		if fi.Hash == nil {
 			me.err = os.NewError("DestructiveSavePath fail")
 		}

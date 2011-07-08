@@ -101,13 +101,16 @@ func (me *HashWriter) Close() os.Error {
 	return err
 }
 
-func (me *DiskFileCache) DestructiveSavePath(path string) (md5 []byte) {
+
+const _BUFSIZE = 32 * 1024
+
+func (me *DiskFileCache) DestructiveSavePath(path string) (md5 []byte, content []byte) {
 	f, err := os.Open(path)
 	if err != nil {
-		return nil
+		return nil, nil
 	}
 	h := crypto.MD5.New()
-	_, err = io.Copy(h, f)
+	content, err = SavingCopy(h, f, _BUFSIZE)
 	if err != nil {
 		log.Fatal("DestructiveSavePath:", err)
 	}
@@ -118,14 +121,14 @@ func (me *DiskFileCache) DestructiveSavePath(path string) (md5 []byte) {
 	if err != nil {
 		if fi, _ := os.Lstat(p); fi != nil {
 			os.Remove(p)
-			return s
+			return s, content
 		}
 		log.Fatal("DestructiveSavePath:", err)
 	}
-	return s
+	return s, content
 }
 
-func (me *DiskFileCache) SavePath(path string) (md5 []byte) {
+func (me *DiskFileCache) SavePath(path string) (md5 []byte, content []byte) {
 	f, err := os.Open(path)
 	if err != nil {
 		log.Fatal(err)
@@ -137,12 +140,13 @@ func (me *DiskFileCache) SavePath(path string) (md5 []byte) {
 
 func (me *DiskFileCache) Save(content []byte) (md5 []byte) {
 	buf := bytes.NewBuffer(content)
-	return me.SaveStream(buf)
+	md5, _ = me.SaveStream(buf)
+	return md5
 }
 
-func (me *DiskFileCache) SaveStream(input io.Reader) (md5 []byte) {
+func (me *DiskFileCache) SaveStream(input io.Reader) (md5 []byte, content []byte) {
 	dup := NewHashWriter(me.dir, crypto.MD5)
-	_, err := io.Copy(dup, input)
+	content, err := SavingCopy(dup, input, _BUFSIZE)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -150,5 +154,36 @@ func (me *DiskFileCache) SaveStream(input io.Reader) (md5 []byte) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	return dup.hasher.Sum()
+	return dup.hasher.Sum(), content
+}
+
+func SavingCopy(w io.Writer, r io.Reader, bufSize int) ([]byte, os.Error) {
+	buf := make([]byte, bufSize)
+	total := 0
+	for {
+		n, err := r.Read(buf)
+		todo := buf[:n]
+		total += n
+		for len(todo) > 0 {
+			n, err = w.Write(todo)
+			if err != nil {
+				break
+			}
+			todo = todo[n:]
+		}
+		if len(todo) > 0 {
+			return nil, err
+		}
+		if err == os.EOF || n == 0 {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if total < cap(buf) {
+		return buf[:total], nil
+	}
+	return nil, nil
 }
