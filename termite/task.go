@@ -166,6 +166,7 @@ func (me *fileSaver) savePath(path string, osInfo *os.FileInfo) {
 	switch ftype {
 	case syscall.S_IFDIR:
 		// nothing.
+		// TODO - remove dir.
 	case syscall.S_IFREG:
 		fi.Hash = me.cache.DestructiveSavePath(path)
 		if fi.Hash == nil {
@@ -175,14 +176,11 @@ func (me *fileSaver) savePath(path string, osInfo *os.FileInfo) {
 		val, err := os.Readlink(path)
 		me.err = err
 		fi.Link = val
+		os.Remove(path)
 	default:
 		log.Fatalf("Unknown file type %o", ftype)
 	}
 
-	if !osInfo.IsDirectory() {
-		// TODO - error handling.
-		os.Remove(path)
-	}
 	me.files = append(me.files, fi)
 }
 

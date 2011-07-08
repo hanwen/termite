@@ -58,6 +58,7 @@ func TestDiskCacheDestructiveSave(t *testing.T) {
 		t.Error("fail")
 	}
 
+	// Again.
 	err = ioutil.WriteFile(fn, content, 0644)
 	if err != nil {
 		t.Error(err)
@@ -66,6 +67,9 @@ func TestDiskCacheDestructiveSave(t *testing.T) {
 	saved = cache.DestructiveSavePath(fn)
 	if saved == nil || string(saved) != string(md5(content)) {
 		t.Error("mismatch")
+	}
+	if fi, _ := os.Lstat(fn); fi != nil {
+		t.Error("should have disappeared", fi)
 	}
 }
 

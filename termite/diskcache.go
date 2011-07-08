@@ -117,6 +117,7 @@ func (me *DiskFileCache) DestructiveSavePath(path string) (md5 []byte) {
 	err = os.Rename(path, p)
 	if err != nil {
 		if fi, _ := os.Lstat(p); fi != nil {
+			os.Remove(p)
 			return s
 		}
 		log.Fatal("DestructiveSavePath:", err)
