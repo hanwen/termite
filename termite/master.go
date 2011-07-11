@@ -333,7 +333,7 @@ func (me *Master) replayFileModifications(worker *rpc.Client, infos []AttrRespon
 	}
 
 	// Sort so we get parents before children.
-	sort.SortStrings(names)
+	sort.Strings(names)
 	for _, name := range names {
 		info := entries[name]
 		var err os.Error
@@ -355,7 +355,7 @@ func (me *Master) replayFileModifications(worker *rpc.Client, infos []AttrRespon
 				// TODO - stream directly from network connection to file.
 				content, err = FetchFromContentServer(
 					worker, "Mirror.FileContent", info.FileInfo.Size, info.Hash)
-			} 
+			}
 			if err == nil {
 				hash := me.cache.Save(content)
 				if bytes.Compare(info.Hash, hash) != 0 {

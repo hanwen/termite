@@ -22,8 +22,8 @@ func main() {
 		log.Fatal("ReadFile", err)
 	}
 
-	workerList := strings.Split(*workers, ",", -1)
-	excludeList := strings.Split(*exclude, ",", -1)
+	workerList := strings.Split(*workers, ",")
+	excludeList := strings.Split(*exclude, ",")
 	c := termite.NewDiskFileCache(*cachedir)
 	master := termite.NewMaster(
 		c, workerList, secret, excludeList, *jobs)
