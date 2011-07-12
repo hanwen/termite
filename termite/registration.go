@@ -5,3 +5,7 @@ type Registration struct {
 	Name    string
 	// TODO - hash of the secret?
 }
+
+type Registered struct {
+	Registrations []Registration
+}

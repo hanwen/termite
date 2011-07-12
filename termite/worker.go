@@ -7,6 +7,7 @@ import (
 	"os"
 	"rpc"
 	"sync"
+	"time"
 )
 
 var _ = log.Println
@@ -89,6 +90,44 @@ func NewWorkerDaemon(secret []byte, tmpDir string, cacheDir string, jobs int) *W
 	return w
 }
 
+const _REPORT_DELAY = 60.0
+func (me *WorkerDaemon) PeriodicReport(coordinator string, port int) {
+	if coordinator == "" {
+		log.Println("No coordinator - not doing period reports.")
+		return
+	}
+	me.report(coordinator, port)
+	for {
+		c := time.After(_REPORT_DELAY * 1e9)
+		<-c
+		me.report(coordinator, port)
+	}
+}
+
+func (me *WorkerDaemon) report(coordinator string, port int) {
+	client, err := rpc.DialHTTP("tcp", coordinator)
+	if err != nil {
+		log.Println("dialing coordinator:", err)
+		return
+	}
+
+	hostname, err := os.Hostname()
+	if err != nil {
+		log.Println("hostname", err)
+		return
+	}
+
+	req := Registration{
+		Address: fmt.Sprintf("%s:%d", hostname, port), // TODO - resolve.
+		Name:fmt.Sprintf("%s:%d", hostname, port),
+	}
+	rep := 0
+	err = client.Call("Coordinator.Register", &req, &rep)
+	if err != nil {
+		log.Println("coordinator rpc error:", err)
+	}
+}
+
 // TODO - should expose under ContentServer name?
 func (me *WorkerDaemon) FileContent(req *ContentRequest, rep *ContentResponse) os.Error {
 	return me.contentServer.FileContent(req, rep)
@@ -135,9 +174,11 @@ func (me *WorkerDaemon) DropMirror(mirror *Mirror) {
 	me.mirrorMap[mirror.key] = nil, false
 }
 
-func (me *WorkerDaemon) RunWorkerServer(port int) {
+func (me *WorkerDaemon) RunWorkerServer(port int, coordinator string) {
 	out := make(chan net.Conn)
 	go SetupServer(port, me.secret, out)
+	go me.PeriodicReport(coordinator, port)
+
 	for {
 		conn := <-out
 		log.Println("Authenticated connection from", conn.RemoteAddr())

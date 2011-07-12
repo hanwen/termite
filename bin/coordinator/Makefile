@@ -2,7 +2,7 @@
 include $(GOROOT)/src/Make.inc
 
 TARG=coordinator
-GOFILES=coordinator.go \
+GOFILES=main.go \
 
 DEPS=../../termite
 
