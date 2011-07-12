@@ -11,6 +11,7 @@ import (
 	"rpc"
 	"sort"
 	"sync"
+	"time"
 )
 
 type mirrorConnection struct {
@@ -35,30 +36,78 @@ func (me *mirrorConnection) sendFiles(infos []AttrResponse) {
 }
 
 type mirrorConnections struct {
-	master  *Master
-	workers []string
-
+	master      *Master
+	coordinator string
+	
 	// Condition for mutex below.
 	sync.Cond
 
 	// Protects all of the below.
 	sync.Mutex
+	workers     []string
 	mirrors       map[string]*mirrorConnection
 	wantedMaxJobs int
 }
 
-func newMirrorConnections(m *Master, workers []string, maxJobs int) *mirrorConnections {
+func (me *mirrorConnections) refreshWorkers() {
+	client, err := rpc.DialHTTP("tcp", me.coordinator)
+	if err != nil {
+		log.Println("dialing coordinator:", err)
+		return
+	}
+	req := 0
+	rep := Registered{}
+	err = client.Call("Coordinator.List", &req, &rep)
+	if err != nil {
+		log.Println("coordinator rpc error:", err)
+		return
+	}
+
+	newWorkers := []string{}
+	for _, v := range rep.Registrations {
+		newWorkers = append(newWorkers, v.Address)
+	}
+	if len(newWorkers) == 0 {
+		log.Println("coordinator has no workers for us.")
+		return
+	}
+	
+	me.Mutex.Lock()
+	defer me.Mutex.Unlock()
+	me.workers = newWorkers
+}
+	
+
+func newMirrorConnections(m *Master, workers []string, coordinator string, maxJobs int) *mirrorConnections {
 	mc := &mirrorConnections{
 		master:        m,
 		wantedMaxJobs: maxJobs,
 		workers:       workers,
 		mirrors:       make(map[string]*mirrorConnection),
+		coordinator:   coordinator,
 	}
+	if coordinator != "" {
+		if workers != nil {
+			log.Println("coordinator will overwrite workers.")
+		}
 
+		go mc.periodWorkersRefresh()
+	}
 	mc.Cond.L = &mc.Mutex
 	return mc
 }
 
+const _WORKER_REFRESH_DELAY = 60
+
+func (me *mirrorConnections) periodWorkersRefresh() {
+	me.refreshWorkers()
+	for {
+		c := time.After(_WORKER_REFRESH_DELAY * 1e9)
+		<-c
+		me.refreshWorkers()
+	}
+}
+	
 func (me *mirrorConnections) availableJobs() int {
 	a := 0
 	for _, mc := range me.mirrors {
@@ -131,7 +180,7 @@ func (me *mirrorConnections) jobDone(mc *mirrorConnection) {
 	me.Cond.Signal()
 }
 
-// Tries to connect to one extra worker.
+// Tries to connect to one extra worker.  Must already hold mutex.
 func (me *mirrorConnections) tryConnect() {
 	// We want to max out capacity of each worker, as that helps
 	// with cache hit rates on the worker.
@@ -172,14 +221,14 @@ type Master struct {
 	pending *PendingConnections
 }
 
-func NewMaster(cache *DiskFileCache, workers []string, secret []byte, excluded []string, maxJobs int) *Master {
+func NewMaster(cache *DiskFileCache, coordinator string, workers []string, secret []byte, excluded []string, maxJobs int) *Master {
 	me := &Master{
 		cache:      cache,
 		fileServer: NewFsServer("/", cache, excluded),
 		secret:     secret,
 		retryCount: 3,
 	}
-	me.mirrors = newMirrorConnections(me, workers, maxJobs)
+	me.mirrors = newMirrorConnections(me, workers, coordinator, maxJobs)
 	me.localServer = &LocalMaster{me}
 	me.secret = secret
 	me.pending = NewPendingConnections()

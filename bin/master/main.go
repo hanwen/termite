@@ -11,6 +11,7 @@ import (
 func main() {
 	cachedir := flag.String("cachedir", "/tmp/fsserver-cache", "content cache")
 	workers := flag.String("workers", "localhost:1235", "comma separated list of worker addresses")
+	coordinator := flag.String("coordinator", "localhost:1233", "address of coordinator")
 	socket := flag.String("socket", ".termite-socket", "socket to listen for commands")
 	exclude := flag.String("exclude", "/sys,/proc,/dev,/selinux,/cgroup", "prefixes to not export.")
 	secretFile := flag.String("secret", "/tmp/secret.txt", "file containing password.")
@@ -26,6 +27,6 @@ func main() {
 	excludeList := strings.Split(*exclude, ",")
 	c := termite.NewDiskFileCache(*cachedir)
 	master := termite.NewMaster(
-		c, workerList, secret, excludeList, *jobs)
+		c, *coordinator, workerList, secret, excludeList, *jobs)
 	master.Start(*socket)
 }
