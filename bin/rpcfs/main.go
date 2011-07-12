@@ -1,8 +1,8 @@
 package main
 
 import (
+	"github.com/hanwen/termite/termite"
 	"github.com/hanwen/go-fuse/fuse"
-	"github.com/hanwen/go-fuse/termite"
 	"fmt"
 	"flag"
 	"log"
@@ -31,9 +31,8 @@ func main() {
 		log.Fatal("dialing:", err)
 	}
 
-	var fs fuse.FileSystem
 	cache := termite.NewDiskFileCache(*cachedir)
-	fs = termite.NewRpcFs(rpc.NewClient(rpcConn), cache)
+	fs := termite.NewRpcFs(rpc.NewClient(rpcConn), cache)
 	conn := fuse.NewFileSystemConnector(fs, nil)
 	state := fuse.NewMountState(conn)
 	opts := fuse.MountOptions{}

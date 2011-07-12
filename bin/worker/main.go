@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/hanwen/go-fuse/termite"
+	"github.com/hanwen/termite/termite"
 	"flag"
 	"io/ioutil"
 	"log"

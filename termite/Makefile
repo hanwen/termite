@@ -1,8 +1,8 @@
 # Use "gomake install" to build and install this package.
 include $(GOROOT)/src/Make.inc
 
-TARG=github.com/hanwen/go-fuse/termite
-DEPS=../fuse ../unionfs
+TARG=github.com/hanwen/termite/termite
+DEPS=../../go-fuse/fuse ../../go-fuse/unionfs
 
 GOFILES=\
 	connection.go \

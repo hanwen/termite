@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"log"
-	"github.com/hanwen/go-fuse/termite"
+	"github.com/hanwen/termite/termite"
 	"io/ioutil"
 	"strings"
 )

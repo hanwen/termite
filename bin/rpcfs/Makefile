@@ -4,7 +4,7 @@ include $(GOROOT)/src/Make.inc
 TARG=termite
 GOFILES=main.go
 
-DEPS=../../fuse ../../termite
+DEPS=../../../go-fuse/fuse ../../termite
 
 include $(GOROOT)/src/Make.cmd
 

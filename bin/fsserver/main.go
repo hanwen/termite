@@ -2,7 +2,7 @@ package main
 
 import (
 	"flag"
-	"github.com/hanwen/go-fuse/termite"
+	"github.com/hanwen/termite/termite"
 	"io/ioutil"
 	"net"
 	"rpc"

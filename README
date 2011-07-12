@@ -10,17 +10,14 @@ CAVEATS
 Work in progress.
 
 
-INSTALL
+COMPILE
 
-Get
+Use the following recipe
 
   git clone git://github.com/hanwen/go-fuse.git
   git clone git://github.com/hanwen/termite.git
-  (cd go-fuse && sh all.bash)
-
-  cd termite
-    ln -s ../go-fuse/fuse ../go-fuse/unionfs .
-    sh all.bash
+  cd go-fuse && sh all.bash
+  cd termite && sh all.bash
 
 I do not goinstall go-fuse, since I develop go-fuse in tandem with
 termite, but with some tweaks to the Makefile it should work.
