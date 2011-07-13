@@ -30,14 +30,14 @@ RUNNING
   cd ${PROJECT}
   ${TERMITE_DIR}/bin/master/master -jobs 4 &
   ln -s ${TERMITE_DIR}/bin/tool/tool gcc
-  ./gcc 
+  ./gcc
 
 
 SECURITY
 
 * The worker runs binaries as user 'nobody' in a chroot of a FUSE file
   system.  It needs root permission for the following actions:
-  
+
   - mount a FUSE fs as allow_other
   - chroot to FUSE fs
   - change uid to user 'nobody'
@@ -57,9 +57,6 @@ SECURITY
 
 * Wrapper and master run as the same user and use IPC unix domain
   sockets to communicate.  The socket mode is 0700.
-
-* TODO - /tmp files are played back from worker to master.  This is
-  still a security problem.
 
 
 TODO

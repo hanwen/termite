@@ -71,6 +71,11 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string) 
 		}
 	}
 
+	tmpBacking := filepath.Join(w.tmpDir, "tmp-backingstore")
+	if err := os.Mkdir(tmpBacking, 0700); err != nil {
+		return nil, err
+	}
+
 	rwFs := fuse.NewLoopbackFileSystem(w.rwDir)
 
 	ttl := 5.0
@@ -85,13 +90,16 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string) 
 		NegativeTimeout: 0.01,
 	}
 
+	tmpFs := fuse.NewLoopbackFileSystem(tmpBacking)
+
 	w.unionFs = unionfs.NewUnionFs("ufs", []fuse.FileSystem{rwFs, rpcFs}, opts)
 	swFs := []fuse.SwitchedFileSystem{
 		{"dev", &DevNullFs{}, true},
 		{"", rpcFs, false},
+		{"tmp", tmpFs, true},
+		{"var/tmp", tmpFs, true},
 
 		// TODO - configurable.
-		{"tmp", w.unionFs, false},
 		{writableRoot, w.unionFs, false},
 	}
 
