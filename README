@@ -25,6 +25,8 @@ termite, but with some tweaks to the Makefile it should work.
 
 RUNNING
 
+
+  ${TERMITE_DIR}/bin/coordinator/coordinator &
   sudo ${TERMITE_DIR}/bin/worker/worker -jobs 4 \
     -chroot ${TERMITE_DIR}/bin/chroot/chroot &
   cd ${PROJECT}
@@ -60,8 +62,6 @@ SECURITY
 
 
 TODO
-
-* Coordinator
 
 * More sophisticated exclusion for exporting file systems.
 
