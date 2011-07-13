@@ -6,7 +6,7 @@ import (
 )
 
 func (me *WorkerDaemon) httpHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "<html><head><title>Termite worker</head></title>")
+	fmt.Fprintf(w, "<html><head><title>Termite worker</title></head>")
 	fmt.Fprintf(w, "<h1>Termite worker status</h1>")
 	fmt.Fprintf(w, "<body>")
 	fmt.Fprintf(w, "<p>max job count: %d", me.maxJobCount)
