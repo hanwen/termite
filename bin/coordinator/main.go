@@ -10,7 +10,7 @@ import (
 	"log"
 	"rpc"
 	"sync"
-	"github.com/hanwen/go-fuse/termite"
+	"github.com/hanwen/termite/termite"
 )
 
 type Worker struct {
@@ -54,9 +54,12 @@ func (me *Coordinator) List(req *int, rep *termite.Registered) os.Error {
 }
 
 func reachable(addr string) bool {
-	conn, err := net.Dial("tcp", addr)
-	conn.Close()
-	return err == nil
+	conn, _ := net.Dial("tcp", addr)
+	ok := conn != nil
+	if ok {
+		conn.Close()
+	}
+	return ok
 }
 
 
@@ -86,7 +89,7 @@ func (me *Coordinator) checkReachable() {
 	me.mutex.Unlock()
 }
 
-const _POLL = 5 * 60
+const _POLL = 60
 
 func (me *Coordinator) periodicCheck() {
 	for {
