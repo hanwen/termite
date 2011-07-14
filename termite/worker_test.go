@@ -25,7 +25,7 @@ func TestBasic(t *testing.T) {
 	// TODO - test coordinator too.
 	go worker.RunWorkerServer(workerPort, "")
 
-	masterCache := NewDiskFileCache(tmp + "/master-cache")
+	masterCache := NewContentCache(tmp + "/master-cache")
 	host, _ := os.Hostname()
 	master := NewMaster(
 		masterCache, "",

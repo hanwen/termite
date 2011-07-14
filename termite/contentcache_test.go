@@ -20,7 +20,7 @@ func TestDiskCache(t *testing.T) {
 	d, _ := ioutil.TempDir("", "")
 	defer os.RemoveAll(d)
 
-	cache := NewDiskFileCache(d)
+	cache := NewContentCache(d)
 	checksum := md5(content)
 
 	f, _ := ioutil.TempFile("", "")
@@ -41,7 +41,7 @@ func TestDiskCacheDestructiveSave(t *testing.T) {
 
 	d, _ := ioutil.TempDir("", "")
 	defer os.RemoveAll(d)
-	cache := NewDiskFileCache(d)
+	cache := NewContentCache(d)
 
 	fn := d + "/test"
 	err := ioutil.WriteFile(fn, content, 0644)
@@ -78,7 +78,7 @@ func TestDiskCacheStream(t *testing.T) {
 
 	d, _ := ioutil.TempDir("", "")
 	defer os.RemoveAll(d)
-	cache := NewDiskFileCache(d)
+	cache := NewContentCache(d)
 
 	h := crypto.MD5.New()
 	h.Write(content)
@@ -111,7 +111,7 @@ func TestDiskCacheStreamReturnContent(t *testing.T) {
 	
 	d, _ := ioutil.TempDir("", "")
 	defer os.RemoveAll(d)
-	cache := NewDiskFileCache(d)
+	cache := NewContentCache(d)
 
 	b := bytes.NewBuffer(content)
 	_, c := cache.SaveStream(b)

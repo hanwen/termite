@@ -31,7 +31,7 @@ func main() {
 		log.Fatal("dialing:", err)
 	}
 
-	cache := termite.NewDiskFileCache(*cachedir)
+	cache := termite.NewContentCache(*cachedir)
 	fs := termite.NewRpcFs(rpc.NewClient(rpcConn), cache)
 	conn := fuse.NewFileSystemConnector(fs, nil)
 	state := fuse.NewMountState(conn)

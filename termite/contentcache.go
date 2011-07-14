@@ -18,18 +18,18 @@ import (
 // TODO - a successful GetAttr() will often be followed by a read.  we
 // should have a small LRU cache for the content so we can serve the
 // contents from memory.
-type DiskFileCache struct {
+type ContentCache struct {
 	dir string
 }
 
-func NewDiskFileCache(d string) *DiskFileCache {
+func NewContentCache(d string) *ContentCache {
 	if fi, _ := os.Lstat(d); fi == nil {
 		err := os.MkdirAll(d, 0700)
 		if err != nil {
 			panic(err)
 		}
 	}
-	return &DiskFileCache{dir: d}
+	return &ContentCache{dir: d}
 }
 
 func HashPath(dir string, md5 []byte) string {
@@ -44,13 +44,13 @@ func HashPath(dir string, md5 []byte) string {
 	return dst
 }
 
-func (me *DiskFileCache) HasHash(hash []byte) bool {
+func (me *ContentCache) HasHash(hash []byte) bool {
 	p := HashPath(me.dir, hash)
 	_, err := os.Lstat(p)
 	return err == nil
 }
 
-func (me *DiskFileCache) Path(hash []byte) string {
+func (me *ContentCache) Path(hash []byte) string {
 	return HashPath(me.dir, hash)
 }
 
@@ -104,7 +104,7 @@ func (me *HashWriter) Close() os.Error {
 
 const _BUFSIZE = 32 * 1024
 
-func (me *DiskFileCache) DestructiveSavePath(path string) (md5 []byte, content []byte) {
+func (me *ContentCache) DestructiveSavePath(path string) (md5 []byte, content []byte) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, nil
@@ -128,7 +128,7 @@ func (me *DiskFileCache) DestructiveSavePath(path string) (md5 []byte, content [
 	return s, content
 }
 
-func (me *DiskFileCache) SavePath(path string) (md5 []byte, content []byte) {
+func (me *ContentCache) SavePath(path string) (md5 []byte, content []byte) {
 	f, err := os.Open(path)
 	if err != nil {
 		log.Fatal(err)
@@ -138,13 +138,13 @@ func (me *DiskFileCache) SavePath(path string) (md5 []byte, content []byte) {
 	return me.SaveStream(f)
 }
 
-func (me *DiskFileCache) Save(content []byte) (md5 []byte) {
+func (me *ContentCache) Save(content []byte) (md5 []byte) {
 	buf := bytes.NewBuffer(content)
 	md5, _ = me.SaveStream(buf)
 	return md5
 }
 
-func (me *DiskFileCache) SaveStream(input io.Reader) (md5 []byte, content []byte) {
+func (me *ContentCache) SaveStream(input io.Reader) (md5 []byte, content []byte) {
 	dup := NewHashWriter(me.dir, crypto.MD5)
 	content, err := SavingCopy(dup, input, _BUFSIZE)
 	if err != nil {

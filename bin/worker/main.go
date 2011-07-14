@@ -29,5 +29,4 @@ func main() {
 	daemon.ChrootBinary = *chrootBinary
 	go daemon.ServeHTTPStatus(*httpPort)
 	daemon.RunWorkerServer(*port, *coordinator)
-
 }

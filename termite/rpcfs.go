@@ -13,7 +13,7 @@ import (
 
 type RpcFs struct {
 	fuse.DefaultFileSystem
-	cache *DiskFileCache
+	cache *ContentCache
 
 	client *rpc.Client
 
@@ -35,7 +35,7 @@ type UpdateResponse struct {
 
 }
 
-func NewRpcFs(server *rpc.Client, cache *DiskFileCache) *RpcFs {
+func NewRpcFs(server *rpc.Client, cache *ContentCache) *RpcFs {
 	me := &RpcFs{}
 	me.client = server
 	me.directories = make(map[string]*DirResponse)

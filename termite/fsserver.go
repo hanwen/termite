@@ -16,12 +16,12 @@ var _ = fmt.Println
 // getattr quickly.
 type FsServer struct {
 	contentServer *ContentServer
-	cache         *DiskFileCache
+	cache         *ContentCache
 	Root          string
 	excluded      map[string]bool
 }
 
-func NewFsServer(root string, cache *DiskFileCache, excluded []string) *FsServer {
+func NewFsServer(root string, cache *ContentCache, excluded []string) *FsServer {
 	fs := &FsServer{
 		cache:         cache,
 		contentServer: &ContentServer{Cache: cache},

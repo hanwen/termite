@@ -23,7 +23,7 @@ func main() {
 	if err != nil {
 		log.Fatal("ReadFile", err)
 	}
-	cache := termite.NewDiskFileCache(*cachedir)
+	cache := termite.NewContentCache(*cachedir)
 	fileServer := termite.NewFsServer(flag.Arg(0), cache, []string{"/proc"})
 
 	out := make(chan net.Conn)

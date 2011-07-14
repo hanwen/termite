@@ -6,9 +6,9 @@ DEPS=../../go-fuse/fuse ../../go-fuse/unionfs
 
 GOFILES=\
 	connection.go \
+	contentcache.go \
 	contentserver.go \
 	devnullfs.go \
-	diskcache.go \
 	fsserver.go \
 	fuse.go \
 	master.go \
