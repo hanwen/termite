@@ -23,7 +23,7 @@ func TestFileSaver(t *testing.T) {
 	s := fileSaver{
 		rwDir:  rw,
 		prefix: "/dir",
-		cache:  NewDiskFileCache(dir + "/cache"),
+		cache:  NewContentCache(dir + "/cache"),
 	}
 
 	err := s.scanBackingStore()

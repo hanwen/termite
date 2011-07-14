@@ -26,7 +26,7 @@ type ContentResponse struct {
 
 // Content server exposes an md5 keyed content store for RPC.
 type ContentServer struct {
-	Cache *DiskFileCache
+	Cache *ContentCache
 }
 
 func (me *ContentServer) FileContent(req *ContentRequest, rep *ContentResponse) os.Error {

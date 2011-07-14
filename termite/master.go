@@ -207,7 +207,7 @@ func (me *mirrorConnections) tryConnect() {
 
 
 type Master struct {
-	cache         *DiskFileCache
+	cache         *ContentCache
 	fileServer    *FsServer
 	fileServerRpc *rpc.Server
 	secret        []byte
@@ -221,7 +221,7 @@ type Master struct {
 	pending *PendingConnections
 }
 
-func NewMaster(cache *DiskFileCache, coordinator string, workers []string, secret []byte, excluded []string, maxJobs int) *Master {
+func NewMaster(cache *ContentCache, coordinator string, workers []string, secret []byte, excluded []string, maxJobs int) *Master {
 	me := &Master{
 		cache:      cache,
 		fileServer: NewFsServer("/", cache, excluded),

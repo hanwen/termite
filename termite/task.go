@@ -142,7 +142,7 @@ type fileSaver struct {
 	prefix string
 	err    os.Error
 	files  []AttrResponse
-	cache  *DiskFileCache
+	cache  *ContentCache
 }
 
 func (me *fileSaver) VisitFile(path string, osInfo *os.FileInfo) {
