@@ -14,6 +14,7 @@ GOFILES=\
 	fuse.go \
 	master.go \
 	mirror.go \
+	mirrorconnection.go \
 	misc.go \
 	registration.go \
 	rpcfs.go \
