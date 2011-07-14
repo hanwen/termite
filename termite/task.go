@@ -52,18 +52,29 @@ func (me *WorkerTask) Run() os.Error {
 		return err
 	}
 
-	chroot := me.mirror.daemon.ChrootBinary
-	cmd := []string{chroot, "-dir", me.WorkRequest.Dir,
-		"-uid", fmt.Sprintf("%d", nobody.Uid), "-gid", fmt.Sprintf("%d", nobody.Gid),
-		"-binary", me.WorkRequest.Binary,
-		me.fuseFs.mount}
+	cmd := []string{}
+	binary := ""
+	if os.Geteuid() == 0 {
+		binary := me.mirror.daemon.ChrootBinary
+		cmd = []string{binary, "-dir", me.WorkRequest.Dir,
+			"-uid", fmt.Sprintf("%d", nobody.Uid), "-gid", fmt.Sprintf("%d", nobody.Gid),
+			"-binary", me.WorkRequest.Binary,
+			me.fuseFs.mount}
 
-	newcmd := make([]string, len(cmd)+len(me.WorkRequest.Argv))
-	copy(newcmd, cmd)
-	copy(newcmd[len(cmd):], me.WorkRequest.Argv)
+		newcmd := make([]string, len(cmd)+len(me.WorkRequest.Argv))
+		copy(newcmd, cmd)
+		copy(newcmd[len(cmd):], me.WorkRequest.Argv)
 
-	log.Println("starting cmd", newcmd)
-	proc, err := os.StartProcess(chroot, newcmd, &attr)
+		cmd = newcmd
+	} else {
+		cmd = me.WorkRequest.Argv
+		binary = me.WorkRequest.Argv[0]
+		attr.Dir = filepath.Join(me.fuseFs.mount, me.WorkRequest.Dir)
+		log.Println("running in", attr.Dir)
+	}
+
+	log.Println("starting cmd", cmd)
+	proc, err := os.StartProcess(binary, cmd, &attr)
 	if err != nil {
 		log.Println("Error", err)
 		return err

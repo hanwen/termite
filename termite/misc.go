@@ -4,6 +4,8 @@ import (
 	"log"
 	"io"
 	"os"
+	"rand"
+	"time"
 )
 
 func PrintStdinSliceLen(s []byte) {
@@ -34,4 +36,16 @@ func HookedCopy(w io.Writer, r io.Reader, proc func([]byte)) os.Error {
 		}
 	}
 	return nil
+}
+
+func RandomBytes(n int) []byte {
+	c := make([]byte, 0)
+	for i := 0; i < n; i++ {
+		c = append(c, byte(rand.Int31n(256)))
+	}
+	return c
+}
+
+func init() {
+	rand.Seed(time.Nanoseconds() ^ (int64(os.Getpid()) << 32))
 }

@@ -112,6 +112,9 @@ func (me *Mirror) Update(req *UpdateRequest, rep *UpdateResponse) os.Error {
 
 func (me *Mirror) Run(req *WorkRequest, rep *WorkReply) os.Error {
 	task, err := me.newWorkerTask(req, rep)
+	if err != nil {
+		return err
+	}
 
 	err = task.Run()
 	if err != nil {

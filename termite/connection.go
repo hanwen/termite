@@ -10,18 +10,9 @@ import (
 	"crypto/hmac"
 	"sync"
 	"io"
-	"time"
 )
 
 const challengeLength = 20
-
-func RandomBytes(n int) []byte {
-	c := make([]byte, 0)
-	for i := 0; i < n; i++ {
-		c = append(c, byte(rand.Int31n(256)))
-	}
-	return c
-}
 
 func sign(conn net.Conn, challenge []byte, secret []byte, local bool) []byte {
 	h := hmac.NewSHA1(secret)
@@ -128,10 +119,6 @@ const (
 	HEADER_LEN  = 8
 )
 
-func init() {
-	rand.Seed(time.Nanoseconds() ^ (int64(os.Getpid()) << 32))
-}
-
 func ConnectionId() string {
 	id := rand.Intn(1e6)
 	return fmt.Sprintf(_ID_FMT, id)
@@ -228,4 +215,20 @@ func DialTypedConnection(addr string, id string, secret []byte) (net.Conn, os.Er
 		return nil, err
 	}
 	return conn, nil
+}
+
+
+func OpenSocketConnection(socket string, channel string) net.Conn {
+	conn, err := net.Dial("unix", socket)
+	if err != nil {
+		log.Fatal("Dial:", err)
+	}
+	if len(channel) != HEADER_LEN {
+		panic(channel)
+	}
+	_, err = io.WriteString(conn, channel)
+	if err != nil {
+		log.Fatal("WriteString", err)
+	}
+	return conn
 }
