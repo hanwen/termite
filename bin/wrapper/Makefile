@@ -1,7 +1,7 @@
 # Use "gomake install" to build and install this package.
 include $(GOROOT)/src/Make.inc
 
-TARG=tool
+TARG=wrapper
 GOFILES=main.go
 
 DEPS=../../termite

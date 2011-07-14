@@ -1,7 +1,7 @@
 #!/bin/sh
 
 gomake -C bin/master
-gomake -C bin/tool
+gomake -C bin/wrapper
 
 set -eu
 
@@ -14,7 +14,7 @@ mkdir -p ${TERMITE_TOOLS}
 
 for bin in gcc g++ bison
 do
-  ln -s $(pwd)/bin/tool/tool ${TERMITE_TOOLS}/${bin}
+  ln -s $(pwd)/bin/wrapper/wrapper ${TERMITE_TOOLS}/${bin}
 done
 
 echo "put this in the environment to run:"
