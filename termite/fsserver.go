@@ -2,12 +2,13 @@ package termite
 
 import (
 	"fmt"
+	"github.com/hanwen/go-fuse/fuse"
+	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
-	"io/ioutil"
 	"strings"
-	"github.com/hanwen/go-fuse/fuse"
+	"sync"
 )
 
 var _ = fmt.Println
@@ -16,16 +17,21 @@ var _ = fmt.Println
 // getattr quickly.
 type FsServer struct {
 	contentServer *ContentServer
-	cache         *ContentCache
+	contentCache  *ContentCache
 	Root          string
 	excluded      map[string]bool
+
+	hashCacheMutex sync.RWMutex
+	// TODO - should use string (immutable) throughout for storing MD5 signatures.
+	hashCache     map[string][]byte
 }
 
 func NewFsServer(root string, cache *ContentCache, excluded []string) *FsServer {
 	fs := &FsServer{
-		cache:         cache,
+		contentCache:         cache,
 		contentServer: &ContentServer{Cache: cache},
 		Root:          root,
+		hashCache:     make(map[string][]byte),
 	}
 
 	fs.excluded = make(map[string]bool)
@@ -113,9 +119,30 @@ func (me *FsServer) GetAttr(req *AttrRequest, rep *AttrResponse) os.Error {
 		rep.Link, err = os.Readlink(req.Name)
 	}
 	if fi.IsRegular() {
-		rep.Hash, rep.Content = me.cache.SavePath(req.Name)
+		rep.Hash, rep.Content = me.getHash(req.Name)
 	}
 	log.Println("GetAttr", req.Name, rep)
 	return nil
 }
 
+func (me *FsServer) getHash(name string) (hash []byte, content []byte) {
+	fullPath := me.path(name)
+
+	me.hashCacheMutex.RLock()
+	hash = me.hashCache[name]
+	me.hashCacheMutex.RUnlock()
+
+	if hash != nil {
+		return []byte(hash), nil
+	}
+
+	hash, content = me.contentCache.SavePath(fullPath)
+
+	// This is racy; we assume concurrent runs of this will reach
+	// the same conclusion regarding the MD5 of the file.
+	me.hashCacheMutex.Lock()
+	defer me.hashCacheMutex.Unlock()
+
+	me.hashCache[name] = hash
+	return hash, content
+}
