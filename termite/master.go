@@ -217,26 +217,30 @@ type Master struct {
 	localRpcServer *rpc.Server
 	localServer    *LocalMaster
 	writableRoot   string
-
+	excluded       []string
 	pending *PendingConnections
 }
 
 func NewMaster(cache *ContentCache, coordinator string, workers []string, secret []byte, excluded []string, maxJobs int) *Master {
 	me := &Master{
 		cache:      cache,
-		fileServer: NewFsServer("/", cache, excluded),
 		secret:     secret,
 		retryCount: 3,
+		excluded:   excluded,
 	}
 	me.mirrors = newMirrorConnections(me, workers, coordinator, maxJobs)
 	me.localServer = &LocalMaster{me}
 	me.secret = secret
 	me.pending = NewPendingConnections()
-	me.fileServerRpc = rpc.NewServer()
-	me.fileServerRpc.Register(me.fileServer)
 	me.localRpcServer = rpc.NewServer()
 	me.localRpcServer.Register(me.localServer)
 	return me
+}
+
+func (me *Master) setWritableRoot(root string) {
+	me.fileServer = NewFsServer(root, me.cache, me.excluded)
+	me.fileServerRpc = rpc.NewServer()
+	me.fileServerRpc.Register(me.fileServer)
 }
 
 func (me *Master) Start(sock string) {
@@ -255,13 +259,14 @@ func (me *Master) Start(sock string) {
 		log.Fatal("sock chmod", err)
 	}
 
-	me.writableRoot, err = filepath.EvalSymlinks(absSock)
+	writableRoot, err := filepath.EvalSymlinks(absSock)
 	if err != nil {
 		log.Fatal("EvalSymlinks", err)
 	}
-	me.writableRoot = filepath.Clean(me.writableRoot)
-	me.writableRoot, _ = filepath.Split(me.writableRoot)
-
+	writableRoot = filepath.Clean(writableRoot)
+	writableRoot, _ = filepath.Split(writableRoot)
+	me.setWritableRoot(writableRoot)
+	
 	log.Println("Accepting connections on", absSock)
 	for {
 		conn, err := listener.Accept()
@@ -402,7 +407,7 @@ func (me *Master) replayFileModifications(worker *rpc.Client, infos []AttrRespon
 			content := info.Content
 			if content == nil {
 				// TODO - stream directly from network connection to file.
-				content, err = FetchFromContentServer(
+				content, err = FetchByHash(
 					worker, "Mirror.FileContent", info.FileInfo.Size, info.Hash)
 			}
 			if err == nil {

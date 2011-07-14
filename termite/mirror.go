@@ -40,9 +40,10 @@ func NewMirror(daemon *WorkerDaemon, rpcConn, revConn net.Conn) *Mirror {
 		daemon:             daemon,
 		workingFileSystems: make(map[*WorkerFuseFs]string),
 	}
-	mirror.rpcFs = NewRpcFs(mirror.fileServer,
-		fmt.Sprintf("%v", mirror.fileServerConn.RemoteAddr()), daemon.contentCache,
-		daemon.fileCache)
+	host, _, _ := net.SplitHostPort(fmt.Sprintf("%v", mirror.fileServerConn.RemoteAddr()))
+	
+	mirror.rpcFs = NewRpcFs(mirror.fileServer, host,
+		daemon.contentCache, daemon.fileCache)
 	mirror.cond.L = &mirror.fuseFileSystemsMutex
 
 	go mirror.serveRpc()

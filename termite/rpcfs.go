@@ -137,7 +137,7 @@ func (me *RpcFs) Open(name string, flags uint32) (fuse.File, fuse.Status) {
 	if a.Hash != nil {
 		return me.OpenHash(a)
 	} 
-	return me.OpenPath(a)
+	return me.OpenPath(name, a)
 }
 
 func (me *RpcFs) OpenHash(attr *AttrResponse) (fuse.File, fuse.Status) {
@@ -159,20 +159,21 @@ func (me *RpcFs) OpenHash(attr *AttrResponse) (fuse.File, fuse.Status) {
 	return &fuse.LoopbackFile{File: f}, fuse.OK
 }
 
-func (me *RpcFs) OpenPath(attr *AttrResponse) (fuse.File, fuse.Status) {
-	p := me.fileCache.GetPath(me.address, *attr.FileInfo)
+func (me *RpcFs) OpenPath(path string, attr *AttrResponse) (fuse.File, fuse.Status) {
+	path = "/" + path
+	withName := *attr.FileInfo
+	withName.Name = path
+	p := me.fileCache.Path(me.address, withName)
 	if _, err := os.Lstat(p); fuse.OsErrorToErrno(err) == fuse.ENOENT {
-		b, err := FetchPathFromServer(me.client, "FsServer.FileContent", *attr.FileInfo)
+		b, err := FetchByPath(me.client, "FsServer.FileContent", withName)
 		if err != nil {
 			return nil, fuse.OsErrorToErrno(err)
 		}
 		
-		hash := me.fileCache.Hash(me.address, *attr.FileInfo)
-		err = me.fileCache.SaveHash(b, hash)
+		err = me.fileCache.SaveContents(b, p)
 		if err != nil {
 			return nil, fuse.OsErrorToErrno(err)
 		}
-		p = me.fileCache.HashPath(hash)
 	}
 	f, err := os.Open(p)
 	if err != nil {
@@ -184,7 +185,7 @@ func (me *RpcFs) OpenPath(attr *AttrResponse) (fuse.File, fuse.Status) {
 
 // TODO - should be streaming.
 func (me *RpcFs) FetchHash(size int64, hash []byte) os.Error {
-	b, err := FetchFromContentServer(me.client, "FsServer.FileContent", size, hash)
+	b, err := FetchByHash(me.client, "FsServer.FileContent", size, hash)
 	if err != nil {
 		return err
 	}

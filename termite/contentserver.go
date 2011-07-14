@@ -33,10 +33,12 @@ type ContentServer struct {
 
 func (me *ContentServer) FileContent(req *ContentRequest, rep *ContentResponse) os.Error {
 	path := ""
-	if req.Hash == nil {
+	if req.Hash != nil {
+		log.Printf("FileContent %x", req.Hash)
 		path = HashPath(me.Cache.dir, req.Hash)
 	} else {
 		// TODO - cross check size & timestamp.
+		log.Printf("FileContent %s", req.FileInfo.Name)
 		path = req.FileInfo.Name
 	}
 	
@@ -57,19 +59,22 @@ func (me *ContentServer) FileContent(req *ContentRequest, rep *ContentResponse) 
 }
 
 // FetchHash issues a FileContent RPC to read an entire file.
-func FetchFromContentServer(client *rpc.Client, rpcName string, size int64, hash []byte) ([]byte, os.Error) {
-	chunkSize := 1 << 18
-
-	buf := bytes.NewBuffer(make([]byte, 0, size))
-	for {
-		req := &ContentRequest{
+func FetchByHash(client *rpc.Client, rpcName string, size int64, hash []byte) ([]byte, os.Error) {
+	req := ContentRequest{
 			Hash:  hash,
-			Start: buf.Len(),
-			End:   buf.Len() + chunkSize,
-		}
+	}
+	return FetchFromContentServer(client, rpcName, size, req)
+}
+
+func FetchFromContentServer(client *rpc.Client, rpcName string, size int64, req ContentRequest) ([]byte, os.Error) {
+	buf := bytes.NewBuffer(make([]byte, 0, size))
+	chunkSize := 1 << 18
+	for {
+		req.Start = buf.Len()
+		req.End = buf.Len() + chunkSize
 
 		rep := &ContentResponse{}
-		err := client.Call(rpcName, req, rep)
+		err := client.Call(rpcName, &req, rep)
 		if err != nil {
 			log.Println("FileContent error:", err)
 			return nil, err
@@ -89,35 +94,9 @@ func FetchFromContentServer(client *rpc.Client, rpcName string, size int64, hash
 }
 
 // FetchHash issues a FileContent RPC to read an entire file.
-//
-// TODO - collapse cut & paste.
-func FetchPathFromServer(client *rpc.Client, rpcName string, fi os.FileInfo) ([]byte, os.Error) {
-	chunkSize := 1 << 18
-
-	buf := bytes.NewBuffer(make([]byte, 0, fi.Size))
-	for {
-		req := &ContentRequest{
-			FileInfo: &fi,
-			Start: buf.Len(),
-			End:   buf.Len() + chunkSize,
-		}
-
-		rep := &ContentResponse{}
-		err := client.Call(rpcName, req, rep)
-		if err != nil {
-			log.Println("FileContent error:", err)
-			return nil, err
-		}
-
-		buf.Write(rep.Chunk)
-		if len(rep.Chunk) < chunkSize {
-			break
-		}
+func FetchByPath(client *rpc.Client, rpcName string, fi os.FileInfo) ([]byte, os.Error) {
+	req := ContentRequest{
+		FileInfo: &fi,
 	}
-
-	if buf.Len() < int(fi.Size) {
-		return nil, os.NewError(
-			fmt.Sprintf("Size mismatch %d != %d", buf.Len(), fi.Size))
-	}
-	return buf.Bytes(), nil
+	return FetchFromContentServer(client, rpcName, fi.Size, req)
 }

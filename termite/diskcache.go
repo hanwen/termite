@@ -1,13 +1,13 @@
 package termite
 
 import (
-	"crypto"
 	"fmt"
-	"io"
 	"os"
+	"path/filepath"
 	"io/ioutil"
 	)
 
+// Caches remote files, keyed by server/full-path/os.FileInfo
 type DiskFileCache struct {
 	dir string
 }
@@ -18,31 +18,29 @@ func NewDiskFileCache(dir string) *DiskFileCache {
 	}
 }
 
-func (me *DiskFileCache) HashPath(h []byte) string {
-	return HashPath(me.dir, h)
-}
-
-func (me *DiskFileCache) Hash(server string, metadata os.FileInfo) []byte {
-	key := fmt.Sprintf("%s:%v", server, metadata)
+func (me *DiskFileCache) Path(server string, metadata os.FileInfo) string {
+	dir, base := filepath.Split(metadata.Name)
 	
-	h := crypto.MD5.New()
-	io.WriteString(h, key)
-	return h.Sum()
+	metadata.Name = ""
+	key := fmt.Sprintf("%v-%s", metadata, dir)
+	key = fmt.Sprintf("%x-%s", md5([]byte(key)), base)
+	return filepath.Join(me.dir, server, key[:2], key[2:])
 }
 
-func (me *DiskFileCache) GetPath(server string, metadata os.FileInfo) string {
-	hash := me.Hash(server, metadata)
-	return HashPath(me.dir, hash)
-}
-
-func (me *DiskFileCache) HasFile(
-	server string, path string, metadata os.FileInfo) bool {
-	p := me.GetPath(server, metadata)
+func (me *DiskFileCache) HasFile(server string, metadata os.FileInfo) bool {
+	p := me.Path(server, metadata)
 	fi, _ := os.Lstat(p)
 	return fi != nil
 }
 
-func (me *DiskFileCache) SaveHash(content []byte, hash []byte) os.Error {
+func (me *DiskFileCache) SaveContents(content []byte, dest string) os.Error {
+	d, _ := filepath.Split(dest)
+	if fi, _ := os.Lstat(d); fi == nil {
+		if err := os.MkdirAll(d, 0700); err != nil {
+			return err
+		}
+	}
+	
 	f, err := ioutil.TempFile(me.dir, ".md5temp")
 	if err != nil { return err }
 	_, err = f.Write(content)
@@ -50,7 +48,6 @@ func (me *DiskFileCache) SaveHash(content []byte, hash []byte) os.Error {
 	f.Close()
 	if err != nil { return err }
 
-	dest := HashPath(me.dir, hash)
 	err = os.Rename(f.Name(), dest)
 	if err != nil {
 		if fi, _ := os.Lstat(dest); fi != nil {

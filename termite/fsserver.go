@@ -17,15 +17,17 @@ var _ = fmt.Println
 type FsServer struct {
 	contentServer *ContentServer
 	cache         *ContentCache
-	Root          string
+	mutableRoot   string
+	exportedRoot  string
 	excluded      map[string]bool
 }
 
-func NewFsServer(root string, cache *ContentCache, excluded []string) *FsServer {
+func NewFsServer(mutableRoot string, cache *ContentCache, excluded []string) *FsServer {
 	fs := &FsServer{
 		cache:         cache,
 		contentServer: &ContentServer{Cache: cache},
-		Root:          root,
+		mutableRoot:   mutableRoot,
+		exportedRoot:  "/",
 	}
 
 	fs.excluded = make(map[string]bool)
@@ -75,10 +77,10 @@ type DirResponse struct {
 }
 
 func (me *FsServer) path(n string) string {
-	if me.Root == "" {
+	if me.exportedRoot == "" {
 		return n
 	}
-	return filepath.Join(me.Root, strings.TrimLeft(n, "/"))
+	return filepath.Join(me.exportedRoot, strings.TrimLeft(n, "/"))
 }
 
 func (me *FsServer) FileContent(req *ContentRequest, rep *ContentResponse) os.Error {
@@ -113,7 +115,9 @@ func (me *FsServer) GetAttr(req *AttrRequest, rep *AttrResponse) os.Error {
 		rep.Link, err = os.Readlink(req.Name)
 	}
 	if fi.IsRegular() {
-		rep.Hash, rep.Content = me.cache.SavePath(req.Name)
+		if strings.HasPrefix(req.Name, me.mutableRoot) {
+			rep.Hash, rep.Content = me.cache.SavePath(req.Name)
+		} 
 	}
 	log.Println("GetAttr", req.Name, rep)
 	return nil

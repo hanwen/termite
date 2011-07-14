@@ -67,13 +67,12 @@ func (me *WorkerTask) Run() os.Error {
 
 		cmd = newcmd
 	} else {
-		cmd = me.WorkRequest.Argv
 		binary = me.WorkRequest.Argv[0]
+		cmd = me.WorkRequest.Argv
 		attr.Dir = filepath.Join(me.fuseFs.mount, me.WorkRequest.Dir)
 		log.Println("running in", attr.Dir)
 	}
 
-	log.Println("starting cmd", cmd)
 	proc, err := os.StartProcess(binary, cmd, &attr)
 	if err != nil {
 		log.Println("StartProcess", err)

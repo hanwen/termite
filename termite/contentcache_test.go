@@ -8,11 +8,7 @@ import (
 	"io/ioutil"
 )
 
-func md5(c []byte) []byte {
-	h := crypto.MD5.New()
-	h.Write(c)
-	return h.Sum()
-}
+
 
 func TestDiskCache(t *testing.T) {
 	content := []byte("hello")

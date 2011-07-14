@@ -1,6 +1,7 @@
 package termite
 
 import (
+	"crypto"
 	"log"
 	"io"
 	"os"
@@ -48,4 +49,10 @@ func RandomBytes(n int) []byte {
 
 func init() {
 	rand.Seed(time.Nanoseconds() ^ (int64(os.Getpid()) << 32))
+}
+
+func md5(c []byte) []byte {
+	h := crypto.MD5.New()
+	h.Write(c)
+	return h.Sum()
 }
