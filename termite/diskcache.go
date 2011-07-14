@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"io/ioutil"
-	)
+)
 
 // Caches remote files, keyed by full-path+os.FileInfo
 type DiskFileCache struct {
@@ -14,13 +14,13 @@ type DiskFileCache struct {
 
 func NewDiskFileCache(dir string) *DiskFileCache {
 	return &DiskFileCache{
-	dir: dir,
+		dir: dir,
 	}
 }
 
 func (me *DiskFileCache) Path(metadata os.FileInfo) string {
 	dir, base := filepath.Split(metadata.Name)
-	
+
 	metadata.Name = ""
 	metadata.Atime_ns = 0
 	key := fmt.Sprintf("%v-%s", metadata, dir)
@@ -41,13 +41,19 @@ func (me *DiskFileCache) SaveContents(content []byte, dest string) os.Error {
 			return err
 		}
 	}
-	
+
 	f, err := ioutil.TempFile(me.dir, ".diskcache_temp")
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	_, err = f.Write(content)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	f.Close()
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 
 	err = os.Rename(f.Name(), dest)
 	if err != nil {
@@ -58,4 +64,3 @@ func (me *DiskFileCache) SaveContents(content []byte, dest string) os.Error {
 	}
 	return err
 }
-	

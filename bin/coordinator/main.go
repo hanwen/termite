@@ -19,7 +19,7 @@ type Worker struct {
 }
 
 type Coordinator struct {
-	mutex sync.Mutex
+	mutex   sync.Mutex
 	workers map[string]*Worker
 }
 
@@ -119,7 +119,7 @@ func main() {
 
 	c := NewCoordinator()
 	http.HandleFunc("/",
-			func(w http.ResponseWriter, req *http.Request) {
+		func(w http.ResponseWriter, req *http.Request) {
 			c.htmlHandler(w, req)
 		})
 

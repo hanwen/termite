@@ -91,6 +91,7 @@ func NewWorkerDaemon(secret []byte, tmpDir string, cacheDir string, jobs int) *W
 }
 
 const _REPORT_DELAY = 60.0
+
 func (me *WorkerDaemon) PeriodicReport(coordinator string, port int) {
 	if coordinator == "" {
 		log.Println("No coordinator - not doing period reports.")
@@ -119,7 +120,7 @@ func (me *WorkerDaemon) report(coordinator string, port int) {
 
 	req := Registration{
 		Address: fmt.Sprintf("%s:%d", hostname, port), // TODO - resolve.
-		Name:fmt.Sprintf("%s:%d", hostname, port),
+		Name:    fmt.Sprintf("%s:%d", hostname, port),
 	}
 	rep := 0
 	err = client.Call("Coordinator.Register", &req, &rep)

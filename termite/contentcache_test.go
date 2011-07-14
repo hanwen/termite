@@ -103,7 +103,7 @@ func TestDiskCacheStreamReturnContent(t *testing.T) {
 	for i, _ := range content {
 		content[i] = 'x'
 	}
-	
+
 	d, _ := ioutil.TempDir("", "")
 	defer os.RemoveAll(d)
 	cache := NewContentCache(d)
@@ -113,7 +113,7 @@ func TestDiskCacheStreamReturnContent(t *testing.T) {
 	if string(content) != string(c) {
 		t.Error("content mismatch")
 	}
-	
+
 	content = make([]byte, _BUFSIZE+1)
 	for i, _ := range content {
 		content[i] = 'y'
@@ -123,5 +123,5 @@ func TestDiskCacheStreamReturnContent(t *testing.T) {
 	_, c = cache.SaveStream(b)
 	if c != nil {
 		t.Error("should not save")
-	}	
+	}
 }

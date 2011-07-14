@@ -24,12 +24,12 @@ type FsServer struct {
 
 	hashCacheMutex sync.RWMutex
 	// TODO - should use string (immutable) throughout for storing MD5 signatures.
-	hashCache     map[string][]byte
+	hashCache map[string][]byte
 }
 
 func NewFsServer(root string, cache *ContentCache, excluded []string) *FsServer {
 	fs := &FsServer{
-		contentCache:         cache,
+		contentCache:  cache,
 		contentServer: &ContentServer{Cache: cache},
 		Root:          root,
 		hashCache:     make(map[string][]byte),
@@ -52,7 +52,7 @@ type AttrResponse struct {
 	fuse.Status
 	Hash    []byte
 	Link    string
-	Content []byte		// optional.
+	Content []byte // optional.
 }
 
 func (me AttrResponse) String() string {

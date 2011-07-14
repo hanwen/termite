@@ -63,4 +63,3 @@ func md5(c []byte) []byte {
 	h.Write(c)
 	return h.Sum()
 }
-

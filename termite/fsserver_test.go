@@ -16,22 +16,26 @@ func TestRpcFS(t *testing.T) {
 	tmp, _ := ioutil.TempDir("", "")
 
 	mnt := tmp + "/mnt"
-	orig := tmp  + "/orig"
+	orig := tmp + "/orig"
 	srvCache := tmp + "/server-cache"
 	clientCache := tmp + "/client-cache"
 
 	os.Mkdir(mnt, 0700)
 	os.Mkdir(orig, 0700)
-	os.Mkdir(orig + "/subdir", 0700)
+	os.Mkdir(orig+"/subdir", 0700)
 	content := "hello"
-	err := ioutil.WriteFile(orig + "/file.txt", []byte(content), 0644)
-	if err != nil { t.Fatal(err) }
+	err := ioutil.WriteFile(orig+"/file.txt", []byte(content), 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	cache := NewContentCache(srvCache)
 	server := NewFsServer(orig, cache, []string{})
 
 	l, r, err := fuse.Socketpair("unix")
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	rpcServer := rpc.NewServer()
 	rpcServer.Register(server)
@@ -45,7 +49,7 @@ func TestRpcFS(t *testing.T) {
 	if err != nil {
 		t.Fatal("Mount", err)
 	}
-	defer func(){
+	defer func() {
 		log.Println("unmounting")
 		err := state.Unmount()
 		if err == nil {
@@ -60,7 +64,7 @@ func TestRpcFS(t *testing.T) {
 		t.Fatal("subdir stat", fi, err)
 	}
 
-	c,  err := ioutil.ReadFile(mnt + "/file.txt")
+	c, err := ioutil.ReadFile(mnt + "/file.txt")
 	if err != nil || string(c) != "hello" {
 		t.Error("Readfile", c)
 	}
@@ -71,16 +75,16 @@ func TestRpcFS(t *testing.T) {
 	}
 
 	// This test implementation detail - should be separate?
-	storedHash :=  server.hashCache["/file.txt"]
+	storedHash := server.hashCache["/file.txt"]
 	if storedHash == nil || string(storedHash) != string(md5str(content)) {
 		t.Errorf("cache error %x (%v)", storedHash, storedHash)
 	}
 
 	newData := []AttrResponse{
-	AttrResponse{
-		Path: "/file.txt",
-		Hash: md5str("somethingelse"),
-	},
+		AttrResponse{
+			Path: "/file.txt",
+			Hash: md5str("somethingelse"),
+		},
 	}
 	server.updateHashes(newData)
 	storedHash = server.hashCache["/file.txt"]

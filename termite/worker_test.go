@@ -17,7 +17,7 @@ func TestBasic(t *testing.T) {
 	workerTmp := tmp + "/worker-tmp"
 	os.Mkdir(workerTmp, 0700)
 	worker := NewWorkerDaemon(secret, workerTmp,
-		tmp + "/worker-cache", 1)
+		tmp+"/worker-cache", 1)
 
 	// TODO - pick unused port
 	workerPort := int(rand.Int31n(60000) + 1024)
@@ -45,11 +45,11 @@ func TestBasic(t *testing.T) {
 
 		// Will not be filtered, since /tmp/foo is more
 		// specific than /tmp
-		Dir:     tmp + "/wd",
+		Dir: tmp + "/wd",
 	}
 
 	stdinConn := OpenSocketConnection(socket, req.StdinId)
-	go func(){
+	go func() {
 		stdinConn.Write([]byte("hello"))
 		stdinConn.Close()
 	}()
@@ -70,6 +70,5 @@ func TestBasic(t *testing.T) {
 	if string(content) != "hello" {
 		t.Error("content:", content)
 	}
-	
 
 }

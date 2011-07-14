@@ -39,7 +39,7 @@ type mirrorConnections struct {
 
 	// Protects all of the below.
 	sync.Mutex
-	workers     []string
+	workers       []string
 	mirrors       map[string]*mirrorConnection
 	wantedMaxJobs int
 }
