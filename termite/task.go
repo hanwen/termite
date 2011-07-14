@@ -55,7 +55,7 @@ func (me *WorkerTask) Run() os.Error {
 	cmd := []string{}
 	binary := ""
 	if os.Geteuid() == 0 {
-		binary := me.mirror.daemon.ChrootBinary
+		binary = me.mirror.daemon.ChrootBinary
 		cmd = []string{binary, "-dir", me.WorkRequest.Dir,
 			"-uid", fmt.Sprintf("%d", nobody.Uid), "-gid", fmt.Sprintf("%d", nobody.Gid),
 			"-binary", me.WorkRequest.Binary,
