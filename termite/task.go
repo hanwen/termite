@@ -76,7 +76,7 @@ func (me *WorkerTask) Run() os.Error {
 	log.Println("starting cmd", cmd)
 	proc, err := os.StartProcess(binary, cmd, &attr)
 	if err != nil {
-		log.Println("Error", err)
+		log.Println("StartProcess", err)
 		return err
 	}
 

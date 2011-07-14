@@ -9,6 +9,7 @@ GOFILES=\
 	contentcache.go \
 	contentserver.go \
 	devnullfs.go \
+	diskcache.go \
 	fsserver.go \
 	fuse.go \
 	master.go \

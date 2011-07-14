@@ -1,9 +1,10 @@
 package termite
 
 import (
+	"fmt"
+	"log"
 	"net"
 	"os"
-	"log"
 	"rpc"
 	"sync"
 )
@@ -39,7 +40,9 @@ func NewMirror(daemon *WorkerDaemon, rpcConn, revConn net.Conn) *Mirror {
 		daemon:             daemon,
 		workingFileSystems: make(map[*WorkerFuseFs]string),
 	}
-	mirror.rpcFs = NewRpcFs(mirror.fileServer, daemon.contentCache)
+	mirror.rpcFs = NewRpcFs(mirror.fileServer,
+		fmt.Sprintf("%v", mirror.fileServerConn.RemoteAddr()), daemon.contentCache,
+		daemon.fileCache)
 	mirror.cond.L = &mirror.fuseFileSystemsMutex
 
 	go mirror.serveRpc()
@@ -118,7 +121,7 @@ func (me *Mirror) Run(req *WorkRequest, rep *WorkReply) os.Error {
 
 	err = task.Run()
 	if err != nil {
-		log.Println("Error", err)
+		log.Println("task.Run:", err)
 		return err
 	}
 

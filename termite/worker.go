@@ -39,6 +39,7 @@ type WorkerDaemon struct {
 	ChrootBinary string
 
 	contentCache  *ContentCache
+	fileCache     *DiskFileCache
 	contentServer *ContentServer
 	maxJobCount   int
 	pending       *PendingConnections
@@ -77,12 +78,14 @@ func (me *WorkerDaemon) getMirror(rpcConn, revConn net.Conn, reserveCount int) (
 }
 
 func NewWorkerDaemon(secret []byte, tmpDir string, cacheDir string, jobs int) *WorkerDaemon {
-	cache := NewContentCache(cacheDir)
+	contentCache := NewContentCache(cacheDir + "/content")
+	fileCache := NewDiskFileCache(cacheDir + "/path")
 	w := &WorkerDaemon{
 		secret:        secret,
-		contentCache:  cache,
+		contentCache:  contentCache,
+		fileCache:     fileCache,
 		mirrorMap:     make(map[string]*Mirror),
-		contentServer: &ContentServer{Cache: cache},
+		contentServer: &ContentServer{Cache: contentCache},
 		pending:       NewPendingConnections(),
 		maxJobCount:   jobs,
 		tmpDir:        tmpDir,

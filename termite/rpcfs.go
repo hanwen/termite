@@ -13,10 +13,12 @@ import (
 
 type RpcFs struct {
 	fuse.DefaultFileSystem
-	cache *ContentCache
-
+	contentCache *ContentCache
+	fileCache *DiskFileCache
+	
 	client *rpc.Client
-
+	address string
+	
 	// Should be acquired before attrMutex if applicable.
 	dirMutex    sync.Mutex
 	directories map[string]*DirResponse
@@ -35,12 +37,15 @@ type UpdateResponse struct {
 
 }
 
-func NewRpcFs(server *rpc.Client, cache *ContentCache) *RpcFs {
-	me := &RpcFs{}
-	me.client = server
-	me.directories = make(map[string]*DirResponse)
-	me.cache = cache
-	me.attrResponse = make(map[string]*AttrResponse)
+func NewRpcFs(server *rpc.Client, address string, cache *ContentCache, fileCache *DiskFileCache) *RpcFs {
+	me := &RpcFs{
+		client: server,
+		address: address,
+		fileCache: fileCache,
+		directories: make(map[string]*DirResponse),
+		contentCache: cache,
+		attrResponse: make(map[string]*AttrResponse),
+	}
 	return me
 }
 
@@ -129,10 +134,17 @@ func (me *RpcFs) Open(name string, flags uint32) (fuse.File, fuse.Status) {
 		return nil, a.Status
 	}
 
-	p := me.cache.Path(a.Hash)
+	if a.Hash != nil {
+		return me.OpenHash(a)
+	} 
+	return me.OpenPath(a)
+}
+
+func (me *RpcFs) OpenHash(attr *AttrResponse) (fuse.File, fuse.Status) {
+	p := me.contentCache.Path(attr.Hash)
 	if _, err := os.Lstat(p); fuse.OsErrorToErrno(err) == fuse.ENOENT {
-		log.Printf("Fetching contents for file %s", name)
-		err = me.FetchHash(a.FileInfo.Size, a.Hash)
+		log.Printf("Fetching contents %x", attr.Hash)
+		err = me.FetchHash(attr.FileInfo.Size, attr.Hash)
 		// should return something else?
 		if err != nil {
 			return nil, fuse.ENOENT
@@ -147,13 +159,36 @@ func (me *RpcFs) Open(name string, flags uint32) (fuse.File, fuse.Status) {
 	return &fuse.LoopbackFile{File: f}, fuse.OK
 }
 
+func (me *RpcFs) OpenPath(attr *AttrResponse) (fuse.File, fuse.Status) {
+	p := me.fileCache.GetPath(me.address, *attr.FileInfo)
+	if _, err := os.Lstat(p); fuse.OsErrorToErrno(err) == fuse.ENOENT {
+		b, err := FetchPathFromServer(me.client, "FsServer.FileContent", *attr.FileInfo)
+		if err != nil {
+			return nil, fuse.OsErrorToErrno(err)
+		}
+		
+		hash := me.fileCache.Hash(me.address, *attr.FileInfo)
+		err = me.fileCache.SaveHash(b, hash)
+		if err != nil {
+			return nil, fuse.OsErrorToErrno(err)
+		}
+		p = me.fileCache.HashPath(hash)
+	}
+	f, err := os.Open(p)
+	if err != nil {
+		return nil, fuse.OsErrorToErrno(err)
+	}
+	return &fuse.LoopbackFile{File: f}, fuse.OK
+}
+
+
 // TODO - should be streaming.
 func (me *RpcFs) FetchHash(size int64, hash []byte) os.Error {
 	b, err := FetchFromContentServer(me.client, "FsServer.FileContent", size, hash)
 	if err != nil {
 		return err
 	}
-	savedHash := me.cache.Save(b)
+	savedHash := me.contentCache.Save(b)
 
 	if bytes.Compare(hash, savedHash) != 0 {
 		log.Fatalf("Corruption: savedHash %x != requested hash %x.", savedHash, hash)

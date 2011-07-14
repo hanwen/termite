@@ -26,7 +26,7 @@ func main() {
 
 	workerList := strings.Split(*workers, ",")
 	excludeList := strings.Split(*exclude, ",")
-	c := termite.NewDiskFileCache(*cachedir)
+	c := termite.NewContentCache(*cachedir)
 	master := termite.NewMaster(
 		c, *coordinator, workerList, secret, excludeList, *jobs)
 	master.Start(*socket)
