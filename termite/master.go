@@ -356,6 +356,7 @@ func (me *Master) runOnce(req *WorkRequest, rep *WorkReply) os.Error {
 		return err
 	}
 
+	me.fileServer.updateHashes(localRep.Files)
 	me.replayFileModifications(mirror.rpcClient, localRep.Files)
 	*rep = localRep
 	rep.Files = nil
@@ -421,12 +422,13 @@ func (me *Master) replayFileModifications(worker *rpc.Client, infos []AttrRespon
 			log.Println("Replay symlink:", name)
 			err = os.Symlink(info.Link, info.Path)
 		}
-		if info.Status == fuse.ENOENT {
-			log.Println("Replay delete:", name)
-			err = os.Remove(info.Path)
-		}
 		if !info.Status.Ok() {
-			log.Fatal("Unknown status for replay", info.Status)
+			if info.Status == fuse.ENOENT {
+				log.Println("Replay delete:", name)
+				err = os.Remove(info.Path)
+			} else {
+				log.Fatal("Unknown status for replay", info.Status)
+			}
 		}
 
 		if err != nil {

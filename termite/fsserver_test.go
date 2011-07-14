@@ -72,8 +72,19 @@ func TestRpcFS(t *testing.T) {
 
 	// This test implementation detail - should be separate?
 	storedHash :=  server.hashCache["/file.txt"]
-	if storedHash == nil || string(storedHash) != string(md5([]byte(content))) {
+	if storedHash == nil || string(storedHash) != string(md5str(content)) {
 		t.Errorf("cache error %x (%v)", storedHash, storedHash)
 	}
 
+	newData := []AttrResponse{
+	AttrResponse{
+		Path: "/file.txt",
+		Hash: md5str("somethingelse"),
+	},
+	}
+	server.updateHashes(newData)
+	storedHash = server.hashCache["/file.txt"]
+	if storedHash == nil || string(storedHash) != string(newData[0].Hash) {
+		t.Errorf("cache error %x (%v)", storedHash, storedHash)
+	}
 }

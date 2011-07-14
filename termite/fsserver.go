@@ -13,8 +13,9 @@ import (
 
 var _ = fmt.Println
 
-// TODO - should have a path -> md5 cache so we can answer the 2nd
-// getattr quickly.
+// TODO - we could remember md5s for files outside the writable root
+// so we don't read stuff under /usr for every master startup.
+
 type FsServer struct {
 	contentServer *ContentServer
 	contentCache  *ContentCache
@@ -124,6 +125,22 @@ func (me *FsServer) GetAttr(req *AttrRequest, rep *AttrResponse) os.Error {
 	log.Println("GetAttr", req.Name, rep)
 	return nil
 }
+
+func (me *FsServer) updateHashes(infos []AttrResponse) {
+	me.hashCacheMutex.Lock()
+	defer me.hashCacheMutex.Unlock()
+
+	for _, r := range infos {
+		name := r.Path
+		if !r.Status.Ok() || r.Link != "" {
+			me.hashCache[name] = nil, false
+		}
+		if r.Hash != nil {
+			me.hashCache[name] = r.Hash
+		}
+	}
+}
+
 
 func (me *FsServer) getHash(name string) (hash []byte, content []byte) {
 	fullPath := me.path(name)
