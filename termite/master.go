@@ -38,7 +38,7 @@ func (me *mirrorConnection) sendFiles(infos []AttrResponse) {
 type mirrorConnections struct {
 	master      *Master
 	coordinator string
-	
+
 	// Condition for mutex below.
 	sync.Cond
 
@@ -71,12 +71,12 @@ func (me *mirrorConnections) refreshWorkers() {
 		log.Println("coordinator has no workers for us.")
 		return
 	}
-	
+
 	me.Mutex.Lock()
 	defer me.Mutex.Unlock()
 	me.workers = newWorkers
 }
-	
+
 
 func newMirrorConnections(m *Master, workers []string, coordinator string, maxJobs int) *mirrorConnections {
 	mc := &mirrorConnections{
@@ -107,7 +107,7 @@ func (me *mirrorConnections) periodWorkersRefresh() {
 		me.refreshWorkers()
 	}
 }
-	
+
 func (me *mirrorConnections) availableJobs() int {
 	a := 0
 	for _, mc := range me.mirrors {
@@ -197,7 +197,7 @@ func (me *mirrorConnections) tryConnect() {
 		log.Println("Creating mirror on", addr)
 		mc, err := me.master.createMirror(addr, wanted)
 		if err != nil {
-			log.Println("nonfatal error creating mirror", err)
+			log.Println("nonfatal error creating mirror:", err)
 			continue
 		}
 		mc.workerAddr = addr

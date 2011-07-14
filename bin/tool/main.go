@@ -12,21 +12,6 @@ import (
 
 const _SOCKET = ".termite-socket"
 
-func OpenConn(socket string, channel string) net.Conn {
-	conn, err := net.Dial("unix", socket)
-	if err != nil {
-		log.Fatal("Dial:", err)
-	}
-	if len(channel) != termite.HEADER_LEN {
-		panic(channel)
-	}
-	_, err = io.WriteString(conn, channel)
-	if err != nil {
-		log.Fatal("WriteString", err)
-	}
-	return conn
-}
-
 const _TEST_CONNECTION = "test-termite-connection"
 
 func main() {
@@ -82,7 +67,7 @@ func main() {
 		os.Exit(exit)
 	}
 
-	conn := OpenConn(socket, termite.RPC_CHANNEL)
+	conn := termite.OpenSocketConnection(socket, termite.RPC_CHANNEL)
 	args[0] = binary
 	req := termite.WorkRequest{
 		StdinId: termite.ConnectionId(),
@@ -93,7 +78,7 @@ func main() {
 		Debug:   os.Getenv("TERMITE_DEBUG") != "",
 	}
 
-	stdinConn := OpenConn(socket, req.StdinId)
+	stdinConn := termite.OpenSocketConnection(socket, req.StdinId)
 	go func() {
 		io.Copy(stdinConn, os.Stdin)
 		stdinConn.Close()
