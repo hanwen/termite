@@ -17,7 +17,6 @@ GOFILES=\
 	mirror.go \
 	mirrorconnection.go \
 	misc.go \
-	registration.go \
 	rpcfs.go \
 	task.go \
 	worker.go \

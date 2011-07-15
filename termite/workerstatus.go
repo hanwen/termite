@@ -35,6 +35,7 @@ func (me *Mirror) httpHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (me *WorkerDaemon) ServeHTTPStatus(port int) {
+	me.httpStatusPort = port
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		me.httpHandler(w, r)
 	})

@@ -9,6 +9,17 @@ import (
 	"sync"
 )
 
+type Registration struct {
+	Address string
+	Name    string
+	HttpStatusAddress string
+	// TODO - hash of the secret?
+}
+
+type Registered struct {
+	Registrations []Registration
+}
+
 type WorkerRegistration struct {
 	Registration
 	LastReported int64
@@ -104,7 +115,12 @@ func (me *Coordinator) HtmlHandler(w http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(w, "<body><h1>Termite coordinator</h1>")
 
 	for _, worker := range me.workers {
-		fmt.Fprintf(w, "<p>address <tt>%s</tt>, host <tt>%s</tt>", worker.Address, worker.Name)
+		line := fmt.Sprintf("address <tt>%s</tt>, host <tt>%s</tt>", worker.Address, worker.Name)
+
+		if worker.HttpStatusAddress != "" {
+			line = fmt.Sprintf("<a href=\"http://%s/\">%s</a>", worker.HttpStatusAddress, line)
+		}
+		fmt.Fprintf(w, "<p>%s", line)
 	}
 	fmt.Fprintf(w, "</body></html>")
 }
