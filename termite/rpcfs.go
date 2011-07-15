@@ -131,6 +131,8 @@ func (me *RpcFs) Open(name string, flags uint32) (fuse.File, fuse.Status) {
 
 	p := me.cache.Path(a.Hash)
 	if _, err := os.Lstat(p); fuse.OsErrorToErrno(err) == fuse.ENOENT {
+		// TODO - use a mutex/condition to ensure each file is
+		// fetched only once.
 		log.Printf("Fetching contents for file %s", name)
 		err = me.FetchHash(a.FileInfo.Size, a.Hash)
 		// should return something else?
