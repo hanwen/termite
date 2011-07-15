@@ -8,6 +8,7 @@ GOFILES=\
 	connection.go \
 	contentcache.go \
 	contentserver.go \
+	coordinator.go \
 	devnullfs.go \
 	diskcache.go \
 	fsserver.go \
