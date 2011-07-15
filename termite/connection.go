@@ -2,14 +2,15 @@ package termite
 
 import (
 	"bytes"
+	"crypto/hmac"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"os"
 	"rand"
-	"crypto/hmac"
 	"sync"
-	"io"
+	"time"
 )
 
 const challengeLength = 20
@@ -217,11 +218,21 @@ func DialTypedConnection(addr string, id string, secret []byte) (net.Conn, os.Er
 	return conn, nil
 }
 
+const _MAXTRY = 3
 
 func OpenSocketConnection(socket string, channel string) net.Conn {
+	delay := int64(0)
 	conn, err := net.Dial("unix", socket)
-	if err != nil {
-		log.Fatal("Dial:", err)
+	for try := 0; err != nil && try < _MAXTRY; try++ {
+		if err == os.EAGAIN {
+			delay = int64(1.0 + rand.Float64()) * delay + 0.01e9
+			time.Sleep(int64(delay))
+			conn, err = net.Dial("unix", socket)
+			continue
+		}
+		if err != nil {
+			log.Fatal("Dial:", err)
+		}
 	}
 	if len(channel) != HEADER_LEN {
 		panic(channel)
