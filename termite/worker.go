@@ -7,6 +7,7 @@ import (
 	"os"
 	"rpc"
 	"sync"
+	"strings"
 	"time"
 )
 
@@ -118,8 +119,14 @@ func (me *WorkerDaemon) report(coordinator string, port int) {
 		return
 	}
 
+	cname, err := net.LookupCNAME(hostname)
+	if err != nil {
+		log.Println("cname", err)
+		return
+	}		
+	cname = strings.TrimRight(cname, ".")
 	req := Registration{
-		Address: fmt.Sprintf("%s:%d", hostname, port), // TODO - resolve.
+		Address: fmt.Sprintf("%v:%d", cname, port),
 		Name:    fmt.Sprintf("%s:%d", hostname, port),
 	}
 	rep := 0
