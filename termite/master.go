@@ -198,10 +198,13 @@ func (me *Master) replayFileModifications(worker *rpc.Client, infos []AttrRespon
 			if name == "" {
 				name = "/"
 			}
-			_, err = os.Lstat(name)
+			err = os.Mkdir(name, info.FileInfo.Mode&07777)
 			if err != nil {
-				log.Println("Replay mkdir:", name)
-				err = os.Mkdir(name, info.FileInfo.Mode&07777)
+				// some other process may have created
+				// the dir.
+				if fi, _ := os.Lstat(name); fi != nil {
+					err = nil
+				}
 			}
 		}
 		if info.Hash != nil {
