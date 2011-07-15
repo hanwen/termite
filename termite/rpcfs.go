@@ -23,6 +23,10 @@ type RpcFs struct {
 
 	attrMutex    sync.RWMutex
 	attrResponse map[string]*AttrResponse
+
+	fetchMutex sync.Mutex
+	fetchCond  sync.Cond
+	fetchMap   map[string]bool
 }
 
 type UpdateRequest struct {
@@ -41,6 +45,9 @@ func NewRpcFs(server *rpc.Client, cache *ContentCache) *RpcFs {
 	me.directories = make(map[string]*DirResponse)
 	me.cache = cache
 	me.attrResponse = make(map[string]*AttrResponse)
+
+	me.fetchMap = make(map[string]bool)
+	me.fetchCond.L = &me.fetchMutex
 	return me
 }
 
@@ -131,8 +138,6 @@ func (me *RpcFs) Open(name string, flags uint32) (fuse.File, fuse.Status) {
 
 	p := me.cache.Path(a.Hash)
 	if _, err := os.Lstat(p); fuse.OsErrorToErrno(err) == fuse.ENOENT {
-		// TODO - use a mutex/condition to ensure each file is
-		// fetched only once.
 		log.Printf("Fetching contents for file %s", name)
 		err = me.FetchHash(a.FileInfo.Size, a.Hash)
 		// should return something else?
@@ -149,14 +154,35 @@ func (me *RpcFs) Open(name string, flags uint32) (fuse.File, fuse.Status) {
 	return &fuse.LoopbackFile{File: f}, fuse.OK
 }
 
-// TODO - should be streaming.
 func (me *RpcFs) FetchHash(size int64, hash []byte) os.Error {
+	key := string(hash)
+	me.fetchMutex.Lock()
+	defer me.fetchMutex.Unlock()
+	for me.fetchMap[key] && !me.cache.HasHash(hash) {
+		me.fetchCond.Wait()
+	}
+	
+	if me.cache.HasHash(hash) {
+		return nil
+	}
+	me.fetchMap[key] = true
+	defer func() {
+		me.fetchMap[key] = false, false
+		me.fetchCond.Signal()
+	}()
+	me.fetchMutex.Unlock()
+	err := me.fetchOnce(size, hash)
+	me.fetchMutex.Lock()
+	return err
+}
+
+func (me *RpcFs) fetchOnce(size int64, hash []byte) os.Error {
+	// TODO - should save in smaller chunks.
 	b, err := FetchFromContentServer(me.client, "FsServer.FileContent", size, hash)
 	if err != nil {
 		return err
 	}
 	savedHash := me.cache.Save(b)
-
 	if bytes.Compare(hash, savedHash) != 0 {
 		log.Fatalf("Corruption: savedHash %x != requested hash %x.", savedHash, hash)
 	}
