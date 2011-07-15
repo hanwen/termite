@@ -193,8 +193,8 @@ func (me *Master) replayFileModifications(worker *rpc.Client, infos []AttrRespon
 	for _, name := range names {
 		info := entries[name]
 		var err os.Error
-
-		if info.FileInfo.IsDirectory() {
+		// TODO - deletion test.
+		if info.FileInfo != nil && info.FileInfo.IsDirectory() {
 			if name == "" {
 				name = "/"
 			}
