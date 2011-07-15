@@ -151,8 +151,6 @@ func (me *fileSaver) VisitFile(path string, osInfo *os.FileInfo) {
 
 func (me *fileSaver) VisitDir(path string, osInfo *os.FileInfo) bool {
 	me.savePath(path, osInfo)
-
-	// TODO - save dir to delete.
 	return me.err == nil
 }
 

@@ -9,7 +9,7 @@ import (
 )
 
 // TODO - should have an interface that opens a network connection and
-// streams the whole file directly, to avoid choppy RPCs.
+// streams the whole file directly, to avoid choppy RPCs?
 
 type ContentRequest struct {
 	Hash       []byte

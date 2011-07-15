@@ -12,9 +12,7 @@ import (
 )
 
 func TestAuthenticate(t *testing.T) {
-	secret := []byte("sekr3t")
-
-	// TODO - tiny security hole here.
+	secret := RandomBytes(20)
 	port := int(rand.Int31n(60000) + 1024)
 
 	out := make(chan net.Conn)

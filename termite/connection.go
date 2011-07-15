@@ -89,7 +89,6 @@ func Authenticate(conn net.Conn, secret []byte) os.Error {
 func SetupServer(port int, secret []byte, output chan net.Conn) {
 	host, _ := os.Hostname()
 	addr := fmt.Sprintf("%s:%d", host, port)
-	// TODO - also listen on localhost.
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		log.Fatal("net.Listen", err)
@@ -170,11 +169,11 @@ func (me *PendingConnections) WaitConnection(id string) net.Conn {
 	return p.Conn
 }
 
+// Returns false if caller should handle the connection.
 func (me *PendingConnections) Accept(conn net.Conn) bool {
 	idBytes := make([]byte, HEADER_LEN)
 	n, err := conn.Read(idBytes)
 	if n != HEADER_LEN || err != nil {
-		// TODO -an error?
 		conn.Close()
 		return true
 	}
@@ -233,7 +232,7 @@ func OpenSocketConnection(socket string, channel string) net.Conn {
 	if err != nil {
 		log.Fatal("OpenSocketConnection: ", err)
 	}
-	
+
 	if len(channel) != HEADER_LEN {
 		panic(channel)
 	}

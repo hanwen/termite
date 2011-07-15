@@ -39,14 +39,13 @@ type WorkerDaemon struct {
 	secret       []byte
 	ChrootBinary string
 	httpStatusPort int
-	
+
 	contentCache  *ContentCache
 	contentServer *ContentServer
 	maxJobCount   int
 	pending       *PendingConnections
 	cacheDir      string
 	tmpDir        string
-	// TODO - deal with closed connections.
 	mirrorMapMutex sync.Mutex
 	mirrorMap      map[string]*Mirror
 }
@@ -124,7 +123,7 @@ func (me *WorkerDaemon) report(coordinator string, port int) {
 	if err != nil {
 		log.Println("cname", err)
 		return
-	}		
+	}
 	cname = strings.TrimRight(cname, ".")
 	req := Registration{
 		Address: fmt.Sprintf("%v:%d", cname, port),
