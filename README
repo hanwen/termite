@@ -63,6 +63,8 @@ SECURITY
 
 TODO
 
+* Master dropping mirrorConnection after X seconds of idle.
+
 * Caching path => md5 mapping in the master.
 
 * More sophisticated exclusion for exporting file systems.
