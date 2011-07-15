@@ -8,6 +8,7 @@ import (
 	"testing"
 	"rpc"
 	"log"
+	"time"
 )
 
 func TestBasic(t *testing.T) {
@@ -48,6 +49,8 @@ func TestBasic(t *testing.T) {
 		Dir: tmp + "/wd",
 	}
 
+	// TODO - should separate dial/listen in the daemons?
+	time.Sleep(0.1e9)	// wait for all daemons to start up
 	stdinConn := OpenSocketConnection(socket, req.StdinId)
 	go func() {
 		stdinConn.Write([]byte("hello"))
