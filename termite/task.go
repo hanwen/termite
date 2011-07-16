@@ -5,16 +5,15 @@ package termite
 import (
 	"bytes"
 	"fmt"
-	"path/filepath"
-	"os"
+	"github.com/hanwen/go-fuse/fuse"
+	"io"
+	"io/ioutil"
 	"log"
 	"net"
-	"io/ioutil"
-	"io"
-	"github.com/hanwen/go-fuse/fuse"
+	"os"
 	"os/user"
+	"path/filepath"
 	"strings"
-	"syscall"
 	"sync"
 )
 
@@ -173,15 +172,15 @@ func (me *fileSaver) savePath(path string, osInfo *os.FileInfo) {
 
 	ftype := osInfo.Mode &^ 07777
 	switch ftype {
-	case syscall.S_IFDIR:
+	case fuse.S_IFDIR:
 		// nothing.
 		// TODO - remove dir.
-	case syscall.S_IFREG:
+	case fuse.S_IFREG:
 		fi.Hash, fi.Content = me.cache.DestructiveSavePath(path)
 		if fi.Hash == nil {
 			me.err = os.NewError("DestructiveSavePath fail")
 		}
-	case syscall.S_IFLNK:
+	case fuse.S_IFLNK:
 		val, err := os.Readlink(path)
 		me.err = err
 		fi.Link = val
@@ -210,7 +209,7 @@ func (me *fileSaver) scanBackingStore() os.Error {
 
 			me.files = append(me.files, AttrResponse{
 				Status: fuse.ENOENT,
-				Path:   string(contents),
+				Path:   "/" + string(contents),
 			})
 			err = os.Remove(fullPath)
 			if err != nil {

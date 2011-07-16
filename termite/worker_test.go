@@ -12,6 +12,11 @@ import (
 )
 
 func TestBasic(t *testing.T) {
+	if os.Geteuid() == 0 {
+		log.Println("This test should not run as root")
+		return
+	}
+
 	secret := RandomBytes(20)
 	tmp, _ := ioutil.TempDir("", "")
 
@@ -74,4 +79,21 @@ func TestBasic(t *testing.T) {
 		t.Error("content:", content)
 	}
 
+	req = WorkRequest{
+		StdinId: ConnectionId(),
+		Binary:  "/bin/rm",
+		Argv:    []string{"/bin/rm", "output.txt"},
+		Env:     os.Environ(),
+		Dir: tmp + "/wd",
+	}
+	stdinConn = OpenSocketConnection(socket, req.StdinId)
+
+	rep = WorkReply{}
+	err = client.Call("LocalMaster.Run", &req, &rep)
+	if err != nil {
+		t.Fatal("LocalMaster.Run: ", err)
+	}
+	if fi, _ := os.Lstat(tmp + "/wd/output.txt"); fi != nil {
+		t.Error("file shoudl have been deleted", fi)
+	}
 }
