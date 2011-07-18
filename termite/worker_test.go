@@ -9,6 +9,7 @@ import (
 	"rpc"
 	"log"
 	"time"
+	"http"
 )
 
 func TestBasic(t *testing.T) {
@@ -26,16 +27,24 @@ func TestBasic(t *testing.T) {
 		tmp+"/worker-cache", 1)
 
 	// TODO - pick unused port
+	coordinatorPort := int(rand.Int31n(60000) + 1024)
+	c := NewCoordinator()
+	rpc.Register(c)
+	rpc.HandleHTTP()
+	go c.PeriodicCheck()
+
+	coordinatorAddr := fmt.Sprintf(":%d", coordinatorPort)
+	go http.ListenAndServe(coordinatorAddr, nil)
 	workerPort := int(rand.Int31n(60000) + 1024)
+	go worker.RunWorkerServer(workerPort, coordinatorAddr)
 
-	// TODO - test coordinator too.
-	go worker.RunWorkerServer(workerPort, "")
-
+	// wait worker to be registered on coordinator.
+	time.Sleep(0.1e9)	
+	
 	masterCache := NewContentCache(tmp + "/master-cache")
-	host, _ := os.Hostname()
 	master := NewMaster(
-		masterCache, "",
-		[]string{fmt.Sprintf("%s:%d", host, workerPort)},
+		masterCache, coordinatorAddr,
+		[]string{},
 		secret, []string{}, 1)
 
 	socket := tmp + "/master-socket"
