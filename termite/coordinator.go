@@ -2,16 +2,16 @@ package termite
 
 import (
 	"fmt"
-	"os"
 	"http"
 	"net"
-	"time"
+	"os"
 	"sync"
+	"time"
 )
 
 type Registration struct {
-	Address string
-	Name    string
+	Address           string
+	Name              string
 	HttpStatusAddress string
 	// TODO - hash of the secret?
 }
@@ -124,4 +124,3 @@ func (me *Coordinator) HtmlHandler(w http.ResponseWriter, req *http.Request) {
 	}
 	fmt.Fprintf(w, "</body></html>")
 }
-

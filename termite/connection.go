@@ -224,7 +224,7 @@ func OpenSocketConnection(socket string, channel string) net.Conn {
 	conn, err := net.Dial("unix", socket)
 	for try := 0; err != nil && try < _MAXTRY; try++ {
 		log.Println("Retrying dial:", err)
-		delay = int64(1.5 + 0.5 * rand.Float64() * float64(delay)) + 0.02e9
+		delay = int64(1.5+0.5*rand.Float64()*float64(delay)) + 0.02e9
 		time.Sleep(int64(delay))
 		conn, err = net.Dial("unix", socket)
 		continue

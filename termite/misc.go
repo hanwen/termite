@@ -2,8 +2,8 @@ package termite
 
 import (
 	"crypto"
-	"log"
 	"io"
+	"log"
 	"os"
 	"rand"
 	"time"

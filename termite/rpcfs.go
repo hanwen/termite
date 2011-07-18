@@ -161,7 +161,7 @@ func (me *RpcFs) FetchHash(size int64, hash []byte) os.Error {
 	for me.fetchMap[key] && !me.cache.HasHash(hash) {
 		me.fetchCond.Wait()
 	}
-	
+
 	if me.cache.HasHash(hash) {
 		return nil
 	}

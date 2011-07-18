@@ -36,16 +36,16 @@ func (me *WorkRequest) Summary() string {
 }
 
 type WorkerDaemon struct {
-	secret       []byte
-	ChrootBinary string
+	secret         []byte
+	ChrootBinary   string
 	httpStatusPort int
 
-	contentCache  *ContentCache
-	contentServer *ContentServer
-	maxJobCount   int
-	pending       *PendingConnections
-	cacheDir      string
-	tmpDir        string
+	contentCache   *ContentCache
+	contentServer  *ContentServer
+	maxJobCount    int
+	pending        *PendingConnections
+	cacheDir       string
+	tmpDir         string
 	mirrorMapMutex sync.Mutex
 	mirrorMap      map[string]*Mirror
 }

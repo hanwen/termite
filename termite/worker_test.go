@@ -2,14 +2,14 @@ package termite
 
 import (
 	"fmt"
+	"http"
 	"io/ioutil"
+	"log"
 	"os"
 	"rand"
-	"testing"
 	"rpc"
-	"log"
+	"testing"
 	"time"
-	"http"
 )
 
 func TestBasic(t *testing.T) {
@@ -39,8 +39,8 @@ func TestBasic(t *testing.T) {
 	go worker.RunWorkerServer(workerPort, coordinatorAddr)
 
 	// wait worker to be registered on coordinator.
-	time.Sleep(0.1e9)	
-	
+	time.Sleep(0.1e9)
+
 	masterCache := NewContentCache(tmp + "/master-cache")
 	master := NewMaster(
 		masterCache, coordinatorAddr,
@@ -64,7 +64,7 @@ func TestBasic(t *testing.T) {
 	}
 
 	// TODO - should separate dial/listen in the daemons?
-	time.Sleep(0.1e9)	// wait for all daemons to start up
+	time.Sleep(0.1e9) // wait for all daemons to start up
 	stdinConn := OpenSocketConnection(socket, req.StdinId)
 	go func() {
 		stdinConn.Write([]byte("hello"))
@@ -93,7 +93,7 @@ func TestBasic(t *testing.T) {
 		Binary:  "/bin/rm",
 		Argv:    []string{"/bin/rm", "output.txt"},
 		Env:     os.Environ(),
-		Dir: tmp + "/wd",
+		Dir:     tmp + "/wd",
 	}
 	stdinConn = OpenSocketConnection(socket, req.StdinId)
 

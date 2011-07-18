@@ -2,9 +2,9 @@ package termite
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
-	"io/ioutil"
 )
 
 // Caches remote files, keyed by full-path+os.FileInfo

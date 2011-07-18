@@ -3,19 +3,19 @@ package main
 import (
 	"flag"
 	"fmt"
-	"os"
-	"path/filepath"
+	"github.com/hanwen/termite/termite"
 	"http"
 	"log"
+	"os"
+	"path/filepath"
 	"rpc"
-	"github.com/hanwen/termite/termite"
 )
 
 func serveBin(name string) func(w http.ResponseWriter, req *http.Request) {
 	return func(w http.ResponseWriter, req *http.Request) {
 		me, _ := os.Readlink("/proc/self/exe")
 		d, _ := filepath.Split(me)
-		
+
 		for _, n := range []string{
 			filepath.Join(d, name),
 			filepath.Join(d, fmt.Sprintf("../%s/%s", name, name)),
@@ -26,7 +26,7 @@ func serveBin(name string) func(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 }
-		
+
 func main() {
 	port := flag.Int("port", 1233, "Where to listen for work requests.")
 	flag.Parse()
@@ -38,7 +38,7 @@ func main() {
 		})
 	http.HandleFunc("/bin/chroot", serveBin("chroot"))
 	http.HandleFunc("/bin/worker", serveBin("worker"))
-	
+
 	rpc.Register(c)
 	rpc.HandleHTTP()
 
