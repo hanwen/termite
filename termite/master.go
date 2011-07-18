@@ -51,6 +51,18 @@ func (me *Master) Start(sock string) {
 		log.Fatal("abs", err)
 	}
 
+	fi, _ := os.Stat(absSock)
+	if fi != nil && fi.IsSocket() {
+		conn, _ := net.Dial("unix", absSock)
+		if conn != nil {
+			conn.Close()
+			log.Fatal("socket has someone listening: ", absSock)
+		}
+		// TODO - should explicitly for the relevant error message.
+		log.Println("removing dead socket", absSock)
+		os.Remove(absSock)
+	}
+
 	listener, err := net.Listen("unix", absSock)
 	defer os.Remove(absSock)
 	if err != nil {
@@ -68,7 +80,7 @@ func (me *Master) Start(sock string) {
 	me.writableRoot = filepath.Clean(me.writableRoot)
 	me.writableRoot, _ = filepath.Split(me.writableRoot)
 
-	log.Println("Accepting connections on", absSock)
+	log.Println("accepting connections on", absSock)
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
