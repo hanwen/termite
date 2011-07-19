@@ -102,7 +102,7 @@ func CopyFile(dstName string, srcName string, mode int) os.Error {
 	if err != nil { return err }
 	defer src.Close()
 
-	dst, err := os.OpenFile(srcName, os.O_CREATE|os.O_TRUNC, uint32(mode))
+	dst, err := os.OpenFile(dstName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, uint32(mode))
 	if err != nil { return err }
 	defer dst.Close()
 

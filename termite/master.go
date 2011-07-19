@@ -228,10 +228,11 @@ func (me *Master) replayFileModifications(worker *rpc.Client, infos []AttrRespon
 					me.cache)
 
 				if err == nil {
-					err = CopyFile(me.cache.Path(info.Hash), info.Path, int(info.FileInfo.Mode))
+					err = CopyFile(info.Path, me.cache.Path(info.Hash), int(info.FileInfo.Mode))
 				}
 			} else {
-				err = ioutil.WriteFile(info.Path, content, info.FileInfo.Mode)
+				me.cache.Save(content)
+				err = ioutil.WriteFile(info.Path, content, info.FileInfo.Mode&07777)
 			}
 			if err == nil {
 				err = os.Chtimes(info.Path, info.FileInfo.Atime_ns, info.FileInfo.Mtime_ns)
@@ -251,7 +252,7 @@ func (me *Master) replayFileModifications(worker *rpc.Client, infos []AttrRespon
 		}
 
 		if err != nil {
-			log.Fatal("Replay error", info.Path, err)
+			log.Fatal("Replay error ", info.Path, " ", err)
 		}
 	}
 }
