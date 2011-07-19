@@ -13,9 +13,6 @@ import (
 
 var _ = fmt.Println
 
-// TODO - we could remember md5s for files outside the writable root
-// so we don't read stuff under /usr for every master startup.
-
 type FsServer struct {
 	contentServer *ContentServer
 	contentCache  *ContentCache
