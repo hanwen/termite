@@ -23,6 +23,7 @@ func (me *Mirror) httpHandler(w http.ResponseWriter, r *http.Request) {
 	me.fuseFileSystemsMutex.Lock()
 	defer me.fuseFileSystemsMutex.Unlock()
 
+	fmt.Fprintf(w, "<p>root: %s", me.writableRoot)
 	fmt.Fprintf(w, "<p>%d maximum jobs, %d running, %d waiting, %d unused filesystems.",
 		me.maxJobCount, len(me.workingFileSystems), me.Waiting, len(me.fuseFileSystems))
 	if me.shuttingDown {
