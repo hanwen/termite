@@ -104,6 +104,9 @@ func (me *FsServer) ReadDir(req *DirRequest, r *DirResponse) os.Error {
 
 func (me *FsServer) GetAttr(req *AttrRequest, rep *AttrResponse) os.Error {
 	log.Println("GetAttr req", req.Name)
+	// TODO - this is not a good security measure, as we are not
+	// checking the prefix; someone might directly ask for
+	// /forbidden/subdir/
 	if me.excluded[req.Name] {
 		rep.Status = fuse.ENOENT
 		return nil
@@ -153,6 +156,9 @@ func (me *FsServer) getHash(name string) (hash []byte, content []byte) {
 		return []byte(hash), nil
 	}
 
+	// TODO - stop concurrent runs for the same file, as this will
+	// exhaust the master's CPU if all compiles ask for the same
+	// files on startup.
 	hash, content = me.contentCache.SavePath(fullPath)
 
 	// This is racy; we assume concurrent runs of this will reach
