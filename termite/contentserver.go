@@ -46,34 +46,46 @@ func (me *ContentServer) FileContent(req *ContentRequest, rep *ContentResponse) 
 	return err
 }
 
-// FetchHash issues a FileContent RPC to read an entire file.
-func FetchFromContentServer(client *rpc.Client, rpcName string, size int64, hash []byte) ([]byte, os.Error) {
+// FetchHash issues a FileContent RPC to read an entire file, and store into ContentCache.
+func FetchBetweenContentServers(client *rpc.Client, rpcName string, size int64, hash []byte,
+	dest *ContentCache) os.Error {
 	chunkSize := 1 << 18
 
-	buf := bytes.NewBuffer(make([]byte, 0, size))
+	output := dest.NewHashWriter()
+	written := 0
 	for {
 		req := &ContentRequest{
 			Hash:  hash,
-			Start: buf.Len(),
-			End:   buf.Len() + chunkSize,
+			Start: written,
+			End:   written + chunkSize,
 		}
 
 		rep := &ContentResponse{}
 		err := client.Call(rpcName, req, rep)
 		if err != nil {
 			log.Println("FileContent error:", err)
-			return nil, err
+			return err
 		}
 
-		buf.Write(rep.Chunk)
+		n, err := output.Write(rep.Chunk)
+		written += n
+		if err != nil {
+			return err
+		}
 		if len(rep.Chunk) < chunkSize {
 			break
 		}
 	}
 
-	if buf.Len() < int(size) {
-		return nil, os.NewError(
-			fmt.Sprintf("Size mismatch %d != %d", buf.Len(), size))
+	if written < int(size) {
+		return os.NewError(
+			fmt.Sprintf("Size mismatch %d != %d", written, size))
 	}
-	return buf.Bytes(), nil
+
+	output.Close()
+	saved := output.hasher.Sum()
+	if bytes.Compare(saved, hash) != 0 {
+		log.Fatalf("Corruption: savedHash %x != requested hash %x.", saved, hash)
+	}
+	return nil
 }

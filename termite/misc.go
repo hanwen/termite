@@ -51,7 +51,6 @@ func init() {
 	rand.Seed(time.Nanoseconds() ^ (int64(os.Getpid()) << 32))
 }
 
-
 func md5str(s string) []byte {
 	h := crypto.MD5.New()
 	io.WriteString(h, s)
@@ -62,4 +61,55 @@ func md5(c []byte) []byte {
 	h := crypto.MD5.New()
 	h.Write(c)
 	return h.Sum()
+}
+
+// Like io.Copy, but returns the buffer if it was small enough to hold
+// of the copied bytes.
+func SavingCopy(w io.Writer, r io.Reader, bufSize int) ([]byte, os.Error) {
+	buf := make([]byte, bufSize)
+	total := 0
+	for {
+		n, err := r.Read(buf)
+		todo := buf[:n]
+		total += n
+		for len(todo) > 0 {
+			n, err = w.Write(todo)
+			if err != nil {
+				break
+			}
+			todo = todo[n:]
+		}
+		if len(todo) > 0 {
+			return nil, err
+		}
+		if err == os.EOF || n == 0 {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if total < cap(buf) {
+		return buf[:total], nil
+	}
+	return nil, nil
+}
+
+// Argument ordering follows io.Copy.
+func CopyFile(dstName string, srcName string, mode int) os.Error {
+	src, err := os.Open(srcName)
+	if err != nil { return err }
+	defer src.Close()
+
+	dst, err := os.OpenFile(srcName, os.O_CREATE|os.O_TRUNC, uint32(mode))
+	if err != nil { return err }
+	defer dst.Close()
+
+	_, err = io.Copy(dst, src)
+
+	if err == os.EOF {
+		err = nil
+	}
+	return err
 }

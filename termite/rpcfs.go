@@ -1,7 +1,6 @@
 package termite
 
 import (
-	"bytes"
 	"os"
 	"log"
 	"sync"
@@ -178,15 +177,8 @@ func (me *RpcFs) FetchHash(size int64, hash []byte) os.Error {
 
 func (me *RpcFs) fetchOnce(size int64, hash []byte) os.Error {
 	// TODO - should save in smaller chunks.
-	b, err := FetchFromContentServer(me.client, "FsServer.FileContent", size, hash)
-	if err != nil {
-		return err
-	}
-	savedHash := me.cache.Save(b)
-	if bytes.Compare(hash, savedHash) != 0 {
-		log.Fatalf("Corruption: savedHash %x != requested hash %x.", savedHash, hash)
-	}
-	return nil
+	return FetchBetweenContentServers(me.client, "FsServer.FileContent", size, hash,
+		me.cache)
 }
 
 func (me *RpcFs) Readlink(name string) (string, fuse.Status) {

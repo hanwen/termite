@@ -1,7 +1,6 @@
 package termite
 
 import (
-	"bytes"
 	"io/ioutil"
 	"log"
 	"net"
@@ -224,16 +223,15 @@ func (me *Master) replayFileModifications(worker *rpc.Client, infos []AttrRespon
 			content := info.Content
 			if content == nil {
 				// TODO - stream directly from network connection to file.
-				content, err = FetchFromContentServer(
-					worker, "Mirror.FileContent", info.FileInfo.Size, info.Hash)
-			}
-			if err == nil {
-				hash := me.cache.Save(content)
-				if bytes.Compare(info.Hash, hash) != 0 {
-					log.Fatal("Hash mismatch.")
+				err = FetchBetweenContentServers(
+					worker, "Mirror.FileContent", info.FileInfo.Size, info.Hash,
+					me.cache)
+
+				if err == nil {
+					err = CopyFile(me.cache.Path(info.Hash), info.Path, int(info.FileInfo.Mode))
 				}
-				// TODO - should allow a mode to set a hard or symbolic link.
-				err = ioutil.WriteFile(info.Path, content, info.FileInfo.Mode&07777)
+			} else {
+				err = ioutil.WriteFile(info.Path, content, info.FileInfo.Mode)
 			}
 			if err == nil {
 				err = os.Chtimes(info.Path, info.FileInfo.Atime_ns, info.FileInfo.Mtime_ns)

@@ -12,7 +12,6 @@ import (
 	"io/ioutil"
 )
 
-
 // Content based addressing cache.
 //
 // TODO - a successful GetAttr() will often be followed by a read.  we
@@ -52,6 +51,10 @@ func (me *ContentCache) HasHash(hash []byte) bool {
 
 func (me *ContentCache) Path(hash []byte) string {
 	return HashPath(me.dir, hash)
+}
+
+func (me *ContentCache) NewHashWriter() *HashWriter {
+	return NewHashWriter(me.dir, crypto.MD5)
 }
 
 type HashWriter struct {
@@ -145,7 +148,7 @@ func (me *ContentCache) Save(content []byte) (md5 []byte) {
 }
 
 func (me *ContentCache) SaveStream(input io.Reader) (md5 []byte, content []byte) {
-	dup := NewHashWriter(me.dir, crypto.MD5)
+	dup := me.NewHashWriter()
 	content, err := SavingCopy(dup, input, _BUFSIZE)
 	if err != nil {
 		log.Fatal(err)
@@ -155,35 +158,4 @@ func (me *ContentCache) SaveStream(input io.Reader) (md5 []byte, content []byte)
 		log.Fatal(err)
 	}
 	return dup.hasher.Sum(), content
-}
-
-func SavingCopy(w io.Writer, r io.Reader, bufSize int) ([]byte, os.Error) {
-	buf := make([]byte, bufSize)
-	total := 0
-	for {
-		n, err := r.Read(buf)
-		todo := buf[:n]
-		total += n
-		for len(todo) > 0 {
-			n, err = w.Write(todo)
-			if err != nil {
-				break
-			}
-			todo = todo[n:]
-		}
-		if len(todo) > 0 {
-			return nil, err
-		}
-		if err == os.EOF || n == 0 {
-			break
-		}
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if total < cap(buf) {
-		return buf[:total], nil
-	}
-	return nil, nil
 }

@@ -35,6 +35,8 @@ func TestBasic(t *testing.T) {
 
 	coordinatorAddr := fmt.Sprintf(":%d", coordinatorPort)
 	go http.ListenAndServe(coordinatorAddr, nil)
+
+	time.Sleep(0.1e9) // wait for daemon to start up
 	workerPort := int(rand.Int31n(60000) + 1024)
 	go worker.RunWorkerServer(workerPort, coordinatorAddr)
 
