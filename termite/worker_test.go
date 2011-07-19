@@ -12,6 +12,8 @@ import (
 	"time"
 )
 
+// Simple end-to-end test.  It skips the chroot, but should give a
+// basic assurance that things work as expected.
 func TestBasic(t *testing.T) {
 	if os.Geteuid() == 0 {
 		log.Println("This test should not run as root")
@@ -36,7 +38,9 @@ func TestBasic(t *testing.T) {
 	coordinatorAddr := fmt.Sprintf(":%d", coordinatorPort)
 	go http.ListenAndServe(coordinatorAddr, nil)
 
+	// TODO - can we do without the sleeps?
 	time.Sleep(0.1e9) // wait for daemon to start up
+
 	workerPort := int(rand.Int31n(60000) + 1024)
 	go worker.RunWorkerServer(workerPort, coordinatorAddr)
 
