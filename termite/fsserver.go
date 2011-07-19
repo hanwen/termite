@@ -156,16 +156,19 @@ func (me *FsServer) getHash(name string) (hash []byte, content []byte) {
 		return []byte(hash), nil
 	}
 
-	// TODO - stop concurrent runs for the same file, as this will
-	// exhaust the master's CPU if all compiles ask for the same
-	// files on startup.
-	hash, content = me.contentCache.SavePath(fullPath)
-
-	// This is racy; we assume concurrent runs of this will reach
-	// the same conclusion regarding the MD5 of the file.
 	me.hashCacheMutex.Lock()
 	defer me.hashCacheMutex.Unlock()
+	hash = me.hashCache[name]
+	if hash != nil {
+		return []byte(hash), nil
+	}
 
+	// TODO - would it be better to not stop other hash lookups
+	// from succeeding?
+
+	// TODO - only read the file; in many cases, we already have
+	// the file int the on-disk md5 cache.
+	hash, content = me.contentCache.SavePath(fullPath)
 	me.hashCache[name] = hash
 	return hash, content
 }
