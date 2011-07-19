@@ -23,9 +23,28 @@ I do not goinstall go-fuse, since I develop go-fuse in tandem with
 termite, but with some tweaks to the Makefile it should work.
 
 
+OVERVIEW
+
+There are 4 binaries:
+
+* Coordinator: a simple server that administers a list of live
+workers.  Workers periodically contact the coordinator.
+
+* Worker: should run as root, and typically runs on multiple machines.
+
+* Master: the daemon that runs on the machine.  It contacts the
+coordinator to get a list of workers, and reserves job slots on the
+workers.  Run it in the root of the writable directory for the
+compile.  It creates a .termite-socket that the wrapper below uses.
+
+* Wrapper: should be symlinked to using the name of the tool you want
+to wrap (eg. gcc).  Put all the symlinks in one directory, and add
+that directory to the PATH variable.
+
+
 RUNNING
 
-
+  dd if=/dev/random of=secret.txt bs=1 count=20 && chmod 0600 secret.txt
   ${TERMITE_DIR}/bin/coordinator/coordinator &
   sudo ${TERMITE_DIR}/bin/worker/worker -jobs 4 \
     -chroot ${TERMITE_DIR}/bin/chroot/chroot &
