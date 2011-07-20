@@ -53,6 +53,7 @@ func TestBasic(t *testing.T) {
 		[]string{},
 		secret, []string{}, 1)
 
+	master.SetKeepAlive(1)
 	socket := tmp + "/master-socket"
 	go master.Start(socket)
 	wd := tmp + "/wd"
@@ -109,6 +110,16 @@ func TestBasic(t *testing.T) {
 		t.Fatal("LocalMaster.Run: ", err)
 	}
 	if fi, _ := os.Lstat(tmp + "/wd/output.txt"); fi != nil {
-		t.Error("file shoudl have been deleted", fi)
+		t.Error("file should have been deleted", fi)
+	}
+
+	// Test keepalive.
+	time.Sleep(2e9)
+
+	statusReq := &StatusRequest{}
+	statusRep := &StatusReply{}
+	worker.Status(statusReq, statusRep)
+	if statusRep.Processes != 0 {
+		t.Error("Processes still alive.")
 	}
 }

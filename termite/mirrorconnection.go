@@ -34,6 +34,9 @@ type mirrorConnections struct {
 	master      *Master
 	coordinator string
 
+	keepAliveSeconds int64
+
+
 	// Condition for mutex below.
 	sync.Cond
 
@@ -42,6 +45,7 @@ type mirrorConnections struct {
 	workers       []string
 	mirrors       map[string]*mirrorConnection
 	wantedMaxJobs int
+	lastActionSeconds int64
 }
 
 func (me *mirrorConnections) refreshWorkers() {
@@ -81,29 +85,30 @@ func newMirrorConnections(m *Master, workers []string, coordinator string, maxJo
 		workers:       workers,
 		mirrors:       make(map[string]*mirrorConnection),
 		coordinator:   coordinator,
+		keepAliveSeconds: 60,
 	}
 	if coordinator != "" {
 		if workers != nil {
 			log.Println("coordinator will overwrite workers.")
 		}
 
-		go mc.periodWorkersRefresh()
+		go mc.periodicHouseholding()
 	}
 	mc.Cond.L = &mc.Mutex
 	return mc
 }
 
-const _WORKER_REFRESH_DELAY = 60
-
-func (me *mirrorConnections) periodWorkersRefresh() {
+func (me *mirrorConnections) periodicHouseholding() {
 	me.refreshWorkers()
 	for {
-		c := time.After(_WORKER_REFRESH_DELAY * 1e9)
+		c := time.After(me.keepAliveSeconds * 1e9)
 		<-c
 		me.refreshWorkers()
+		me.maybeDropConnections()
 	}
 }
 
+// Must be called with lock held.
 func (me *mirrorConnections) availableJobs() int {
 	a := 0
 	for _, mc := range me.mirrors {
@@ -112,6 +117,7 @@ func (me *mirrorConnections) availableJobs() int {
 	return a
 }
 
+// Must be called with lock held.
 func (me *mirrorConnections) maxJobs() int {
 	a := 0
 	for _, mc := range me.mirrors {
@@ -119,6 +125,27 @@ func (me *mirrorConnections) maxJobs() int {
 	}
 	return a
 }
+
+func (me *mirrorConnections) maybeDropConnections() {
+	me.Mutex.Lock()
+	defer me.Mutex.Unlock()
+
+	// Something is running.
+	if me.availableJobs() < me.maxJobs() {
+		return
+	}
+
+	if me.lastActionSeconds + me.keepAliveSeconds > time.Seconds() {
+		return
+	}
+
+	log.Println("master inactive too long. Dropping connections.")
+	for _, mc := range me.mirrors {
+		mc.connection.Close()
+	}
+	me.mirrors = make(map[string]*mirrorConnection)
+}
+
 
 func (me *mirrorConnections) broadcastFiles(origin *mirrorConnection, infos []AttrResponse) {
 	for _, w := range me.mirrors {
@@ -172,6 +199,7 @@ func (me *mirrorConnections) jobDone(mc *mirrorConnection) {
 	me.Mutex.Lock()
 	defer me.Mutex.Unlock()
 
+	me.lastActionSeconds = time.Seconds()
 	mc.availableJobs++
 	me.Cond.Signal()
 }

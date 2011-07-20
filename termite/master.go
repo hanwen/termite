@@ -44,6 +44,12 @@ func NewMaster(cache *ContentCache, coordinator string, workers []string, secret
 	return me
 }
 
+func (me *Master) SetKeepAlive(seconds int64) {
+	if seconds > 0 {
+		me.mirrors.keepAliveSeconds = seconds
+	}
+}
+
 func (me *Master) Start(sock string) {
 	absSock, err := filepath.Abs(sock)
 	if err != nil {
