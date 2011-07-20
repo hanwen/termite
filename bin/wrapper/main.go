@@ -9,26 +9,34 @@ import (
 	"rpc"
 )
 
-const _SOCKET = ".termite-socket"
-
 func main() {
 	path := os.Getenv("PATH")
 
 	args := os.Args
 	_, base := filepath.Split(args[0])
 	binary := ""
+	self, err := filepath.EvalSymlinks("/proc/self/exe")
+	if err == nil {
+		self, err = filepath.Abs(self)
+	}
+	if err != nil {
+		log.Fatal("EvalSymlinks", err)
+	}
+
 	for _, c := range filepath.SplitList(path) {
-		_, dirBase := filepath.Split(c)
-		if dirBase == "termite" {
+		try := filepath.Join(c, base)
+		try,_ = filepath.EvalSymlinks(try)
+		try,_ = filepath.Abs(try)
+		if try == self {
 			continue
 		}
 
-		try := filepath.Join(c, base)
-		_, err := os.Stat(try)
-		if err == nil {
+		fi, _ := os.Stat(try)
+		if fi != nil && fi.IsRegular() {
 			binary = try
 		}
 	}
+
 	if binary == "" {
 		log.Fatal("could not find", base)
 	}
@@ -38,20 +46,7 @@ func main() {
 		log.Fatal("Getwd", err)
 	}
 
-	socket := os.Getenv("TERMITE_SOCKET")
-	if socket == "" {
-		socketPath := wd
-		for socketPath != "/" {
-			cand := filepath.Join(socketPath, _SOCKET)
-			fi, _ := os.Lstat(cand)
-			if fi != nil && fi.IsSocket() {
-				socket = cand
-				break
-			}
-			socketPath = filepath.Clean(filepath.Join(socketPath, ".."))
-		}
-	}
-
+	socket := termite.FindSocket()
 	conn := termite.OpenSocketConnection(socket, termite.RPC_CHANNEL)
 	args[0] = binary
 	req := termite.WorkRequest{

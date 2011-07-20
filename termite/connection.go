@@ -8,10 +8,13 @@ import (
 	"log"
 	"net"
 	"os"
+	"path/filepath"
 	"rand"
 	"sync"
 	"time"
 )
+
+const _SOCKET = ".termite-socket"
 
 const challengeLength = 20
 
@@ -241,4 +244,22 @@ func OpenSocketConnection(socket string, channel string) net.Conn {
 		log.Fatal("WriteString", err)
 	}
 	return conn
+}
+
+func FindSocket() string {
+	socket := os.Getenv("TERMITE_SOCKET")
+	wd, _ := os.Getwd()
+	if socket == "" {
+		dir := wd
+		for dir != "" &&  dir != "/" {
+			cand := filepath.Join(dir, _SOCKET)
+			fi, _ := os.Lstat(cand)
+			if fi != nil && fi.IsSocket() {
+				socket = cand
+				break
+			}
+			dir = filepath.Clean(filepath.Join(dir, ".."))
+		}
+	}
+	return socket
 }
