@@ -4,7 +4,7 @@ set -eux
 
 for d in termite \
     bin/chroot bin/worker bin/fsserver \
-    bin/rpcfs bin/master bin/wrapper ; \
+    bin/rpcfs bin/master bin/wrapper bin/shell-wrapper ; \
 do
   gomake -C $d "$@"
 done

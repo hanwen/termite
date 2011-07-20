@@ -38,6 +38,8 @@ func main() {
 		})
 	http.HandleFunc("/bin/chroot", serveBin("chroot"))
 	http.HandleFunc("/bin/worker", serveBin("worker"))
+	http.HandleFunc("/bin/shell-wrapper", serveBin("shell-wrapper"))
+	http.HandleFunc("/bin/wrapper", serveBin("wrapper"))
 
 	rpc.Register(c)
 	rpc.HandleHTTP()

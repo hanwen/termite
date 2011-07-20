@@ -37,9 +37,11 @@ coordinator to get a list of workers, and reserves job slots on the
 workers.  Run it in the root of the writable directory for the
 compile.  It creates a .termite-socket that the wrapper below uses.
 
-* Wrapper: should be symlinked to using the name of the tool you want
-to wrap (eg. gcc).  Put all the symlinks in one directory, and add
-that directory to the PATH variable.
+* Wrapper: distributes a single binary.  Symlink it using the name of
+a separate tool you want to wrap (eg. gcc).  Put all the symlinks in
+one directory, and add that directory to the PATH variable.
+
+* Shell-wrapper: a wrapper to use with make's SHELL variable.
 
 
 RUNNING
@@ -50,8 +52,13 @@ RUNNING
     -chroot ${TERMITE_DIR}/bin/chroot/chroot &
   cd ${PROJECT}
   ${TERMITE_DIR}/bin/master/master -jobs 4 &
+
+  # Test single binary running remotely
   ln -s ${TERMITE_DIR}/bin/wrapper/wrapper gcc
   ./gcc
+
+  # Run distributed build
+  make SHELL=$PWD/bin/shell-wrapper/shell-wrapper -j10
 
 
 SECURITY
@@ -80,13 +87,15 @@ SECURITY
   sockets to communicate.  The socket mode is 0700.
 
 
-TODO
+CAVEATS
 
-* Master dropping mirrorConnection after X seconds of idle.
+* Not all file operations are supported in the workers, due to
+  limitations of Go-FUSE's UnionFs.  Some are not yet implemented, but
+  posixly correct hardlinks cannot be supported without major changes.
+
+
+TODO
 
 * More sophisticated exclusion for exporting file systems.
 
 * Security review for the connection scheme.
-
-* Write a wrapper for SHELL, so we have more flexibility for wrapping
-  binaries.
