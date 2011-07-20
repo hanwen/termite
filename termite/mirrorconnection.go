@@ -50,6 +50,7 @@ func (me *mirrorConnections) refreshWorkers() {
 		log.Println("dialing coordinator:", err)
 		return
 	}
+	defer client.Close()
 	req := 0
 	rep := Registered{}
 	err = client.Call("Coordinator.List", &req, &rep)
