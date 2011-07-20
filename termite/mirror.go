@@ -154,7 +154,10 @@ func (me *Mirror) newWorkerTask(req *WorkRequest, rep *WorkReply) (*WorkerTask, 
 	if err != nil {
 		return nil, err
 	}
-	stdin := me.daemon.pending.WaitConnection(req.StdinId)
+	var stdin net.Conn
+	if req.StdinId != "" {
+		stdin = me.daemon.pending.WaitConnection(req.StdinId)
+	}
 	return &WorkerTask{
 		WorkRequest: req,
 		WorkReply:   rep,

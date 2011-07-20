@@ -150,19 +150,21 @@ func (me *Master) runOnMirror(mirror *mirrorConnection, req *WorkRequest, rep *W
 	defer me.mirrors.jobDone(mirror)
 
 	// Tunnel stdin.
-	inputConn := me.pending.WaitConnection(req.StdinId)
-	destInputConn, err := DialTypedConnection(mirror.connection.RemoteAddr().String(),
-		req.StdinId, me.secret)
-	if err != nil {
-		return err
+	if req.StdinId != "" {
+		inputConn := me.pending.WaitConnection(req.StdinId)
+		destInputConn, err := DialTypedConnection(mirror.connection.RemoteAddr().String(),
+			req.StdinId, me.secret)
+		if err != nil {
+			return err
+		}
+		go func() {
+			HookedCopy(destInputConn, inputConn, PrintStdinSliceLen)
+			destInputConn.Close()
+			inputConn.Close()
+		}()
 	}
-	go func() {
-		HookedCopy(destInputConn, inputConn, PrintStdinSliceLen)
-		destInputConn.Close()
-		inputConn.Close()
-	}()
 
-	err = mirror.rpcClient.Call("Mirror.Run", &req, &rep)
+	err := mirror.rpcClient.Call("Mirror.Run", &req, &rep)
 	return err
 }
 

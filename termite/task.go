@@ -96,17 +96,24 @@ func (me *WorkerTask) Run() os.Error {
 		io.Copy(stderr, rStderr)
 		wg.Done()
 	}()
-	go func() {
-		HookedCopy(wStdin, me.stdinConn, PrintStdinSliceLen)
-		// No waiting: if the process exited, we kill the connection.
+
+	if me.stdinConn != nil {
+		go func() {
+			HookedCopy(wStdin, me.stdinConn, PrintStdinSliceLen)
+			// No waiting: if the process exited, we kill the connection.
+			wStdin.Close()
+		}()
+	} else {
 		wStdin.Close()
-	}()
+	}
 
 	me.WorkReply.Exit, err = proc.Wait(0)
 	wg.Wait()
 
 	// No waiting: if the process exited, we kill the connection.
-	me.stdinConn.Close()
+	if me.stdinConn != nil {
+		me.stdinConn.Close()
+	}
 
 	// TODO - should use a connection here too? What if the output
 	// is large?
