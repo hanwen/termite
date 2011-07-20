@@ -30,6 +30,8 @@ func (me *mirrorConnection) sendFiles(infos []AttrResponse) {
 	}
 }
 
+// mirrorConnection manages connections from the master to the mirrors
+// on the workers.
 type mirrorConnections struct {
 	master      *Master
 	coordinator string
@@ -126,9 +128,15 @@ func (me *mirrorConnections) maxJobs() int {
 	return a
 }
 
+
 func (me *mirrorConnections) maybeDropConnections() {
 	me.Mutex.Lock()
 	defer me.Mutex.Unlock()
+
+	// Already dropped everything.
+	if len(me.mirrors) == 0 {
+		return
+	}
 
 	// Something is running.
 	if me.availableJobs() < me.maxJobs() {
