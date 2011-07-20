@@ -4,15 +4,12 @@ import (
 	"github.com/hanwen/termite/termite"
 	"io"
 	"log"
-	"net"
 	"os"
 	"path/filepath"
 	"rpc"
 )
 
 const _SOCKET = ".termite-socket"
-
-const _TEST_CONNECTION = "test-termite-connection"
 
 func main() {
 	path := os.Getenv("PATH")
@@ -32,7 +29,7 @@ func main() {
 			binary = try
 		}
 	}
-	if binary == "" && binary != _TEST_CONNECTION {
+	if binary == "" {
 		log.Fatal("could not find", base)
 	}
 
@@ -53,18 +50,6 @@ func main() {
 			}
 			socketPath = filepath.Clean(filepath.Join(socketPath, ".."))
 		}
-	}
-
-	if binary == _TEST_CONNECTION {
-		conn, err := net.Dial("unix", socket)
-
-		exit := 0
-		if err != nil {
-			exit = 1
-		} else {
-			conn.Close()
-		}
-		os.Exit(exit)
 	}
 
 	conn := termite.OpenSocketConnection(socket, termite.RPC_CHANNEL)
