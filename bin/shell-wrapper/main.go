@@ -11,19 +11,23 @@ import (
 )
 
 func RunLocally(cmd string) bool {
-	// TODO - split on arbitrary whitespace.
+	// TODO - split on arbitrary whitespace, trim leading
+	// whitespace.
 	first := strings.Split(cmd, " ")[0]
-	base := filepath.Base(first)
 
 	// TODO - use more generic patterns to do this.
 	//
 	// TODO - detect simple invocations (no shell magic), and
 	// skip the shell and/or run directly from here.
-	switch base {
+	switch first {
 	case "echo":
 		return true
 	case "mkdir":
 		return true
+	}
+
+	base := filepath.Base(first)
+	switch base {
 	case "make":
 		return true
 	}
