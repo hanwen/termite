@@ -106,7 +106,12 @@ func SetupServer(port int, secret []byte, output chan net.Conn) {
 
 		err = Authenticate(conn, secret)
 		if err != nil {
-			log.Println("Authentication error: ", err)
+			if err != os.EOF {
+				// EOF is normal for probing by the
+				// coordinator to see if a worker host
+				// is still alive, so don't show.
+				log.Println("Authentication error: ", err)
+			}
 			conn.Close()
 			continue
 		}
