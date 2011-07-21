@@ -230,7 +230,7 @@ func OpenSocketConnection(socket string, channel string) net.Conn {
 	delay := int64(0)
 	conn, err := net.Dial("unix", socket)
 	for try := 0; err != nil && try < _MAXTRY; try++ {
-		log.Println("Retrying dial:", err)
+		log.Printf("Retrying dial %d: %v", try, err)
 		delay = int64(1.5+0.5*rand.Float64()*float64(delay)) + 0.02e9
 		time.Sleep(int64(delay))
 		conn, err = net.Dial("unix", socket)
