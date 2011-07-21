@@ -27,7 +27,7 @@ import (
 */
 func RunLocally(cmd string) bool {
 	// TODO - use regex.
-	if strings.Index(cmd, "make")  >= 0 {
+	if strings.Index(cmd, "make") >= 0 {
 		return true
 	}
 
@@ -60,11 +60,11 @@ func main() {
 	socket := termite.FindSocket()
 	conn := termite.OpenSocketConnection(socket, termite.RPC_CHANNEL)
 	req := termite.WorkRequest{
-		Binary:  _SHELL,
-		Argv:    os.Args,
-		Env:     os.Environ(),
-		Dir:     wd,
-		Debug:   os.Getenv("TERMITE_DEBUG") != "",
+		Binary: _SHELL,
+		Argv:   os.Args,
+		Env:    os.Environ(),
+		Dir:    wd,
+		Debug:  os.Getenv("TERMITE_DEBUG") != "",
 	}
 	client := rpc.NewClient(conn)
 

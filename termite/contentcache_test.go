@@ -8,7 +8,6 @@ import (
 	"io/ioutil"
 )
 
-
 func TestDiskCache(t *testing.T) {
 	content := []byte("hello")
 

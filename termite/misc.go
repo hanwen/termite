@@ -99,11 +99,15 @@ func SavingCopy(w io.Writer, r io.Reader, bufSize int) ([]byte, os.Error) {
 // Argument ordering follows io.Copy.
 func CopyFile(dstName string, srcName string, mode int) os.Error {
 	src, err := os.Open(srcName)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	defer src.Close()
 
 	dst, err := os.OpenFile(dstName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, uint32(mode))
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	defer dst.Close()
 
 	_, err = io.Copy(dst, src)

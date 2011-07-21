@@ -38,15 +38,14 @@ type mirrorConnections struct {
 
 	keepAliveSeconds int64
 
-
 	// Condition for mutex below.
 	sync.Cond
 
 	// Protects all of the below.
 	sync.Mutex
-	workers       []string
-	mirrors       map[string]*mirrorConnection
-	wantedMaxJobs int
+	workers           []string
+	mirrors           map[string]*mirrorConnection
+	wantedMaxJobs     int
 	lastActionSeconds int64
 }
 
@@ -79,14 +78,13 @@ func (me *mirrorConnections) refreshWorkers() {
 	me.workers = newWorkers
 }
 
-
 func newMirrorConnections(m *Master, workers []string, coordinator string, maxJobs int) *mirrorConnections {
 	mc := &mirrorConnections{
-		master:        m,
-		wantedMaxJobs: maxJobs,
-		workers:       workers,
-		mirrors:       make(map[string]*mirrorConnection),
-		coordinator:   coordinator,
+		master:           m,
+		wantedMaxJobs:    maxJobs,
+		workers:          workers,
+		mirrors:          make(map[string]*mirrorConnection),
+		coordinator:      coordinator,
 		keepAliveSeconds: 60,
 	}
 	if coordinator != "" {
@@ -128,7 +126,6 @@ func (me *mirrorConnections) maxJobs() int {
 	return a
 }
 
-
 func (me *mirrorConnections) maybeDropConnections() {
 	me.Mutex.Lock()
 	defer me.Mutex.Unlock()
@@ -143,7 +140,7 @@ func (me *mirrorConnections) maybeDropConnections() {
 		return
 	}
 
-	if me.lastActionSeconds + me.keepAliveSeconds > time.Seconds() {
+	if me.lastActionSeconds+me.keepAliveSeconds > time.Seconds() {
 		return
 	}
 
@@ -153,7 +150,6 @@ func (me *mirrorConnections) maybeDropConnections() {
 	}
 	me.mirrors = make(map[string]*mirrorConnection)
 }
-
 
 func (me *mirrorConnections) broadcastFiles(origin *mirrorConnection, infos []AttrResponse) {
 	for _, w := range me.mirrors {

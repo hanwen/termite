@@ -141,7 +141,6 @@ func (me *FsServer) updateHashes(infos []AttrResponse) {
 	}
 }
 
-
 func (me *FsServer) getHash(name string) (hash []byte, content []byte) {
 	fullPath := me.path(name)
 

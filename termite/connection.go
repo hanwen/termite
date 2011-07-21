@@ -145,7 +145,6 @@ type PendingConnections struct {
 	connections      map[string]*PendingConnection
 }
 
-
 func NewPendingConnections() *PendingConnections {
 	return &PendingConnections{
 		connections: make(map[string]*PendingConnection),
@@ -256,7 +255,7 @@ func FindSocket() string {
 	wd, _ := os.Getwd()
 	if socket == "" {
 		dir := wd
-		for dir != "" &&  dir != "/" {
+		for dir != "" && dir != "/" {
 			cand := filepath.Join(dir, _SOCKET)
 			fi, _ := os.Lstat(cand)
 			if fi != nil && fi.IsSocket() {

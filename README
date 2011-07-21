@@ -101,3 +101,7 @@ TODO
 * Security review for the connection scheme.
 
 * Collect worker log information and expose on HTTP.
+
+* More fine-grained cache invalidations in UnionFs
+
+* Implement mv for symlinks, directories in UnionFs.

@@ -25,8 +25,8 @@ func main() {
 
 	for _, c := range filepath.SplitList(path) {
 		try := filepath.Join(c, base)
-		try,_ = filepath.EvalSymlinks(try)
-		try,_ = filepath.Abs(try)
+		try, _ = filepath.EvalSymlinks(try)
+		try, _ = filepath.Abs(try)
 		if try == self {
 			continue
 		}

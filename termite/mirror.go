@@ -46,7 +46,6 @@ func NewMirror(daemon *WorkerDaemon, rpcConn, revConn net.Conn) *Mirror {
 	return mirror
 }
 
-
 func (me *Mirror) DiscardFuse(wfs *WorkerFuseFs) {
 	wfs.Stop()
 
@@ -141,7 +140,6 @@ func (me *Mirror) Run(req *WorkRequest, rep *WorkReply) os.Error {
 	log.Println("sending back", summary)
 	return nil
 }
-
 
 const _DELETIONS = "DELETIONS"
 

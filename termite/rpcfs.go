@@ -82,7 +82,6 @@ func (me *RpcFs) Update(req *UpdateRequest, resp *UpdateResponse) os.Error {
 	return nil
 }
 
-
 func (me *RpcFs) GetDir(name string) *DirResponse {
 	me.dirMutex.Lock()
 	defer me.dirMutex.Unlock()

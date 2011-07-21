@@ -69,7 +69,6 @@ func reachable(addr string) bool {
 	return ok
 }
 
-
 func (me *Coordinator) checkReachable() {
 	now := time.Seconds()
 

@@ -104,7 +104,6 @@ func (me *HashWriter) Close() os.Error {
 	return err
 }
 
-
 const _BUFSIZE = 32 * 1024
 
 func (me *ContentCache) DestructiveSavePath(path string) (md5 []byte, content []byte) {
