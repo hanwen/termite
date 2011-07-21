@@ -5,7 +5,6 @@ import (
 	"github.com/hanwen/termite/termite"
 	"log"
 	"os"
-	"path/filepath"
 	"rpc"
 	"strings"
 )
