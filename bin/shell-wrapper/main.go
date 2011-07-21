@@ -11,6 +11,10 @@ import (
 )
 
 func RunLocally(cmd string) bool {
+	if strings.Index(cmd, "make")  >= 0 {
+		return true
+	}
+
 	// TODO - split on arbitrary whitespace, trim leading
 	// whitespace.
 	first := strings.Split(cmd, " ")[0]
