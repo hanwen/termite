@@ -225,7 +225,7 @@ func DialTypedConnection(addr string, id string, secret []byte) (net.Conn, os.Er
 	return conn, nil
 }
 
-const _MAXTRY = 5
+const _MAXTRY = 10
 
 func OpenSocketConnection(socket string, channel string) net.Conn {
 	delay := int64(0)
