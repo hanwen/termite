@@ -10,31 +10,29 @@ import (
 	"strings"
 )
 
+/*
+ Considerations:
+
+ * should be more generic
+
+ * need to be careful, since we can't detect changes to local files
+   if we execute a local recipe, eg.
+
+    echo foo > file
+
+   must be distributed.
+
+ * Could alias echo, mkdir and some other simple recipes locally,
+   especially if we can infer the effects on the filesystem.
+
+*/
 func RunLocally(cmd string) bool {
+	// TODO - use regex.
 	if strings.Index(cmd, "make")  >= 0 {
 		return true
 	}
 
-	// TODO - split on arbitrary whitespace, trim leading
-	// whitespace.
-	first := strings.Split(cmd, " ")[0]
-
-	// TODO - use more generic patterns to do this.
-	//
-	// TODO - detect simple invocations (no shell magic), and
-	// skip the shell and/or run directly from here.
-	switch first {
-	case "echo":
-		return true
-	case "mkdir":
-		return true
-	}
-
-	base := filepath.Base(first)
-	switch base {
-	case "make":
-		return true
-	}
+	// TODO - more? see above.
 	return false
 }
 
