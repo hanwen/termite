@@ -186,7 +186,9 @@ func (me *Master) runOnce(req *WorkRequest, rep *WorkReply) os.Error {
 	*rep = localRep
 	rep.Files = nil
 
-	go me.mirrors.broadcastFiles(mirror, localRep.Files)
+	// This must happen synchronously, otherwise, other mirrors
+	// may see their files change mid-compile.
+	me.mirrors.broadcastFiles(mirror, localRep.Files)
 	return err
 }
 
