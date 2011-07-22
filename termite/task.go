@@ -27,6 +27,7 @@ type WorkerTask struct {
 
 func (me *WorkerTask) Run() os.Error {
 	me.fuseFs.MountState.Debug = me.WorkRequest.Debug
+	me.fuseFs.fsConnector.Debug = me.WorkRequest.Debug
 
 	rStdout, wStdout, err := os.Pipe()
 	if err != nil {
@@ -72,7 +73,7 @@ func (me *WorkerTask) Run() os.Error {
 		log.Println("running in", attr.Dir)
 	}
 
-	log.Println("starting cmd", cmd)
+	log.Println("starting cmd", cmd, "in", me.fuseFs.mount)
 	proc, err := os.StartProcess(binary, cmd, &attr)
 	if err != nil {
 		log.Println("Error", err)

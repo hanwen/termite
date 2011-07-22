@@ -14,6 +14,7 @@ type WorkerFuseFs struct {
 	tmpDir string
 	mount  string
 	*fuse.MountState
+	fsConnector *fuse.FileSystemConnector
 	unionFs *unionfs.UnionFs
 }
 
@@ -103,8 +104,8 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string) 
 		{writableRoot, w.unionFs, false},
 	}
 
-	conn := fuse.NewFileSystemConnector(fuse.NewSwitchFileSystem(swFs), &mOpts)
-	w.MountState = fuse.NewMountState(conn)
+	w.fsConnector = fuse.NewFileSystemConnector(fuse.NewSwitchFileSystem(swFs), &mOpts)
+	w.MountState = fuse.NewMountState(w.fsConnector)
 
 	fuseOpts := fuse.MountOptions{
 		AllowOther: true,
