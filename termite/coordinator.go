@@ -13,6 +13,7 @@ type Registration struct {
 	Address           string
 	Name              string
 	HttpStatusAddress string
+	Version           string
 	// TODO - hash of the secret?
 }
 

@@ -2,6 +2,8 @@ package termite
 
 import (
 	"crypto"
+	"fmt"
+	"github.com/hanwen/go-fuse/fuse"
 	"io"
 	"log"
 	"os"
@@ -116,4 +118,14 @@ func CopyFile(dstName string, srcName string, mode int) os.Error {
 		err = nil
 	}
 	return err
+}
+
+func Version() string {
+	tVersion := "unknown"
+	if version != nil {
+		tVersion = *version
+	}
+
+	return fmt.Sprintf("Termite %s (go-fuse %s)",
+		tVersion, fuse.Version())
 }

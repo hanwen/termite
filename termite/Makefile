@@ -4,7 +4,7 @@ include $(GOROOT)/src/Make.inc
 TARG=github.com/hanwen/termite/termite
 DEPS=../../go-fuse/fuse ../../go-fuse/unionfs
 
-GOFILES=\
+MANUAL_GOFILES=\
 	connection.go \
 	contentcache.go \
 	contentserver.go \
@@ -19,8 +19,14 @@ GOFILES=\
 	misc.go \
 	rpcfs.go \
 	task.go \
+	version.go \
 	worker.go \
 	workerstatus.go \
 
+GOFILES=$(MANUAL_GOFILES) version.gen.go
+
 include $(GOROOT)/src/Make.pkg
 
+
+version.gen.go: $(MANUAL_GOFILES)
+	sh genversion.sh > $@
