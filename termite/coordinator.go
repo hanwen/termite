@@ -115,12 +115,17 @@ func (me *Coordinator) HtmlHandler(w http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(w, "<body><h1>Termite coordinator</h1>")
 
 	for _, worker := range me.workers {
-		line := fmt.Sprintf("address <tt>%s</tt>, host <tt>%s</tt>", worker.Address, worker.Name)
-
-		if worker.HttpStatusAddress != "" {
-			line = fmt.Sprintf("<a href=\"http://%s/\">%s</a>", worker.HttpStatusAddress, line)
-		}
-		fmt.Fprintf(w, "<p>%s", line)
+		me.workerHtml(*worker, w, req)
 	}
 	fmt.Fprintf(w, "</body></html>")
+}
+
+func (me *Coordinator) workerHtml(worker WorkerRegistration, w http.ResponseWriter, req *http.Request) {
+	line := fmt.Sprintf("address <tt>%s</tt>, host <tt>%s</tt>", worker.Address, worker.Name)
+
+	if worker.HttpStatusAddress != "" {
+		line = fmt.Sprintf("<a href=\"http://%s/\">%s</a>", worker.HttpStatusAddress, line)
+	}
+
+	fmt.Fprintf(w, "<p>%s<p>%s", line, worker.Version)
 }
