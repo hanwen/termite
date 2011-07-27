@@ -10,6 +10,7 @@ import (
 	"log"
 	"io"
 	"io/ioutil"
+	"sync"
 )
 
 // Content based addressing cache.
@@ -19,6 +20,9 @@ import (
 // contents from memory.
 type ContentCache struct {
 	dir string
+
+	sync.Mutex
+	md5PathMap map[string]string
 }
 
 func NewContentCache(d string) *ContentCache {
@@ -28,7 +32,11 @@ func NewContentCache(d string) *ContentCache {
 			panic(err)
 		}
 	}
-	return &ContentCache{dir: d}
+	
+	return &ContentCache{
+		dir: d,
+		md5PathMap: make(map[string]string),
+	}
 }
 
 func HashPath(dir string, md5 []byte) string {

@@ -15,7 +15,7 @@ shift
 jobs=$1
 shift
 
-master=$(hostname)
+master=$(hostname --long)
 
 ssh -oStrictHostKeyChecking=no root@${worker} '/bin/true'
 scp secret.txt root@${worker}:
