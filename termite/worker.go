@@ -8,6 +8,7 @@ import (
 	"rpc"
 	"sync"
 	"strings"
+	"runtime"
 	"time"
 )
 
@@ -185,6 +186,8 @@ func (me *WorkerDaemon) DropMirror(mirror *Mirror) {
 
 	log.Println("dropping mirror", mirror.key)
 	me.mirrorMap[mirror.key] = nil, false
+
+	runtime.GC()
 }
 
 func (me *WorkerDaemon) RunWorkerServer(port int, coordinator string) {
