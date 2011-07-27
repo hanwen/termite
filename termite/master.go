@@ -182,7 +182,10 @@ func (me *Master) runOnce(req *WorkRequest, rep *WorkReply) os.Error {
 	}
 
 	me.fileServer.updateHashes(localRep.Files)
-	me.replayFileModifications(mirror.rpcClient, localRep.Files)
+	err = me.replayFileModifications(mirror.rpcClient, localRep.Files)
+	if err != nil {
+		return err
+	}
 	*rep = localRep
 	rep.Files = nil
 
@@ -201,7 +204,21 @@ func (me *Master) run(req *WorkRequest, rep *WorkReply) (err os.Error) {
 	return err
 }
 
-func (me *Master) replayFileModifications(worker *rpc.Client, infos []AttrResponse) {
+func (me *Master) replayFileModifications(worker *rpc.Client, infos []AttrResponse) os.Error {
+	// Must get data before we modify the file-system, so we don't
+	// leave the FS in a half-finished state.
+	for _, info := range infos {
+		if info.Hash != nil && info.Content == nil {
+			// TODO - stream directly from network connection to file.
+			err := FetchBetweenContentServers(
+				worker, "Mirror.FileContent", info.FileInfo.Size, info.Hash,
+				me.cache)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	
 	entries := make(map[string]*AttrResponse)
 	names := []string{}
 	for i, info := range infos {
@@ -231,15 +248,9 @@ func (me *Master) replayFileModifications(worker *rpc.Client, infos []AttrRespon
 		if info.Hash != nil {
 			log.Printf("Replay file content %s %x", name, info.Hash)
 			content := info.Content
+			
 			if content == nil {
-				// TODO - stream directly from network connection to file.
-				err = FetchBetweenContentServers(
-					worker, "Mirror.FileContent", info.FileInfo.Size, info.Hash,
-					me.cache)
-
-				if err == nil {
-					err = CopyFile(info.Path, me.cache.Path(info.Hash), int(info.FileInfo.Mode))
-				}
+				err = CopyFile(info.Path, me.cache.Path(info.Hash), int(info.FileInfo.Mode))
 			} else {
 				me.cache.Save(content)
 				err = ioutil.WriteFile(info.Path, content, info.FileInfo.Mode&07777)
@@ -265,6 +276,7 @@ func (me *Master) replayFileModifications(worker *rpc.Client, infos []AttrRespon
 			log.Fatal("Replay error ", info.Path, " ", err)
 		}
 	}
+	return nil
 }
 
 ////////////////
