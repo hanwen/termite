@@ -15,7 +15,7 @@ type WorkerFuseFs struct {
 	mount  string
 	*fuse.MountState
 	fsConnector *fuse.FileSystemConnector
-	unionFs *unionfs.UnionFs
+	unionFs     *unionfs.UnionFs
 }
 
 func (me *WorkerFuseFs) Stop() {

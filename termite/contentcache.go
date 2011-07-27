@@ -20,9 +20,9 @@ import (
 // contents from memory.
 type ContentCache struct {
 	dir string
-	
+
 	hashPathMapMutex sync.Mutex
-	hashPathMap map[string]string
+	hashPathMap      map[string]string
 }
 
 func NewContentCache(d string) *ContentCache {
@@ -32,9 +32,9 @@ func NewContentCache(d string) *ContentCache {
 			panic(err)
 		}
 	}
-	
+
 	return &ContentCache{
-		dir: d,
+		dir:         d,
 		hashPathMap: make(map[string]string),
 	}
 }
@@ -150,7 +150,7 @@ func (me *ContentCache) SavePath(path string) (md5 []byte, content []byte) {
 
 func (me *ContentCache) SaveImmutablePath(path string) (md5 []byte, content []byte) {
 	hasher := crypto.MD5.New()
-	
+
 	f, err := os.Open(path)
 	if err != nil {
 		log.Fatal(err)
@@ -160,7 +160,7 @@ func (me *ContentCache) SaveImmutablePath(path string) (md5 []byte, content []by
 	if err != nil && err != os.EOF {
 		log.Fatal(err)
 	}
-	
+
 	md5 = hasher.Sum()
 	me.hashPathMapMutex.Lock()
 	defer me.hashPathMapMutex.Unlock()

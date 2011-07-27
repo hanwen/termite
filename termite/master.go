@@ -218,7 +218,7 @@ func (me *Master) replayFileModifications(worker *rpc.Client, infos []AttrRespon
 			}
 		}
 	}
-	
+
 	entries := make(map[string]*AttrResponse)
 	names := []string{}
 	for i, info := range infos {
@@ -248,7 +248,7 @@ func (me *Master) replayFileModifications(worker *rpc.Client, infos []AttrRespon
 		if info.Hash != nil {
 			log.Printf("Replay file content %s %x", name, info.Hash)
 			content := info.Content
-			
+
 			if content == nil {
 				err = CopyFile(info.Path, me.cache.Path(info.Hash), int(info.FileInfo.Mode))
 			} else {
