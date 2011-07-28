@@ -30,7 +30,7 @@ type ContentServer struct {
 }
 
 func (me *ContentServer) FileContent(req *ContentRequest, rep *ContentResponse) os.Error {
-	f, err := os.Open(HashPath(me.Cache.dir, req.Hash))
+	f, err := os.Open(me.Cache.Path(req.Hash))
 	if err != nil {
 		return err
 	}
