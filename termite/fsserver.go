@@ -162,9 +162,13 @@ func (me *FsServer) getHash(name string) (hash []byte, content []byte) {
 	// TODO - would it be better to not stop other hash lookups
 	// from succeeding?
 
-	// TODO - only read the file; in many cases, we already have
-	// the file int the on-disk md5 cache.
-	hash, content = me.contentCache.SavePath(fullPath)
+	// TODO - /usr should be configurable.
+	if strings.HasPrefix(fullPath, "/usr") {
+		hash, content = me.contentCache.SaveImmutablePath(fullPath)
+	} else {
+		hash, content = me.contentCache.SavePath(fullPath)
+	}
+
 	me.hashCache[name] = hash
 	return hash, content
 }

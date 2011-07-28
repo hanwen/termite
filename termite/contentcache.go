@@ -51,13 +51,29 @@ func HashPath(dir string, md5 []byte) string {
 	return dst
 }
 
+func (me *ContentCache) localPath(hash []byte) string {
+	me.hashPathMapMutex.Lock()
+	defer me.hashPathMapMutex.Unlock()
+
+	return me.hashPathMap[string(hash)]
+}
+
 func (me *ContentCache) HasHash(hash []byte) bool {
-	p := HashPath(me.dir, hash)
+	p := me.localPath(hash)
+	if p != "" {
+		return true
+	}
+
+	p = HashPath(me.dir, hash)
 	_, err := os.Lstat(p)
 	return err == nil
 }
 
 func (me *ContentCache) Path(hash []byte) string {
+	p := me.localPath(hash)
+	if p != "" {
+		return p
+	}
 	return HashPath(me.dir, hash)
 }
 
