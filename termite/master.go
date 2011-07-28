@@ -273,7 +273,7 @@ func (me *Master) replayFileModifications(worker *rpc.Client, infos []AttrRespon
 		}
 
 		if err != nil {
-			log.Fatal("Replay error ", info.Path, " ", err)
+			log.Fatal("Replay error ", info.Path, " ", err, infos)
 		}
 	}
 	return nil
