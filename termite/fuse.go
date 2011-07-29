@@ -3,10 +3,11 @@ package termite
 import (
 	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/go-fuse/unionfs"
+	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
-	"io/ioutil"
+	"strings"
 )
 
 type WorkerFuseFs struct {
@@ -121,4 +122,13 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string) 
 	go w.MountState.Loop(true)
 
 	return &w, nil
+}
+
+func (me *WorkerFuseFs) update(req *UpdateRequest) {
+	paths := []string{}
+	for _, attr := range req.Files {
+		path := strings.TrimLeft(attr.Path, "/")
+		me.fsConnector.FileNotify(path, 0, 0)
+		paths = append(paths, path)
+	}
 }

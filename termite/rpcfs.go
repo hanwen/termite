@@ -29,8 +29,6 @@ type RpcFs struct {
 }
 
 type UpdateRequest struct {
-	FileServer   string
-	WritableRoot string
 	Files        []AttrResponse
 }
 
