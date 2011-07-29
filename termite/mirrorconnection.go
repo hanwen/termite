@@ -17,17 +17,37 @@ type mirrorConnection struct {
 	// Protected by mirrorConnections.Mutex.
 	maxJobs       int
 	availableJobs int
+
+	// Any file updates that we should ship to the worker before
+	// running any jobs.
+	pendingChangesMutex sync.Mutex
+	pendingChanges []AttrResponse
 }
 
-func (me *mirrorConnection) sendFiles(infos []AttrResponse) {
+func (me *mirrorConnection) queueFiles(files []AttrResponse) {
+	me.pendingChangesMutex.Lock()
+	defer me.pendingChangesMutex.Unlock()
+	for _, a := range files {
+		me.pendingChanges = append(me.pendingChanges, a)
+	}
+}
+
+func (me *mirrorConnection) sendFiles() os.Error {
+	me.pendingChangesMutex.Lock()
+	defer me.pendingChangesMutex.Unlock()
+
 	req := UpdateRequest{
-		Files: infos,
+		Files: me.pendingChanges,
 	}
 	rep := UpdateResponse{}
 	err := me.rpcClient.Call("Mirror.Update", &req, &rep)
 	if err != nil {
 		log.Println("Mirror.Update failure", err)
+		return err
 	}
+
+	me.pendingChanges = me.pendingChanges[:0]
+	return nil
 }
 
 // mirrorConnection manages connections from the master to the mirrors
@@ -151,10 +171,10 @@ func (me *mirrorConnections) maybeDropConnections() {
 	me.mirrors = make(map[string]*mirrorConnection)
 }
 
-func (me *mirrorConnections) broadcastFiles(origin *mirrorConnection, infos []AttrResponse) {
+func (me *mirrorConnections) queueFiles(origin *mirrorConnection, infos []AttrResponse) {
 	for _, w := range me.mirrors {
 		if origin != w {
-			go w.sendFiles(infos)
+			w.queueFiles(infos)
 		}
 	}
 }

@@ -175,6 +175,12 @@ func (me *Master) runOnce(req *WorkRequest, rep *WorkReply) os.Error {
 		return err
 	}
 
+	err = mirror.sendFiles()
+	if err != nil {
+		me.mirrors.drop(mirror, err)
+		return err
+	}
+
 	err = me.runOnMirror(mirror, req, &localRep)
 	if err != nil {
 		me.mirrors.drop(mirror, err)
@@ -189,9 +195,7 @@ func (me *Master) runOnce(req *WorkRequest, rep *WorkReply) os.Error {
 	*rep = localRep
 	rep.Files = nil
 
-	// This must happen synchronously, otherwise, other mirrors
-	// may see their files change mid-compile.
-	me.mirrors.broadcastFiles(mirror, localRep.Files)
+	me.mirrors.queueFiles(mirror, localRep.Files)
 	return err
 }
 
