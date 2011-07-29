@@ -93,7 +93,7 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string) 
 
 	tmpFs := fuse.NewLoopbackFileSystem(tmpBacking)
 
-	w.unionFs = unionfs.NewUnionFs("ufs", []fuse.FileSystem{rwFs, rpcFs}, opts)
+	w.unionFs = unionfs.NewUnionFs([]fuse.FileSystem{rwFs, rpcFs}, opts)
 	swFs := []fuse.SwitchedFileSystem{
 		{"dev", &DevNullFs{}, true},
 		{"", rpcFs, false},
