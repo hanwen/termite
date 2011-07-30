@@ -173,6 +173,8 @@ func (me *WorkerDaemon) CreateMirror(req *CreateMirrorRequest, rep *CreateMirror
 	revConn := me.pending.WaitConnection(req.RevRpcId)
 	mirror, err := me.getMirror(rpcConn, revConn, req.MaxJobCount)
 	if err != nil {
+		rpcConn.Close()
+		revConn.Close()
 		return err
 	}
 	mirror.writableRoot = req.WritableRoot
