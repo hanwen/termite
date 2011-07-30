@@ -26,9 +26,9 @@ func TestFileSaver(t *testing.T) {
 		cache:  NewContentCache(dir + "/cache"),
 	}
 
-	err := s.scanBackingStore()
-	if err != nil {
-		t.Fatal("scan", err)
+	s.reapBackingStore()
+	if s.err != nil {
+		t.Fatal("scan", s.err)
 	}
 
 	byPath := make(map[string]AttrResponse)

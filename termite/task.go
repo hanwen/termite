@@ -139,7 +139,7 @@ func (me *WorkerTask) fillReply() os.Error {
 		prefix: me.mirror.writableRoot,
 		cache:  me.mirror.daemon.contentCache,
 	}
-	saver.scanBackingStore()
+	saver.reapBackingStore()
 	me.WorkReply.Files = saver.files
 	return saver.err
 }
@@ -200,36 +200,44 @@ func (me *fileSaver) savePath(path string, osInfo *os.FileInfo) {
 	me.files = append(me.files, fi)
 }
 
-func (me *fileSaver) scanBackingStore() os.Error {
+func (me *fileSaver) reapBackingStore() {
 	dir := filepath.Join(me.rwDir, _DELETIONS)
 	_, err := os.Lstat(dir)
 	if err == nil {
 		matches, err := filepath.Glob(dir + "/*")
 		if err != nil {
-			return err
+			me.err = err
+			return 
 		}
 
 		for _, fullPath := range matches {
 			contents, err := ioutil.ReadFile(fullPath)
 			if err != nil {
-				return err
+				me.err = err
+				return
 			}
 
 			me.files = append(me.files, AttrResponse{
 				Status: fuse.ENOENT,
 				Path:   "/" + string(contents),
 			})
-			err = os.Remove(fullPath)
-			if err != nil {
-				return err
+			me.err = os.Remove(fullPath)
+			if me.err != nil {
+				break
 			}
-		}
-
-		if err != nil {
-			return err
 		}
 	}
 
-	filepath.Walk(me.rwDir, me, nil)
-	return nil
+	if me.err == nil {
+		filepath.Walk(me.rwDir, me, nil)
+	}
+	if me.err == nil {
+		me.err = os.RemoveAll(me.rwDir)
+	}
+	if me.err == nil {
+		me.err = os.Mkdir(me.rwDir, 0755)
+	}
+	if me.err == nil {
+		me.err = os.Mkdir(filepath.Join(me.rwDir, _DELETIONS), 0755)
+	}
 }
