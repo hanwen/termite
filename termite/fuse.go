@@ -76,7 +76,7 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string) 
 
 	rwFs := fuse.NewLoopbackFileSystem(w.rwDir)
 
-	ttl := 5.0
+	ttl := 30.0
 	opts := unionfs.UnionFsOptions{
 		BranchCacheTTLSecs:   ttl,
 		DeletionCacheTTLSecs: ttl,
@@ -85,7 +85,7 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string) 
 	mOpts := fuse.FileSystemOptions{
 		EntryTimeout:    ttl,
 		AttrTimeout:     ttl,
-		NegativeTimeout: 0.01,
+		NegativeTimeout: ttl,
 	}
 
 	tmpFs := fuse.NewLoopbackFileSystem(tmpBacking)
