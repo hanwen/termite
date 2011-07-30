@@ -164,7 +164,7 @@ type CreateMirrorRequest struct {
 }
 
 type CreateMirrorResponse struct {
-	MaxJobCount int
+	GrantedJobCount int
 }
 
 func (me *WorkerDaemon) CreateMirror(req *CreateMirrorRequest, rep *CreateMirrorResponse) os.Error {
@@ -179,7 +179,7 @@ func (me *WorkerDaemon) CreateMirror(req *CreateMirrorRequest, rep *CreateMirror
 	}
 	mirror.writableRoot = req.WritableRoot
 
-	rep.MaxJobCount = mirror.maxJobCount
+	rep.GrantedJobCount = mirror.maxJobCount
 	return nil
 }
 func (me *WorkerDaemon) DropMirror(mirror *Mirror) {
