@@ -32,10 +32,6 @@ func (me *WorkerFuseFs) Stop() {
 }
 
 func (me *Mirror) ReturnFuse(wfs *WorkerFuseFs) {
-	// TODO - could be more fine-grained here.
-	wfs.unionFs.DropBranchCache()
-	wfs.unionFs.DropDeletionCache()
-
 	me.fuseFileSystemsMutex.Lock()
 	defer me.fuseFileSystemsMutex.Unlock()
 
@@ -124,11 +120,15 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string) 
 	return &w, nil
 }
 
-func (me *WorkerFuseFs) update(req *UpdateRequest) {
+func (me *WorkerFuseFs) update(attrs []AttrResponse) {
 	paths := []string{}
-	for _, attr := range req.Files {
+	for _, attr := range attrs {
 		path := strings.TrimLeft(attr.Path, "/")
+
+		// TODO - should have bulk interface?
 		me.fsConnector.FileNotify(path, 0, 0)
 		paths = append(paths, path)
 	}
+	me.unionFs.DropBranchCache(paths)
+	me.unionFs.DropDeletionCache()
 }

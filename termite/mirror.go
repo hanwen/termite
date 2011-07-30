@@ -107,19 +107,19 @@ func (me *Mirror) getWorkerFuseFs(name string) (f *WorkerFuseFs, err os.Error) {
 }
 
 func (me *Mirror) Update(req *UpdateRequest, rep *UpdateResponse) os.Error {
-	me.updateFileSystems(req)
+	me.updateFileSystems(req.Files)
 	return me.rpcFs.Update(req, rep)
 }
 
-func (me *Mirror) updateFileSystems(req *UpdateRequest) {
+func (me *Mirror) updateFileSystems(attrs []AttrResponse) {
 	me.fuseFileSystemsMutex.Lock()
 	defer me.fuseFileSystemsMutex.Unlock()
 
 	for _, fs := range me.fuseFileSystems {
-		fs.update(req)
+		fs.update(attrs)
 	}
 	for fs, _ := range me.workingFileSystems {
-		fs.update(req)
+		fs.update(attrs)
 	}
 }
 
@@ -139,10 +139,9 @@ func (me *Mirror) Run(req *WorkRequest, rep *WorkReply) os.Error {
 		Files: rep.Files,
 	}
 	updateRep := UpdateResponse{}
-	err = me.rpcFs.Update(&updateReq, &updateRep)
+	err = me.Update(&updateReq, &updateRep)
 	if err != nil {
-		// TODO - fatal?
-		log.Println("Update failed.")
+		return err
 	}
 
 	summary := rep
