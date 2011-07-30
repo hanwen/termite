@@ -63,7 +63,7 @@ type mirrorConnections struct {
 
 	// Protects all of the below.
 	sync.Mutex
-	workers           []string
+	workers           map[string]bool
 	mirrors           map[string]*mirrorConnection
 	wantedMaxJobs     int
 	lastActionSeconds int64
@@ -84,9 +84,9 @@ func (me *mirrorConnections) refreshWorkers() {
 		return
 	}
 
-	newWorkers := []string{}
+	newWorkers := map[string]bool{}
 	for _, v := range rep.Registrations {
-		newWorkers = append(newWorkers, v.Address)
+		newWorkers[v.Address] = true
 	}
 	if len(newWorkers) == 0 {
 		log.Println("coordinator has no workers for us.")
@@ -102,10 +102,13 @@ func newMirrorConnections(m *Master, workers []string, coordinator string, maxJo
 	mc := &mirrorConnections{
 		master:           m,
 		wantedMaxJobs:    maxJobs,
-		workers:          workers,
+		workers:          make(map[string]bool),
 		mirrors:          make(map[string]*mirrorConnection),
 		coordinator:      coordinator,
 		keepAliveSeconds: 60,
+	}
+	for _, w := range workers {
+		mc.workers[w] = true
 	}
 	if coordinator != "" {
 		if workers != nil {
@@ -213,10 +216,10 @@ func (me *mirrorConnections) drop(mc *mirrorConnection, err os.Error) {
 	me.Mutex.Lock()
 	defer me.Mutex.Unlock()
 
-	// TODO - should blacklist the address.
 	log.Printf("Dropping mirror %s. Reason: %s", mc.workerAddr, err)
 	mc.connection.Close()
 	me.mirrors[mc.workerAddr] = nil, false
+	me.workers[mc.workerAddr] = false, false
 }
 
 func (me *mirrorConnections) jobDone(mc *mirrorConnection) {
@@ -237,7 +240,8 @@ func (me *mirrorConnections) tryConnect() {
 		return
 	}
 
-	for _, addr := range me.workers {
+	blacklist := []string{}
+	for addr, _ := range me.workers {
 		_, ok := me.mirrors[addr]
 		if ok {
 			continue
@@ -246,10 +250,15 @@ func (me *mirrorConnections) tryConnect() {
 		mc, err := me.master.createMirror(addr, wanted)
 		if err != nil {
 			log.Println("nonfatal error creating mirror:", err)
+			blacklist = append(blacklist, addr)
 			continue
 		}
 		mc.workerAddr = addr
 		me.mirrors[addr] = mc
 		break
+	}
+
+	for _, a := range blacklist {
+		me.workers[a] = false, false
 	}
 }

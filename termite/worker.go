@@ -52,14 +52,14 @@ type WorkerDaemon struct {
 }
 
 func (me *WorkerDaemon) getMirror(rpcConn, revConn net.Conn, reserveCount int) (*Mirror, os.Error) {
+	if reserveCount <= 0 {
+		return nil, os.NewError("must ask positive jobcount")
+	}
 	me.mirrorMapMutex.Lock()
 	defer me.mirrorMapMutex.Unlock()
 	used := 0
 	for _, v := range me.mirrorMap {
 		used += v.maxJobCount
-	}
-	if reserveCount <= 0 {
-		return nil, os.NewError("must ask positive jobcount")
 	}
 
 	remaining := me.maxJobCount - used
