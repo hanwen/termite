@@ -102,9 +102,5 @@ TODO
 
 * Collect worker log information and expose on HTTP.
 
-* More fine-grained cache invalidations in UnionFs
-
 * Implement mv for symlinks, directories in UnionFs.
 
-* Implement inode notify for Go-FUSE so we can notify FUSE from
-  within of cache drops.
