@@ -22,7 +22,7 @@ type RpcFs struct {
 
 	attrMutex    sync.RWMutex
 	attrResponse map[string]*AttrResponse
-
+	
 	fetchMutex sync.Mutex
 	fetchCond  sync.Cond
 	fetchMap   map[string]bool
@@ -203,16 +203,34 @@ func (me *RpcFs) getAttrResponse(name string) *AttrResponse {
 		return result
 	}
 
-	req := &AttrRequest{Name: "/" + name}
+	me.attrMutex.Lock()
+	defer me.attrMutex.Unlock()
+	result, ok = me.attrResponse[name]
+	if ok {
+		return result
+	}
+
+	abs := "/" + name
+
+	// Avoid fetching local data; this assumes that most paths
+	// will be the same between master and worker.
+	//
+	// TODO - configurable.
+	if strings.HasPrefix(abs, "/usr") {
+		go me.cache.SaveImmutablePath(abs)
+	}
+	
+	req := &AttrRequest{Name: abs}
 	rep := &AttrResponse{}
 	err := me.client.Call("FsServer.GetAttr", req, rep)
 	if err != nil {
 		log.Println("GetAttr error:", err)
 		return nil
 	}
-
-	me.attrMutex.Lock()
-	defer me.attrMutex.Unlock()
+	if rep.Content != nil {
+		me.cache.Save(rep.Content)
+	}
+	
 	me.attrResponse[name] = rep
 	return rep
 }
