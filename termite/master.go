@@ -164,6 +164,7 @@ func (me *Master) runOnMirror(mirror *mirrorConnection, req *WorkRequest, rep *W
 		}()
 	}
 
+	log.Println("Running command", req.Argv)
 	err := mirror.rpcClient.Call("Mirror.Run", &req, &rep)
 	return err
 }
