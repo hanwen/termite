@@ -22,6 +22,8 @@ type WorkReply struct {
 }
 
 type WorkRequest struct {
+	Prefetch     []FileAttr     
+	
 	// Id of connection streaming stdin.
 	StdinId      string
 	Debug        bool

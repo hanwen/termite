@@ -197,6 +197,23 @@ func (me *Master) runOnMirror(mirror *mirrorConnection, req *WorkRequest, rep *W
 	return err
 }
 
+func (me *Master) prefetchFiles(req *WorkRequest) {
+	files := map[string]int{}
+	for _, arg := range req.Argv {
+		for _, root := range []string{me.srcRoot, me.writableRoot} {
+			for _, f := range DetectFiles(root, arg) {
+				files[f] = 1
+			}
+		}
+	}
+
+	for f, _ := range files {
+		a := FileAttr{}
+		me.fileServer.oneGetAttr(f, &a)
+		req.Prefetch = append(req.Prefetch, a)
+	}
+}
+
 func (me *Master) runOnce(req *WorkRequest, rep *WorkReply) os.Error {
 	localRep := *rep
 	mirror, err := me.mirrors.pick()
@@ -210,6 +227,7 @@ func (me *Master) runOnce(req *WorkRequest, rep *WorkReply) os.Error {
 		return err
 	}
 
+	me.prefetchFiles(req)
 	err = me.runOnMirror(mirror, req, &localRep)
 	if err != nil {
 		me.mirrors.drop(mirror, err)

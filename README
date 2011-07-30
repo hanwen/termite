@@ -111,16 +111,12 @@ TODO
   - Implement mv for symlinks, directories in UnionFs.
 
 * Speed
-  - Worker: guess GetAttr to follow (.gch should also stat .h)
   - Wrapper:
     * run echo locally
     * use better strategy for local/remote selection
   - Master/Worker:
-    * scan command line for what might be files
-    * send stat results along with request
-    * worker fetches contents on start-up.
+    * worker prefetches contents on startup.
   - Master:
     * add in-memory cache for file contents.
-    * have a -srcdir option to detect source packages.
   - Worker
     * implement in-memory FileSystem for backing store

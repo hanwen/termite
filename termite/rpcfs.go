@@ -53,6 +53,11 @@ func NewRpcFs(server *rpc.Client, cache *ContentCache) *RpcFs {
 }
 
 func (me *RpcFs) Update(req *UpdateRequest, resp *UpdateResponse) os.Error {
+	me.updateFiles(req.Files)
+	return nil
+}
+
+func (me *RpcFs) updateFiles(files []FileAttr) {
 	me.dirMutex.Lock()
 	defer me.dirMutex.Unlock()
 
@@ -60,7 +65,7 @@ func (me *RpcFs) Update(req *UpdateRequest, resp *UpdateResponse) os.Error {
 	defer me.attrMutex.Unlock()
 
 	flushDirs := []string{}
-	for _, r := range req.Files {
+	for _, r := range files {
 		p := strings.TrimLeft(r.Path, string(filepath.Separator))
 
 		d, _ := filepath.Split(p)
@@ -81,7 +86,6 @@ func (me *RpcFs) Update(req *UpdateRequest, resp *UpdateResponse) os.Error {
 	for _, d := range flushDirs {
 		me.directories[d] = nil, false
 	}
-	return nil
 }
 
 func (me *RpcFs) GetDir(name string) *DirResponse {

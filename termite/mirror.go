@@ -125,6 +125,8 @@ func (me *Mirror) updateFileSystems(attrs []FileAttr) {
 }
 
 func (me *Mirror) Run(req *WorkRequest, rep *WorkReply) os.Error {
+	me.rpcFs.updateFiles(req.Prefetch)
+	// TODO - async fetch contents.
 	task, err := me.newWorkerTask(req, rep)
 	if err != nil {
 		return err
