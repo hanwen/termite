@@ -1,6 +1,7 @@
 package termite
 
 import (
+	"fmt"
 	"os"
 	"log"
 	"sync"
@@ -16,6 +17,9 @@ type RpcFs struct {
 
 	client *rpc.Client
 
+	// Roots that we should try to fetch locally.
+	localRoots []string
+	
 	// Should be acquired before attrMutex if applicable.
 	dirMutex    sync.Mutex
 	directories map[string]*DirResponse
@@ -194,6 +198,14 @@ func (me *RpcFs) Readlink(name string) (string, fuse.Status) {
 	return a.Link, fuse.OK
 }
 
+func EncodeFileInfo(fi os.FileInfo) string {
+	fi.Atime_ns = 0
+	fi.Ino = 0
+	fi.Dev = 0
+	fi.Name = ""
+	return fmt.Sprintf("%v", fi)
+}
+
 func (me *RpcFs) getAttrResponse(name string) *AttrResponse {
 	me.attrMutex.RLock()
 	result, ok := me.attrResponse[name]
@@ -211,14 +223,6 @@ func (me *RpcFs) getAttrResponse(name string) *AttrResponse {
 	}
 
 	abs := "/" + name
-
-	// Avoid fetching local data; this assumes that most paths
-	// will be the same between master and worker.
-	//
-	// TODO - configurable.
-	if strings.HasPrefix(abs, "/usr") {
-		go me.cache.SaveImmutablePath(abs)
-	}
 	
 	req := &AttrRequest{Name: abs}
 	rep := &AttrResponse{}
@@ -229,10 +233,39 @@ func (me *RpcFs) getAttrResponse(name string) *AttrResponse {
 	}
 	if rep.Content != nil {
 		me.cache.Save(rep.Content)
-	}
+	} 
+
+	me.considerSaveLocal(abs, *rep)
 	
 	me.attrResponse[name] = rep
 	return rep
+}
+
+func (me *RpcFs) considerSaveLocal(absPath string, attr AttrResponse) {
+	if !attr.Status.Ok() || !attr.FileInfo.IsRegular() {
+		return
+	}
+	found := false
+	for _, root := range me.localRoots {
+		if strings.HasPrefix(absPath, root + "/") {
+			found = true
+		}
+	}
+	if !found {
+		return
+	}
+	
+	fi, _ := os.Lstat(absPath)
+	if fi == nil {
+		return
+	}
+	if EncodeFileInfo(*fi) != EncodeFileInfo(*attr.FileInfo) {
+		return
+	}
+	
+	// Avoid fetching local data; this assumes that most paths
+	// will be the same between master and worker.
+	me.cache.SaveImmutablePath(absPath)
 }
 
 func (me *RpcFs) GetAttr(name string) (*os.FileInfo, fuse.Status) {

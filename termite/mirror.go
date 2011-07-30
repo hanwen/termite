@@ -41,6 +41,7 @@ func NewMirror(daemon *WorkerDaemon, rpcConn, revConn net.Conn) *Mirror {
 		workingFileSystems: make(map[*WorkerFuseFs]string),
 	}
 	mirror.rpcFs = NewRpcFs(mirror.fileServer, daemon.contentCache)
+	mirror.rpcFs.localRoots = []string{"/lib", "/usr"}
 	mirror.cond.L = &mirror.fuseFileSystemsMutex
 
 	go mirror.serveRpc()

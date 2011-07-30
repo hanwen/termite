@@ -122,7 +122,7 @@ func (me *FsServer) GetAttr(req *AttrRequest, rep *AttrResponse) os.Error {
 	if fi.IsRegular() {
 		rep.Hash, rep.Content = me.getHash(req.Name)
 	}
-	log.Println("GetAttr", req.Name, rep)
+	log.Printf("GetAttr %s %v %x", req.Name, rep, rep.Hash)
 	return nil
 }
 

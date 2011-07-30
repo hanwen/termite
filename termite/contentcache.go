@@ -181,6 +181,8 @@ func (me *ContentCache) SaveImmutablePath(path string) (md5 []byte, content []by
 	me.hashPathMapMutex.Lock()
 	defer me.hashPathMapMutex.Unlock()
 	me.hashPathMap[string(md5)] = path
+
+	log.Printf("hashed %s to %x", path, md5)
 	return md5, content
 }
 
