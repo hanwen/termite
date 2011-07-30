@@ -23,6 +23,9 @@ ssh root@${worker} "
   rm -f worker chroot ;
   modprobe fuse;
   yum install -y fuse ;
+  yum erase -y samba-client libgcj postgresql \
+    postgresql-server atlas qt-x11 valgrind \
+    java-1.6.0-openjdk samba-client
   service iptables stop ;
   killall worker ;
   wget --quiet http://${master}:1233/bin/worker ;
