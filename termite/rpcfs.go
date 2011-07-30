@@ -25,7 +25,7 @@ type RpcFs struct {
 	directories map[string]*DirResponse
 
 	attrMutex    sync.RWMutex
-	attrResponse map[string]*AttrResponse
+	attrResponse map[string]*FileAttr
 
 	fetchMutex sync.Mutex
 	fetchCond  sync.Cond
@@ -33,7 +33,7 @@ type RpcFs struct {
 }
 
 type UpdateRequest struct {
-	Files []AttrResponse
+	Files []FileAttr
 }
 
 type UpdateResponse struct {
@@ -45,7 +45,7 @@ func NewRpcFs(server *rpc.Client, cache *ContentCache) *RpcFs {
 	me.client = server
 	me.directories = make(map[string]*DirResponse)
 	me.cache = cache
-	me.attrResponse = make(map[string]*AttrResponse)
+	me.attrResponse = make(map[string]*FileAttr)
 
 	me.fetchMap = make(map[string]bool)
 	me.fetchCond.L = &me.fetchMutex
@@ -128,7 +128,7 @@ func (me *RpcFs) Open(name string, flags uint32) (fuse.File, fuse.Status) {
 	if flags&fuse.O_ANYWRITE != 0 {
 		return nil, fuse.EPERM
 	}
-	a := me.getAttrResponse(name)
+	a := me.getFileAttr(name)
 	if a == nil {
 		return nil, fuse.ENOENT
 	}
@@ -183,7 +183,7 @@ func (me *RpcFs) fetchOnce(size int64, hash []byte) os.Error {
 }
 
 func (me *RpcFs) Readlink(name string) (string, fuse.Status) {
-	a := me.getAttrResponse(name)
+	a := me.getFileAttr(name)
 	if a == nil {
 		return "", fuse.ENOENT
 	}
@@ -206,7 +206,7 @@ func EncodeFileInfo(fi os.FileInfo) string {
 	return fmt.Sprintf("%v", fi)
 }
 
-func (me *RpcFs) getAttrResponse(name string) *AttrResponse {
+func (me *RpcFs) getFileAttr(name string) *FileAttr {
 	me.attrMutex.RLock()
 	result, ok := me.attrResponse[name]
 	me.attrMutex.RUnlock()
@@ -231,17 +231,24 @@ func (me *RpcFs) getAttrResponse(name string) *AttrResponse {
 		log.Println("GetAttr error:", err)
 		return nil
 	}
-	if rep.Content != nil {
-		me.cache.Save(rep.Content)
+	var wanted *FileAttr
+	for _, attr := range rep.Attrs {
+		if attr.Content != nil {
+			me.cache.Save(attr.Content)
+		}
+
+		me.considerSaveLocal(attr)
+		fa := attr
+		me.attrResponse[strings.TrimLeft(attr.Path, "/")] = &fa
+		if attr.Path == abs {
+			wanted = &fa
+		}
 	}
-
-	me.considerSaveLocal(abs, *rep)
-
-	me.attrResponse[name] = rep
-	return rep
+	return wanted
 }
 
-func (me *RpcFs) considerSaveLocal(absPath string, attr AttrResponse) {
+func (me *RpcFs) considerSaveLocal(attr FileAttr) {
+	absPath := attr.Path
 	if !attr.Status.Ok() || !attr.FileInfo.IsRegular() {
 		return
 	}
@@ -275,7 +282,7 @@ func (me *RpcFs) GetAttr(name string) (*os.FileInfo, fuse.Status) {
 		}, fuse.OK
 	}
 
-	r := me.getAttrResponse(name)
+	r := me.getFileAttr(name)
 	if r == nil {
 		return nil, fuse.ENOENT
 	}

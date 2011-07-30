@@ -19,6 +19,8 @@ type FsServer struct {
 	Root          string
 	excluded      map[string]bool
 
+	multiplyPaths func(string)[]string
+
 	hashCacheMutex sync.RWMutex
 	// TODO - should use string (immutable) throughout for storing MD5 signatures.
 	hashCache map[string][]byte
@@ -43,8 +45,8 @@ type AttrRequest struct {
 	Name string
 }
 
-type AttrResponse struct {
-	Path string // Used in WorkReply
+type FileAttr struct {
+	Path string
 	*os.FileInfo
 	fuse.Status
 	Hash    []byte
@@ -52,7 +54,11 @@ type AttrResponse struct {
 	Content []byte // optional.
 }
 
-func (me AttrResponse) String() string {
+type AttrResponse struct {
+	Attrs []FileAttr 
+}
+
+func (me FileAttr) String() string {
 	id := ""
 	if me.Hash != nil {
 		id = fmt.Sprintf(" sz %d", me.FileInfo.Size)
@@ -66,7 +72,7 @@ func (me AttrResponse) String() string {
 	return fmt.Sprintf("%s%s", me.Path, id)
 }
 
-func (me AttrResponse) Deletion() bool {
+func (me FileAttr) Deletion() bool {
 	return me.Status == fuse.ENOENT
 }
 
@@ -101,15 +107,28 @@ func (me *FsServer) ReadDir(req *DirRequest, r *DirResponse) os.Error {
 
 func (me *FsServer) GetAttr(req *AttrRequest, rep *AttrResponse) os.Error {
 	log.Println("GetAttr req", req.Name)
+	rep.Attrs = append(rep.Attrs, FileAttr{})
+	names := []string{}
+	if me.multiplyPaths != nil {
+		names = me.multiplyPaths(req.Name)
+	} else {
+		names = append(names, req.Name)
+	}
+	err := me.oneGetAttr(req.Name, &rep.Attrs[0])
+	return err
+}
+
+func (me *FsServer) oneGetAttr(name string, rep *FileAttr) os.Error {
+	rep.Path = name
 	// TODO - this is not a good security measure, as we are not
 	// checking the prefix; someone might directly ask for
 	// /forbidden/subdir/
-	if me.excluded[req.Name] {
+	if me.excluded[name] {
 		rep.Status = fuse.ENOENT
 		return nil
 	}
 
-	fi, err := os.Lstat(me.path(req.Name))
+	fi, err := os.Lstat(me.path(name))
 	rep.FileInfo = fi
 	rep.Status = fuse.OsErrorToErrno(err)
 	if fi == nil {
@@ -117,16 +136,16 @@ func (me *FsServer) GetAttr(req *AttrRequest, rep *AttrResponse) os.Error {
 	}
 
 	if fi.IsSymlink() {
-		rep.Link, err = os.Readlink(req.Name)
+		rep.Link, err = os.Readlink(name)
 	}
 	if fi.IsRegular() {
-		rep.Hash, rep.Content = me.getHash(req.Name)
+		rep.Hash, rep.Content = me.getHash(name)
 	}
-	log.Printf("GetAttr %s %v %x", req.Name, rep, rep.Hash)
+	log.Printf("GetAttr %s %v %x", name, rep, rep.Hash)
 	return nil
 }
 
-func (me *FsServer) updateHashes(infos []AttrResponse) {
+func (me *FsServer) updateHashes(infos []FileAttr) {
 	me.hashCacheMutex.Lock()
 	defer me.hashCacheMutex.Unlock()
 

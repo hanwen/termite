@@ -31,7 +31,7 @@ func TestFileSaver(t *testing.T) {
 		t.Fatal("scan", s.err)
 	}
 
-	byPath := make(map[string]AttrResponse)
+	byPath := make(map[string]FileAttr)
 	for _, f := range s.files {
 		byPath[f.Path] = f
 	}

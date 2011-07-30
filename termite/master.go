@@ -9,6 +9,7 @@ import (
 	"github.com/hanwen/go-fuse/fuse"
 	"rpc"
 	"sort"
+	"strings"
 )
 
 type Master struct {
@@ -22,7 +23,7 @@ type Master struct {
 	localRpcServer *rpc.Server
 	localServer    *LocalMaster
 	writableRoot   string
-
+	srcRoot        string
 	pending *PendingConnections
 }
 
@@ -33,6 +34,7 @@ func NewMaster(cache *ContentCache, coordinator string, workers []string, secret
 		secret:     secret,
 		retryCount: 3,
 	}
+	me.fileServer.multiplyPaths = func(n string) []string { return me.multiplyPaths(n) }
 	me.mirrors = newMirrorConnections(me, workers, coordinator, maxJobs)
 	me.localServer = &LocalMaster{me}
 	me.secret = secret
@@ -42,6 +44,30 @@ func NewMaster(cache *ContentCache, coordinator string, workers []string, secret
 	me.localRpcServer = rpc.NewServer()
 	me.localRpcServer.Register(me.localServer)
 	return me
+}
+
+
+// TODO - write e2e test for this.
+func (me *Master) multiplyPaths(name string) []string {
+	names := []string{name}
+	// TODO - cleanpath.
+	if strings.HasPrefix(name, me.writableRoot) && me.srcRoot != "" {
+		names = append(names, me.srcRoot + name[len(me.writableRoot):])
+	}
+	for _, n := range names {
+		// TODO - configurable
+		if strings.HasSuffix(n, ".gch") {
+			names = append(names, n[:len(n)-len(".gch")])
+		}
+	}
+	log.Println("multiplied", names)
+	return names
+}
+
+func (me *Master) SetSrcRoot(root string) {
+	root, _ = filepath.Abs(root)
+	me.srcRoot = filepath.Clean(root)
+	log.Println("SrcRoot is", me.srcRoot)
 }
 
 func (me *Master) SetKeepAlive(seconds int64) {
@@ -63,7 +89,7 @@ func (me *Master) Start(sock string) {
 			conn.Close()
 			log.Fatal("socket has someone listening: ", absSock)
 		}
-		// TODO - should explicitly for the relevant error message.
+		// TODO - should check explicitly for the relevant error message.
 		log.Println("removing dead socket", absSock)
 		os.Remove(absSock)
 	}
@@ -84,7 +110,8 @@ func (me *Master) Start(sock string) {
 	}
 	me.writableRoot = filepath.Clean(me.writableRoot)
 	me.writableRoot, _ = filepath.Split(me.writableRoot)
-
+	me.writableRoot = filepath.Clean(me.writableRoot)
+	
 	log.Println("accepting connections on", absSock)
 	for {
 		conn, err := listener.Accept()
@@ -210,7 +237,7 @@ func (me *Master) run(req *WorkRequest, rep *WorkReply) (err os.Error) {
 	return err
 }
 
-func (me *Master) replayFileModifications(worker *rpc.Client, infos []AttrResponse) os.Error {
+func (me *Master) replayFileModifications(worker *rpc.Client, infos []FileAttr) os.Error {
 	// Must get data before we modify the file-system, so we don't
 	// leave the FS in a half-finished state.
 	for _, info := range infos {
@@ -225,7 +252,7 @@ func (me *Master) replayFileModifications(worker *rpc.Client, infos []AttrRespon
 		}
 	}
 
-	entries := make(map[string]*AttrResponse)
+	entries := make(map[string]*FileAttr)
 	names := []string{}
 	for i, info := range infos {
 		names = append(names, info.Path)

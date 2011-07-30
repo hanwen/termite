@@ -16,7 +16,7 @@ var _ = log.Println
 
 type WorkReply struct {
 	Exit   *os.Waitmsg
-	Files  []AttrResponse
+	Files  []FileAttr
 	Stderr string
 	Stdout string
 }

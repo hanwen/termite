@@ -120,7 +120,7 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string) 
 	return &w, nil
 }
 
-func (me *WorkerFuseFs) update(attrs []AttrResponse) {
+func (me *WorkerFuseFs) update(attrs []FileAttr) {
 	paths := []string{}
 	for _, attr := range attrs {
 		path := strings.TrimLeft(attr.Path, "/")

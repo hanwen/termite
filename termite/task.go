@@ -145,7 +145,7 @@ type fileSaver struct {
 	rwDir  string
 	prefix string
 	err    os.Error
-	files  []AttrResponse
+	files  []FileAttr
 	cache  *ContentCache
 }
 
@@ -167,7 +167,7 @@ func (me *fileSaver) savePath(path string, osInfo *os.FileInfo) {
 		return
 	}
 
-	fi := AttrResponse{
+	fi := FileAttr{
 		FileInfo: osInfo,
 		Path:     path[len(me.rwDir):],
 	}
@@ -214,7 +214,7 @@ func (me *fileSaver) reapBackingStore() {
 				return
 			}
 
-			me.files = append(me.files, AttrResponse{
+			me.files = append(me.files, FileAttr{
 				Status: fuse.ENOENT,
 				Path:   "/" + string(contents),
 			})
@@ -228,13 +228,16 @@ func (me *fileSaver) reapBackingStore() {
 	if me.err == nil {
 		filepath.Walk(me.rwDir, me, nil)
 	}
-	if me.err == nil {
-		me.err = os.RemoveAll(me.rwDir)
-	}
-	if me.err == nil {
-		me.err = os.Mkdir(me.rwDir, 0755)
-	}
-	if me.err == nil {
-		me.err = os.Mkdir(filepath.Join(me.rwDir, _DELETIONS), 0755)
+	if false {
+		// TODO.
+		if me.err == nil {
+			me.err = os.RemoveAll(me.rwDir)
+		}
+		if me.err == nil {
+			me.err = os.Mkdir(me.rwDir, 0755)
+		}
+		if me.err == nil {
+			me.err = os.Mkdir(filepath.Join(me.rwDir, _DELETIONS), 0755)
+		}
 	}
 }

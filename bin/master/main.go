@@ -20,6 +20,7 @@ func main() {
 	socket := flag.String("socket", ".termite-socket", "socket to listen for commands")
 	exclude := flag.String("exclude", "/sys,/proc,/dev,/selinux,/cgroup", "prefixes to not export.")
 	secretFile := flag.String("secret", "secret.txt", "file containing password.")
+	srcRoot := flag.String("sourcedir", "", "root of corresponding source directory")
 	jobs := flag.Int("jobs", 1, "number of jobs to run")
 
 	flag.Parse()
@@ -33,5 +34,6 @@ func main() {
 	c := termite.NewContentCache(*cachedir)
 	master := termite.NewMaster(
 		c, *coordinator, workerList, secret, excludeList, *jobs)
+	master.SetSrcRoot(*srcRoot)
 	master.Start(*socket)
 }
