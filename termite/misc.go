@@ -8,6 +8,8 @@ import (
 	"log"
 	"os"
 	"rand"
+	"regexp"
+	"strings"
 	"time"
 )
 
@@ -128,4 +130,27 @@ func Version() string {
 
 	return fmt.Sprintf("Termite %s (go-fuse %s)",
 		tVersion, fuse.Version())
+}
+
+func EscapeRegexp(s string) string {
+	special := "[]()\\+*"
+	for i, _ := range special {
+		c := special[i:i+1]
+		s = strings.Replace(s, c, "\\" + c, -1)
+	}
+	return s
+}
+
+func DetectFiles(root string, cmd string) []string {
+	regexp, err := regexp.Compile("(" + EscapeRegexp(root) + "/[^ ;&|\"']*)")
+	if err != nil {
+		log.Println("regexp error", err)
+	}
+
+	names := []string{}
+	matches := regexp.FindAllString(cmd, -1)
+	for _, m := range matches {
+		names = append(names, m)
+	}
+	return names
 }
