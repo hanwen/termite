@@ -242,7 +242,7 @@ func (me *mirrorConnections) tryConnect() {
 		if ok {
 			continue
 		}
-		log.Println("Creating mirror on", addr)
+		log.Printf("Creating mirror on %v, requesting %d jobs", addr, wanted)
 		mc, err := me.master.createMirror(addr, wanted)
 		if err != nil {
 			log.Println("nonfatal error creating mirror:", err)
@@ -250,5 +250,6 @@ func (me *mirrorConnections) tryConnect() {
 		}
 		mc.workerAddr = addr
 		me.mirrors[addr] = mc
+		break
 	}
 }
