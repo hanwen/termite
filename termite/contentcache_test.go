@@ -31,16 +31,24 @@ func TestDiskCache(t *testing.T) {
 }
 
 func TestLocalPath(t *testing.T) {
+	f, _ := ioutil.TempFile("", "")
+	defer os.Remove(f.Name())
+	_, err := f.Write([]byte("hello"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.Close()
+	
 	d, _ := ioutil.TempDir("", "")
 	defer os.RemoveAll(d)
-
 	cache := NewContentCache(d)
-	saved, content := cache.SaveImmutablePath("/etc/hostname")
+
+	saved, content := cache.SaveImmutablePath(f.Name())
 	if string(md5(content)) != string(saved) {
 		t.Fatal("hash mismatch")
 	}
 
-	if "/etc/hostname" != cache.Path(saved) {
+	if f.Name() != cache.Path(saved) {
 		t.Error("path mismatch")
 	}
 }
