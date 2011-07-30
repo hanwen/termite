@@ -61,6 +61,12 @@ RUNNING
   make SHELL=$PWD/bin/shell-wrapper/shell-wrapper -j10
 
 
+PERFORMANCE
+
+Lenovo T60, local build, local worker, LLVM+CLANG Cmake lib/Support with
+separate build dir -j1: 2.7x slower
+
+
 SECURITY
 
 * The worker runs binaries as user 'nobody' in a chroot of a FUSE file
@@ -96,11 +102,25 @@ CAVEATS
 
 TODO
 
-* More sophisticated exclusion for exporting file systems.
+* Security:
+  - More sophisticated exclusion for exporting file systems.
+  - Security review for the connection scheme.
 
-* Security review for the connection scheme.
+* Features
+  - Collect worker log information and expose on HTTP.
+  - Implement mv for symlinks, directories in UnionFs.
 
-* Collect worker log information and expose on HTTP.
-
-* Implement mv for symlinks, directories in UnionFs.
-
+* Speed
+  - Worker: guess GetAttr to follow (.gch should also stat .h)
+  - Wrapper:
+    * run echo locally
+    * use better strategy for local/remote selection
+  - Master/Worker:
+    * scan command line for what might be files
+    * send stat results along with request
+    * worker fetches contents on start-up.
+  - Master:
+    * add in-memory cache for file contents.
+    * have a -srcdir option to detect source packages.
+  - Worker
+    * implement in-memory FileSystem for backing store
