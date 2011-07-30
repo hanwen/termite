@@ -47,14 +47,13 @@ func (me *WorkerTask) Run() os.Error {
 		Files: []*os.File{rStdin, wStdout, wStderr},
 	}
 
-	nobody, err := user.Lookup("nobody")
-	if err != nil {
-		return err
-	}
-
 	cmd := []string{}
 	binary := ""
 	if os.Geteuid() == 0 {
+		nobody, err := user.Lookup("nobody")
+		if err != nil {
+			return err
+		}
 		binary = me.mirror.daemon.ChrootBinary
 		cmd = []string{binary, "-dir", me.WorkRequest.Dir,
 			"-uid", fmt.Sprintf("%d", nobody.Uid), "-gid", fmt.Sprintf("%d", nobody.Gid),
@@ -116,15 +115,13 @@ func (me *WorkerTask) Run() os.Error {
 		me.stdinConn.Close()
 	}
 
-	// TODO - should use a connection here too? What if the output
-	// is large?
+	// We could use a connection here too, but this is simpler.
 	me.WorkReply.Stdout = stdout.String()
 	me.WorkReply.Stderr = stderr.String()
 
 	err = me.fillReply()
 	if err != nil {
-		// TODO - anything else needed to discard?
-		log.Println("discarding FUSE due to error:", err)
+		log.Println("discarding FUSE due to error:", me.fuseFs.mount, err)
 		me.mirror.DiscardFuse(me.fuseFs)
 	} else {
 		me.mirror.ReturnFuse(me.fuseFs)
