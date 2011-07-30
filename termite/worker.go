@@ -182,6 +182,7 @@ func (me *WorkerDaemon) CreateMirror(req *CreateMirrorRequest, rep *CreateMirror
 	rep.GrantedJobCount = mirror.maxJobCount
 	return nil
 }
+
 func (me *WorkerDaemon) DropMirror(mirror *Mirror) {
 	me.mirrorMapMutex.Lock()
 	defer me.mirrorMapMutex.Unlock()

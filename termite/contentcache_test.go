@@ -38,7 +38,7 @@ func TestLocalPath(t *testing.T) {
 		t.Fatal(err)
 	}
 	f.Close()
-	
+
 	d, _ := ioutil.TempDir("", "")
 	defer os.RemoveAll(d)
 	cache := NewContentCache(d)

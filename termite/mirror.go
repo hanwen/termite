@@ -24,10 +24,10 @@ type Mirror struct {
 	maxJobCount          int
 	fuseFileSystemsMutex sync.Mutex
 	// TODO - rename to unused FS.
-	fuseFileSystems      []*WorkerFuseFs
-	workingFileSystems   map[*WorkerFuseFs]string
-	shuttingDown         bool
-	cond                 sync.Cond
+	fuseFileSystems    []*WorkerFuseFs
+	workingFileSystems map[*WorkerFuseFs]string
+	shuttingDown       bool
+	cond               sync.Cond
 }
 
 func NewMirror(daemon *WorkerDaemon, rpcConn, revConn net.Conn) *Mirror {

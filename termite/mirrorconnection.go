@@ -21,7 +21,7 @@ type mirrorConnection struct {
 	// Any file updates that we should ship to the worker before
 	// running any jobs.
 	pendingChangesMutex sync.Mutex
-	pendingChanges []AttrResponse
+	pendingChanges      []AttrResponse
 }
 
 func (me *mirrorConnection) queueFiles(files []AttrResponse) {

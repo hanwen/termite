@@ -19,21 +19,21 @@ type RpcFs struct {
 
 	// Roots that we should try to fetch locally.
 	localRoots []string
-	
+
 	// Should be acquired before attrMutex if applicable.
 	dirMutex    sync.Mutex
 	directories map[string]*DirResponse
 
 	attrMutex    sync.RWMutex
 	attrResponse map[string]*AttrResponse
-	
+
 	fetchMutex sync.Mutex
 	fetchCond  sync.Cond
 	fetchMap   map[string]bool
 }
 
 type UpdateRequest struct {
-	Files        []AttrResponse
+	Files []AttrResponse
 }
 
 type UpdateResponse struct {
@@ -223,7 +223,7 @@ func (me *RpcFs) getAttrResponse(name string) *AttrResponse {
 	}
 
 	abs := "/" + name
-	
+
 	req := &AttrRequest{Name: abs}
 	rep := &AttrResponse{}
 	err := me.client.Call("FsServer.GetAttr", req, rep)
@@ -233,10 +233,10 @@ func (me *RpcFs) getAttrResponse(name string) *AttrResponse {
 	}
 	if rep.Content != nil {
 		me.cache.Save(rep.Content)
-	} 
+	}
 
 	me.considerSaveLocal(abs, *rep)
-	
+
 	me.attrResponse[name] = rep
 	return rep
 }
@@ -247,14 +247,14 @@ func (me *RpcFs) considerSaveLocal(absPath string, attr AttrResponse) {
 	}
 	found := false
 	for _, root := range me.localRoots {
-		if strings.HasPrefix(absPath, root + "/") {
+		if strings.HasPrefix(absPath, root+"/") {
 			found = true
 		}
 	}
 	if !found {
 		return
 	}
-	
+
 	fi, _ := os.Lstat(absPath)
 	if fi == nil {
 		return
@@ -262,7 +262,7 @@ func (me *RpcFs) considerSaveLocal(absPath string, attr AttrResponse) {
 	if EncodeFileInfo(*fi) != EncodeFileInfo(*attr.FileInfo) {
 		return
 	}
-	
+
 	// Avoid fetching local data; this assumes that most paths
 	// will be the same between master and worker.
 	me.cache.SaveImmutablePath(absPath)
