@@ -116,6 +116,7 @@ func (me *Master) createMirror(addr string, jobs int) (*mirrorConnection, os.Err
 	revId := ConnectionId()
 	revConn, err := DialTypedConnection(addr, revId, me.secret)
 	if err != nil {
+		conn.Close()
 		rpcConn.Close()
 		return nil, err
 	}
