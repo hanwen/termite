@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"github.com/hanwen/termite/termite"
 	"log"
 	"os"
@@ -13,16 +14,13 @@ import (
  Considerations:
 
  * should be more generic
-
+ 
  * need to be careful, since we can't detect changes to local files
    if we execute a local recipe, eg.
 
     echo foo > file
 
    must be distributed.
-
- * Could alias echo, mkdir and some other simple recipes locally,
-   especially if we can infer the effects on the filesystem.
 
 */
 func RunLocally(cmd string) bool {
@@ -37,6 +35,15 @@ func RunLocally(cmd string) bool {
 
 const _SHELL = "/bin/sh"
 
+func TryRunDirect(cmd string) {
+	parsed := termite.ParseCommand(cmd)
+	if len(parsed) > 0 && parsed[0] == "echo" {
+		fmt.Println(strings.Join(parsed[1:], " "))
+		os.Exit(0)
+	}
+	// TODO mkdir, rm, others?
+}
+
 func main() {
 	command := flag.String("c", "", "command to run.")
 	flag.Parse()
@@ -46,6 +53,7 @@ func main() {
 	}
 
 	os.Args[0] = _SHELL
+	TryRunDirect(*command)
 	if RunLocally(*command) {
 		if err := os.Exec(_SHELL, os.Args, os.Environ()); err != nil {
 			log.Fatal("exec", err)
@@ -59,6 +67,9 @@ func main() {
 
 	socket := termite.FindSocket()
 	conn := termite.OpenSocketConnection(socket, termite.RPC_CHANNEL)
+
+	// TODO - could skip the shell if we can deduce it is a
+	// no-frills command invocation.
 	req := termite.WorkRequest{
 		Binary: _SHELL,
 		Argv:   os.Args,

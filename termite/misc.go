@@ -154,3 +154,103 @@ func DetectFiles(root string, cmd string) []string {
 	}
 	return names
 }
+
+
+func IsSpace(b byte) bool {
+	return b == ' ' || b == '\n' || b == '\f' || b == '\t'
+}
+
+var controlCharMap = map[byte]bool {
+	'$': true,
+	'>': true,
+	'<': true,
+	'&': true,
+	'|': true,
+	';': true,
+	'*': true,
+	'?': true,
+	// TODO - [] function as wildcards, but let's slip this through
+	// rather than patching up the LLVM compile.
+	//	'[': true,
+	//	']': true,
+	'(': true,
+	')': true,
+	'{': true,
+	'}': true,
+	'~': true,
+	'`': true,
+}
+
+// ParseCommand tries to parse quoting for a shell command line.  It
+// will give up and return nil when it returns shell-metacharacters
+// ($, ` , etc.)
+func ParseCommand(cmd string) []string {
+	escape := false
+	squote := false
+	dquote := false
+	
+	result := []string{}
+	word := []byte{}
+	for i, ch := range cmd {
+		c := byte(ch)
+		if squote {
+			if c == '\'' {
+				squote = false
+			} else {
+				word = append(word, c)
+			}
+			continue
+		}
+		if dquote {
+			// TODO - not really correct; "a\nb" -> a\nb
+			if escape {
+				word = append(word, byte(c))
+				continue
+			}
+			
+			switch c {
+			case '"':
+				dquote = !dquote
+			case '\\':
+				escape = true
+			case '$':
+				return nil
+			default:
+				word = append(word, c)
+			}
+			continue
+		}
+		if escape {
+			word = append(word, c)
+			continue
+		}
+		if c == '\'' {
+			squote = true
+			continue
+		}
+		if c == '"' {
+			dquote = true
+			continue
+		}
+		if c == '\\' {
+			escape = true
+			continue
+		}
+		if controlCharMap[c] {
+			return nil
+		}
+		if IsSpace(c) {
+			if i > 0 && !IsSpace(cmd[i-1]) {
+				result = append(result, string(word))
+				word = []byte{}
+			}
+		} else {
+			word = append(word, c)
+		}
+	}
+
+	if !IsSpace(cmd[len(cmd)-1]) {
+		result = append(result, string(word))
+	}
+	return result
+}
