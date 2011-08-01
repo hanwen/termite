@@ -75,6 +75,8 @@ func (me *Mirror) Shutdown() {
 	me.fuseFileSystems = []*WorkerFuseFs{}
 
 	for len(me.workingFileSystems) > 0 {
+		// TODO - access is racy.
+		me.maxJobCount = len(me.workingFileSystems)
 		me.cond.Wait()
 	}
 	me.rpcConn.Close()
