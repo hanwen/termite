@@ -281,6 +281,7 @@ func (me *Master) replayFileModifications(worker *rpc.Client, infos []FileAttr) 
 		entries[info.Path] = &infos[i]
 	}
 
+	deletes := []string{}
 	// Sort so we get parents before children.
 	sort.Strings(names)
 	for _, name := range names {
@@ -320,8 +321,7 @@ func (me *Master) replayFileModifications(worker *rpc.Client, infos []FileAttr) 
 		}
 		if !info.Status.Ok() {
 			if info.Status == fuse.ENOENT {
-				log.Println("Replay delete:", name)
-				err = os.Remove(info.Path)
+				deletes = append(deletes, info.Path)
 			} else {
 				log.Fatal("Unknown status for replay", info.Status)
 			}
@@ -331,6 +331,15 @@ func (me *Master) replayFileModifications(worker *rpc.Client, infos []FileAttr) 
 			log.Fatal("Replay error ", info.Path, " ", err, infos)
 		}
 	}
+
+	// Must do deletes in reverse: children before parents.
+	for i, _ := range deletes {
+		d := deletes[len(deletes)-1-i]
+		if err := os.Remove(d); err != nil {
+			log.Fatal("delete replay: ", err)  
+		}
+	}
+	
 	return nil
 }
 

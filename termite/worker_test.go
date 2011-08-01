@@ -113,6 +113,8 @@ func TestBasic(t *testing.T) {
 		t.Error("file should have been deleted", fi)
 	}
 
+	// TODO - test mkdir dir && touch dir/foo.txt, rm -rf dir.
+	
 	// Test keepalive.
 	time.Sleep(2e9)
 
