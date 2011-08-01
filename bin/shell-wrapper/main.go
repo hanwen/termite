@@ -24,8 +24,7 @@ import (
 
 */
 func RunLocally(cmd string) bool {
-	// TODO - use regex.
-	if strings.Index(cmd, "make") >= 0 {
+	if strings.Index(cmd, "termite-make") >= 0 {
 		return true
 	}
 

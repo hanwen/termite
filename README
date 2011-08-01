@@ -58,7 +58,11 @@ RUNNING
   ./gcc
 
   # Run distributed build
-  make SHELL=$PWD/bin/shell-wrapper/shell-wrapper -j10
+  ln -s ./termite-make  ~/bin/
+  ln -s ./bin/shell-wrapper ~/bin
+  
+  cd ${PROJECT}
+  termite-make -j20
 
 
 PERFORMANCE
