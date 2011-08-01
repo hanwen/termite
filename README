@@ -112,11 +112,10 @@ TODO
 
 * Speed
   - Wrapper:
-    * run echo locally
     * use better strategy for local/remote selection
-  - Master/Worker:
-    * worker prefetches contents on startup.
   - Master:
     * add in-memory cache for file contents.
+  - Master/Worker:
+    * streaming connections for file transport.
   - Worker
     * implement in-memory FileSystem for backing store
