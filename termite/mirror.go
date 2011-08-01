@@ -124,9 +124,17 @@ func (me *Mirror) updateFileSystems(attrs []FileAttr) {
 	}
 }
 
+func (me *Mirror) fetchFiles(files []FileAttr) {
+	for _, f := range files {
+		if f.Hash != nil && f.Content == nil {
+			me.rpcFs.FetchHash(f.FileInfo.Size, f.Hash)
+		}
+	}
+}
+
 func (me *Mirror) Run(req *WorkRequest, rep *WorkReply) os.Error {
 	me.rpcFs.updateFiles(req.Prefetch)
-	// TODO - async fetch contents.
+	go me.fetchFiles(req.Prefetch)
 	task, err := me.newWorkerTask(req, rep)
 	if err != nil {
 		return err
