@@ -47,6 +47,8 @@ func (me *ContentServer) FileContent(req *ContentRequest, rep *ContentResponse) 
 }
 
 // FetchHash issues a FileContent RPC to read an entire file, and store into ContentCache.
+//
+// TODO - open a connection for this instead.
 func FetchBetweenContentServers(client *rpc.Client, rpcName string, size int64, hash []byte,
 dest *ContentCache) os.Error {
 	chunkSize := 1 << 18
