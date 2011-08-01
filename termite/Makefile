@@ -19,6 +19,7 @@ MANUAL_GOFILES=\
 	misc.go \
 	rpcfs.go \
 	task.go \
+	timer.go \
 	version.go \
 	worker.go \
 	workerstatus.go \
