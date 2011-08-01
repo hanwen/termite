@@ -75,12 +75,8 @@ func (me *RpcFs) updateFiles(files []FileAttr) {
 			flushDirs = append(flushDirs, d)
 		}
 
-		if r.Deletion() {
-			me.attrResponse[p] = nil, false
-		} else {
-			newVal := r
-			me.attrResponse[p] = &newVal
-		}
+		newVal := r
+		me.attrResponse[p] = &newVal
 	}
 
 	for _, d := range flushDirs {
