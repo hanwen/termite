@@ -107,15 +107,24 @@ func (me *FsServer) ReadDir(req *DirRequest, r *DirResponse) os.Error {
 
 func (me *FsServer) GetAttr(req *AttrRequest, rep *AttrResponse) os.Error {
 	log.Println("GetAttr req", req.Name)
-	rep.Attrs = append(rep.Attrs, FileAttr{})
 	names := []string{}
 	if me.multiplyPaths != nil {
 		names = me.multiplyPaths(req.Name)
 	} else {
 		names = append(names, req.Name)
 	}
-	err := me.oneGetAttr(req.Name, &rep.Attrs[0])
-	return err
+	for _, n := range names {
+		a := FileAttr{}
+		err := me.oneGetAttr(n, &a)
+		if err != nil {
+			return err
+		}
+		if a.Hash != nil {
+			log.Printf("GetAttr %s %v %x", n, a, a.Hash)
+		}
+		rep.Attrs = append(rep.Attrs, a)
+	}
+	return nil
 }
 
 func (me *FsServer) oneGetAttr(name string, rep *FileAttr) os.Error {
@@ -141,7 +150,6 @@ func (me *FsServer) oneGetAttr(name string, rep *FileAttr) os.Error {
 	if fi.IsRegular() {
 		rep.Hash, rep.Content = me.getHash(name)
 	}
-	log.Printf("GetAttr %s %v %x", name, rep, rep.Hash)
 	return nil
 }
 

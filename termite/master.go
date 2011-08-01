@@ -60,7 +60,9 @@ func (me *Master) multiplyPaths(name string) []string {
 			names = append(names, n[:len(n)-len(".gch")])
 		}
 	}
-	log.Println("multiplied", names)
+	if len(names) > 1 {
+		log.Println("multiplied", names)
+	}
 	return names
 }
 
@@ -212,6 +214,9 @@ func (me *Master) prefetchFiles(req *WorkRequest) {
 		me.fileServer.oneGetAttr(f, &a)
 		req.Prefetch = append(req.Prefetch, a)
 	}
+	if len(req.Prefetch) > 0 {
+		log.Println("Prefetch", req.Prefetch)
+	}
 }
 
 func (me *Master) runOnce(req *WorkRequest, rep *WorkReply) os.Error {
@@ -220,7 +225,6 @@ func (me *Master) runOnce(req *WorkRequest, rep *WorkReply) os.Error {
 	if err != nil {
 		return err
 	}
-
 	err = mirror.sendFiles()
 	if err != nil {
 		me.mirrors.drop(mirror, err)
