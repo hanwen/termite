@@ -110,8 +110,13 @@ func (me *Mirror) getWorkerFuseFs(name string) (f *WorkerFuseFs, err os.Error) {
 }
 
 func (me *Mirror) Update(req *UpdateRequest, rep *UpdateResponse) os.Error {
-	me.updateFileSystems(req.Files)
-	return me.rpcFs.Update(req, rep)
+	me.updateFiles(req.Files)
+	return nil
+}
+
+func (me *Mirror) updateFiles(attrs []FileAttr) {
+	me.updateFileSystems(attrs)
+	me.rpcFs.updateFiles(attrs)
 }
 
 func (me *Mirror) updateFileSystems(attrs []FileAttr) {
@@ -135,7 +140,7 @@ func (me *Mirror) fetchFiles(files []FileAttr) {
 }
 
 func (me *Mirror) Run(req *WorkRequest, rep *WorkReply) os.Error {
-	me.rpcFs.updateFiles(req.Prefetch)
+	me.updateFiles(req.Prefetch)
 	go me.fetchFiles(req.Prefetch)
 	task, err := me.newWorkerTask(req, rep)
 	if err != nil {
