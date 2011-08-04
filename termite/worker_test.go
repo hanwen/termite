@@ -120,13 +120,11 @@ func TestBasic(t *testing.T) {
 	}
 
 	req = WorkRequest{
-		StdinId: ConnectionId(),
 		Binary:  "/bin/rm",
 		Argv:    []string{"/bin/rm", "output.txt"},
 		Env:     os.Environ(),
 		Dir:     tc.tmp + "/wd",
 	}
-	stdinConn = OpenSocketConnection(tc.socket, req.StdinId)
 
 	rep = WorkReply{}
 	err = client.Call("LocalMaster.Run", &req, &rep)
