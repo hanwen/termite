@@ -168,6 +168,10 @@ func (me *mirrorConnections) maybeDropConnections() {
 	}
 
 	log.Println("master inactive too long. Dropping connections.")
+	me.dropConnections()
+}
+
+func (me *mirrorConnections) dropConnections() {
 	for _, mc := range me.mirrors {
 		mc.connection.Close()
 	}
