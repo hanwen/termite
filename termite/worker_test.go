@@ -201,13 +201,14 @@ func TestEndToEndNegativeNotify(t *testing.T) {
 		Dir:     tc.tmp + "/wd",
 		Debug: 	 true,
 	}
-	
+
+	rep = WorkReply{}
 	err = client.Call("LocalMaster.Run", &req, &rep)
 	if err != nil {
 		t.Fatal("LocalMaster.Run: ", err)
 	}
 	if rep.Exit.ExitStatus() != 0 {
-		t.Fatal("expect exit status == 0")
+		t.Fatal("expect exit status == 0", rep.Exit.ExitStatus())
 	}
 	log.Println("new content:", rep.Stdout)
 	if string(rep.Stdout) != string(newContent) {
