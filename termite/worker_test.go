@@ -64,12 +64,15 @@ func NewTestCase() *testCase {
 	
 	wd := me.tmp + "/wd"
 	os.MkdirAll(wd, 0755)
+	time.Sleep(0.1e9) // wait for all daemons to start up
 	return me
 }
 
 func (me *testCase) Clean() {
 	me.master.mirrors.dropConnections()
+	// TODO - should have explicit worker shutdown routine. 
 	time.Sleep(0.1e9)
+	log.Println("removing.")
 	os.RemoveAll(me.tmp)
 }
 
@@ -97,7 +100,6 @@ func TestEndToEndBasic(t *testing.T) {
 	}
 
 	// TODO - should separate dial/listen in the daemons?
-	time.Sleep(0.1e9) // wait for all daemons to start up
 	stdinConn := OpenSocketConnection(tc.socket, req.StdinId)
 	go func() {
 		stdinConn.Write([]byte("hello"))
@@ -149,6 +151,8 @@ func TestEndToEndBasic(t *testing.T) {
 	}
 }
 
+// This shows a case that is not handled correctly yet: we have no way
+// to flush the cache on negative entries.
 func TestEndToEndNegativeNotify(t *testing.T) {
 	if os.Geteuid() == 0 {
 		log.Println("This test should not run as root")

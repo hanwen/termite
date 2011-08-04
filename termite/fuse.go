@@ -85,7 +85,8 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string) 
 	mOpts := fuse.FileSystemOptions{
 		EntryTimeout:    ttl,
 		AttrTimeout:     ttl,
-		NegativeTimeout: ttl,
+		// time to invoke /bin/true on T60.
+		NegativeTimeout: 0.05,
 	}
 
 	tmpFs := fuse.NewLoopbackFileSystem(tmpBacking)
