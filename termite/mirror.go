@@ -115,11 +115,8 @@ func (me *Mirror) Update(req *UpdateRequest, rep *UpdateResponse) os.Error {
 }
 
 func (me *Mirror) updateFiles(attrs []FileAttr) {
-	me.updateFileSystems(attrs)
 	me.rpcFs.updateFiles(attrs)
-}
-
-func (me *Mirror) updateFileSystems(attrs []FileAttr) {
+	
 	me.fuseFileSystemsMutex.Lock()
 	defer me.fuseFileSystemsMutex.Unlock()
 
@@ -153,18 +150,9 @@ func (me *Mirror) Run(req *WorkRequest, rep *WorkReply) os.Error {
 		return err
 	}
 
-	updateReq := UpdateRequest{
-		Files: rep.Files,
-	}
-	updateRep := UpdateResponse{}
-	err = me.Update(&updateReq, &updateRep)
-	if err != nil {
-		return err
-	}
+	me.updateFiles(rep.Files)
 
 	summary := rep
-	// Trim output.
-
 	summary.Stdout = trim(summary.Stdout)
 	summary.Stderr = trim(summary.Stderr)
 
