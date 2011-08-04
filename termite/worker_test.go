@@ -2,6 +2,7 @@ package termite
 
 import (
 	"fmt"
+	"github.com/hanwen/go-fuse/fuse"
 	"http"
 	"io/ioutil"
 	"log"
@@ -57,7 +58,7 @@ func NewTestCase() *testCase {
 		[]string{},
 		me.secret, []string{}, 1)
 
-	me.master.SetKeepAlive(1)
+	me.master.SetKeepAlive(1.0)
 	me.socket = me.tmp + "/master-socket"
 	go me.master.Start(me.socket)
 	
@@ -74,7 +75,7 @@ func (me *testCase) Clean() {
 
 // Simple end-to-end test.  It skips the chroot, but should give a
 // basic assurance that things work as expected.
-func TestBasic(t *testing.T) {
+func TestEndToEndBasic(t *testing.T) {
 	if os.Geteuid() == 0 {
 		log.Println("This test should not run as root")
 		return
@@ -92,6 +93,7 @@ func TestBasic(t *testing.T) {
 		// Will not be filtered, since /tmp/foo is more
 		// specific than /tmp
 		Dir: tc.tmp + "/wd",
+		Debug: true,
 	}
 
 	// TODO - should separate dial/listen in the daemons?
@@ -124,6 +126,7 @@ func TestBasic(t *testing.T) {
 		Argv:    []string{"/bin/rm", "output.txt"},
 		Env:     os.Environ(),
 		Dir:     tc.tmp + "/wd",
+		Debug: true,
 	}
 
 	rep = WorkReply{}
@@ -135,8 +138,6 @@ func TestBasic(t *testing.T) {
 		t.Error("file should have been deleted", fi)
 	}
 
-	// TODO - test mkdir dir && touch dir/foo.txt, rm -rf dir.
-	
 	// Test keepalive.
 	time.Sleep(2e9)
 
@@ -145,5 +146,67 @@ func TestBasic(t *testing.T) {
 	tc.worker.Status(statusReq, statusRep)
 	if statusRep.Processes != 0 {
 		t.Error("Processes still alive.")
+	}
+}
+
+func TestEndToEndNegativeNotify(t *testing.T) {
+	if os.Geteuid() == 0 {
+		log.Println("This test should not run as root")
+		return
+	}
+
+	tc := NewTestCase()
+	defer tc.Clean()
+	
+	rpcConn := OpenSocketConnection(tc.socket, RPC_CHANNEL)
+	client := rpc.NewClient(rpcConn)
+
+	req := WorkRequest{
+		Binary:  "/bin/cat",
+		Argv:    []string{"/bin/cat", "output.txt"},
+		Env:     os.Environ(),
+		Dir:     tc.tmp + "/wd",
+		Debug: true,
+	}
+	
+	rep := WorkReply{}
+	err := client.Call("LocalMaster.Run", &req, &rep)
+	if err != nil {
+		t.Fatal("LocalMaster.Run: ", err)
+	}
+
+	if rep.Exit.ExitStatus() == 0 {
+		t.Fatal("expect exit status != 0")
+	}
+	
+	newContent := []byte("new content")
+	hash := tc.master.cache.Save(newContent)
+	updated := []FileAttr{
+		FileAttr{
+			Path:  tc.tmp + "/wd/output.txt",
+			FileInfo: &os.FileInfo{Mode: fuse.S_IFREG | 0644, Size: int64(len(newContent))},
+			Hash: hash,
+			Content: newContent,
+		},
+	}
+	tc.master.mirrors.queueFiles(nil, updated)
+	req = WorkRequest{
+		Binary:  "/bin/cat",
+		Argv:    []string{"/bin/cat", "output.txt"},
+		Env:     os.Environ(),
+		Dir:     tc.tmp + "/wd",
+		Debug: 	 true,
+	}
+	
+	err = client.Call("LocalMaster.Run", &req, &rep)
+	if err != nil {
+		t.Fatal("LocalMaster.Run: ", err)
+	}
+	if rep.Exit.ExitStatus() != 0 {
+		t.Fatal("expect exit status == 0")
+	}
+	log.Println("new content:", rep.Stdout)
+	if string(rep.Stdout) != string(newContent) {
+		t.Error("Mismatch", string(rep.Stdout), string(newContent))
 	}
 }
