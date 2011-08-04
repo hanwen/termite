@@ -68,7 +68,7 @@ RUNNING
 PERFORMANCE
 
 Lenovo T60, local build, local worker, LLVM+CLANG Cmake lib/Support with
-separate build dir -j1: 2.7x slower
+separate build dir -j1: 2.0-2.3x slower
 
 
 SECURITY
