@@ -72,9 +72,9 @@ func (me *Master) SetSrcRoot(root string) {
 	log.Println("SrcRoot is", me.srcRoot)
 }
 
-func (me *Master) SetKeepAlive(seconds int64) {
+func (me *Master) SetKeepAlive(seconds float64) {
 	if seconds > 0 {
-		me.mirrors.keepAliveSeconds = seconds
+		me.mirrors.keepAliveNs = int64(1e9 * seconds)
 	}
 }
 

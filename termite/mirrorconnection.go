@@ -56,7 +56,7 @@ type mirrorConnections struct {
 	master      *Master
 	coordinator string
 
-	keepAliveSeconds int64
+	keepAliveNs int64
 
 	// Condition for mutex below.
 	sync.Cond
@@ -66,7 +66,7 @@ type mirrorConnections struct {
 	workers           map[string]bool
 	mirrors           map[string]*mirrorConnection
 	wantedMaxJobs     int
-	lastActionSeconds int64
+	lastActionNs      int64
 }
 
 func (me *mirrorConnections) refreshWorkers() {
@@ -105,7 +105,7 @@ func newMirrorConnections(m *Master, workers []string, coordinator string, maxJo
 		workers:          make(map[string]bool),
 		mirrors:          make(map[string]*mirrorConnection),
 		coordinator:      coordinator,
-		keepAliveSeconds: 60,
+		keepAliveNs:      60e9,
 	}
 	for _, w := range workers {
 		mc.workers[w] = true
@@ -124,7 +124,7 @@ func newMirrorConnections(m *Master, workers []string, coordinator string, maxJo
 func (me *mirrorConnections) periodicHouseholding() {
 	me.refreshWorkers()
 	for {
-		c := time.After(me.keepAliveSeconds * 1e9)
+		c := time.After(me.keepAliveNs)
 		<-c
 		me.refreshWorkers()
 		me.maybeDropConnections()
@@ -163,7 +163,7 @@ func (me *mirrorConnections) maybeDropConnections() {
 		return
 	}
 
-	if me.lastActionSeconds+me.keepAliveSeconds > time.Seconds() {
+	if me.lastActionNs+int64(me.keepAliveNs) > time.Nanoseconds() {
 		return
 	}
 
@@ -230,7 +230,7 @@ func (me *mirrorConnections) jobDone(mc *mirrorConnection) {
 	me.Mutex.Lock()
 	defer me.Mutex.Unlock()
 
-	me.lastActionSeconds = time.Seconds()
+	me.lastActionNs = time.Nanoseconds()
 	mc.availableJobs++
 	me.Cond.Signal()
 }
