@@ -1,35 +1,33 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"github.com/hanwen/termite/termite"
+	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
 	"rpc"
 	"strings"
 )
 
-/*
- Considerations:
+const defaultLocal = (
+	".*termite-make\n" +
+	".*/cmake\n" +
+	"-.*\n" )
 
- * should be more generic
- 
- * need to be careful, since we can't detect changes to local files
-   if we execute a local recipe, eg.
-
-    echo foo > file
-
-   must be distributed.
-
-*/
-func RunLocally(cmd string) bool {
-	if strings.Index(cmd, "termite-make") >= 0 {
-		return true
+func RunLocally(cmd, dir string) bool {
+	content, err := ioutil.ReadFile(filepath.Join(dir, ".termite-localrc"))
+	
+	buf := bytes.NewBuffer(content)
+	if err != nil {
+		buf = bytes.NewBufferString(defaultLocal)
 	}
 
-	// TODO - more? see above.
-	return false
+	local := termite.MatchAgainst(buf, cmd)
+	return local
 }
 
 const _SHELL = "/bin/sh"
@@ -50,10 +48,13 @@ func main() {
 	if *command == "" {
 		return
 	}
-
 	os.Args[0] = _SHELL
 	TryRunDirect(*command)
-	if RunLocally(*command) {
+
+	socket := termite.FindSocket()
+	dir, _ := filepath.Split(socket)
+	
+	if RunLocally(*command, dir) {
 		if err := os.Exec(_SHELL, os.Args, os.Environ()); err != nil {
 			log.Fatal("exec", err)
 		}
@@ -64,7 +65,6 @@ func main() {
 		log.Fatal("Getwd", err)
 	}
 
-	socket := termite.FindSocket()
 	conn := termite.OpenSocketConnection(socket, termite.RPC_CHANNEL)
 
 	// TODO - could skip the shell if we can deduce it is a

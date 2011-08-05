@@ -43,6 +43,23 @@ one directory, and add that directory to the PATH variable.
 
 * Shell-wrapper: a wrapper to use with make's SHELL variable.
 
+The choice between remote and local can be set through the file
+.termite-localrc in the same dir as .termite-socket.  It has one
+regexp per line indicating if a command should be run locally, eg.
+
+  ^cmake
+  -.*
+
+will only run commands starting with "cmake" locally.
+
+You should only run build-system commands locally (eg. make, cmake), or
+commands without filesystem side-effects (eg: echo without redirection).
+
+Commands that modify build artefacts should not run locally: local
+commands do not run inside a FUSE sandbox, so termite can't tell what
+files they modify, and how to update filesystem caches on the workers.
+
+
 
 RUNNING
 
