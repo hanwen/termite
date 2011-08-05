@@ -31,7 +31,7 @@ func (me *WorkerFuseFs) Stop() {
 	}
 }
 
-func (me *Mirror) ReturnFuse(wfs *WorkerFuseFs) {
+func (me *Mirror) returnFuse(wfs *WorkerFuseFs) {
 	me.fuseFileSystemsMutex.Lock()
 	defer me.fuseFileSystemsMutex.Unlock()
 

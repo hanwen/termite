@@ -48,7 +48,7 @@ func NewMirror(daemon *WorkerDaemon, rpcConn, revConn net.Conn) *Mirror {
 	return mirror
 }
 
-func (me *Mirror) DiscardFuse(wfs *WorkerFuseFs) {
+func (me *Mirror) discardFuse(wfs *WorkerFuseFs) {
 	wfs.Stop()
 
 	me.fuseFileSystemsMutex.Lock()

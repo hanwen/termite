@@ -122,12 +122,12 @@ func (me *WorkerTask) Run() os.Error {
 	err = me.fillReply()
 	if err != nil {
 		log.Println("discarding FUSE due to error:", me.fuseFs.mount, err)
-		me.mirror.DiscardFuse(me.fuseFs)
+		me.mirror.discardFuse(me.fuseFs)
 	} else {
 		// Must do updateFiles before ReturnFuse, since the
 		// next job should not see out-of-date files.
 		me.mirror.updateFiles(me.WorkReply.Files)
-		me.mirror.ReturnFuse(me.fuseFs)
+		me.mirror.returnFuse(me.fuseFs)
 	}
 
 	return err
