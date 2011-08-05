@@ -12,3 +12,5 @@ bin/rpcfs/rpcfs
 bin/master/master
 bin/coordinator/coordinator
 bin/fsserver/fsserver
+bin/shell-wrapper/shell-wrapper
+bin/wrapper/wrapper
