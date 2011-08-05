@@ -238,7 +238,7 @@ func (me *fileSaver) reapBackingStore() {
 			break
 		}
 		f := me.files[len(me.files)-i-1]
-		if f.FileInfo.IsDirectory() && f.Path != me.prefix {
+		if f.FileInfo != nil && f.FileInfo.IsDirectory() && f.Path != me.prefix {
 			me.err = os.Remove(filepath.Join(me.rwDir, f.Path))
 		}
 	}
