@@ -53,11 +53,12 @@ func TestParseCommand(t *testing.T) {
 		"a && b",
 		"a || b",
 		"echo a*b",
+		"echo 'x' \\ >> temp.sed",
 	}
 	for _, s := range fail {
 		result := ParseCommand(s)
 		if result != nil {
-			t.Error("should fail", s, result)
+			t.Errorf("should fail: cmd=%#v, result=%#v", s, result)
 		}
 	}
 
@@ -88,4 +89,4 @@ func TestParseCommand(t *testing.T) {
 			}
 		}
 	}
-}	
+}

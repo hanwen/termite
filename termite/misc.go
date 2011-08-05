@@ -188,7 +188,7 @@ func ParseCommand(cmd string) []string {
 	escape := false
 	squote := false
 	dquote := false
-	
+
 	result := []string{}
 	word := []byte{}
 	for i, ch := range cmd {
@@ -205,9 +205,10 @@ func ParseCommand(cmd string) []string {
 			// TODO - not really correct; "a\nb" -> a\nb
 			if escape {
 				word = append(word, byte(c))
+				escape = false
 				continue
 			}
-			
+
 			switch c {
 			case '"':
 				dquote = !dquote
@@ -222,6 +223,7 @@ func ParseCommand(cmd string) []string {
 		}
 		if escape {
 			word = append(word, c)
+			escape = false
 			continue
 		}
 		if c == '\'' {
