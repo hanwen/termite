@@ -69,11 +69,12 @@ type mirrorConnections struct {
 	lastActionNs      int64
 }
 
-func (me *mirrorConnections) refreshWorkers() {
+func (me *mirrorConnections) fetchWorkers() (newMap map[string]bool) {
+	newMap = map[string]bool{}
 	client, err := rpc.DialHTTP("tcp", me.coordinator)
 	if err != nil {
 		log.Println("dialing coordinator:", err)
-		return
+		return newMap
 	}
 	defer client.Close()
 	req := 0
@@ -81,21 +82,25 @@ func (me *mirrorConnections) refreshWorkers() {
 	err = client.Call("Coordinator.List", &req, &rep)
 	if err != nil {
 		log.Println("coordinator rpc error:", err)
-		return
+		return newMap
 	}
 
-	newWorkers := map[string]bool{}
 	for _, v := range rep.Registrations {
-		newWorkers[v.Address] = true
+		newMap[v.Address] = true
 	}
-	if len(newWorkers) == 0 {
+	if len(newMap) == 0 {
 		log.Println("coordinator has no workers for us.")
-		return
 	}
+	return newMap
+}
 
-	me.Mutex.Lock()
-	defer me.Mutex.Unlock()
-	me.workers = newWorkers
+func (me *mirrorConnections) refreshWorkers() {
+	newWorkers := me.fetchWorkers()
+	if len(newWorkers) > 0 {
+		me.Mutex.Lock()
+		defer me.Mutex.Unlock()
+		me.workers = newWorkers
+	}
 }
 
 func newMirrorConnections(m *Master, workers []string, coordinator string, maxJobs int) *mirrorConnections {
@@ -192,6 +197,9 @@ func (me *mirrorConnections) pick() (*mirrorConnection, os.Error) {
 	defer me.Mutex.Unlock()
 
 	if me.availableJobs() <= 0 {
+		if len(me.workers) == 0 {
+			me.workers = me.fetchWorkers()
+		}
 		me.tryConnect()
 	}
 
