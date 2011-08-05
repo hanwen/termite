@@ -77,7 +77,7 @@ RUNNING
   # Run distributed build
   ln -s ./termite-make  ~/bin/
   ln -s ./bin/shell-wrapper ~/bin
-  
+
   cd ${PROJECT}
   termite-make -j20
 
@@ -130,13 +130,13 @@ TODO
 * Features
   - Collect worker log information and expose on HTTP.
   - Implement mv for symlinks, directories in UnionFs.
+  - Master should monitor srcdir for manual edits.
 
 * Speed
-  - Wrapper:
-    * use better strategy for local/remote selection
   - Master:
     * add in-memory cache for file contents.
   - Master/Worker:
     * streaming connections for file transport.
   - Worker
     * implement in-memory FileSystem for backing store
+
