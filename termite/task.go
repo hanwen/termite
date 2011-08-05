@@ -124,6 +124,9 @@ func (me *WorkerTask) Run() os.Error {
 		log.Println("discarding FUSE due to error:", me.fuseFs.mount, err)
 		me.mirror.DiscardFuse(me.fuseFs)
 	} else {
+		// Must do updateFiles before ReturnFuse, since the
+		// next job should not see out-of-date files.
+		me.mirror.updateFiles(me.WorkReply.Files)
 		me.mirror.ReturnFuse(me.fuseFs)
 	}
 
@@ -138,6 +141,7 @@ func (me *WorkerTask) fillReply() os.Error {
 	}
 	saver.reapBackingStore()
 	me.WorkReply.Files = saver.files
+
 	return saver.err
 }
 
@@ -228,16 +232,14 @@ func (me *fileSaver) reapBackingStore() {
 	if me.err == nil {
 		filepath.Walk(me.rwDir, me, nil)
 	}
-	if false {
-		// TODO.
-		if me.err == nil {
-			me.err = os.RemoveAll(me.rwDir)
+
+	for i, _ := range me.files {
+		if me.err != nil {
+			break
 		}
-		if me.err == nil {
-			me.err = os.Mkdir(me.rwDir, 0755)
-		}
-		if me.err == nil {
-			me.err = os.Mkdir(filepath.Join(me.rwDir, _DELETIONS), 0755)
+		f := me.files[len(me.files)-i-1]
+		if f.FileInfo.IsDirectory() && f.Path != me.prefix {
+			me.err = os.Remove(filepath.Join(me.rwDir, f.Path))
 		}
 	}
 }

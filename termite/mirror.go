@@ -150,8 +150,6 @@ func (me *Mirror) Run(req *WorkRequest, rep *WorkReply) os.Error {
 		return err
 	}
 
-	me.updateFiles(rep.Files)
-
 	summary := rep
 	summary.Stdout = trim(summary.Stdout)
 	summary.Stderr = trim(summary.Stderr)
