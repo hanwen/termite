@@ -141,10 +141,17 @@ func (me *FsServer) oneGetAttr(name string, rep *FileAttr) os.Error {
 		return nil
 	}
 
+	me.attrCacheMutex.RLock()
+	attr, ok := me.attrCache[name]
+	me.attrCacheMutex.RUnlock()
+
+	if ok {
+		*rep = attr
+		return nil
+	}
 	me.attrCacheMutex.Lock()
 	defer me.attrCacheMutex.Unlock()
-
-	attr, ok := me.attrCache[name]
+	attr, ok = me.attrCache[name]
 	if ok {
 		*rep = attr
 		return nil
