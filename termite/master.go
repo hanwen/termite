@@ -238,8 +238,8 @@ func (me *Master) runOnce(req *WorkRequest, rep *WorkReply) os.Error {
 		return err
 	}
 
-	me.fileServer.updateHashes(localRep.Files)
 	err = me.replayFileModifications(mirror.rpcClient, localRep.Files)
+	me.fileServer.updateFiles(localRep.Files)
 	if err != nil {
 		return err
 	}
@@ -339,7 +339,6 @@ func (me *Master) replayFileModifications(worker *rpc.Client, infos []FileAttr) 
 			log.Fatal("delete replay: ", err)  
 		}
 	}
-	
 	return nil
 }
 

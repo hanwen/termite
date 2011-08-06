@@ -14,7 +14,8 @@ import (
 
 func TestRpcFS(t *testing.T) {
 	tmp, _ := ioutil.TempDir("", "")
-
+	defer os.RemoveAll(tmp)
+	
 	mnt := tmp + "/mnt"
 	orig := tmp + "/orig"
 	srvCache := tmp + "/server-cache"
@@ -86,7 +87,7 @@ func TestRpcFS(t *testing.T) {
 			Hash: md5str("somethingelse"),
 		},
 	}
-	server.updateHashes(newData)
+	server.updateFiles(newData)
 	storedHash = server.hashCache["/file.txt"]
 	if storedHash == nil || string(storedHash) != string(newData[0].Hash) {
 		t.Errorf("cache error %x (%v)", storedHash, storedHash)

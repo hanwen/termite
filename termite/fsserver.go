@@ -24,6 +24,9 @@ type FsServer struct {
 	hashCacheMutex sync.RWMutex
 	// TODO - should use string (immutable) throughout for storing MD5 signatures.
 	hashCache map[string][]byte
+
+	attrCacheMutex sync.RWMutex
+	attrCache map[string]FileAttr
 }
 
 func NewFsServer(root string, cache *ContentCache, excluded []string) *FsServer {
@@ -32,6 +35,7 @@ func NewFsServer(root string, cache *ContentCache, excluded []string) *FsServer 
 		contentServer: &ContentServer{Cache: cache},
 		Root:          root,
 		hashCache:     make(map[string][]byte),
+		attrCache:     make(map[string]FileAttr),
 	}
 
 	fs.excluded = make(map[string]bool)
@@ -137,20 +141,44 @@ func (me *FsServer) oneGetAttr(name string, rep *FileAttr) os.Error {
 		return nil
 	}
 
-	fi, err := os.Lstat(me.path(name))
-	rep.FileInfo = fi
-	rep.Status = fuse.OsErrorToErrno(err)
-	if fi == nil {
+	me.attrCacheMutex.Lock()
+	defer me.attrCacheMutex.Unlock()
+
+	attr, ok := me.attrCache[name]
+	if ok {
+		*rep = attr
 		return nil
 	}
 
-	if fi.IsSymlink() {
-		rep.Link, err = os.Readlink(name)
+	fi, err := os.Lstat(me.path(name))
+	rep.FileInfo = fi
+	rep.Status = fuse.OsErrorToErrno(err)
+	if fi != nil {
+		if fi.IsSymlink() {
+			rep.Link, err = os.Readlink(name)
+		}
+		if fi.IsRegular() {
+			rep.Hash, rep.Content = me.getHash(name)
+		}
 	}
-	if fi.IsRegular() {
-		rep.Hash, rep.Content = me.getHash(name)
-	}
+
+	me.attrCache[name] = *rep
 	return nil
+}
+
+func (me *FsServer) updateFiles(infos []FileAttr) {
+	me.updateHashes(infos)
+	me.updateAttrs(infos)
+}
+
+func (me *FsServer) updateAttrs(infos []FileAttr) {
+	me.attrCacheMutex.Lock()
+	defer me.attrCacheMutex.Unlock()
+
+	for _, r := range infos {
+		name := r.Path
+		me.attrCache[name] = r
+	}
 }
 
 func (me *FsServer) updateHashes(infos []FileAttr) {
