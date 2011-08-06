@@ -8,6 +8,7 @@ import (
 
 func TestFileSaver(t *testing.T) {
 	dir, _ := ioutil.TempDir("", "tasktest")
+	defer os.RemoveAll(dir)
 	rw := dir + "/tasktest/rw"
 	os.MkdirAll(rw+"/"+_DELETIONS, 0755)
 	os.MkdirAll(rw+"/dir", 0755)
