@@ -1,7 +1,6 @@
 package termite
 
 import (
-	"fmt"
 	"os"
 	"log"
 	"sync"
@@ -196,14 +195,6 @@ func (me *RpcFs) Readlink(name string) (string, fuse.Status) {
 	}
 
 	return a.Link, fuse.OK
-}
-
-func EncodeFileInfo(fi os.FileInfo) string {
-	fi.Atime_ns = 0
-	fi.Ino = 0
-	fi.Dev = 0
-	fi.Name = ""
-	return fmt.Sprintf("%v", fi)
 }
 
 func (me *RpcFs) getFileAttr(name string) *FileAttr {

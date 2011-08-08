@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"path/filepath"
 	"rand"
 	"regexp"
 	"strings"
@@ -255,4 +256,19 @@ func ParseCommand(cmd string) []string {
 		result = append(result, string(word))
 	}
 	return result
+}
+
+func HasDirPrefix(path, prefix string) bool {
+	prefix = strings.TrimRight(prefix, string(filepath.Separator))
+	path = strings.TrimRight(path, string(filepath.Separator))
+	return path == prefix ||
+		strings.HasPrefix(path, prefix + string(filepath.Separator))
+}
+
+func EncodeFileInfo(fi os.FileInfo) string {
+	fi.Atime_ns = 0
+	fi.Ino = 0
+	fi.Dev = 0
+	fi.Name = ""
+	return fmt.Sprintf("%v", fi)
 }

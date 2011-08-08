@@ -13,6 +13,7 @@ MANUAL_GOFILES=\
 	diskcache.go \
 	fsserver.go \
 	fuse.go \
+	listfiles.go \
 	master.go \
 	matcher.go \
 	mirror.go \

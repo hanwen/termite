@@ -342,6 +342,14 @@ func (me *Master) replayFileModifications(worker *rpc.Client, infos []FileAttr) 
 	return nil
 }
 
+	
+func (me *Master) refreshAttributeCache() {
+	for _, r := range []string{me.writableRoot, me.srcRoot} {
+		updated := me.fileServer.refreshAttributeCache(r)
+		me.mirrors.queueFiles(nil, updated)
+	}
+}
+
 ////////////////
 
 // Expose functionality for the local tool to use.
@@ -351,4 +359,9 @@ type LocalMaster struct {
 
 func (me *LocalMaster) Run(req *WorkRequest, rep *WorkReply) os.Error {
 	return me.master.run(req, rep)
+}
+
+func (me *LocalMaster) RefreshAttributeCache(input *int, output *int) os.Error {
+	me.master.refreshAttributeCache()
+	return nil
 }

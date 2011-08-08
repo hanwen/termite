@@ -160,17 +160,22 @@ func (me *FsServer) oneGetAttr(name string, rep *FileAttr) os.Error {
 	fi, err := os.Lstat(me.path(name))
 	rep.FileInfo = fi
 	rep.Status = fuse.OsErrorToErrno(err)
+	rep.Path = name
 	if fi != nil {
-		if fi.IsSymlink() {
-			rep.Link, err = os.Readlink(name)
-		}
-		if fi.IsRegular() {
-			rep.Hash, rep.Content = me.getHash(name)
-		}
+		me.fillContent(rep)
 	}
 
 	me.attrCache[name] = *rep
 	return nil
+}
+
+func (me *FsServer) fillContent(rep *FileAttr) {
+	if rep.FileInfo.IsSymlink() {
+		rep.Link, _ = os.Readlink(rep.Path)
+	}
+	if rep.FileInfo.IsRegular() {
+		rep.Hash, rep.Content = me.getHash(rep.Path)
+	}
 }
 
 func (me *FsServer) updateFiles(infos []FileAttr) {
@@ -233,4 +238,46 @@ func (me *FsServer) getHash(name string) (hash []byte, content []byte) {
 
 	me.hashCache[name] = hash
 	return hash, content
+}
+
+// TODO - decide between []FileAttr and []*FileAttr.
+func (me *FsServer) refreshAttributeCache(prefix string) []FileAttr {
+	me.attrCacheMutex.Lock()
+	defer me.attrCacheMutex.Unlock()
+
+	updated := []FileAttr{}
+	entries := ListFilesRecursively(prefix)
+	for key, attr := range me.attrCache {
+		if HasDirPrefix(key, prefix) {
+			_, ok := entries[key]
+			if !ok && attr.Status.Ok() {
+				del := FileAttr{
+				Path: key,
+				Status: fuse.ENOENT,
+				}
+
+				updated = append(updated, del)
+			}
+		}
+	}
+
+	for name, e := range entries {
+		attr, ok := me.attrCache[name]
+		newFi := e
+		if ok && EncodeFileInfo(*attr.FileInfo) == EncodeFileInfo(e) { 
+			continue
+		}
+		newEnt := FileAttr{
+		Path: name,
+		Status: fuse.OK,
+		FileInfo: &newFi,
+		}
+		me.fillContent(&newEnt)
+		updated = append(updated, newEnt)
+	}
+
+	for _, u := range updated {
+		me.attrCache[u.Path] = u
+	}
+	return updated
 }

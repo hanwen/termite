@@ -5,6 +5,15 @@ import (
 	"testing"
 )
 
+func TestHasDirPrefix(t *testing.T) {
+	if !HasDirPrefix("a/b", "a") {
+		t.Errorf("HasDirPrefix(a/b, a) fail")
+	}
+	if HasDirPrefix("a/b", "ab") {
+		t.Errorf("HasDirPrefix(a/b, ab) succeed")
+	}
+}
+
 func TestCopyFile(t *testing.T) {
 	err := ioutil.WriteFile("src.txt", []byte("hello"), 0644)
 	if err != nil {
@@ -90,3 +99,4 @@ func TestParseCommand(t *testing.T) {
 		}
 	}
 }
+
