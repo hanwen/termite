@@ -113,7 +113,7 @@ func (me *Master) Start(sock string) {
 	me.writableRoot = filepath.Clean(me.writableRoot)
 	me.writableRoot, _ = filepath.Split(me.writableRoot)
 	me.writableRoot = filepath.Clean(me.writableRoot)
-	
+
 	log.Println("accepting connections on", absSock)
 	for {
 		conn, err := listener.Accept()
@@ -168,12 +168,16 @@ func (me *Master) createMirror(addr string, jobs int) (*mirrorConnection, os.Err
 
 	go me.fileServerRpc.ServeConn(revConn)
 
-	return &mirrorConnection{
+	mc :=  &mirrorConnection{
 		rpcClient:     rpc.NewClient(rpcConn),
 		connection:    rpcConn,
 		maxJobs:       rep.GrantedJobCount,
 		availableJobs: rep.GrantedJobCount,
-	}, nil
+	}
+
+	mc.queueFiles(me.fileServer.copyCache())
+
+	return mc, nil
 }
 
 func (me *Master) runOnMirror(mirror *mirrorConnection, req *WorkRequest, rep *WorkReply) os.Error {
@@ -336,13 +340,13 @@ func (me *Master) replayFileModifications(worker *rpc.Client, infos []FileAttr) 
 	for i, _ := range deletes {
 		d := deletes[len(deletes)-1-i]
 		if err := os.Remove(d); err != nil {
-			log.Fatal("delete replay: ", err)  
+			log.Fatal("delete replay: ", err)
 		}
 	}
 	return nil
 }
 
-	
+
 func (me *Master) refreshAttributeCache() {
 	for _, r := range []string{me.writableRoot, me.srcRoot} {
 		updated := me.fileServer.refreshAttributeCache(r)

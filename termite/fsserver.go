@@ -278,3 +278,15 @@ func (me *FsServer) refreshAttributeCache(prefix string) []FileAttr {
 	}
 	return updated
 }
+
+func (me *FsServer) copyCache() []FileAttr {
+	me.attrCacheMutex.RLock()
+	defer me.attrCacheMutex.RUnlock()
+
+	dump := []FileAttr{}
+	for _, attr := range me.attrCache {
+		dump = append(dump, attr)
+	}
+
+	return dump
+}
