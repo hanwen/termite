@@ -142,6 +142,11 @@ func (me *ContentCache) DestructiveSavePath(path string) (md5 []byte, content []
 	}
 
 	s := h.Sum()
+	if me.HasHash(s) {
+		os.Remove(path)
+		return s, nil
+	}
+
 	p := me.Path(s)
 	err = os.Rename(path, p)
 	if err != nil {
