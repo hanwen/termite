@@ -174,7 +174,9 @@ func (me *FsServer) fillContent(rep *FileAttr) {
 		rep.Link, _ = os.Readlink(rep.Path)
 	}
 	if rep.FileInfo.IsRegular() {
-		rep.Hash, rep.Content = me.getHash(rep.Path)
+		// TODO - saving the content easily overflows memory
+		// on 32-bit.
+		rep.Hash, _ = me.getHash(rep.Path)
 	}
 }
 
@@ -264,7 +266,7 @@ func (me *FsServer) refreshAttributeCache(prefix string) []FileAttr {
 	for name, e := range entries {
 		attr, ok := me.attrCache[name]
 		newFi := e
-		if ok && EncodeFileInfo(*attr.FileInfo) == EncodeFileInfo(e) { 
+		if ok && attr.FileInfo != nil && EncodeFileInfo(*attr.FileInfo) == EncodeFileInfo(e) { 
 			continue
 		}
 		newEnt := FileAttr{
