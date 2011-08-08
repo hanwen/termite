@@ -139,4 +139,5 @@ TODO
     * streaming connections for file transport.
   - Worker
     * implement in-memory FileSystem for backing store
-
+  - Go-FUSE:
+    * use keep_cache flags for readonly filesystems.
