@@ -362,6 +362,8 @@ func (me *LocalMaster) Run(req *WorkRequest, rep *WorkReply) os.Error {
 }
 
 func (me *LocalMaster) RefreshAttributeCache(input *int, output *int) os.Error {
+	log.Println("Refreshing attribute cache")
 	me.master.refreshAttributeCache()
+	log.Println("Refresh done")
 	return nil
 }
