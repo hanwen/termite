@@ -129,14 +129,21 @@ TODO
 
 * Features
   - Collect worker log information and expose on HTTP.
-
+  - Do local invocations through master too.
+  - collect data on cpu used/time used in worker.
+  
 * Speed
   - Master:
     * add in-memory cache for file contents.
+    * worker <-> worker file content fetching
   - Master/Worker:
     * streaming connections for file transport.
     * expand directory deletion in worker.
+    * for src/writableRoot, always sync worker and master,
+    so never need to RPC for negative getattr. 
   - Worker
     * implement in-memory FileSystem for backing store
-  - Go-FUSE:
-    * use keep_cache flags for readonly filesystems.
+
+* Go-FUSE:
+  - use keep_cache flags for readonly filesystems.
+  - Implement mv for symlinks, directories in UnionFs.
