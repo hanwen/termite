@@ -41,9 +41,28 @@ func TryRunDirect(cmd string) {
 	// TODO mkdir, rm, others?
 }
 
+func Refresh() {
+	socket := termite.FindSocket()
+	conn := termite.OpenSocketConnection(socket, termite.RPC_CHANNEL)
+	
+	client := rpc.NewClient(conn)
+
+	req := 1
+	rep := 1
+	err := client.Call("LocalMaster.RefreshAttributeCache", &req, &rep)
+	if err != nil {
+		log.Fatal("LocalMaster.RefreshAttributeCache: ", err)
+	}
+}
+
 func main() {
 	command := flag.String("c", "", "command to run.")
+	refresh := flag.Bool("refresh", false, "refresh master file cache.")
 	flag.Parse()
+
+	if *refresh {
+		Refresh()
+	}
 
 	if *command == "" {
 		return
@@ -64,7 +83,7 @@ func main() {
 	if err != nil {
 		log.Fatal("Getwd", err)
 	}
-
+ 
 	conn := termite.OpenSocketConnection(socket, termite.RPC_CHANNEL)
 
 	// TODO - could skip the shell if we can deduce it is a

@@ -1,3 +1,9 @@
 #!/bin/sh
 
+if test "${TERMITE_CACHE_REFRESHED}" = ""
+then
+  shell-wrapper -refresh
+  export TERMITE_CACHE_REFRESHED=yes
+fi
+
 exec -a termite-make /usr/bin/make SHELL=shell-wrapper "$@"
