@@ -59,7 +59,7 @@ type FileAttr struct {
 }
 
 type AttrResponse struct {
-	Attrs []FileAttr 
+	Attrs []FileAttr
 }
 
 func (me FileAttr) String() string {
@@ -248,34 +248,29 @@ func (me *FsServer) refreshAttributeCache(prefix string) []FileAttr {
 	defer me.attrCacheMutex.Unlock()
 
 	updated := []FileAttr{}
-	entries := ListFilesRecursively(prefix)
 	for key, attr := range me.attrCache {
-		if HasDirPrefix(key, prefix) {
-			_, ok := entries[key]
-			if !ok && attr.Status.Ok() {
-				del := FileAttr{
+		// TODO -should just do everything?
+		if !HasDirPrefix(key, prefix) {
+			continue;
+		}
+
+		fi, _ := os.Lstat(me.path(key))
+		if fi == nil && attr.Status.Ok() {
+			del := FileAttr{
 				Path: key,
 				Status: fuse.ENOENT,
-				}
-
-				updated = append(updated, del)
 			}
+			updated = append(updated, del)
 		}
-	}
-
-	for name, e := range entries {
-		attr, ok := me.attrCache[name]
-		newFi := e
-		if ok && attr.FileInfo != nil && EncodeFileInfo(*attr.FileInfo) == EncodeFileInfo(e) { 
-			continue
+		if fi != nil && attr.FileInfo != nil && EncodeFileInfo(*attr.FileInfo) != EncodeFileInfo(*fi) {
+			newEnt := FileAttr{
+			Path: key,
+			Status: fuse.OK,
+			FileInfo: fi,
+			}
+			me.fillContent(&newEnt)
+			updated = append(updated, newEnt)
 		}
-		newEnt := FileAttr{
-		Path: name,
-		Status: fuse.OK,
-		FileInfo: &newFi,
-		}
-		me.fillContent(&newEnt)
-		updated = append(updated, newEnt)
 	}
 
 	for _, u := range updated {

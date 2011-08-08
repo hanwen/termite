@@ -19,10 +19,13 @@ func TestFsServerCache(t *testing.T) {
 	orig := tmp + "/orig"
 	srvCache := tmp + "/server-cache"
 
-	os.Mkdir(orig, 0700)
-	
+	err := os.Mkdir(orig, 0700)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	content := "hello"
-	err := ioutil.WriteFile(orig+"/file.txt", []byte(content), 0644)
+	err = ioutil.WriteFile(orig+"/file.txt", []byte(content), 0644)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -31,6 +34,20 @@ func TestFsServerCache(t *testing.T) {
 	server := NewFsServer("/", cache, nil)
 
 	server.refreshAttributeCache(orig)
+	if len(server.attrCache) > 0 {
+		t.Errorf("cache not empty? %#v", server.attrCache)
+	}
+
+	fa := FileAttr{}
+	err = server.oneGetAttr(orig, &fa)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = server.oneGetAttr(orig + "/file.txt", &fa)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	if len(server.attrCache) != 2 {
 		t.Errorf("cache should have 2 entries, got %#v", server.attrCache)
 	}
@@ -49,19 +66,14 @@ func TestFsServerCache(t *testing.T) {
 	server.refreshAttributeCache(orig)
 	attr, ok = server.attrCache[name]
 	if !ok || attr.Status.Ok() {
-		t.Errorf("after rename: entry for %q unexpected: %v %#v", name, ok, attr)	
-	}
-
-	attr, ok = server.attrCache[newName]
-	if !ok || attr.FileInfo.Size != int64(len(content)) {
-		t.Errorf("after rename: entry for %q unexpected: %v %#v", newName, ok, attr)	
+		t.Errorf("after rename: entry for %q unexpected: %v %#v", name, ok, attr)
 	}
 }
 
 func TestRpcFS(t *testing.T) {
 	tmp, _ := ioutil.TempDir("", "")
 	defer os.RemoveAll(tmp)
-	
+
 	mnt := tmp + "/mnt"
 	orig := tmp + "/orig"
 	srvCache := tmp + "/server-cache"
@@ -139,6 +151,6 @@ func TestRpcFS(t *testing.T) {
 		t.Errorf("cache error %x (%v)", storedHash, storedHash)
 	}
 
-	
+
 }
 
