@@ -13,7 +13,7 @@ import (
 type localDeciderRule struct {
 	*regexp.Regexp
 	runLocal bool
-	refresh  bool		// TODO - implement this
+	refresh  bool // TODO - implement this
 }
 
 type localDecider struct {
@@ -42,7 +42,7 @@ func newLocalDecider(input io.Reader) *localDecider {
 		}
 
 		r := localDeciderRule{
-			Regexp: re,
+			Regexp:   re,
 			runLocal: !runRemote,
 		}
 
@@ -61,10 +61,9 @@ func (me *localDecider) shouldRunLocally(command string) bool {
 	return false
 }
 
-const defaultLocal = (
-	".*termite-make\n" +
+const defaultLocal = (".*termite-make\n" +
 	".*/cmake\n" +
-	"-.*\n" )
+	"-.*\n")
 
 func (me *Master) setLocalDecider() {
 	localRc := filepath.Join(me.writableRoot, ".termite-localrc")
@@ -83,5 +82,5 @@ func (me *Master) setLocalDecider() {
 func (me *Master) shouldRunLocally(req *WorkRequest) bool {
 	// TODO - softcode /bin/sh.
 	return len(req.Argv) == 3 && req.Argv[0] == "/bin/sh" && req.Argv[1] == "-c" &&
-		me.localDecider.shouldRunLocally(req.Argv[2]);
+		me.localDecider.shouldRunLocally(req.Argv[2])
 }

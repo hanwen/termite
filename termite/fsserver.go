@@ -19,14 +19,14 @@ type FsServer struct {
 	Root          string
 	excluded      map[string]bool
 
-	multiplyPaths func(string)[]string
+	multiplyPaths func(string) []string
 
 	hashCacheMutex sync.RWMutex
 	// TODO - should use string (immutable) throughout for storing MD5 signatures.
 	hashCache map[string][]byte
 
 	attrCacheMutex sync.RWMutex
-	attrCache map[string]FileAttr
+	attrCache      map[string]FileAttr
 }
 
 func NewFsServer(root string, cache *ContentCache, excluded []string) *FsServer {
@@ -251,22 +251,22 @@ func (me *FsServer) refreshAttributeCache(prefix string) []FileAttr {
 	for key, attr := range me.attrCache {
 		// TODO -should just do everything?
 		if !HasDirPrefix(key, prefix) {
-			continue;
+			continue
 		}
 
 		fi, _ := os.Lstat(me.path(key))
 		if fi == nil && attr.Status.Ok() {
 			del := FileAttr{
-				Path: key,
+				Path:   key,
 				Status: fuse.ENOENT,
 			}
 			updated = append(updated, del)
 		}
 		if fi != nil && attr.FileInfo != nil && EncodeFileInfo(*attr.FileInfo) != EncodeFileInfo(*fi) {
 			newEnt := FileAttr{
-			Path: key,
-			Status: fuse.OK,
-			FileInfo: fi,
+				Path:     key,
+				Status:   fuse.OK,
+				FileInfo: fi,
 			}
 			me.fillContent(&newEnt)
 			updated = append(updated, newEnt)

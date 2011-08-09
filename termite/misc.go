@@ -136,8 +136,8 @@ func Version() string {
 func EscapeRegexp(s string) string {
 	special := "[]()\\+*"
 	for i, _ := range special {
-		c := special[i:i+1]
-		s = strings.Replace(s, c, "\\" + c, -1)
+		c := special[i : i+1]
+		s = strings.Replace(s, c, "\\"+c, -1)
 	}
 	return s
 }
@@ -156,12 +156,11 @@ func DetectFiles(root string, cmd string) []string {
 	return names
 }
 
-
 func IsSpace(b byte) bool {
 	return b == ' ' || b == '\n' || b == '\f' || b == '\t'
 }
 
-var controlCharMap = map[byte]bool {
+var controlCharMap = map[byte]bool{
 	'$': true,
 	'>': true,
 	'<': true,
@@ -262,7 +261,7 @@ func HasDirPrefix(path, prefix string) bool {
 	prefix = strings.TrimRight(prefix, string(filepath.Separator))
 	path = strings.TrimRight(path, string(filepath.Separator))
 	return path == prefix ||
-		strings.HasPrefix(path, prefix + string(filepath.Separator))
+		strings.HasPrefix(path, prefix+string(filepath.Separator))
 }
 
 func EncodeFileInfo(fi os.FileInfo) string {

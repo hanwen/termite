@@ -116,7 +116,7 @@ func (me *Mirror) Update(req *UpdateRequest, rep *UpdateResponse) os.Error {
 
 func (me *Mirror) updateFiles(attrs []FileAttr) {
 	me.rpcFs.updateFiles(attrs)
-	
+
 	me.fuseFileSystemsMutex.Lock()
 	defer me.fuseFileSystemsMutex.Unlock()
 

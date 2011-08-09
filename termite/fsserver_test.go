@@ -43,7 +43,7 @@ func TestFsServerCache(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = server.oneGetAttr(orig + "/file.txt", &fa)
+	err = server.oneGetAttr(orig+"/file.txt", &fa)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,7 +51,7 @@ func TestFsServerCache(t *testing.T) {
 	if len(server.attrCache) != 2 {
 		t.Errorf("cache should have 2 entries, got %#v", server.attrCache)
 	}
-	name := orig+"/file.txt"
+	name := orig + "/file.txt"
 	attr, ok := server.attrCache[name]
 	if !ok || !attr.FileInfo.IsRegular() || attr.FileInfo.Size != int64(len(content)) {
 		t.Errorf("entry for %q unexpected: %v %#v", name, ok, attr)
@@ -151,6 +151,4 @@ func TestRpcFS(t *testing.T) {
 		t.Errorf("cache error %x (%v)", storedHash, storedHash)
 	}
 
-
 }
-

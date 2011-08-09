@@ -63,10 +63,10 @@ type mirrorConnections struct {
 
 	// Protects all of the below.
 	sync.Mutex
-	workers           map[string]bool
-	mirrors           map[string]*mirrorConnection
-	wantedMaxJobs     int
-	lastActionNs      int64
+	workers       map[string]bool
+	mirrors       map[string]*mirrorConnection
+	wantedMaxJobs int
+	lastActionNs  int64
 }
 
 func (me *mirrorConnections) fetchWorkers() (newMap map[string]bool) {
@@ -105,12 +105,12 @@ func (me *mirrorConnections) refreshWorkers() {
 
 func newMirrorConnections(m *Master, workers []string, coordinator string, maxJobs int) *mirrorConnections {
 	mc := &mirrorConnections{
-		master:           m,
-		wantedMaxJobs:    maxJobs,
-		workers:          make(map[string]bool),
-		mirrors:          make(map[string]*mirrorConnection),
-		coordinator:      coordinator,
-		keepAliveNs:      60e9,
+		master:        m,
+		wantedMaxJobs: maxJobs,
+		workers:       make(map[string]bool),
+		mirrors:       make(map[string]*mirrorConnection),
+		coordinator:   coordinator,
+		keepAliveNs:   60e9,
 	}
 	for _, w := range workers {
 		mc.workers[w] = true

@@ -14,14 +14,14 @@ import (
 )
 
 type testCase struct {
-	worker *WorkerDaemon
-	master *Master
-	coordinator *Coordinator
-	secret []byte
-	tmp    string
-	socket string
+	worker          *WorkerDaemon
+	master          *Master
+	coordinator     *Coordinator
+	secret          []byte
+	tmp             string
+	socket          string
 	coordinatorPort int
-	workerPort int
+	workerPort      int
 }
 
 func NewTestCase() *testCase {
@@ -45,7 +45,7 @@ func NewTestCase() *testCase {
 	go http.ListenAndServe(coordinatorAddr, nil)
 	// TODO - can we do without the sleeps?
 	time.Sleep(0.1e9) // wait for daemon to start up
-	
+
 	me.workerPort = int(rand.Int31n(60000) + 1024)
 	go me.worker.RunWorkerServer(me.workerPort, coordinatorAddr)
 
@@ -61,7 +61,7 @@ func NewTestCase() *testCase {
 	me.master.SetKeepAlive(1.0)
 	me.socket = me.tmp + "/master-socket"
 	go me.master.Start(me.socket)
-	
+
 	wd := me.tmp + "/wd"
 	os.MkdirAll(wd, 0755)
 	time.Sleep(0.1e9) // wait for all daemons to start up
@@ -86,7 +86,7 @@ func TestEndToEndBasic(t *testing.T) {
 
 	tc := NewTestCase()
 	defer tc.Clean()
-	
+
 	req := WorkRequest{
 		StdinId: ConnectionId(),
 		Binary:  "/usr/bin/tee",
@@ -95,7 +95,7 @@ func TestEndToEndBasic(t *testing.T) {
 
 		// Will not be filtered, since /tmp/foo is more
 		// specific than /tmp
-		Dir: tc.tmp + "/wd",
+		Dir:   tc.tmp + "/wd",
 		Debug: true,
 	}
 
@@ -124,11 +124,11 @@ func TestEndToEndBasic(t *testing.T) {
 	}
 
 	req = WorkRequest{
-		Binary:  "/bin/rm",
-		Argv:    []string{"/bin/rm", "output.txt"},
-		Env:     os.Environ(),
-		Dir:     tc.tmp + "/wd",
-		Debug: true,
+		Binary: "/bin/rm",
+		Argv:   []string{"/bin/rm", "output.txt"},
+		Env:    os.Environ(),
+		Dir:    tc.tmp + "/wd",
+		Debug:  true,
 	}
 
 	rep = WorkReply{}
@@ -161,18 +161,18 @@ func TestEndToEndNegativeNotify(t *testing.T) {
 
 	tc := NewTestCase()
 	defer tc.Clean()
-	
+
 	rpcConn := OpenSocketConnection(tc.socket, RPC_CHANNEL)
 	client := rpc.NewClient(rpcConn)
 
 	req := WorkRequest{
-		Binary:  "/bin/cat",
-		Argv:    []string{"/bin/cat", "output.txt"},
-		Env:     os.Environ(),
-		Dir:     tc.tmp + "/wd",
-		Debug: true,
+		Binary: "/bin/cat",
+		Argv:   []string{"/bin/cat", "output.txt"},
+		Env:    os.Environ(),
+		Dir:    tc.tmp + "/wd",
+		Debug:  true,
 	}
-	
+
 	rep := WorkReply{}
 	err := client.Call("LocalMaster.Run", &req, &rep)
 	if err != nil {
@@ -182,24 +182,24 @@ func TestEndToEndNegativeNotify(t *testing.T) {
 	if rep.Exit.ExitStatus() == 0 {
 		t.Fatal("expect exit status != 0")
 	}
-	
+
 	newContent := []byte("new content")
 	hash := tc.master.cache.Save(newContent)
 	updated := []FileAttr{
 		FileAttr{
-			Path:  tc.tmp + "/wd/output.txt",
+			Path:     tc.tmp + "/wd/output.txt",
 			FileInfo: &os.FileInfo{Mode: fuse.S_IFREG | 0644, Size: int64(len(newContent))},
-			Hash: hash,
-			Content: newContent,
+			Hash:     hash,
+			Content:  newContent,
 		},
 	}
 	tc.master.mirrors.queueFiles(nil, updated)
 	req = WorkRequest{
-		Binary:  "/bin/cat",
-		Argv:    []string{"/bin/cat", "output.txt"},
-		Env:     os.Environ(),
-		Dir:     tc.tmp + "/wd",
-		Debug: 	 true,
+		Binary: "/bin/cat",
+		Argv:   []string{"/bin/cat", "output.txt"},
+		Env:    os.Environ(),
+		Dir:    tc.tmp + "/wd",
+		Debug:  true,
 	}
 
 	rep = WorkReply{}

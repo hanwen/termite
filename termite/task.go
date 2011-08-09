@@ -208,7 +208,7 @@ func (me *fileSaver) reapBackingStore() {
 		matches, err := filepath.Glob(dir + "/*")
 		if err != nil {
 			me.err = err
-			return 
+			return
 		}
 
 		for _, fullPath := range matches {

@@ -1,4 +1,5 @@
 package termite
+
 import (
 	"fmt"
 	"log"
@@ -8,7 +9,7 @@ import (
 
 // Timer is a simple aid to time different steps in a function.
 type Timer struct {
-	start int64
+	start    int64
 	messages []string
 }
 
@@ -31,4 +32,3 @@ func (me *Timer) Message() string {
 func (me *Timer) Log() {
 	log.Printf("\n%s", strings.Join(me.messages, "\n"))
 }
-

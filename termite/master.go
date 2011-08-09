@@ -26,7 +26,7 @@ type Master struct {
 	localServer    *LocalMaster
 	writableRoot   string
 	srcRoot        string
-	pending *PendingConnections
+	pending        *PendingConnections
 }
 
 func NewMaster(cache *ContentCache, coordinator string, workers []string, secret []byte, excluded []string, maxJobs int) *Master {
@@ -46,17 +46,15 @@ func NewMaster(cache *ContentCache, coordinator string, workers []string, secret
 	me.localRpcServer = rpc.NewServer()
 	me.localRpcServer.Register(me.localServer)
 
-
 	return me
 }
-
 
 // TODO - write e2e test for this.
 func (me *Master) multiplyPaths(name string) []string {
 	names := []string{name}
 	// TODO - cleanpath.
 	if strings.HasPrefix(name, me.writableRoot) && me.srcRoot != "" {
-		names = append(names, me.srcRoot + name[len(me.writableRoot):])
+		names = append(names, me.srcRoot+name[len(me.writableRoot):])
 	}
 	for _, n := range names {
 		// TODO - configurable
@@ -174,7 +172,7 @@ func (me *Master) createMirror(addr string, jobs int) (*mirrorConnection, os.Err
 
 	go me.fileServerRpc.ServeConn(revConn)
 
-	mc :=  &mirrorConnection{
+	mc := &mirrorConnection{
 		rpcClient:     rpc.NewClient(rpcConn),
 		connection:    rpcConn,
 		maxJobs:       rep.GrantedJobCount,
@@ -360,7 +358,6 @@ func (me *Master) replayFileModifications(worker *rpc.Client, infos []FileAttr) 
 	}
 	return nil
 }
-
 
 func (me *Master) refreshAttributeCache() {
 	for _, r := range []string{me.writableRoot, me.srcRoot} {

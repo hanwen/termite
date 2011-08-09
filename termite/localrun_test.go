@@ -3,7 +3,7 @@ package termite
 import (
 	"bytes"
 	"testing"
-	)
+)
 
 func TestLocalDecider(t *testing.T) {
 	str := "-.*foo\n" + "bar\n"
@@ -12,10 +12,10 @@ func TestLocalDecider(t *testing.T) {
 	l := newLocalDecider(buf)
 
 	if l.shouldRunLocally("xfoo") != false {
-		t.Error("-xfoo: expect false");
+		t.Error("-xfoo: expect false")
 	}
 	buf = bytes.NewBufferString(str)
 	if l.shouldRunLocally("bar") != true {
-		t.Error("bar: expect true");
+		t.Error("bar: expect true")
 	}
 }

@@ -40,7 +40,6 @@ func TestEscapeRegexp(t *testing.T) {
 	}
 }
 
-
 func TestDetectFiles(t *testing.T) {
 	fs := DetectFiles("/src/foo", "gcc /src/foo/bar.cc -I/src/foo/baz")
 	result := map[string]int{}
@@ -50,7 +49,7 @@ func TestDetectFiles(t *testing.T) {
 	if len(result) != 2 {
 		t.Error("length", result)
 	}
-	if result["/src/foo/bar.cc"] != 1 ||  result["/src/foo/baz"] != 1 {
+	if result["/src/foo/bar.cc"] != 1 || result["/src/foo/baz"] != 1 {
 		t.Error("not found", result)
 	}
 }
@@ -99,4 +98,3 @@ func TestParseCommand(t *testing.T) {
 		}
 	}
 }
-
