@@ -245,7 +245,7 @@ func (me *RpcFs) considerSaveLocal(attr FileAttr) {
 	}
 	found := false
 	for _, root := range me.localRoots {
-		if strings.HasPrefix(absPath, root+"/") {
+		if HasDirPrefix(absPath, root) {
 			found = true
 		}
 	}
