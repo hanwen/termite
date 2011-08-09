@@ -232,7 +232,7 @@ func (me *FsServer) getHash(name string) (hash []byte, content []byte) {
 	// from succeeding?
 
 	// TODO - /usr should be configurable.
-	if strings.HasPrefix(fullPath, "/usr") {
+	if HasDirPrefix(fullPath, "/usr") && !HasDirPrefix(fullPath, "/usr/local") {
 		hash, content = me.contentCache.SaveImmutablePath(fullPath)
 	} else {
 		hash, content = me.contentCache.SavePath(fullPath)
