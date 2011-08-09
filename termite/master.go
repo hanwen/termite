@@ -1,12 +1,12 @@
 package termite
 
 import (
+	"github.com/hanwen/go-fuse/fuse"
 	"io/ioutil"
 	"log"
 	"net"
 	"os"
 	"path/filepath"
-	"github.com/hanwen/go-fuse/fuse"
 	"rpc"
 	"sort"
 	"strings"
@@ -17,6 +17,8 @@ type Master struct {
 	fileServer    *FsServer
 	fileServerRpc *rpc.Server
 	secret        []byte
+
+	*localDecider
 
 	retryCount     int
 	mirrors        *mirrorConnections
@@ -43,6 +45,8 @@ func NewMaster(cache *ContentCache, coordinator string, workers []string, secret
 	me.fileServerRpc.Register(me.fileServer)
 	me.localRpcServer = rpc.NewServer()
 	me.localRpcServer.Register(me.localServer)
+
+
 	return me
 }
 
@@ -113,6 +117,8 @@ func (me *Master) Start(sock string) {
 	me.writableRoot = filepath.Clean(me.writableRoot)
 	me.writableRoot, _ = filepath.Split(me.writableRoot)
 	me.writableRoot = filepath.Clean(me.writableRoot)
+
+	me.setLocalDecider()
 
 	log.Println("accepting connections on", absSock)
 	for {
@@ -255,6 +261,11 @@ func (me *Master) runOnce(req *WorkRequest, rep *WorkReply) os.Error {
 }
 
 func (me *Master) run(req *WorkRequest, rep *WorkReply) (err os.Error) {
+	if me.shouldRunLocally(req) {
+		log.Println("Should run locally:", req.Argv)
+		rep.RunLocally = true
+		return nil
+	}
 	err = me.runOnce(req, rep)
 	for i := 0; i < me.retryCount && err != nil; i++ {
 		log.Println("Retrying; last error:", err)
@@ -292,6 +303,7 @@ func (me *Master) replayFileModifications(worker *rpc.Client, infos []FileAttr) 
 		info := entries[name]
 		var err os.Error
 		// TODO - deletion test.
+		logStr := ""
 		if info.FileInfo != nil && info.FileInfo.IsDirectory() {
 			if name == "" {
 				name = "/"
@@ -300,7 +312,7 @@ func (me *Master) replayFileModifications(worker *rpc.Client, infos []FileAttr) 
 			if err != nil {
 				// some other process may have created
 				// the dir.
-				if fi, _ := os.Lstat(name); fi != nil {
+				if fi, _ := os.Lstat(name); fi != nil && fi.IsDirectory() {
 					err = nil
 				}
 			}
@@ -311,17 +323,20 @@ func (me *Master) replayFileModifications(worker *rpc.Client, infos []FileAttr) 
 
 			if content == nil {
 				err = CopyFile(info.Path, me.cache.Path(info.Hash), int(info.FileInfo.Mode))
+				logStr += "CopyFile,"
 			} else {
 				me.cache.Save(content)
 				err = ioutil.WriteFile(info.Path, content, info.FileInfo.Mode&07777)
+				logStr += "WriteFile,"
 			}
 			if err == nil {
 				err = os.Chtimes(info.Path, info.FileInfo.Atime_ns, info.FileInfo.Mtime_ns)
+				logStr += "Chtimes,"
 			}
 		}
 		if info.Link != "" {
-			log.Println("Replay symlink:", name)
 			err = os.Symlink(info.Link, info.Path)
+			logStr += "Symlink,"
 		}
 		if !info.Status.Ok() {
 			if info.Status == fuse.ENOENT {
@@ -332,7 +347,7 @@ func (me *Master) replayFileModifications(worker *rpc.Client, infos []FileAttr) 
 		}
 
 		if err != nil {
-			log.Fatal("Replay error ", info.Path, " ", err, infos)
+			log.Fatal("Replay error ", info.Path, " ", err, infos, logStr)
 		}
 	}
 

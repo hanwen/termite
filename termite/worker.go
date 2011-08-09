@@ -19,11 +19,12 @@ type WorkReply struct {
 	Files  []FileAttr
 	Stderr string
 	Stdout string
+	RunLocally bool
 }
 
 type WorkRequest struct {
-	Prefetch     []FileAttr     
-	
+	Prefetch     []FileAttr
+
 	// Id of connection streaming stdin.
 	StdinId      string
 	Debug        bool

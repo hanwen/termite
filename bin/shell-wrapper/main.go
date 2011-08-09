@@ -1,34 +1,14 @@
 package main
 
 import (
-	"bytes"
 	"flag"
 	"fmt"
 	"github.com/hanwen/termite/termite"
-	"io/ioutil"
 	"log"
 	"os"
-	"path/filepath"
 	"rpc"
 	"strings"
 )
-
-const defaultLocal = (
-	".*termite-make\n" +
-	".*/cmake\n" +
-	"-.*\n" )
-
-func RunLocally(cmd, dir string) bool {
-	content, err := ioutil.ReadFile(filepath.Join(dir, ".termite-localrc"))
-	
-	buf := bytes.NewBuffer(content)
-	if err != nil {
-		buf = bytes.NewBufferString(defaultLocal)
-	}
-
-	local := termite.MatchAgainst(buf, cmd)
-	return local
-}
 
 const _SHELL = "/bin/sh"
 
@@ -44,7 +24,7 @@ func TryRunDirect(cmd string) {
 func Refresh() {
 	socket := termite.FindSocket()
 	conn := termite.OpenSocketConnection(socket, termite.RPC_CHANNEL)
-	
+
 	client := rpc.NewClient(conn)
 
 	req := 1
@@ -71,19 +51,11 @@ func main() {
 	TryRunDirect(*command)
 
 	socket := termite.FindSocket()
-	dir, _ := filepath.Split(socket)
-	
-	if RunLocally(*command, dir) {
-		if err := os.Exec(_SHELL, os.Args, os.Environ()); err != nil {
-			log.Fatal("exec", err)
-		}
-	}
-
 	wd, err := os.Getwd()
 	if err != nil {
 		log.Fatal("Getwd", err)
 	}
- 
+
 	conn := termite.OpenSocketConnection(socket, termite.RPC_CHANNEL)
 
 	// TODO - could skip the shell if we can deduce it is a
@@ -101,6 +73,12 @@ func main() {
 	err = client.Call("LocalMaster.Run", &req, &rep)
 	if err != nil {
 		log.Fatal("LocalMaster.Run: ", err)
+	}
+
+	if rep.RunLocally {
+		if err := os.Exec(_SHELL, os.Args, os.Environ()); err != nil {
+			log.Fatal("exec", err)
+		}
 	}
 
 	os.Stdout.Write([]byte(rep.Stdout))

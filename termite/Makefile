@@ -14,8 +14,8 @@ MANUAL_GOFILES=\
 	fsserver.go \
 	fuse.go \
 	listfiles.go \
+	localrun.go \
 	master.go \
-	matcher.go \
 	mirror.go \
 	mirrorconnection.go \
 	misc.go \
