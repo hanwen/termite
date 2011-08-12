@@ -129,14 +129,13 @@ TODO
 
 * Features
   - Collect worker log information and expose on HTTP.
-  - Implement mv for symlinks, directories in UnionFs.
-  - Master should monitor srcdir for manual edits.
 
 * Speed
   - Master:
     * add in-memory cache for file contents.
   - Master/Worker:
     * streaming connections for file transport.
+    * expand directory deletion in worker.
   - Worker
     * implement in-memory FileSystem for backing store
   - Go-FUSE:
