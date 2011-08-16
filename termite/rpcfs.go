@@ -150,7 +150,10 @@ func (me *RpcFs) Open(name string, flags uint32) (fuse.File, fuse.Status) {
 		return nil, fuse.OsErrorToErrno(err)
 	}
 
-	return &fuse.LoopbackFile{File: f}, fuse.OK
+	return &fuse.WithFlags{
+		&fuse.LoopbackFile{File: f},
+		fuse.FOPEN_KEEP_CACHE,
+	}, fuse.OK
 }
 
 func (me *RpcFs) FetchHash(size int64, hash []byte) os.Error {
