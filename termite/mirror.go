@@ -137,7 +137,9 @@ func (me *Mirror) fetchFiles(files []FileAttr) {
 }
 
 func (me *Mirror) Run(req *WorkRequest, rep *WorkReply) os.Error {
-	me.updateFiles(req.Prefetch)
+	// Don't run me.updateFiles() as we don't want to issue
+	// unneeded cache invalidations.
+	me.rpcFs.updateFiles(req.Prefetch)
 	go me.fetchFiles(req.Prefetch)
 	task, err := me.newWorkerTask(req, rep)
 	if err != nil {
