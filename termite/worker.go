@@ -212,21 +212,3 @@ func (me *WorkerDaemon) RunWorkerServer(port int, coordinator string) {
 	}
 }
 
-type StatusRequest struct {
-
-}
-
-type StatusReply struct {
-	Processes int
-}
-
-func (me *WorkerDaemon) Status(req *StatusRequest, rep *StatusReply) os.Error {
-	me.mirrorMapMutex.Lock()
-	defer me.mirrorMapMutex.Unlock()
-	for _, mirror := range me.mirrorMap {
-		mirror.Status(req, rep)
-	}
-
-	// Always return nil, so we know any errors are due to connection problems.
-	return nil
-}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/hanwen/termite/termite"
 	"http"
+	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -29,13 +30,16 @@ func serveBin(name string) func(w http.ResponseWriter, req *http.Request) {
 
 func main() {
 	port := flag.Int("port", 1233, "Where to listen for work requests.")
+	secretFile := flag.String("secret", "secret.txt", "file containing password.")
 	flag.Parse()
 
-	c := termite.NewCoordinator()
-	http.HandleFunc("/",
-		func(w http.ResponseWriter, req *http.Request) {
-			c.HtmlHandler(w, req)
-		})
+	secret, err := ioutil.ReadFile(*secretFile)
+	if err != nil {
+		log.Fatal("ReadFile", err)
+	}
+
+	c := termite.NewCoordinator(secret)
+	c.HandleHTTP()
 	http.HandleFunc("/bin/chroot", serveBin("chroot"))
 	http.HandleFunc("/bin/worker", serveBin("worker"))
 	http.HandleFunc("/bin/shell-wrapper", serveBin("shell-wrapper"))
@@ -47,7 +51,7 @@ func main() {
 	go c.PeriodicCheck()
 	addr := fmt.Sprintf(":%d", *port)
 	log.Println("Listening on", addr)
-	err := http.ListenAndServe(addr, nil)
+	err = http.ListenAndServe(addr, nil)
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err.String())
 	}

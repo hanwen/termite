@@ -20,11 +20,11 @@ MANUAL_GOFILES=\
 	mirrorconnection.go \
 	misc.go \
 	rpcfs.go \
+	status.go \
 	task.go \
 	timer.go \
 	version.go \
 	worker.go \
-	workerstatus.go \
 
 GOFILES=$(MANUAL_GOFILES) version.gen.go
 

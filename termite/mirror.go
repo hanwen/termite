@@ -25,6 +25,8 @@ type Mirror struct {
 	fuseFileSystemsMutex sync.Mutex
 	// TODO - rename to unused FS.
 	fuseFileSystems    []*WorkerFuseFs
+
+	// Map value is the command running.
 	workingFileSystems map[*WorkerFuseFs]string
 	shuttingDown       bool
 	cond               sync.Cond
@@ -184,13 +186,6 @@ func (me *Mirror) newWorkerTask(req *WorkRequest, rep *WorkReply) (*WorkerTask, 
 	}, nil
 }
 
-func (me *Mirror) Status(req *StatusRequest, rep *StatusReply) os.Error {
-	me.fuseFileSystemsMutex.Lock()
-	defer me.fuseFileSystemsMutex.Unlock()
-
-	rep.Processes += len(me.workingFileSystems)
-	return nil
-}
 
 func (me *Mirror) FileContent(req *ContentRequest, rep *ContentResponse) os.Error {
 	return me.daemon.contentServer.FileContent(req, rep)
