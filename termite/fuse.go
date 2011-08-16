@@ -85,7 +85,7 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string) 
 	mOpts := fuse.FileSystemOptions{
 		EntryTimeout:    ttl,
 		AttrTimeout:     ttl,
-		NegativeTimeout: 0.00,
+		NegativeTimeout: ttl,
 	}
 
 	tmpFs := fuse.NewLoopbackFileSystem(tmpBacking)
@@ -129,7 +129,10 @@ func (me *WorkerFuseFs) update(attrs []FileAttr) {
 		path := strings.TrimLeft(attr.Path, "/")
 
 		// TODO - should have bulk interface?
-		me.fsConnector.FileNotify(path, 0, 0)
+		dir, base := filepath.Split(path)
+		dir = filepath.Clean(dir)
+		
+		me.fsConnector.EntryNotify(dir, base)
 		paths = append(paths, path)
 	}
 	me.unionFs.DropBranchCache(paths)
