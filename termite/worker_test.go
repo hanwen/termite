@@ -22,10 +22,12 @@ type testCase struct {
 	socket          string
 	coordinatorPort int
 	workerPort      int
+	tester          *testing.T
 }
 
-func NewTestCase() *testCase {
+func NewTestCase(t *testing.T) *testCase {
 	me := new(testCase)
+	me.tester = t
 	me.secret = RandomBytes(20)
 	me.tmp, _ = ioutil.TempDir("", "")
 
@@ -72,8 +74,18 @@ func (me *testCase) Clean() {
 	me.master.mirrors.dropConnections()
 	// TODO - should have explicit worker shutdown routine. 
 	time.Sleep(0.1e9)
-	log.Println("removing.")
 	os.RemoveAll(me.tmp)
+}
+
+func (me *testCase) Run(req WorkRequest) (rep WorkReply) {
+	rpcConn := OpenSocketConnection(me.socket, RPC_CHANNEL)
+	client := rpc.NewClient(rpcConn)
+	
+	err := client.Call("LocalMaster.Run", &req, &rep)
+	if err != nil {
+		me.tester.Fatal("LocalMaster.Run: ", err)
+	}
+	return rep
 }
 
 // Simple end-to-end test.  It skips the chroot, but should give a
@@ -84,7 +96,7 @@ func TestEndToEndBasic(t *testing.T) {
 		return
 	}
 
-	tc := NewTestCase()
+	tc := NewTestCase(t)
 	defer tc.Clean()
 
 	req := WorkRequest{
@@ -106,15 +118,7 @@ func TestEndToEndBasic(t *testing.T) {
 		stdinConn.Close()
 	}()
 
-	rpcConn := OpenSocketConnection(tc.socket, RPC_CHANNEL)
-	client := rpc.NewClient(rpcConn)
-
-	rep := WorkReply{}
-	err := client.Call("LocalMaster.Run", &req, &rep)
-	if err != nil {
-		log.Fatal("LocalMaster.Run: ", err)
-	}
-
+	tc.Run(req)
 	content, err := ioutil.ReadFile(tc.tmp + "/wd/output.txt")
 	if err != nil {
 		t.Error(err)
@@ -123,19 +127,14 @@ func TestEndToEndBasic(t *testing.T) {
 		t.Error("content:", content)
 	}
 
-	req = WorkRequest{
+	tc.Run(WorkRequest{
 		Binary: "/bin/rm",
 		Argv:   []string{"/bin/rm", "output.txt"},
 		Env:    os.Environ(),
 		Dir:    tc.tmp + "/wd",
 		Debug:  true,
-	}
+	})
 
-	rep = WorkReply{}
-	err = client.Call("LocalMaster.Run", &req, &rep)
-	if err != nil {
-		t.Fatal("LocalMaster.Run: ", err)
-	}
 	if fi, _ := os.Lstat(tc.tmp + "/wd/output.txt"); fi != nil {
 		t.Error("file should have been deleted", fi)
 	}
@@ -159,25 +158,16 @@ func TestEndToEndNegativeNotify(t *testing.T) {
 		return
 	}
 
-	tc := NewTestCase()
+	tc := NewTestCase(t)
 	defer tc.Clean()
 
-	rpcConn := OpenSocketConnection(tc.socket, RPC_CHANNEL)
-	client := rpc.NewClient(rpcConn)
-
-	req := WorkRequest{
+	rep := tc.Run(WorkRequest{
 		Binary: "/bin/cat",
 		Argv:   []string{"/bin/cat", "output.txt"},
 		Env:    os.Environ(),
 		Dir:    tc.tmp + "/wd",
 		Debug:  true,
-	}
-
-	rep := WorkReply{}
-	err := client.Call("LocalMaster.Run", &req, &rep)
-	if err != nil {
-		t.Fatal("LocalMaster.Run: ", err)
-	}
+	})
 
 	if rep.Exit.ExitStatus() == 0 {
 		t.Fatal("expect exit status != 0")
@@ -194,19 +184,15 @@ func TestEndToEndNegativeNotify(t *testing.T) {
 		},
 	}
 	tc.master.mirrors.queueFiles(nil, updated)
-	req = WorkRequest{
+
+	rep = tc.Run(WorkRequest{
 		Binary: "/bin/cat",
 		Argv:   []string{"/bin/cat", "output.txt"},
 		Env:    os.Environ(),
 		Dir:    tc.tmp + "/wd",
 		Debug:  true,
-	}
+	})
 
-	rep = WorkReply{}
-	err = client.Call("LocalMaster.Run", &req, &rep)
-	if err != nil {
-		t.Fatal("LocalMaster.Run: ", err)
-	}
 	if rep.Exit.ExitStatus() != 0 {
 		t.Fatal("expect exit status == 0", rep.Exit.ExitStatus())
 	}
