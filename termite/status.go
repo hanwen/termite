@@ -3,19 +3,19 @@ package termite
 import (
 	"os"
 )
-	
+
 type MirrorStatusRequest struct {
+
 }
 
 type MirrorStatusResponse struct {
-	Root string
-	Granted int
-	Running []string
+	Root         string
+	Granted      int
+	Running      []string
 	ShuttingDown bool
 	WaitingTasks int
-	IdleFses int
+	IdleFses     int
 }
-
 
 func (me *Mirror) Status(req *MirrorStatusRequest, rep *MirrorStatusResponse) os.Error {
 	me.fuseFileSystemsMutex.Lock()
@@ -25,7 +25,7 @@ func (me *Mirror) Status(req *MirrorStatusRequest, rep *MirrorStatusResponse) os
 	rep.Granted = me.maxJobCount
 	rep.WaitingTasks = me.Waiting
 	rep.IdleFses = len(me.fuseFileSystems)
-	rep.ShuttingDown = me.shuttingDown 
+	rep.ShuttingDown = me.shuttingDown
 	for _, v := range me.workingFileSystems {
 		rep.Running = append(rep.Running, v)
 	}
@@ -44,10 +44,10 @@ type WorkerStatusResponse struct {
 func (me *WorkerDaemon) Status(req *WorkerStatusRequest, rep *WorkerStatusResponse) os.Error {
 	me.mirrorMapMutex.Lock()
 	defer me.mirrorMapMutex.Unlock()
-	
+
 	for _, mirror := range me.mirrorMap {
-		mRep := MirrorStatusResponse{} 
-		mReq := MirrorStatusRequest{} 
+		mRep := MirrorStatusResponse{}
+		mReq := MirrorStatusRequest{}
 		mirror.Status(&mReq, &mRep)
 
 		rep.MirrorStatus = append(rep.MirrorStatus, mRep)

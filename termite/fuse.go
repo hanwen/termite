@@ -136,7 +136,7 @@ func (me *WorkerFuseFs) update(attrs []FileAttr) {
 			// TODO - should have bulk interface?
 			dir, base := filepath.Split(path)
 			dir = filepath.Clean(dir)
-			
+
 			me.fsConnector.EntryNotify(dir, base)
 		}
 	}

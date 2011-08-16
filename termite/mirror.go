@@ -24,7 +24,7 @@ type Mirror struct {
 	maxJobCount          int
 	fuseFileSystemsMutex sync.Mutex
 	// TODO - rename to unused FS.
-	fuseFileSystems    []*WorkerFuseFs
+	fuseFileSystems []*WorkerFuseFs
 
 	// Map value is the command running.
 	workingFileSystems map[*WorkerFuseFs]string
@@ -185,7 +185,6 @@ func (me *Mirror) newWorkerTask(req *WorkRequest, rep *WorkReply) (*WorkerTask, 
 		fuseFs:      fuseFs,
 	}, nil
 }
-
 
 func (me *Mirror) FileContent(req *ContentRequest, rep *ContentResponse) os.Error {
 	return me.daemon.contentServer.FileContent(req, rep)

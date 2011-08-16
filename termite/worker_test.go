@@ -80,7 +80,7 @@ func (me *testCase) Clean() {
 func (me *testCase) Run(req WorkRequest) (rep WorkReply) {
 	rpcConn := OpenSocketConnection(me.socket, RPC_CHANNEL)
 	client := rpc.NewClient(rpcConn)
-	
+
 	err := client.Call("LocalMaster.Run", &req, &rep)
 	if err != nil {
 		me.tester.Fatal("LocalMaster.Run: ", err)
@@ -202,7 +202,6 @@ func TestEndToEndNegativeNotify(t *testing.T) {
 	}
 }
 
-
 func TestEndToEndMove(t *testing.T) {
 	if os.Geteuid() == 0 {
 		log.Println("This test should not run as root")
@@ -230,7 +229,7 @@ func TestEndToEndMove(t *testing.T) {
 	if rep.Exit.ExitStatus() != 0 {
 		t.Fatalf("mv should exit cleanly. Rep %v", rep)
 	}
-	
+
 	if fi, err := os.Lstat(tc.tmp + "/wd/q/b/c"); err != nil || !fi.IsDirectory() {
 		t.Errorf("dir should have been moved. Err %v, fi %v", err, fi)
 	}

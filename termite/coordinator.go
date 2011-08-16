@@ -39,7 +39,7 @@ type Coordinator struct {
 func NewCoordinator(secret []byte) *Coordinator {
 	return &Coordinator{
 		workers: make(map[string]*WorkerRegistration),
-		secret: secret,
+		secret:  secret,
 	}
 }
 
@@ -66,7 +66,6 @@ func (me *Coordinator) List(req *int, rep *Registered) os.Error {
 	}
 	return nil
 }
-
 
 // TODO - use secret.
 func reachable(addr string) bool {
