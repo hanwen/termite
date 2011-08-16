@@ -201,3 +201,37 @@ func TestEndToEndNegativeNotify(t *testing.T) {
 		t.Error("Mismatch", string(rep.Stdout), string(newContent))
 	}
 }
+
+
+func TestEndToEndMove(t *testing.T) {
+	if os.Geteuid() == 0 {
+		log.Println("This test should not run as root")
+		return
+	}
+
+	tc := NewTestCase(t)
+	defer tc.Clean()
+
+	rep := tc.Run(WorkRequest{
+		Binary: "/bin/mkdir",
+		Argv:   []string{"/bin/mkdir", "-p", "a/b/c"},
+		Env:    os.Environ(),
+		Dir:    tc.tmp + "/wd",
+	})
+	if rep.Exit.ExitStatus() != 0 {
+		t.Fatalf("mkdir should exit cleanly. Rep %v", rep)
+	}
+	rep = tc.Run(WorkRequest{
+		Binary: "/bin/mv",
+		Argv:   []string{"/bin/mv", "a", "q"},
+		Env:    os.Environ(),
+		Dir:    tc.tmp + "/wd",
+	})
+	if rep.Exit.ExitStatus() != 0 {
+		t.Fatalf("mv should exit cleanly. Rep %v", rep)
+	}
+	
+	if fi, err := os.Lstat(tc.tmp + "/wd/q/b/c"); err != nil || !fi.IsDirectory() {
+		t.Errorf("dir should have been moved. Err %v, fi %v", err, fi)
+	}
+}

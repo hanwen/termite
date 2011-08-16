@@ -352,7 +352,9 @@ func (me *Master) replayFileModifications(worker *rpc.Client, infos []FileAttr) 
 	// Must do deletes in reverse: children before parents.
 	for i, _ := range deletes {
 		d := deletes[len(deletes)-1-i]
-		if err := os.Remove(d); err != nil {
+		// TODO - should probably drop entries below d as well
+		// if d is a directory.
+		if err := os.RemoveAll(d); err != nil {
 			log.Fatal("delete replay: ", err)
 		}
 	}
