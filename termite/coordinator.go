@@ -119,11 +119,11 @@ func (me *Coordinator) rootHandler(w http.ResponseWriter, req *http.Request) {
 	defer me.mutex.Unlock()
 
 	fmt.Fprintf(w, "<html><head><title>Termite coordinator</title></head>")
-	fmt.Fprintf(w, "<body><h1>Termite coordinator</h1>")
-	defer fmt.Fprintf(w, "</body></html>")
+	fmt.Fprintf(w, "<body><h1>Termite coordinator</h1><ul>")
+	defer fmt.Fprintf(w, "</ul></body></html>")
 
 	for _, worker := range me.workers {
-		fmt.Fprintf(w, "<a href=\"worker?host=%s\">address <tt>%s</tt>, host <tt>%s</tt></a>",
+		fmt.Fprintf(w, "<li><a href=\"worker?host=%s\">address <tt>%s</tt>, host <tt>%s</tt></a>",
 			worker.Address, worker.Address, worker.Name)
 	}
 }
