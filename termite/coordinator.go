@@ -166,7 +166,7 @@ func (me *Coordinator) workerHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	fmt.Fprintf(w, "<p>Worker %s<p>Version %s", addr, status.Version)
+	fmt.Fprintf(w, "<p>Worker %s<p>Version %s<p>Jobs %d", addr, status.Version, status.MaxJobCount)
 	for _, mirrorStatus := range status.MirrorStatus {
 		me.mirrorStatusHtml(w, mirrorStatus)
 	}
