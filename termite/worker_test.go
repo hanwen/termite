@@ -38,7 +38,7 @@ func NewTestCase(t *testing.T) *testCase {
 
 	// TODO - pick unused port
 	me.coordinatorPort = int(rand.Int31n(60000) + 1024)
-	c := NewCoordinator()
+	c := NewCoordinator(me.secret)
 	rpc.Register(c)
 	rpc.HandleHTTP()
 	go c.PeriodicCheck()
@@ -142,10 +142,10 @@ func TestEndToEndBasic(t *testing.T) {
 	// Test keepalive.
 	time.Sleep(2e9)
 
-	statusReq := &StatusRequest{}
-	statusRep := &StatusReply{}
+	statusReq := &WorkerStatusRequest{}
+	statusRep := &WorkerStatusResponse{}
 	tc.worker.Status(statusReq, statusRep)
-	if statusRep.Processes != 0 {
+	if len(statusRep.MirrorStatus) > 0 {
 		t.Error("Processes still alive.")
 	}
 }
