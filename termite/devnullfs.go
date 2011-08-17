@@ -23,7 +23,7 @@ func (me *DevNullFs) GetAttr(name string) (*os.FileInfo, fuse.Status) {
 		return &fi, fuse.OK
 	}
 
-	return nil, fuse.ENOSYS
+	return nil, fuse.ENOENT
 }
 
 func (me *DevNullFs) OpenDir(name string) (stream chan fuse.DirEntry, status fuse.Status) {
