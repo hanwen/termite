@@ -90,10 +90,12 @@ func (me *WorkerTask) Run() os.Error {
 	wg.Add(2)
 	go func() {
 		io.Copy(stdout, rStdout)
+		rStdout.Close()
 		wg.Done()
 	}()
 	go func() {
 		io.Copy(stderr, rStderr)
+		rStderr.Close()
 		wg.Done()
 	}()
 
