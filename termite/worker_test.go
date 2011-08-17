@@ -72,7 +72,7 @@ func NewTestCase(t *testing.T) *testCase {
 
 func (me *testCase) Clean() {
 	me.master.mirrors.dropConnections()
-	// TODO - should have explicit worker shutdown routine. 
+	// TODO - should have explicit worker shutdown routine.
 	time.Sleep(0.1e9)
 	os.RemoveAll(me.tmp)
 }
@@ -255,6 +255,10 @@ func TestEndToEndSymlink(t *testing.T) {
 		Env:    os.Environ(),
 		Dir:    tc.tmp + "/wd",
 	})
+
+	if fi, err := os.Lstat(tc.tmp + "/wd/file.txt"); err != nil || !fi.IsRegular() || fi.Size != 0 {
+		t.Fatalf("wd/file.txt was not created. Err: %v, fi: %v", err, fi)
+	}
 	if rep.Exit.ExitStatus() != 0 {
 		t.Fatalf("touch should exit cleanly. Rep %v", rep)
 	}
