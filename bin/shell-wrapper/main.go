@@ -6,6 +6,7 @@ import (
 	"github.com/hanwen/termite/termite"
 	"log"
 	"os"
+	"path/filepath"
 	"rpc"
 	"strings"
 )
@@ -35,6 +36,27 @@ func Refresh() {
 	}
 }
 
+func TryRunLocally(command string, topdir string) *os.Waitmsg {
+	decider := termite.LocalDecider(topdir)
+	if len(os.Args) == 3 && os.Args[0] == _SHELL && os.Args[1] == "-c" &&
+		decider.ShouldRunLocally(command) {
+		proc, err := os.StartProcess(_SHELL, os.Args, &os.ProcAttr{
+		Files: []*os.File{os.Stdin, os.Stdout, os.Stderr},
+		})
+		if err != nil {
+			log.Fatalf("os.StartProcess() for %s: %v", command, err)
+		}
+		msg, err := proc.Wait(0)
+		if err != nil {
+			log.Fatalf("proc.Wait() for %s: %v", command, err)
+		}
+		return msg
+	}
+
+	return nil
+}
+
+
 func main() {
 	command := flag.String("c", "", "command to run.")
 	refresh := flag.Bool("refresh", false, "refresh master file cache.")
@@ -51,6 +73,13 @@ func main() {
 	TryRunDirect(*command)
 
 	socket := termite.FindSocket()
+	topDir, _ := filepath.Split(socket)
+
+	localWaitMsg := TryRunLocally(*command, topDir)
+	if localWaitMsg != nil {
+		Refresh()
+	}
+
 	wd, err := os.Getwd()
 	if err != nil {
 		log.Fatal("Getwd", err)
@@ -66,6 +95,7 @@ func main() {
 		Env:    os.Environ(),
 		Dir:    wd,
 		Debug:  os.Getenv("TERMITE_DEBUG") != "",
+		RanLocally: localWaitMsg != nil,
 	}
 	client := rpc.NewClient(conn)
 
@@ -75,15 +105,12 @@ func main() {
 		log.Fatal("LocalMaster.Run: ", err)
 	}
 
-	if rep.RunLocally {
-		if err := os.Exec(_SHELL, os.Args, os.Environ()); err != nil {
-			log.Fatal("exec", err)
-		}
-	}
-
 	os.Stdout.Write([]byte(rep.Stdout))
 	os.Stderr.Write([]byte(rep.Stderr))
 
 	// TODO -something with signals.
-	os.Exit(rep.Exit.ExitStatus())
+	if localWaitMsg == nil {
+		localWaitMsg = rep.Exit
+	}
+	os.Exit(localWaitMsg.ExitStatus())
 }

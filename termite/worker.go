@@ -19,7 +19,6 @@ type WorkReply struct {
 	Files      []FileAttr
 	Stderr     string
 	Stdout     string
-	RunLocally bool
 }
 
 type WorkRequest struct {
@@ -33,6 +32,7 @@ type WorkRequest struct {
 	Argv         []string
 	Env          []string
 	Dir          string
+	RanLocally bool
 }
 
 func (me *WorkRequest) Summary() string {

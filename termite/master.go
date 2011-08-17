@@ -116,8 +116,6 @@ func (me *Master) Start(sock string) {
 	me.writableRoot, _ = filepath.Split(me.writableRoot)
 	me.writableRoot = filepath.Clean(me.writableRoot)
 
-	me.setLocalDecider()
-
 	log.Println("accepting connections on", absSock)
 	for {
 		conn, err := listener.Accept()
@@ -259,11 +257,6 @@ func (me *Master) runOnce(req *WorkRequest, rep *WorkReply) os.Error {
 }
 
 func (me *Master) run(req *WorkRequest, rep *WorkReply) (err os.Error) {
-	if me.shouldRunLocally(req) {
-		log.Println("Should run locally:", req.Argv)
-		rep.RunLocally = true
-		return nil
-	}
 	err = me.runOnce(req, rep)
 	for i := 0; i < me.retryCount && err != nil; i++ {
 		log.Println("Retrying; last error:", err)
@@ -378,6 +371,11 @@ type LocalMaster struct {
 }
 
 func (me *LocalMaster) Run(req *WorkRequest, rep *WorkReply) os.Error {
+	if req.RanLocally {
+		log.Println("Ran command locally:", req.Argv)
+		return nil
+	}
+
 	return me.master.run(req, rep)
 }
 
