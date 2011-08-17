@@ -30,7 +30,10 @@ func newLocalDecider(input io.Reader) *localDecider {
 		if err == os.EOF {
 			break
 		}
-		runRemote := (len(line) > 0 && line[0] == '-')
+		if len(line) == 0 {
+			continue
+		}
+		runRemote := line[0] == '-'
 		if runRemote {
 			line = line[1:]
 		}
@@ -63,7 +66,6 @@ func (me *localDecider) shouldRunLocally(command string) bool {
 
 const defaultLocal = (".*termite-make\n" +
 	".*/cmake\n" +
-	".*\\./config.status\n" +
 	"-.*\n")
 
 func (me *Master) setLocalDecider() {

@@ -1,0 +1,7 @@
+.*termite-make
+.*\./config.status
+.*/configure[ ]
+-.*
+
+
+
