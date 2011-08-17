@@ -63,6 +63,7 @@ func (me *localDecider) shouldRunLocally(command string) bool {
 
 const defaultLocal = (".*termite-make\n" +
 	".*/cmake\n" +
+	".*\\./config.status\n" +
 	"-.*\n")
 
 func (me *Master) setLocalDecider() {
