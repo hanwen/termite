@@ -1,0 +1,25 @@
+commit 722beb976da61fffd48546a3a6b2dca994e96bbd
+Author: Han-Wen Nienhuys <hanwen@google.com>
+Date:   Wed Aug 17 00:01:08 2011 -0300
+
+    Introduce $(MAKE_SHELL) for invoking shell commands.
+    
+    This allows for more flexible command distribution.
+
+diff --git a/job.c b/job.c
+index aacfb84..c6cd1f4 100644
+--- a/job.c
++++ b/job.c
+@@ -3138,7 +3138,11 @@ construct_command_argv (char *line, char **restp, struct file *file,
+     int save = warn_undefined_variables_flag;
+     warn_undefined_variables_flag = 0;
+ 
+-    shell = allocated_variable_expand_for_file ("$(SHELL)", file);
++    shell = allocated_variable_expand_for_file ("$(MAKE_SHELL)", file);
++    if (*shell == '\0') {
++      free(shell);
++      shell = allocated_variable_expand_for_file ("$(SHELL)", file);
++    }
+ #ifdef WINDOWS32
+     /*
+      * Convert to forward slashes so that construct_command_argv_internal()
