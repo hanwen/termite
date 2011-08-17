@@ -1,7 +1,21 @@
-.*termite-make
-.*\./config.status
-.*/configure[ ]
--.*
+// -*-js-*-
+// For some reason all of the configure scripts are borken, saying
+// cat: -: no such file.
+// so run them locally.
+
+[{
+    "Regexp": ".*termite-make",
+    "Local": true
+}, {
+    "Regexp": ".*./config.status",
+    "Local": true
+}, {
+    "Regexp": ".*/configure[ ]",
+    "Local": true
+}, {
+    "Regexp": ".*",
+    "Local": false
+}]
 
 
 

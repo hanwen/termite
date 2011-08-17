@@ -6,8 +6,10 @@ import (
 )
 
 func TestLocalDecider(t *testing.T) {
-	str := "-.*foo\n" + "bar\n"
-
+	str := ("# ignored\n" +
+		"// ignored too\n" +
+		"[{\"Regexp\": \".*foo\", \"Local\": false},\n " +
+		"{\"Regexp\": \".*bar\", \"Local\": true}]")
 	buf := bytes.NewBufferString(str)
 	l := newLocalDecider(buf)
 

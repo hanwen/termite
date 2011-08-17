@@ -1,72 +1,63 @@
 package termite
 
 import (
-	"bytes"
 	"bufio"
 	"io"
+	"json"
 	"log"
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 )
 
 type localDeciderRule struct {
-	*regexp.Regexp
-	runLocal bool
-	refresh  bool // TODO - implement this
+	Regexp string
+	Local bool
 }
 
 type localDecider struct {
 	rules []localDeciderRule
 }
 
-// TODO - use json to encode this instead.
 func newLocalDecider(input io.Reader) *localDecider {
-	decider := localDecider{}
 	reader := bufio.NewReader(input)
-
+	out := []byte{}
 	for {
 		line, _, err := reader.ReadLine()
-		if err == os.EOF {
+		if err != nil {
 			break
 		}
-		if len(line) == 0 {
+		if len(line) == 0 || line[0] == '#' || strings.HasPrefix(string(line), "//") {
 			continue
 		}
-		runRemote := line[0] == '-'
-		if runRemote {
-			line = line[1:]
-		}
-
-		re, err := regexp.Compile(string(line))
-		if err != nil {
-			log.Printf("error in regexp.Compile for %q:", string(line), err)
-			return nil
-		}
-
-		r := localDeciderRule{
-			Regexp:   re,
-			runLocal: !runRemote,
-		}
-
-		decider.rules = append(decider.rules, r)
+		out = append(out, line...)
+		out = append(out, '\n')
+	}
+	
+	decider := localDecider{}
+	err := json.Unmarshal([]byte(out), &decider.rules)
+	if err != nil {
+		log.Println(err)
+		return nil
 	}
 	return &decider
 }
 
 func (me *localDecider) shouldRunLocally(command string) bool {
 	for _, r := range me.rules {
-		if r.Regexp.MatchString(command) {
-			return r.runLocal
+		m, err := regexp.MatchString(r.Regexp, command)
+		if err != nil {
+			log.Println("regexp error:", err)
+			continue
+		}
+		if m {
+			return r.Local
 		}
 	}
 
 	return false
 }
-
-const defaultLocal = (".*termite-make\n" +
-	".*/cmake\n" +
-	"-.*\n")
 
 func (me *Master) setLocalDecider() {
 	localRc := filepath.Join(me.writableRoot, ".termite-localrc")
@@ -78,7 +69,11 @@ func (me *Master) setLocalDecider() {
 	}
 
 	if me.localDecider == nil {
-		me.localDecider = newLocalDecider(bytes.NewBufferString(defaultLocal))
+		rules := []localDeciderRule{
+			localDeciderRule{Regexp: ".*termite-make", Local: true},
+			localDeciderRule{Regexp: ".*", Local: false},
+		}
+		me.localDecider = &localDecider{rules}
 	}
 }
 

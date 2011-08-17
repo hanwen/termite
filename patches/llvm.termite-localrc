@@ -1,0 +1,14 @@
+// -*-js-*-
+// LLVM uses cmake for all kinds of things.
+
+[{
+    "Regexp": ".*termite-make",
+    "Local": true
+// TODO - llvm linking also uses cmake, and the link should run remotely.
+}, {
+    "Regexp": ".*/cmake",
+    "Local": true
+}, {
+    "Regexp": ".*",
+    "Local": false
+}]
