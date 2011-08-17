@@ -234,3 +234,41 @@ func TestEndToEndMove(t *testing.T) {
 		t.Errorf("dir should have been moved. Err %v, fi %v", err, fi)
 	}
 }
+
+func TestEndToEndSymlink(t *testing.T) {
+	if os.Geteuid() == 0 {
+		log.Println("This test should not run as root")
+		return
+	}
+
+	tc := NewTestCase(t)
+	defer tc.Clean()
+
+	err := os.Symlink("oldlink", tc.tmp + "/wd/symlink")
+	if err != nil {
+		t.Fatal("oldlink symlink", err)
+	}
+
+	rep := tc.Run(WorkRequest{
+		Binary: "/bin/touch",
+		Argv:   []string{"/bin/touch", "file.txt"},
+		Env:    os.Environ(),
+		Dir:    tc.tmp + "/wd",
+	})
+	if rep.Exit.ExitStatus() != 0 {
+		t.Fatalf("touch should exit cleanly. Rep %v", rep)
+	}
+	rep = tc.Run(WorkRequest{
+		Binary: "/bin/ln",
+		Argv:   []string{"/bin/ln", "-sf", "foo", "symlink"},
+		Env:    os.Environ(),
+		Dir:    tc.tmp + "/wd",
+	})
+	if rep.Exit.ExitStatus() != 0 {
+		t.Fatalf("ln -s should exit cleanly. Rep %v", rep)
+	}
+
+	if fi, err := os.Lstat(tc.tmp + "/wd/symlink"); err != nil || !fi.IsSymlink() {
+		t.Errorf("should have symlink. Err %v, fi %v", err, fi)
+	}
+}

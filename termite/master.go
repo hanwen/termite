@@ -300,6 +300,7 @@ func (me *Master) replayFileModifications(worker *rpc.Client, infos []FileAttr) 
 	for _, name := range names {
 		info := entries[name]
 		var err os.Error
+
 		// TODO - deletion test.
 		logStr := ""
 		if info.FileInfo != nil && info.FileInfo.IsDirectory() {
@@ -333,6 +334,7 @@ func (me *Master) replayFileModifications(worker *rpc.Client, infos []FileAttr) 
 			}
 		}
 		if info.Link != "" {
+			os.Remove(info.Path) // ignore error.
 			err = os.Symlink(info.Link, info.Path)
 			logStr += "Symlink,"
 		}
