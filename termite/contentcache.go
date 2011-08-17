@@ -135,6 +135,8 @@ func (me *ContentCache) DestructiveSavePath(path string) (md5 []byte, content []
 	if err != nil {
 		return nil, nil
 	}
+	defer f.Close()
+	
 	h := crypto.MD5.New()
 	content, err = SavingCopy(h, f, _BUFSIZE)
 	if err != nil {
