@@ -12,8 +12,9 @@ import (
 )
 
 type localDeciderRule struct {
-	Regexp string
-	Local bool
+	Regexp  string
+	Local   bool
+	LocalRecurse bool
 }
 
 type localDecider struct {
@@ -44,7 +45,7 @@ func newLocalDecider(input io.Reader) *localDecider {
 	return &decider
 }
 
-func (me *localDecider) ShouldRunLocally(command string) bool {
+func (me *localDecider) ShouldRunLocally(command string) (local bool, recurse bool) {
 	for _, r := range me.rules {
 		m, err := regexp.MatchString(r.Regexp, command)
 		if err != nil {
@@ -52,11 +53,11 @@ func (me *localDecider) ShouldRunLocally(command string) bool {
 			continue
 		}
 		if m {
-			return r.Local
+			return r.Local, r.LocalRecurse
 		}
 	}
 
-	return false
+	return false, false
 }
 
 func LocalDecider(dir string) *localDecider {
