@@ -6,4 +6,4 @@ then
   export TERMITE_CACHE_REFRESHED=yes
 fi
 
-exec -a termite-make /usr/bin/make SHELL=shell-wrapper "$@"
+exec -a termite-make make MAKE_SHELL=shell-wrapper "$@"
