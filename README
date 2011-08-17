@@ -18,7 +18,12 @@ Use the following recipe
   git clone git://github.com/hanwen/termite.git
   cd go-fuse && sh all.bash
   cd termite && sh all.bash
-
+  
+  wget http://ftp.gnu.org/gnu/make/make-3.82.tar.bz2
+  tar xjf make-3.28.tar.bz2
+  cd make-3.82 && patch -p1 < ../termite/patches/make-*patch
+  ./configure && make && make install	
+  
 I do not goinstall go-fuse, since I develop go-fuse in tandem with
 termite, but with some tweaks to the Makefile it should work.
 
@@ -129,7 +134,6 @@ TODO
 
 * Features
   - Collect worker log information and expose on HTTP.
-  - Do local invocations through master too.
   - collect data on cpu used/time used in worker.
   
 * Speed
@@ -143,4 +147,5 @@ TODO
     so never need to RPC for negative getattr. 
   - Worker
     * implement in-memory FileSystem for backing store
+
 
