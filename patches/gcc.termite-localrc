@@ -5,17 +5,17 @@
 
 [{
     "Regexp": ".*termite-make",
-    "Local": true
+    "Local": true,
+    "LocalRecurse": true
 }, {
     "Regexp": ".*./config.status",
-    "Local": true
+    "Local": true,
+    "LocalRecurse": false
 }, {
     "Regexp": ".*/configure[ ]",
-    "Local": true
+    "Local": true,
+    "LocalRecurse": false
 }, {
     "Regexp": ".*",
     "Local": false
 }]
-
-
-

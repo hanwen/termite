@@ -38,9 +38,28 @@ func Refresh() {
 
 func TryRunLocally(command string, topdir string) *os.Waitmsg {
 	decider := termite.LocalDecider(topdir)
-	if len(os.Args) == 3 && os.Args[0] == _SHELL && os.Args[1] == "-c" &&
-		decider.ShouldRunLocally(command) {
+	if !(len(os.Args) == 3 && os.Args[0] == _SHELL && os.Args[1] == "-c") {
+		return nil
+	}
+
+	local, recurse := decider.ShouldRunLocally(command)
+	if local {
+		env := []string{}
+		for _, v := range os.Environ() {
+			comps := strings.SplitN(v, "=", 2)
+			if recurse {
+				// nothing.
+			} else if comps[1] == "termite-make" {
+				// TODO - more generic.
+				v = fmt.Sprintf("%s=%s", comps[0], "make")
+			} else if comps[0] == "MAKE_SHELL" {
+				v = fmt.Sprintf("%s=%s", comps[0], "/bin/sh")
+			}
+			env = append(env, v)
+		}
+
 		proc, err := os.StartProcess(_SHELL, os.Args, &os.ProcAttr{
+		Env: env,
 		Files: []*os.File{os.Stdin, os.Stdout, os.Stderr},
 		})
 		if err != nil {
