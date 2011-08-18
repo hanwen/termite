@@ -22,6 +22,7 @@ func main() {
 	secretFile := flag.String("secret", "secret.txt", "file containing password.")
 	srcRoot := flag.String("sourcedir", "", "root of corresponding source directory")
 	jobs := flag.Int("jobs", 1, "number of jobs to run")
+	port := flag.Int("port", 1237, "http status port")
 
 	flag.Parse()
 	secret, err := ioutil.ReadFile(*secretFile)
@@ -35,5 +36,6 @@ func main() {
 	master := termite.NewMaster(
 		c, *coordinator, workerList, secret, excludeList, *jobs)
 	master.SetSrcRoot(*srcRoot)
+	go master.ServeHTTP(*port)
 	master.Start(*socket)
 }
