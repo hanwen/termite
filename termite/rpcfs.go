@@ -123,6 +123,15 @@ func (me *RpcFs) OpenDir(name string) (chan fuse.DirEntry, fuse.Status) {
 	return c, fuse.OK
 }
 
+type rpcFsFile struct {
+	fuse.LoopbackFile
+	os.FileInfo
+}
+
+func (me *rpcFsFile) GetAttr()  (*os.FileInfo, fuse.Status) {
+	return &me.FileInfo, fuse.OK
+}
+
 func (me *RpcFs) Open(name string, flags uint32) (fuse.File, fuse.Status) {
 	if flags&fuse.O_ANYWRITE != 0 {
 		return nil, fuse.EPERM
@@ -151,7 +160,10 @@ func (me *RpcFs) Open(name string, flags uint32) (fuse.File, fuse.Status) {
 	}
 
 	return &fuse.WithFlags{
-		&fuse.LoopbackFile{File: f},
+		&rpcFsFile{
+			fuse.LoopbackFile{File: f},
+			*a.FileInfo,
+		},
 		fuse.FOPEN_KEEP_CACHE,
 	}, fuse.OK
 }
