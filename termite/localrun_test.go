@@ -13,11 +13,13 @@ func TestLocalDecider(t *testing.T) {
 	buf := bytes.NewBufferString(str)
 	l := newLocalDecider(buf)
 
-	if l.shouldRunLocally("xfoo") != false {
+	local, _ := l.ShouldRunLocally("xfoo")
+	if local != false {
 		t.Error("-xfoo: expect false")
 	}
 	buf = bytes.NewBufferString(str)
-	if l.shouldRunLocally("bar") != true {
+	local, _ = l.ShouldRunLocally("bar")
+	if local != true {
 		t.Error("bar: expect true")
 	}
 }

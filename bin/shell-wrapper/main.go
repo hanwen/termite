@@ -37,7 +37,7 @@ func Refresh() {
 }
 
 func TryRunLocally(command string, topdir string) *os.Waitmsg {
-	decider := termite.LocalDecider(topdir)
+	decider := termite.NewLocalDecider(topdir)
 	if !(len(os.Args) == 3 && os.Args[0] == _SHELL && os.Args[1] == "-c") {
 		return nil
 	}

@@ -60,7 +60,7 @@ func (me *localDecider) ShouldRunLocally(command string) (local bool, recurse bo
 	return false, false
 }
 
-func LocalDecider(dir string) *localDecider {
+func NewLocalDecider(dir string) *localDecider {
 	localRc := filepath.Join(dir, ".termite-localrc")
 
 	f, _ := os.Open(localRc)
