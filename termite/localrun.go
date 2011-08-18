@@ -14,7 +14,7 @@ import (
 type localDeciderRule struct {
 	Regexp  string
 	Local   bool
-	LocalRecurse bool
+	Recurse bool
 }
 
 type localDecider struct {
@@ -53,7 +53,7 @@ func (me *localDecider) ShouldRunLocally(command string) (local bool, recurse bo
 			continue
 		}
 		if m {
-			return r.Local, r.LocalRecurse
+			return r.Local, r.Recurse
 		}
 	}
 
@@ -73,7 +73,7 @@ func NewLocalDecider(dir string) *localDecider {
 		localDeciderRule{
 			Regexp: ".*termite-make",
 			Local: true,
-			LocalRecurse: true,
+			Recurse: true,
 		},
 		localDeciderRule{Regexp: ".*", Local: false},
 	}

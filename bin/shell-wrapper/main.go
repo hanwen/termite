@@ -36,6 +36,21 @@ func Refresh() {
 	}
 }
 
+func cleanEnv(input []string) []string {
+	env := []string{}
+	for _, v := range input {
+		comps := strings.SplitN(v, "=", 2)
+		if comps[1] == "termite-make" {
+			// TODO - more generic.
+			v = fmt.Sprintf("%s=%s", comps[0], "make")
+		} else if comps[0] == "MAKE_SHELL" {
+			continue
+		}
+		env = append(env, v)
+	}
+	return env
+}
+
 func TryRunLocally(command string, topdir string) *os.Waitmsg {
 	decider := termite.NewLocalDecider(topdir)
 	if !(len(os.Args) == 3 && os.Args[0] == _SHELL && os.Args[1] == "-c") {
@@ -44,18 +59,9 @@ func TryRunLocally(command string, topdir string) *os.Waitmsg {
 
 	local, recurse := decider.ShouldRunLocally(command)
 	if local {
-		env := []string{}
-		for _, v := range os.Environ() {
-			comps := strings.SplitN(v, "=", 2)
-			if recurse {
-				// nothing.
-			} else if comps[1] == "termite-make" {
-				// TODO - more generic.
-				v = fmt.Sprintf("%s=%s", comps[0], "make")
-			} else if comps[0] == "MAKE_SHELL" {
-				v = fmt.Sprintf("%s=%s", comps[0], "/bin/sh")
-			}
-			env = append(env, v)
+		env := os.Environ()
+		if !recurse {
+			env = cleanEnv(env)
 		}
 
 		proc, err := os.StartProcess(_SHELL, os.Args, &os.ProcAttr{
@@ -111,7 +117,7 @@ func main() {
 	req := termite.WorkRequest{
 		Binary: _SHELL,
 		Argv:   os.Args,
-		Env:    os.Environ(),
+		Env:    cleanEnv(os.Environ()),
 		Dir:    wd,
 		Debug:  os.Getenv("TERMITE_DEBUG") != "",
 		RanLocally: localWaitMsg != nil,
