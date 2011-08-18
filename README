@@ -55,7 +55,8 @@ The default is
 
   [{
     "Regexp": ".*termite-make",
-    "Local": true
+    "Local": true,
+    "Recurse": true
   }, {
     "Regexp": ".*",
     "Local": false
@@ -140,6 +141,11 @@ TODO
 
 * Features
   - Collect worker log information and expose on HTTP.
+  - make attr cache refresh configurable.
+
+* Data collection:
+  - compute average parallelism.
+  - number of jobs scheduled
   - collect data on cpu used/time used in worker.
   
 * Speed
