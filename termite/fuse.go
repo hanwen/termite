@@ -129,16 +129,7 @@ func (me *WorkerFuseFs) update(attrs []FileAttr) {
 		path := strings.TrimLeft(attr.Path, "/")
 		paths = append(paths, path)
 
-		// We only invalidate files.  This is a kludge - we
-		// should skip invalidations on dirs that we know that
-		// they held files.
-		if attr.FileInfo != nil && !attr.FileInfo.IsDirectory() {
-			// TODO - should have bulk interface?
-			dir, base := filepath.Split(path)
-			dir = filepath.Clean(dir)
-
-			me.fsConnector.EntryNotify(dir, base)
-		}
+		me.fsConnector.Notify(path)
 	}
 	me.unionFs.DropBranchCache(paths)
 	me.unionFs.DropDeletionCache()
