@@ -141,7 +141,6 @@ TODO
 
 * Features
   - Collect worker log information and expose on HTTP.
-  - make attr cache refresh configurable.
 
 * Data collection:
   - compute average parallelism.
@@ -149,6 +148,8 @@ TODO
   - collect data on cpu used/time used in worker.
   
 * Speed
+  - Worker:
+    * Do full updates for OpenDir .
   - Master:
     * add in-memory cache for file contents.
     * worker <-> worker file content fetching
@@ -160,4 +161,9 @@ TODO
   - Worker
     * implement in-memory FileSystem for backing store
 
+
+SUCCESSFUL COMPILES
+
+* Make 3.82. (1.6x slower, T60 2-core)
+* LLVM 2.9 (6 minutes, Amazon EC2 64-bit)
 
