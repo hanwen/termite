@@ -7,6 +7,7 @@
 //  mkdir gcc-build
 //  cd gcc-build
 //  ../gcc/configure
+//  ln -s $TERMITE/patches/gcc.termite-localrc .termite-localrc
 //  master -jobs N -secret secret.txt -sourcedir ../gcc >& master.log &
 //  termite-make -j N
 //
