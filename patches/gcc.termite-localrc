@@ -1,7 +1,16 @@
 // -*-js-*-
-// For some reason all of the configure scripts are borken, saying
-// cat: -: no such file.
-// so run them locally.
+//
+// To compile GCC with termite, do as follows
+//
+// (start termite coordinator, termite worker)
+//
+//  mkdir gcc-build
+//  cd gcc-build
+//  ../gcc/configure
+//  master -jobs N -secret secret.txt -sourcedir ../gcc >& master.log &
+//  termite-make -j N
+//
+// This compile does not finish successfully yet.
 
 [{
     "Regexp": ".*termite-make",
