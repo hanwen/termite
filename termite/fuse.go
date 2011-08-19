@@ -129,7 +129,17 @@ func (me *WorkerFuseFs) update(attrs []FileAttr) {
 		path := strings.TrimLeft(attr.Path, "/")
 		paths = append(paths, path)
 
-		me.fsConnector.Notify(path)
+		if attr.Status.Ok() {
+			me.fsConnector.Notify(path)
+		} else {
+			// Even if GetAttr() returns ENOENT, FUSE will
+			// happily try to Open() the file afterwards.
+			// So, issue entry notify for deletions rather
+			// than inode notify.
+			dir, base := filepath.Split(path)
+			dir = filepath.Clean(dir)
+			me.fsConnector.EntryNotify(dir, base)
+		}
 	}
 	me.unionFs.DropBranchCache(paths)
 	me.unionFs.DropDeletionCache()
