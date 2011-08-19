@@ -4,11 +4,13 @@
 [{
     "Regexp": ".*termite-make",
     "Local": true,
-    "Recurse": true
+    "Recurse": true,
+    "SkipRefresh": true
 // TODO - llvm linking also uses cmake, and the link should run remotely.
 }, {
     "Regexp": ".*/cmake",
     "Local": true
+    "SkipRefresh": true
 }, {
     "Regexp": ".*",
     "Local": false

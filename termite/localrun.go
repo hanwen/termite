@@ -11,14 +11,15 @@ import (
 	"strings"
 )
 
-type localDeciderRule struct {
+type LocalRule struct {
 	Regexp  string
 	Local   bool
 	Recurse bool
+	SkipRefresh bool
 }
 
 type localDecider struct {
-	rules []localDeciderRule
+	rules []LocalRule
 }
 
 func newLocalDecider(input io.Reader) *localDecider {
@@ -45,7 +46,7 @@ func newLocalDecider(input io.Reader) *localDecider {
 	return &decider
 }
 
-func (me *localDecider) ShouldRunLocally(command string) (local bool, recurse bool) {
+func (me *localDecider) ShouldRunLocally(command string) LocalRule {
 	for _, r := range me.rules {
 		m, err := regexp.MatchString(r.Regexp, command)
 		if err != nil {
@@ -53,11 +54,11 @@ func (me *localDecider) ShouldRunLocally(command string) (local bool, recurse bo
 			continue
 		}
 		if m {
-			return r.Local, r.Recurse
+			return r
 		}
 	}
 
-	return false, false
+	return LocalRule{}
 }
 
 func NewLocalDecider(dir string) *localDecider {
@@ -69,13 +70,14 @@ func NewLocalDecider(dir string) *localDecider {
 		return newLocalDecider(f)
 	}
 
-	rules := []localDeciderRule{
-		localDeciderRule{
+	rules := []LocalRule{
+		LocalRule{
 			Regexp: ".*termite-make",
 			Local: true,
 			Recurse: true,
+			SkipRefresh: true,
 		},
-		localDeciderRule{Regexp: ".*", Local: false},
+		LocalRule{Regexp: ".*", Local: false},
 	}
 	return &localDecider{rules}
 }

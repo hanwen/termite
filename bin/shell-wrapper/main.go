@@ -51,16 +51,16 @@ func cleanEnv(input []string) []string {
 	return env
 }
 
-func TryRunLocally(command string, topdir string) *os.Waitmsg {
+func TryRunLocally(command string, topdir string) (exit *os.Waitmsg, rule termite.LocalRule) {
 	decider := termite.NewLocalDecider(topdir)
 	if !(len(os.Args) == 3 && os.Args[0] == _SHELL && os.Args[1] == "-c") {
-		return nil
+		return
 	}
 
-	local, recurse := decider.ShouldRunLocally(command)
-	if local {
+	rule = decider.ShouldRunLocally(command)
+	if rule.Local {
 		env := os.Environ()
-		if !recurse {
+		if !rule.Recurse {
 			env = cleanEnv(env)
 		}
 
@@ -75,10 +75,10 @@ func TryRunLocally(command string, topdir string) *os.Waitmsg {
 		if err != nil {
 			log.Fatalf("proc.Wait() for %s: %v", command, err)
 		}
-		return msg
+		return msg, rule
 	}
 
-	return nil
+	return
 }
 
 
@@ -100,8 +100,8 @@ func main() {
 	socket := termite.FindSocket()
 	topDir, _ := filepath.Split(socket)
 
-	localWaitMsg := TryRunLocally(*command, topDir)
-	if localWaitMsg != nil {
+	localWaitMsg, localRule := TryRunLocally(*command, topDir)
+	if localWaitMsg != nil && !localRule.SkipRefresh {
 		Refresh()
 	}
 
