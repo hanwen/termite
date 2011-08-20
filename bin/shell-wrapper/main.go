@@ -15,11 +15,22 @@ const _SHELL = "/bin/sh"
 
 func TryRunDirect(cmd string) {
 	parsed := termite.ParseCommand(cmd)
-	if len(parsed) > 0 && parsed[0] == "echo" {
+	if len(parsed) == 0 {
+		return
+	}
+	
+	if parsed[0] == "echo" {
 		fmt.Println(strings.Join(parsed[1:], " "))
 		os.Exit(0)
 	}
-	// TODO mkdir, rm, others?
+	if parsed[0] == "true" {
+		os.Exit(0)
+	}
+	if parsed[0] == "false" {
+		os.Exit(1)
+	}
+	
+	// TODO mkdir, rm, expr, others?
 }
 
 func Refresh() {
