@@ -1,11 +1,8 @@
 package termite
 
-// TODO - this list of imports is scary; split up?
-
 import (
 	"bytes"
 	"exec"
-	"fmt"
 	"github.com/hanwen/go-fuse/fuse"
 	"io/ioutil"
 	"log"
@@ -14,6 +11,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"strings"
+	"syscall"
 )
 
 type WorkerTask struct {
@@ -31,34 +29,32 @@ func (me *WorkerTask) Run() os.Error {
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
 
-	args := []string{}
-	binary := ""
-	dir := ""
+	cmd := exec.Command(me.WorkRequest.Binary,
+		me.WorkRequest.Argv[1:]...)
+	cmd.Args[0] = me.WorkRequest.Argv[0]
 	if os.Geteuid() == 0 {
 		nobody, err := user.Lookup("nobody")
 		if err != nil {
 			return err
 		}
-		// TODO - use SysProcAttr.Credential/Chroot instead.
-		binary = me.mirror.daemon.ChrootBinary
-		args = append(args, binary, "-dir", me.WorkRequest.Dir,
-			"-uid", fmt.Sprintf("%d", nobody.Uid), "-gid", fmt.Sprintf("%d", nobody.Gid),
-			"-binary", me.WorkRequest.Binary,
-			me.fuseFs.mount)
-		args = append(args, me.WorkRequest.Argv...)
+
+		attr:= &syscall.SysProcAttr{}
+		attr.Credential = &syscall.Credential{
+			Uid: uint32(nobody.Uid),
+			Gid: uint32(nobody.Gid),
+		}
+		attr.Chroot = me.fuseFs.mount
+		
+		cmd.SysProcAttr = attr
+		cmd.Dir = me.WorkRequest.Dir
 	} else {
-		args = me.WorkRequest.Argv
-		binary = me.WorkRequest.Argv[0]
-		dir = filepath.Join(me.fuseFs.mount, me.WorkRequest.Dir)
-		log.Println("running in", dir)
+		cmd.Path = filepath.Join(me.fuseFs.mount, me.WorkRequest.Binary)
+		cmd.Dir = filepath.Join(me.fuseFs.mount, me.WorkRequest.Dir)
 	}
 
-	cmd := exec.Command(args[0], args[1:]...)
-	cmd.Path = binary
 	cmd.Env = me.WorkRequest.Env
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
-	cmd.Dir = dir
 	if me.stdinConn != nil {
 		cmd.Stdin = me.stdinConn
 	}
