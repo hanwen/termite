@@ -261,7 +261,7 @@ func TestEndToEndStdout(t *testing.T) {
 		shcmd[i] = 'a'
 	}
 
-	shcmdStr := "echo " + string(shcmd)  + " | cat"
+	shcmdStr := "echo " + string(shcmd)
 	rep := tc.Run(WorkRequest{
 		Binary: "/bin/sh",
 		Argv:   []string{"/bin/sh", "-c", shcmdStr},
