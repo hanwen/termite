@@ -242,6 +242,38 @@ func TestEndToEndMove(t *testing.T) {
 	}
 }
 
+func TestEndToEndStdout(t *testing.T) {
+	if os.Geteuid() == 0 {
+		log.Println("This test should not run as root")
+		return
+	}
+
+	tc := NewTestCase(t)
+	defer tc.Clean()
+
+	err := os.Symlink("oldlink", tc.tmp + "/wd/symlink")
+	if err != nil {
+		t.Fatal("oldlink symlink", err)
+	}
+
+	shcmd := make([]byte, 1500)
+	for i := 0; i < len(shcmd); i++ {
+		shcmd[i] = 'a'
+	}
+
+	shcmdStr := "echo " + string(shcmd)  + " | cat"
+	rep := tc.Run(WorkRequest{
+		Binary: "/bin/sh",
+		Argv:   []string{"/bin/sh", "-c", shcmdStr},
+		Env:    testEnv(),
+		Dir:    tc.tmp + "/wd",
+	})
+
+	if len(rep.Stdout) != len(shcmd) {
+		t.Errorf("length mismatch %d expect %d", len(rep.Stdout), len(shcmd))
+	}
+}
+
 func TestEndToEndSymlink(t *testing.T) {
 	if os.Geteuid() == 0 {
 		log.Println("This test should not run as root")
