@@ -128,7 +128,7 @@ type rpcFsFile struct {
 	os.FileInfo
 }
 
-func (me *rpcFsFile) GetAttr()  (*os.FileInfo, fuse.Status) {
+func (me *rpcFsFile) GetAttr() (*os.FileInfo, fuse.Status) {
 	return &me.FileInfo, fuse.OK
 }
 

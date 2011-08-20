@@ -30,7 +30,7 @@ func (me *WorkerTask) Run() os.Error {
 
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
-	
+
 	args := []string{}
 	binary := ""
 	dir := ""
@@ -76,7 +76,7 @@ func (me *WorkerTask) Run() os.Error {
 		// TODO - use struct instead?
 		me.WorkReply.Exit = &os.Waitmsg{}
 	}
-	
+
 	// No waiting: if the process exited, we kill the connection.
 	if me.stdinConn != nil {
 		me.stdinConn.Close()

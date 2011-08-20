@@ -12,9 +12,9 @@ import (
 )
 
 type LocalRule struct {
-	Regexp  string
-	Local   bool
-	Recurse bool
+	Regexp      string
+	Local       bool
+	Recurse     bool
 	SkipRefresh bool
 }
 
@@ -72,9 +72,9 @@ func NewLocalDecider(dir string) *localDecider {
 
 	rules := []LocalRule{
 		LocalRule{
-			Regexp: ".*termite-make",
-			Local: true,
-			Recurse: true,
+			Regexp:      ".*termite-make",
+			Local:       true,
+			Recurse:     true,
 			SkipRefresh: true,
 		},
 		LocalRule{Regexp: ".*", Local: false},

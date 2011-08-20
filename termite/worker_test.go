@@ -137,7 +137,7 @@ func TestEndToEndBasic(t *testing.T) {
 	tc.Run(WorkRequest{
 		Binary: "/bin/rm",
 		Argv:   []string{"/bin/rm", "output.txt"},
-		Env:     testEnv(),
+		Env:    testEnv(),
 		Dir:    tc.tmp + "/wd",
 		Debug:  true,
 	})
@@ -171,7 +171,7 @@ func TestEndToEndNegativeNotify(t *testing.T) {
 	rep := tc.Run(WorkRequest{
 		Binary: "/bin/cat",
 		Argv:   []string{"/bin/cat", "output.txt"},
-		Env:     testEnv(),
+		Env:    testEnv(),
 		Dir:    tc.tmp + "/wd",
 		Debug:  true,
 	})
@@ -251,7 +251,7 @@ func TestEndToEndStdout(t *testing.T) {
 	tc := NewTestCase(t)
 	defer tc.Clean()
 
-	err := os.Symlink("oldlink", tc.tmp + "/wd/symlink")
+	err := os.Symlink("oldlink", tc.tmp+"/wd/symlink")
 	if err != nil {
 		t.Fatal("oldlink symlink", err)
 	}
@@ -283,7 +283,7 @@ func TestEndToEndSymlink(t *testing.T) {
 	tc := NewTestCase(t)
 	defer tc.Clean()
 
-	err := os.Symlink("oldlink", tc.tmp + "/wd/symlink")
+	err := os.Symlink("oldlink", tc.tmp+"/wd/symlink")
 	if err != nil {
 		t.Fatal("oldlink symlink", err)
 	}

@@ -9,17 +9,17 @@ import (
 var _ = log.Println
 
 type MultiResolutionCounter struct {
-	buckets [][]int
+	buckets   [][]int
 	timestamp int
-	interval int64
-	mutex sync.Mutex
+	interval  int64
+	mutex     sync.Mutex
 }
 
 func NewMultiResolutionCounter(interval int64, now int64, resolutions []int) *MultiResolutionCounter {
 	me := &MultiResolutionCounter{}
-	me.timestamp = int(now/interval)
+	me.timestamp = int(now / interval)
 	me.interval = interval
-	
+
 	for i := 0; i < len(resolutions); i++ {
 		l := resolutions[i]
 		if l <= 0 {
@@ -57,14 +57,14 @@ func (me *MultiResolutionCounter) update(shift int) {
 		}
 		acc += me.move(i, int(shift))
 		shift /= len(b)
-	}		
+	}
 }
 
 func (me *MultiResolutionCounter) Add(ns int64, events int) {
 	me.mutex.Lock()
 	defer me.mutex.Unlock()
 
-	ts := int(ns/me.interval)
+	ts := int(ns / me.interval)
 
 	dt := ts - me.timestamp
 	if dt > 0 {

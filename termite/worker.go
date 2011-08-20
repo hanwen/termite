@@ -15,10 +15,10 @@ import (
 var _ = log.Println
 
 type WorkReply struct {
-	Exit       *os.Waitmsg
-	Files      []FileAttr
-	Stderr     string
-	Stdout     string
+	Exit   *os.Waitmsg
+	Files  []FileAttr
+	Stderr string
+	Stdout string
 }
 
 type WorkRequest struct {
@@ -32,7 +32,7 @@ type WorkRequest struct {
 	Argv         []string
 	Env          []string
 	Dir          string
-	RanLocally bool
+	RanLocally   bool
 }
 
 func (me *WorkRequest) Summary() string {

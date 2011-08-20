@@ -1,4 +1,5 @@
 package termite
+
 import (
 	"fmt"
 	"http"
@@ -8,7 +9,7 @@ import (
 
 func (me *Master) statusHandler(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
-	
+
 	fmt.Fprintf(w, "<html><head><title>Master status</title></head>")
 	fmt.Fprintf(w, "<body><h1>Master for %s</h1>", me.writableRoot)
 	defer fmt.Fprintf(w, "</body></html>")
@@ -28,5 +29,5 @@ func (me *Master) ServeHTTP(port int) {
 	err := http.ListenAndServe(addr, nil)
 	if err != nil {
 		log.Println("http serve error:", err)
-	}			
+	}
 }
