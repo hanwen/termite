@@ -5,6 +5,7 @@ import (
 	"flag"
 	"io/ioutil"
 	"log"
+	"os"
 )
 
 var _ = log.Printf
@@ -18,6 +19,10 @@ func main() {
 	coordinator := flag.String("coordinator", "", "Where to register the worker.")
 	jobs := flag.Int("jobs", 1, "Max number of jobs to run.")
 	flag.Parse()
+
+	if os.Geteuid() != 0 {
+		log.Fatal("This program must run as root")
+	}
 	secret, err := ioutil.ReadFile(*secretFile)
 	if err != nil {
 		log.Fatal("ReadFile", err)
