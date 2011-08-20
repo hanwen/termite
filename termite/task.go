@@ -39,6 +39,7 @@ func (me *WorkerTask) Run() os.Error {
 		if err != nil {
 			return err
 		}
+		// TODO - use SysProcAttr.Credential/Chroot instead.
 		binary = me.mirror.daemon.ChrootBinary
 		args = append(args, binary, "-dir", me.WorkRequest.Dir,
 			"-uid", fmt.Sprintf("%d", nobody.Uid), "-gid", fmt.Sprintf("%d", nobody.Gid),
