@@ -4,9 +4,9 @@ package termite
 
 import (
 	"bytes"
+	"exec"
 	"fmt"
 	"github.com/hanwen/go-fuse/fuse"
-	"io"
 	"io/ioutil"
 	"log"
 	"net"
@@ -14,7 +14,6 @@ import (
 	"os/user"
 	"path/filepath"
 	"strings"
-	"sync"
 )
 
 type WorkerTask struct {
@@ -29,89 +28,54 @@ func (me *WorkerTask) Run() os.Error {
 	me.fuseFs.MountState.Debug = me.WorkRequest.Debug
 	me.fuseFs.fsConnector.Debug = me.WorkRequest.Debug
 
-	rStdout, wStdout, err := os.Pipe()
-	if err != nil {
-		return err
-	}
-	rStderr, wStderr, err := os.Pipe()
-	if err != nil {
-		return err
-	}
-	rStdin, wStdin, err := os.Pipe()
-	if err != nil {
-		return err
-	}
-
-	attr := os.ProcAttr{
-		Env:   me.WorkRequest.Env,
-		Files: []*os.File{rStdin, wStdout, wStderr},
-	}
-
-	cmd := []string{}
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	
+	args := []string{}
 	binary := ""
+	dir := ""
 	if os.Geteuid() == 0 {
 		nobody, err := user.Lookup("nobody")
 		if err != nil {
 			return err
 		}
 		binary = me.mirror.daemon.ChrootBinary
-		cmd = []string{binary, "-dir", me.WorkRequest.Dir,
+		args = append(args, binary, "-dir", me.WorkRequest.Dir,
 			"-uid", fmt.Sprintf("%d", nobody.Uid), "-gid", fmt.Sprintf("%d", nobody.Gid),
 			"-binary", me.WorkRequest.Binary,
-			me.fuseFs.mount}
-
-		newcmd := make([]string, len(cmd)+len(me.WorkRequest.Argv))
-		copy(newcmd, cmd)
-		copy(newcmd[len(cmd):], me.WorkRequest.Argv)
-
-		cmd = newcmd
+			me.fuseFs.mount)
+		args = append(args, me.WorkRequest.Argv...)
 	} else {
-		cmd = me.WorkRequest.Argv
+		args = me.WorkRequest.Argv
 		binary = me.WorkRequest.Argv[0]
-		attr.Dir = filepath.Join(me.fuseFs.mount, me.WorkRequest.Dir)
-		log.Println("running in", attr.Dir)
+		dir = filepath.Join(me.fuseFs.mount, me.WorkRequest.Dir)
+		log.Println("running in", dir)
 	}
 
-	log.Println("starting cmd", cmd, "in", me.fuseFs.mount)
-	proc, err := os.StartProcess(binary, cmd, &attr)
-	if err != nil {
-		log.Println("Error", err)
-		return err
-	}
-
-	wStdout.Close()
-	wStderr.Close()
-	rStdin.Close()
-
-	stdout := &bytes.Buffer{}
-	stderr := &bytes.Buffer{}
-
-	var wg sync.WaitGroup
-	wg.Add(2)
-	go func() {
-		io.Copy(stdout, rStdout)
-		rStdout.Close()
-		wg.Done()
-	}()
-	go func() {
-		io.Copy(stderr, rStderr)
-		rStderr.Close()
-		wg.Done()
-	}()
-
+	cmd := exec.Command(args[0], args[1:]...)
+	cmd.Path = binary
+	cmd.Env = me.WorkRequest.Env
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
+	cmd.Dir = dir
 	if me.stdinConn != nil {
-		go func() {
-			HookedCopy(wStdin, me.stdinConn, PrintStdinSliceLen)
-			// No waiting: if the process exited, we kill the connection.
-			wStdin.Close()
-		}()
-	} else {
-		wStdin.Close()
+		cmd.Stdin = me.stdinConn
 	}
 
-	me.WorkReply.Exit, err = proc.Wait(0)
-	wg.Wait()
+	printCmd := cmd
+	printCmd.Env = nil
+	log.Println("starting cmd", printCmd, "in", me.fuseFs.mount)
 
+	err := cmd.Run()
+	waitMsg, ok := err.(*os.Waitmsg)
+	if ok {
+		me.WorkReply.Exit = waitMsg
+		err = nil
+	} else {
+		// TODO - use struct instead?
+		me.WorkReply.Exit = &os.Waitmsg{}
+	}
+	
 	// No waiting: if the process exited, we kill the connection.
 	if me.stdinConn != nil {
 		me.stdinConn.Close()

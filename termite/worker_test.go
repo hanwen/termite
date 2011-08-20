@@ -25,6 +25,13 @@ type testCase struct {
 	tester          *testing.T
 }
 
+func testEnv() []string {
+	return []string{
+		"PATH=/bin:/usr/bin",
+		"USER=nobody",
+	}
+}
+
 func NewTestCase(t *testing.T) *testCase {
 	me := new(testCase)
 	me.tester = t
@@ -103,7 +110,7 @@ func TestEndToEndBasic(t *testing.T) {
 		StdinId: ConnectionId(),
 		Binary:  "/usr/bin/tee",
 		Argv:    []string{"/usr/bin/tee", "output.txt"},
-		Env:     os.Environ(),
+		Env:     testEnv(),
 
 		// Will not be filtered, since /tmp/foo is more
 		// specific than /tmp
@@ -130,7 +137,7 @@ func TestEndToEndBasic(t *testing.T) {
 	tc.Run(WorkRequest{
 		Binary: "/bin/rm",
 		Argv:   []string{"/bin/rm", "output.txt"},
-		Env:    os.Environ(),
+		Env:     testEnv(),
 		Dir:    tc.tmp + "/wd",
 		Debug:  true,
 	})
@@ -164,7 +171,7 @@ func TestEndToEndNegativeNotify(t *testing.T) {
 	rep := tc.Run(WorkRequest{
 		Binary: "/bin/cat",
 		Argv:   []string{"/bin/cat", "output.txt"},
-		Env:    os.Environ(),
+		Env:     testEnv(),
 		Dir:    tc.tmp + "/wd",
 		Debug:  true,
 	})
@@ -188,7 +195,7 @@ func TestEndToEndNegativeNotify(t *testing.T) {
 	rep = tc.Run(WorkRequest{
 		Binary: "/bin/cat",
 		Argv:   []string{"/bin/cat", "output.txt"},
-		Env:    os.Environ(),
+		Env:    testEnv(),
 		Dir:    tc.tmp + "/wd",
 		Debug:  true,
 	})
@@ -214,7 +221,7 @@ func TestEndToEndMove(t *testing.T) {
 	rep := tc.Run(WorkRequest{
 		Binary: "/bin/mkdir",
 		Argv:   []string{"/bin/mkdir", "-p", "a/b/c"},
-		Env:    os.Environ(),
+		Env:    testEnv(),
 		Dir:    tc.tmp + "/wd",
 	})
 	if rep.Exit.ExitStatus() != 0 {
@@ -223,7 +230,7 @@ func TestEndToEndMove(t *testing.T) {
 	rep = tc.Run(WorkRequest{
 		Binary: "/bin/mv",
 		Argv:   []string{"/bin/mv", "a", "q"},
-		Env:    os.Environ(),
+		Env:    testEnv(),
 		Dir:    tc.tmp + "/wd",
 	})
 	if rep.Exit.ExitStatus() != 0 {
@@ -252,7 +259,7 @@ func TestEndToEndSymlink(t *testing.T) {
 	rep := tc.Run(WorkRequest{
 		Binary: "/bin/touch",
 		Argv:   []string{"/bin/touch", "file.txt"},
-		Env:    os.Environ(),
+		Env:    testEnv(),
 		Dir:    tc.tmp + "/wd",
 	})
 
@@ -265,7 +272,7 @@ func TestEndToEndSymlink(t *testing.T) {
 	rep = tc.Run(WorkRequest{
 		Binary: "/bin/ln",
 		Argv:   []string{"/bin/ln", "-sf", "foo", "symlink"},
-		Env:    os.Environ(),
+		Env:    testEnv(),
 		Dir:    tc.tmp + "/wd",
 	})
 	if rep.Exit.ExitStatus() != 0 {
