@@ -9,7 +9,7 @@ do
   for d in termite \
       bin/coordinator \
       bin/worker bin/fsserver \
-      bin/rpcfs bin/master bin/wrapper bin/shell-wrapper ; \
+      bin/rpcfs bin/master bin/shell-wrapper ; \
   do
     gomake -C $d $target
   done

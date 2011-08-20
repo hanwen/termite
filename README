@@ -42,10 +42,6 @@ coordinator to get a list of workers, and reserves job slots on the
 workers.  Run it in the root of the writable directory for the
 compile.  It creates a .termite-socket that the wrapper below uses.
 
-* Wrapper: distributes a single binary.  Symlink it using the name of
-a separate tool you want to wrap (eg. gcc).  Put all the symlinks in
-one directory, and add that directory to the PATH variable.
-
 * Shell-wrapper: a wrapper to use with make's SHELL variable.
 
 The choice between remote and local can be set through the file
@@ -56,7 +52,8 @@ The default is
   [{
     "Regexp": ".*termite-make",
     "Local": true,
-    "Recurse": true
+    "Recurse": true,
+    "SkipRefresh": true
   }, {
     "Regexp": ".*",
     "Local": false
