@@ -77,20 +77,15 @@ RUNNING
 
   dd if=/dev/random of=secret.txt bs=1 count=20 && chmod 0600 secret.txt
   ${TERMITE_DIR}/bin/coordinator/coordinator &
-  sudo ${TERMITE_DIR}/bin/worker/worker -jobs 4 \
-    -chroot ${TERMITE_DIR}/bin/chroot/chroot &
-  cd ${PROJECT}
-  ${TERMITE_DIR}/bin/master/master -jobs 4 &
-
-  # Test single binary running remotely
-  ln -s ${TERMITE_DIR}/bin/wrapper/wrapper gcc
-  ./gcc
+  sudo ${TERMITE_DIR}/bin/worker/worker -jobs 4
 
   # Run distributed build
   ln -s ./termite-make  ~/bin/
   ln -s ./bin/shell-wrapper ~/bin
 
   cd ${PROJECT}
+  ${TERMITE_DIR}/bin/master/master -jobs 4 \
+    -secret ${TERMITE_DIR}/secret.txt &
   termite-make -j20
 
 

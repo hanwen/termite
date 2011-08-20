@@ -16,7 +16,6 @@ func main() {
 	secretFile := flag.String("secret", "secret.txt", "file containing password.")
 	port := flag.Int("port", 1235, "Where to listen for work requests.")
 	coordinator := flag.String("coordinator", "", "Where to register the worker.")
-	chrootBinary := flag.String("chroot", "", "binary to use for chroot'ing.")
 	jobs := flag.Int("jobs", 1, "Max number of jobs to run.")
 	flag.Parse()
 	secret, err := ioutil.ReadFile(*secretFile)
@@ -25,6 +24,5 @@ func main() {
 	}
 
 	daemon := termite.NewWorkerDaemon(secret, *tmpdir, *cachedir, *jobs)
-	daemon.ChrootBinary = *chrootBinary
 	daemon.RunWorkerServer(*port, *coordinator)
 }

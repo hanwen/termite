@@ -41,7 +41,6 @@ func (me *WorkRequest) Summary() string {
 
 type WorkerDaemon struct {
 	secret         []byte
-	ChrootBinary   string
 	httpStatusPort int
 
 	contentCache   *ContentCache
