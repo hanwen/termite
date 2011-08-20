@@ -29,9 +29,8 @@ ssh root@${worker} "
   service iptables stop ;
   killall worker ;
   wget --quiet http://${master}:1233/bin/worker ;
-  wget --quiet http://${master}:1233/bin/chroot ;
-  chmod +x worker chroot ;
+  chmod +x worker ;
   rm -rf /var/cache/termite ;
-  ./worker -coordinator ${master}:1233 -jobs ${jobs} -chroot chroot >& worker.log &
+  ./worker -coordinator ${master}:1233 -jobs ${jobs} >& worker.log &
 "
 
