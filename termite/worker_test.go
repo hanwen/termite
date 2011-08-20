@@ -275,8 +275,8 @@ func TestEndToEndStdout(t *testing.T) {
 		Debug:  true,
 	})
 
-	if len(rep.Stdout) != len(shcmd) {
-		t.Errorf("length mismatch %d expect %d", len(rep.Stdout), len(shcmd))
+	if string(rep.Stdout) != string(shcmd) {
+		t.Errorf("Reply mismatch %s expect %s", string(rep.Stdout), string(shcmd))
 	}
 }
 

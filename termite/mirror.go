@@ -154,7 +154,7 @@ func (me *Mirror) Run(req *WorkRequest, rep *WorkReply) os.Error {
 		return err
 	}
 
-	summary := rep
+	summary := *rep
 	summary.Stdout = trim(summary.Stdout)
 	summary.Stderr = trim(summary.Stderr)
 
