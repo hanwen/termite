@@ -25,6 +25,8 @@ type testCase struct {
 	tester          *testing.T
 }
 
+// TODO - search path for binaries like bin, cat.
+
 func testEnv() []string {
 	return []string{
 		"PATH=/bin:/usr/bin",
@@ -260,13 +262,17 @@ func TestEndToEndStdout(t *testing.T) {
 	for i := 0; i < len(shcmd); i++ {
 		shcmd[i] = 'a'
 	}
-
-	shcmdStr := "echo " + string(shcmd)
+	err = ioutil.WriteFile(tc.tmp + "/wd/file.txt", shcmd, 0644)
+	if err != nil {
+		t.Fatalf("WriteFile %#v", err)
+	}
+	
 	rep := tc.Run(WorkRequest{
-		Binary: "/bin/sh",
-		Argv:   []string{"/bin/sh", "-c", shcmdStr},
+		Binary: "/bin/cat",
+		Argv:   []string{"/bin/cat", "file.txt"},
 		Env:    testEnv(),
 		Dir:    tc.tmp + "/wd",
+		Debug:  true,
 	})
 
 	if len(rep.Stdout) != len(shcmd) {
