@@ -262,11 +262,11 @@ func TestEndToEndStdout(t *testing.T) {
 	for i := 0; i < len(shcmd); i++ {
 		shcmd[i] = 'a'
 	}
-	err = ioutil.WriteFile(tc.tmp + "/wd/file.txt", shcmd, 0644)
+	err = ioutil.WriteFile(tc.tmp+"/wd/file.txt", shcmd, 0644)
 	if err != nil {
 		t.Fatalf("WriteFile %#v", err)
 	}
-	
+
 	rep := tc.Run(WorkRequest{
 		Binary: "/bin/cat",
 		Argv:   []string{"/bin/cat", "file.txt"},

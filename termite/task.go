@@ -38,13 +38,13 @@ func (me *WorkerTask) Run() os.Error {
 			return err
 		}
 
-		attr:= &syscall.SysProcAttr{}
+		attr := &syscall.SysProcAttr{}
 		attr.Credential = &syscall.Credential{
 			Uid: uint32(nobody.Uid),
 			Gid: uint32(nobody.Gid),
 		}
 		attr.Chroot = me.fuseFs.mount
-		
+
 		cmd.SysProcAttr = attr
 		cmd.Dir = me.WorkRequest.Dir
 	} else {

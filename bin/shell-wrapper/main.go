@@ -18,7 +18,7 @@ func TryRunDirect(cmd string) {
 	if len(parsed) == 0 {
 		return
 	}
-	
+
 	if parsed[0] == "echo" {
 		fmt.Println(strings.Join(parsed[1:], " "))
 		os.Exit(0)
@@ -29,7 +29,7 @@ func TryRunDirect(cmd string) {
 	if parsed[0] == "false" {
 		os.Exit(1)
 	}
-	
+
 	// TODO mkdir, rm, expr, others?
 }
 
@@ -76,8 +76,8 @@ func TryRunLocally(command string, topdir string) (exit *os.Waitmsg, rule termit
 		}
 
 		proc, err := os.StartProcess(_SHELL, os.Args, &os.ProcAttr{
-		Env: env,
-		Files: []*os.File{os.Stdin, os.Stdout, os.Stderr},
+			Env:   env,
+			Files: []*os.File{os.Stdin, os.Stdout, os.Stderr},
 		})
 		if err != nil {
 			log.Fatalf("os.StartProcess() for %s: %v", command, err)
@@ -91,7 +91,6 @@ func TryRunLocally(command string, topdir string) (exit *os.Waitmsg, rule termit
 
 	return
 }
-
 
 func main() {
 	command := flag.String("c", "", "command to run.")
@@ -126,11 +125,11 @@ func main() {
 	// TODO - could skip the shell if we can deduce it is a
 	// no-frills command invocation.
 	req := termite.WorkRequest{
-		Binary: _SHELL,
-		Argv:   os.Args,
-		Env:    cleanEnv(os.Environ()),
-		Dir:    wd,
-		Debug:  os.Getenv("TERMITE_DEBUG") != "",
+		Binary:     _SHELL,
+		Argv:       os.Args,
+		Env:        cleanEnv(os.Environ()),
+		Dir:        wd,
+		Debug:      os.Getenv("TERMITE_DEBUG") != "",
 		RanLocally: localWaitMsg != nil,
 	}
 	client := rpc.NewClient(conn)
