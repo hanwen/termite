@@ -91,6 +91,10 @@ PERFORMANCE
 Lenovo T60, local build, local worker, LLVM+CLANG Cmake lib/Support with
 separate build dir -j1: 2.0-2.3x slower
 
+The worker can typically run 2 jobs per available core.
+
+TODO - stats on how many workers saturate a master-core/master-harddisk.  
+
 
 SECURITY
 
@@ -156,6 +160,6 @@ TODO
 
 SUCCESSFUL COMPILES
 
-* Make 3.82. (1.6x slower, T60 2-core)
+* Make 3.82. (1.6x slower, Lenovo T60, 2-core, make -j2)
 * LLVM 2.9 (6 minutes, Amazon EC2 64-bit)
 
