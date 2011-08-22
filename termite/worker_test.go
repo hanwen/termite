@@ -1,6 +1,7 @@
 package termite
 
 import (
+	"exec"
 	"fmt"
 	"github.com/hanwen/go-fuse/fuse"
 	"io/ioutil"
@@ -24,7 +25,15 @@ type testCase struct {
 	tester          *testing.T
 }
 
-// TODO - search path for binaries like bin, cat.
+
+func (me *testCase) FindBin(name string) string {
+	full, err := exec.LookPath(name)
+	if err != nil {
+		me.tester.Fatal("looking for binary:", err)
+	}
+
+	return full
+}
 
 func testEnv() []string {
 	return []string{
@@ -107,8 +116,8 @@ func TestEndToEndBasic(t *testing.T) {
 
 	req := WorkRequest{
 		StdinId: ConnectionId(),
-		Binary:  "/usr/bin/tee",
-		Argv:    []string{"/usr/bin/tee", "output.txt"},
+		Binary:  tc.FindBin("tee"),
+		Argv:    []string{"tee", "output.txt"},
 		Env:     testEnv(),
 
 		// Will not be filtered, since /tmp/foo is more
@@ -133,8 +142,8 @@ func TestEndToEndBasic(t *testing.T) {
 	}
 
 	tc.Run(WorkRequest{
-		Binary: "/bin/rm",
-		Argv:   []string{"/bin/rm", "output.txt"},
+		Binary: tc.FindBin("rm"),
+		Argv:   []string{"rm", "output.txt"},
 		Env:    testEnv(),
 		Dir:    tc.tmp + "/wd",
 	})
@@ -166,8 +175,8 @@ func TestEndToEndNegativeNotify(t *testing.T) {
 	defer tc.Clean()
 
 	rep := tc.Run(WorkRequest{
-		Binary: "/bin/cat",
-		Argv:   []string{"/bin/cat", "output.txt"},
+		Binary: tc.FindBin("cat"),
+		Argv:   []string{"cat", "output.txt"},
 		Env:    testEnv(),
 		Dir:    tc.tmp + "/wd",
 	})
@@ -189,8 +198,8 @@ func TestEndToEndNegativeNotify(t *testing.T) {
 	tc.master.mirrors.queueFiles(nil, updated)
 
 	rep = tc.Run(WorkRequest{
-		Binary: "/bin/cat",
-		Argv:   []string{"/bin/cat", "output.txt"},
+		Binary: tc.FindBin("cat"),
+		Argv:   []string{"cat", "output.txt"},
 		Env:    testEnv(),
 		Dir:    tc.tmp + "/wd",
 	})
@@ -214,8 +223,8 @@ func TestEndToEndMove(t *testing.T) {
 	defer tc.Clean()
 
 	rep := tc.Run(WorkRequest{
-		Binary: "/bin/mkdir",
-		Argv:   []string{"/bin/mkdir", "-p", "a/b/c"},
+		Binary: tc.FindBin("mkdir"),
+		Argv:   []string{"mkdir", "-p", "a/b/c"},
 		Env:    testEnv(),
 		Dir:    tc.tmp + "/wd",
 	})
@@ -223,8 +232,8 @@ func TestEndToEndMove(t *testing.T) {
 		t.Fatalf("mkdir should exit cleanly. Rep %v", rep)
 	}
 	rep = tc.Run(WorkRequest{
-		Binary: "/bin/mv",
-		Argv:   []string{"/bin/mv", "a", "q"},
+		Binary: tc.FindBin("mv"),
+		Argv:   []string{"mv", "a", "q"},
 		Env:    testEnv(),
 		Dir:    tc.tmp + "/wd",
 	})
@@ -261,8 +270,8 @@ func TestEndToEndStdout(t *testing.T) {
 	}
 
 	rep := tc.Run(WorkRequest{
-		Binary: "/bin/cat",
-		Argv:   []string{"/bin/cat", "file.txt"},
+		Binary: tc.FindBin("cat"),
+		Argv:   []string{"cat", "file.txt"},
 		Env:    testEnv(),
 		Dir:    tc.tmp + "/wd",
 	})
@@ -287,8 +296,8 @@ func TestEndToEndSymlink(t *testing.T) {
 	}
 
 	rep := tc.Run(WorkRequest{
-		Binary: "/bin/touch",
-		Argv:   []string{"/bin/touch", "file.txt"},
+		Binary: tc.FindBin("touch"),
+		Argv:   []string{"touch", "file.txt"},
 		Env:    testEnv(),
 		Dir:    tc.tmp + "/wd",
 	})
@@ -300,8 +309,8 @@ func TestEndToEndSymlink(t *testing.T) {
 		t.Fatalf("touch should exit cleanly. Rep %v", rep)
 	}
 	rep = tc.Run(WorkRequest{
-		Binary: "/bin/ln",
-		Argv:   []string{"/bin/ln", "-sf", "foo", "symlink"},
+		Binary: tc.FindBin("ln"),
+		Argv:   []string{"ln", "-sf", "foo", "symlink"},
 		Env:    testEnv(),
 		Dir:    tc.tmp + "/wd",
 	})
