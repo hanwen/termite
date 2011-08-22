@@ -58,6 +58,8 @@ type mirrorConnections struct {
 
 	keepAliveNs int64
 
+	wantedMaxJobs int
+	
 	// Condition for mutex below.
 	sync.Cond
 
@@ -65,7 +67,6 @@ type mirrorConnections struct {
 	sync.Mutex
 	workers       map[string]bool
 	mirrors       map[string]*mirrorConnection
-	wantedMaxJobs int
 	lastActionNs  int64
 }
 

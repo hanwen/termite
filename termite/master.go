@@ -10,7 +10,6 @@ import (
 	"rpc"
 	"sort"
 	"strings"
-	"time"
 )
 
 type Master struct {
@@ -21,7 +20,7 @@ type Master struct {
 
 	*localDecider
 
-	jobStats       *MultiResolutionCounter
+	stats          *masterStats
 	retryCount     int
 	mirrors        *mirrorConnections
 	localRpcServer *rpc.Server
@@ -37,7 +36,7 @@ func NewMaster(cache *ContentCache, coordinator string, workers []string, secret
 		fileServer: NewFsServer("/", cache, excluded),
 		secret:     secret,
 		retryCount: 3,
-		jobStats:   NewMultiResolutionCounter(1, time.Seconds(), []int{60, 10}),
+		stats:      newMasterStats(),
 	}
 	me.fileServer.multiplyPaths = func(n string) []string { return me.multiplyPaths(n) }
 	me.mirrors = newMirrorConnections(me, workers, coordinator, maxJobs)
@@ -260,12 +259,15 @@ func (me *Master) runOnce(req *WorkRequest, rep *WorkReply) os.Error {
 }
 
 func (me *Master) run(req *WorkRequest, rep *WorkReply) (err os.Error) {
-	me.jobStats.Add(time.Seconds(), 1)
+	me.stats.MarkReceive()
+	
 	err = me.runOnce(req, rep)
 	for i := 0; i < me.retryCount && err != nil; i++ {
 		log.Println("Retrying; last error:", err)
 		err = me.runOnce(req, rep)
 	}
+
+	me.stats.MarkReturn()
 	return err
 }
 

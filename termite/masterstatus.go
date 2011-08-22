@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"http"
 	"log"
-	"time"
 )
 
 func (me *Master) statusHandler(w http.ResponseWriter, req *http.Request) {
@@ -14,8 +13,10 @@ func (me *Master) statusHandler(w http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(w, "<body><h1>Master for %s</h1>", me.writableRoot)
 	defer fmt.Fprintf(w, "</body></html>")
 
-	me.jobStats.Add(time.Seconds(), 0)
-	fmt.Fprintf(w, "<p>Jobs (sec/min/10min): %v", me.jobStats.Read())
+	me.stats.writeHttp(w)
+
+	fmt.Fprintf(w, "<p>Master parallelism (--jobs): %d. Reserved job slots: %d",
+		me.mirrors.wantedMaxJobs, me.mirrors.maxJobs())
 }
 
 func (me *Master) ServeHTTP(port int) {
