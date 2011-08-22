@@ -271,3 +271,11 @@ func EncodeFileInfo(fi os.FileInfo) string {
 	fi.Name = ""
 	return fmt.Sprintf("%v", fi)
 }
+
+func HumanTrim(s string, l int) string {
+	if len(s) < l {
+		return s
+	}
+	trail := fmt.Sprintf(" ... (%d bytes)", len(s))
+	return s[:l - len(trail)] + trail
+}

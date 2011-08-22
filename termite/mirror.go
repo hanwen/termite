@@ -155,8 +155,8 @@ func (me *Mirror) Run(req *WorkRequest, rep *WorkReply) os.Error {
 	}
 
 	summary := *rep
-	summary.Stdout = trim(summary.Stdout)
-	summary.Stderr = trim(summary.Stderr)
+	summary.Stdout = HumanTrim(summary.Stdout, 1024)
+	summary.Stderr = HumanTrim(summary.Stderr, 1024)
 
 	log.Println("sending back", summary)
 	return nil

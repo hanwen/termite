@@ -145,13 +145,6 @@ func (me *WorkerDaemon) FileContent(req *ContentRequest, rep *ContentResponse) o
 	return me.contentServer.FileContent(req, rep)
 }
 
-func trim(s string) string {
-	l := 1024
-	if len(s) < l {
-		l = len(s)
-	}
-	return s[:l]
-}
 
 type CreateMirrorRequest struct {
 	RpcId        string
