@@ -37,7 +37,6 @@ func NewTestCase(t *testing.T) *testCase {
 	me := new(testCase)
 	me.tester = t
 	me.secret = RandomBytes(20)
-	log.Printf("NewTestCase, sec %x", me.secret)
 	me.tmp, _ = ioutil.TempDir("", "")
 
 	workerTmp := me.tmp + "/worker-tmp"
