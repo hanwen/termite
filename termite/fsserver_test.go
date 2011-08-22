@@ -135,7 +135,7 @@ func TestRpcFS(t *testing.T) {
 
 	// This test implementation detail - should be separate?
 	storedHash := server.hashCache["/file.txt"]
-	if storedHash == nil || string(storedHash) != string(md5str(content)) {
+	if storedHash == "" || string(storedHash) != string(md5str(content)) {
 		t.Errorf("cache error %x (%v)", storedHash, storedHash)
 	}
 
@@ -147,7 +147,7 @@ func TestRpcFS(t *testing.T) {
 	}
 	server.updateFiles(newData)
 	storedHash = server.hashCache["/file.txt"]
-	if storedHash == nil || string(storedHash) != string(newData[0].Hash) {
+	if storedHash == "" || storedHash != newData[0].Hash {
 		t.Errorf("cache error %x (%v)", storedHash, storedHash)
 	}
 

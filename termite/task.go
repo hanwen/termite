@@ -149,7 +149,7 @@ func (me *fileSaver) savePath(path string, osInfo *os.FileInfo) {
 		// TODO - remove dir.
 	case fuse.S_IFREG:
 		fi.Hash, fi.Content = me.cache.DestructiveSavePath(path)
-		if fi.Hash == nil {
+		if fi.Hash == "" {
 			me.err = os.NewError("DestructiveSavePath fail")
 		}
 	case fuse.S_IFLNK:

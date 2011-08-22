@@ -132,7 +132,7 @@ func (me *Mirror) updateFiles(attrs []FileAttr) {
 
 func (me *Mirror) fetchFiles(files []FileAttr) {
 	for _, f := range files {
-		if f.Hash != nil && f.Content == nil {
+		if f.Hash != "" && f.Content == nil {
 			me.rpcFs.FetchHash(f.FileInfo.Size, f.Hash)
 		}
 	}

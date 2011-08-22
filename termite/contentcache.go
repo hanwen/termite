@@ -39,7 +39,7 @@ func NewContentCache(d string) *ContentCache {
 	}
 }
 
-func HashPath(dir string, md5 []byte) string {
+func HashPath(dir string, md5 string) string {
 	s := fmt.Sprintf("%x", md5)
 	prefix := s[:2]
 	name := s[2:]
@@ -51,14 +51,14 @@ func HashPath(dir string, md5 []byte) string {
 	return dst
 }
 
-func (me *ContentCache) localPath(hash []byte) string {
+func (me *ContentCache) localPath(hash string) string {
 	me.hashPathMapMutex.Lock()
 	defer me.hashPathMapMutex.Unlock()
 
 	return me.hashPathMap[string(hash)]
 }
 
-func (me *ContentCache) HasHash(hash []byte) bool {
+func (me *ContentCache) HasHash(hash string) bool {
 	p := me.localPath(hash)
 	if p != "" {
 		return true
@@ -69,7 +69,7 @@ func (me *ContentCache) HasHash(hash []byte) bool {
 	return err == nil
 }
 
-func (me *ContentCache) Path(hash []byte) string {
+func (me *ContentCache) Path(hash string) string {
 	p := me.localPath(hash)
 	if p != "" {
 		return p
@@ -84,7 +84,7 @@ func (me *ContentCache) NewHashWriter() *HashWriter {
 type HashWriter struct {
 	hasher hash.Hash
 	dest   *os.File
-	hash   []byte
+	hash   string
 }
 
 func NewHashWriter(dir string, hashfunc crypto.Hash) *HashWriter {
@@ -114,7 +114,7 @@ func (me *HashWriter) Close() os.Error {
 	}
 	src := me.dest.Name()
 	dir, _ := filepath.Split(src)
-	sum := me.hasher.Sum()
+	sum := string(me.hasher.Sum())
 	sumpath := HashPath(dir, sum)
 
 	log.Printf("saving hash %x\n", sum)
@@ -130,10 +130,10 @@ func (me *HashWriter) Close() os.Error {
 
 const _BUFSIZE = 32 * 1024
 
-func (me *ContentCache) DestructiveSavePath(path string) (md5 []byte, content []byte) {
+func (me *ContentCache) DestructiveSavePath(path string) (md5 string, content []byte) {
 	f, err := os.Open(path)
 	if err != nil {
-		return nil, nil
+		return "", nil
 	}
 	defer f.Close()
 
@@ -143,7 +143,7 @@ func (me *ContentCache) DestructiveSavePath(path string) (md5 []byte, content []
 		log.Fatal("DestructiveSavePath:", err)
 	}
 
-	s := h.Sum()
+	s := string(h.Sum())
 	if me.HasHash(s) {
 		os.Remove(path)
 		return s, nil
@@ -161,7 +161,7 @@ func (me *ContentCache) DestructiveSavePath(path string) (md5 []byte, content []
 	return s, content
 }
 
-func (me *ContentCache) SavePath(path string) (md5 []byte, content []byte) {
+func (me *ContentCache) SavePath(path string) (md5 string, content []byte) {
 	f, err := os.Open(path)
 	if err != nil {
 		log.Fatal(err)
@@ -171,7 +171,7 @@ func (me *ContentCache) SavePath(path string) (md5 []byte, content []byte) {
 	return me.SaveStream(f)
 }
 
-func (me *ContentCache) SaveImmutablePath(path string) (md5 []byte, content []byte) {
+func (me *ContentCache) SaveImmutablePath(path string) (md5 string, content []byte) {
 	hasher := crypto.MD5.New()
 
 	f, err := os.Open(path)
@@ -184,7 +184,7 @@ func (me *ContentCache) SaveImmutablePath(path string) (md5 []byte, content []by
 		log.Fatal(err)
 	}
 
-	md5 = hasher.Sum()
+	md5 = string(hasher.Sum())
 	me.hashPathMapMutex.Lock()
 	defer me.hashPathMapMutex.Unlock()
 	me.hashPathMap[string(md5)] = path
@@ -193,13 +193,13 @@ func (me *ContentCache) SaveImmutablePath(path string) (md5 []byte, content []by
 	return md5, content
 }
 
-func (me *ContentCache) Save(content []byte) (md5 []byte) {
+func (me *ContentCache) Save(content []byte) (md5 string) {
 	buf := bytes.NewBuffer(content)
 	md5, _ = me.SaveStream(buf)
 	return md5
 }
 
-func (me *ContentCache) SaveStream(input io.Reader) (md5 []byte, content []byte) {
+func (me *ContentCache) SaveStream(input io.Reader) (md5 string, content []byte) {
 	dup := me.NewHashWriter()
 	content, err := SavingCopy(dup, input, _BUFSIZE)
 	if err != nil {
@@ -209,5 +209,5 @@ func (me *ContentCache) SaveStream(input io.Reader) (md5 []byte, content []byte)
 	if err != nil {
 		log.Fatal(err)
 	}
-	return dup.hasher.Sum(), content
+	return string(dup.hasher.Sum()), content
 }

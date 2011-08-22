@@ -22,8 +22,7 @@ type FsServer struct {
 	multiplyPaths func(string) []string
 
 	hashCacheMutex sync.RWMutex
-	// TODO - should use string (immutable) throughout for storing MD5 signatures.
-	hashCache map[string][]byte
+	hashCache map[string]string
 
 	attrCacheMutex sync.RWMutex
 	attrCache      map[string]FileAttr
@@ -34,7 +33,7 @@ func NewFsServer(root string, cache *ContentCache, excluded []string) *FsServer 
 		contentCache:  cache,
 		contentServer: &ContentServer{Cache: cache},
 		Root:          root,
-		hashCache:     make(map[string][]byte),
+		hashCache:     make(map[string]string),
 		attrCache:     make(map[string]FileAttr),
 	}
 
@@ -53,7 +52,7 @@ type FileAttr struct {
 	Path string
 	*os.FileInfo
 	fuse.Status
-	Hash    []byte
+	Hash    string
 	Link    string
 	Content []byte // optional.
 }
@@ -64,7 +63,7 @@ type AttrResponse struct {
 
 func (me FileAttr) String() string {
 	id := ""
-	if me.Hash != nil {
+	if me.Hash != "" {
 		id = fmt.Sprintf(" sz %d", me.FileInfo.Size)
 	}
 	if me.Link != "" {
@@ -123,7 +122,7 @@ func (me *FsServer) GetAttr(req *AttrRequest, rep *AttrResponse) os.Error {
 		if err != nil {
 			return err
 		}
-		if a.Hash != nil {
+		if a.Hash != "" {
 			log.Printf("GetAttr %s %v %x", n, a, a.Hash)
 		}
 		rep.Attrs = append(rep.Attrs, a)
@@ -202,30 +201,30 @@ func (me *FsServer) updateHashes(infos []FileAttr) {
 	for _, r := range infos {
 		name := r.Path
 		if !r.Status.Ok() || r.Link != "" {
-			me.hashCache[name] = nil, false
+			me.hashCache[name] = "", false
 		}
-		if r.Hash != nil {
+		if r.Hash != "" {
 			me.hashCache[name] = r.Hash
 		}
 	}
 }
 
-func (me *FsServer) getHash(name string) (hash []byte, content []byte) {
+func (me *FsServer) getHash(name string) (hash string, content []byte) {
 	fullPath := me.path(name)
 
 	me.hashCacheMutex.RLock()
 	hash = me.hashCache[name]
 	me.hashCacheMutex.RUnlock()
 
-	if hash != nil {
-		return []byte(hash), nil
+	if hash != "" {
+		return hash, nil
 	}
 
 	me.hashCacheMutex.Lock()
 	defer me.hashCacheMutex.Unlock()
 	hash = me.hashCache[name]
-	if hash != nil {
-		return []byte(hash), nil
+	if hash != "" {
+		return hash, nil
 	}
 
 	// TODO - would it be better to not stop other hash lookups

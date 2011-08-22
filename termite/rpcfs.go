@@ -168,7 +168,7 @@ func (me *RpcFs) Open(name string, flags uint32) (fuse.File, fuse.Status) {
 	}, fuse.OK
 }
 
-func (me *RpcFs) FetchHash(size int64, hash []byte) os.Error {
+func (me *RpcFs) FetchHash(size int64, hash string) os.Error {
 	key := string(hash)
 	me.fetchMutex.Lock()
 	defer me.fetchMutex.Unlock()
@@ -190,7 +190,7 @@ func (me *RpcFs) FetchHash(size int64, hash []byte) os.Error {
 	return err
 }
 
-func (me *RpcFs) fetchOnce(size int64, hash []byte) os.Error {
+func (me *RpcFs) fetchOnce(size int64, hash string) os.Error {
 	// TODO - should save in smaller chunks.
 	return FetchBetweenContentServers(me.client, "FsServer.FileContent", size, hash,
 		me.cache)

@@ -56,16 +56,16 @@ func init() {
 	rand.Seed(time.Nanoseconds() ^ (int64(os.Getpid()) << 32))
 }
 
-func md5str(s string) []byte {
+func md5str(s string) string {
 	h := crypto.MD5.New()
 	io.WriteString(h, s)
-	return h.Sum()
+	return string(h.Sum())
 }
 
-func md5(c []byte) []byte {
+func md5(c []byte) string {
 	h := crypto.MD5.New()
 	h.Write(c)
-	return h.Sum()
+	return string(h.Sum())
 }
 
 // Like io.Copy, but returns the buffer if it was small enough to hold

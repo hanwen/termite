@@ -1,7 +1,6 @@
 package termite
 
 import (
-	"bytes"
 	"fmt"
 	"log"
 	"os"
@@ -12,7 +11,7 @@ import (
 // streams the whole file directly, to avoid choppy RPCs?
 
 type ContentRequest struct {
-	Hash       []byte
+	Hash       string
 	Start, End int
 }
 
@@ -49,7 +48,7 @@ func (me *ContentServer) FileContent(req *ContentRequest, rep *ContentResponse) 
 // FetchHash issues a FileContent RPC to read an entire file, and store into ContentCache.
 //
 // TODO - open a connection for this instead.
-func FetchBetweenContentServers(client *rpc.Client, rpcName string, size int64, hash []byte,
+func FetchBetweenContentServers(client *rpc.Client, rpcName string, size int64, hash string,
 dest *ContentCache) os.Error {
 	chunkSize := 1 << 18
 
@@ -85,8 +84,8 @@ dest *ContentCache) os.Error {
 	}
 
 	output.Close()
-	saved := output.hasher.Sum()
-	if bytes.Compare(saved, hash) != 0 {
+	saved := string(output.hasher.Sum())
+	if saved != hash {
 		log.Fatalf("Corruption: savedHash %x != requested hash %x.", saved, hash)
 	}
 	return nil

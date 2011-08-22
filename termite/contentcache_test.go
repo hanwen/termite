@@ -15,15 +15,15 @@ func TestDiskCache(t *testing.T) {
 	defer os.RemoveAll(d)
 
 	cache := NewContentCache(d)
-	checksum := md5(content)
+	checksum := string(md5(content))
 
 	f, _ := ioutil.TempFile("", "")
 	f.Write(content)
 	f.Close()
 
 	savedSum, _ := cache.SavePath(f.Name())
-	if string(savedSum) != string(checksum) {
-		t.Fatal("mismatch")
+	if savedSum != checksum {
+		t.Fatal("mismatch", savedSum, checksum)
 	}
 	if !cache.HasHash(checksum) {
 		t.Fatal("path gone")
@@ -82,7 +82,7 @@ func TestDiskCacheDestructiveSave(t *testing.T) {
 	}
 
 	saved, _ = cache.DestructiveSavePath(fn)
-	if saved == nil || string(saved) != string(md5(content)) {
+	if saved == "" || saved != md5(content) {
 		t.Error("mismatch")
 	}
 	if fi, _ := os.Lstat(fn); fi != nil {
@@ -99,7 +99,7 @@ func TestDiskCacheStream(t *testing.T) {
 
 	h := crypto.MD5.New()
 	h.Write(content)
-	checksum := h.Sum()
+	checksum := string(h.Sum())
 
 	b := bytes.NewBuffer(content)
 	savedSum, _ := cache.SaveStream(b)
