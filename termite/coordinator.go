@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"http"
 	"log"
-	"net"
 	"os"
 	"rpc"
 	"sync"
@@ -16,7 +15,6 @@ var _ = log.Println
 type Registration struct {
 	Address           string
 	Name              string
-	HttpStatusAddress string
 	Version           string
 	// TODO - hash of the secret?
 }
@@ -30,7 +28,13 @@ type WorkerRegistration struct {
 	LastReported int64
 }
 
+// Coordinator is the registration service for termite.  Workers
+// register here.  A master looking for workers contacts the
+// Coordinator to fetch a list of available workers.  In addition, it
+// has a HTTP interface to inspect each worker.
 type Coordinator struct {
+	Mux *http.ServeMux
+	
 	mutex   sync.Mutex
 	workers map[string]*WorkerRegistration
 	secret  []byte
@@ -40,12 +44,18 @@ func NewCoordinator(secret []byte) *Coordinator {
 	return &Coordinator{
 		workers: make(map[string]*WorkerRegistration),
 		secret:  secret,
+		Mux: http.NewServeMux(),
 	}
 }
 
 func (me *Coordinator) Register(req *Registration, rep *int) os.Error {
-	if !reachable(req.Address) {
-		return os.NewError("error contacting address")
+	conn, err := DialTypedConnection(req.Address, RPC_CHANNEL, me.secret)
+	if conn != nil {
+		conn.Close()
+	}
+	if err != nil {
+		return os.NewError(fmt.Sprintf(
+			"error contacting address: %v", err))
 	}
 
 	me.mutex.Lock()
@@ -67,16 +77,6 @@ func (me *Coordinator) List(req *int, rep *Registered) os.Error {
 	return nil
 }
 
-// TODO - use secret.
-func reachable(addr string) bool {
-	conn, _ := net.Dial("tcp", addr)
-	ok := conn != nil
-	if ok {
-		conn.Close()
-	}
-	return ok
-}
-
 func (me *Coordinator) checkReachable() {
 	now := time.Seconds()
 
@@ -89,8 +89,11 @@ func (me *Coordinator) checkReachable() {
 
 	var toDelete []string
 	for _, a := range addrs {
-		if !reachable(a) {
+		conn, err := DialTypedConnection(a, RPC_CHANNEL, me.secret)
+		if err != nil {
 			toDelete = append(toDelete, a)
+		} else {
+			conn.Close()
 		}
 	}
 
@@ -185,13 +188,34 @@ func (me *Coordinator) mirrorStatusHtml(w http.ResponseWriter, s MirrorStatusRes
 	}
 }
 
-func (me *Coordinator) HandleHTTP() {
-	http.HandleFunc("/",
+func (me *Coordinator) ServeHTTP(port int) {
+	me.Mux.HandleFunc("/",
 		func(w http.ResponseWriter, req *http.Request) {
 			me.rootHandler(w, req)
 		})
-	http.HandleFunc("/worker",
+	me.Mux.HandleFunc("/worker",
 		func(w http.ResponseWriter, req *http.Request) {
 			me.workerHandler(w, req)
 		})
+
+	rpcServer := rpc.NewServer()
+	if err := rpcServer.Register(me); err != nil {
+		log.Fatal(err)
+	}
+	me.Mux.HandleFunc(rpc.DefaultRPCPath,
+		func(w http.ResponseWriter, req *http.Request) {
+			rpcServer.ServeHTTP(w, req)
+		})
+
+	addr := fmt.Sprintf(":%d", port)
+	log.Println("Listening on", addr)
+
+	httpServer := http.Server{
+		Addr: addr,
+		Handler: me.Mux,
+	}
+	err := httpServer.ListenAndServe()
+	if err != nil {
+		log.Fatal("ListenAndServe: ", err.String())
+	}
 }

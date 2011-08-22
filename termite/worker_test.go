@@ -3,7 +3,6 @@ package termite
 import (
 	"fmt"
 	"github.com/hanwen/go-fuse/fuse"
-	"http"
 	"io/ioutil"
 	"log"
 	"os"
@@ -38,6 +37,7 @@ func NewTestCase(t *testing.T) *testCase {
 	me := new(testCase)
 	me.tester = t
 	me.secret = RandomBytes(20)
+	log.Printf("NewTestCase, sec %x", me.secret)
 	me.tmp, _ = ioutil.TempDir("", "")
 
 	workerTmp := me.tmp + "/worker-tmp"
@@ -48,12 +48,10 @@ func NewTestCase(t *testing.T) *testCase {
 	// TODO - pick unused port
 	me.coordinatorPort = int(rand.Int31n(60000) + 1024)
 	c := NewCoordinator(me.secret)
-	rpc.Register(c)
-	rpc.HandleHTTP()
 	go c.PeriodicCheck()
 
 	coordinatorAddr := fmt.Sprintf(":%d", me.coordinatorPort)
-	go http.ListenAndServe(coordinatorAddr, nil)
+	go c.ServeHTTP(me.coordinatorPort)
 	// TODO - can we do without the sleeps?
 	time.Sleep(0.1e9) // wait for daemon to start up
 
@@ -117,7 +115,6 @@ func TestEndToEndBasic(t *testing.T) {
 		// Will not be filtered, since /tmp/foo is more
 		// specific than /tmp
 		Dir:   tc.tmp + "/wd",
-		Debug: true,
 	}
 
 	// TODO - should separate dial/listen in the daemons?
@@ -141,7 +138,6 @@ func TestEndToEndBasic(t *testing.T) {
 		Argv:   []string{"/bin/rm", "output.txt"},
 		Env:    testEnv(),
 		Dir:    tc.tmp + "/wd",
-		Debug:  true,
 	})
 
 	if fi, _ := os.Lstat(tc.tmp + "/wd/output.txt"); fi != nil {
@@ -175,7 +171,6 @@ func TestEndToEndNegativeNotify(t *testing.T) {
 		Argv:   []string{"/bin/cat", "output.txt"},
 		Env:    testEnv(),
 		Dir:    tc.tmp + "/wd",
-		Debug:  true,
 	})
 
 	if rep.Exit.ExitStatus() == 0 {
@@ -199,7 +194,6 @@ func TestEndToEndNegativeNotify(t *testing.T) {
 		Argv:   []string{"/bin/cat", "output.txt"},
 		Env:    testEnv(),
 		Dir:    tc.tmp + "/wd",
-		Debug:  true,
 	})
 
 	if rep.Exit.ExitStatus() != 0 {
@@ -272,7 +266,6 @@ func TestEndToEndStdout(t *testing.T) {
 		Argv:   []string{"/bin/cat", "file.txt"},
 		Env:    testEnv(),
 		Dir:    tc.tmp + "/wd",
-		Debug:  true,
 	})
 
 	if string(rep.Stdout) != string(shcmd) {

@@ -41,7 +41,6 @@ func (me *WorkRequest) Summary() string {
 
 type WorkerDaemon struct {
 	secret         []byte
-	httpStatusPort int
 
 	contentCache   *ContentCache
 	contentServer  *ContentServer
@@ -132,9 +131,6 @@ func (me *WorkerDaemon) report(coordinator string, port int) {
 		Address: fmt.Sprintf("%v:%d", cname, port),
 		Name:    fmt.Sprintf("%s:%d", hostname, port),
 		Version: Version(),
-	}
-	if me.httpStatusPort != 0 {
-		req.HttpStatusAddress = fmt.Sprintf("%v:%d", cname, me.httpStatusPort)
 	}
 
 	rep := 0

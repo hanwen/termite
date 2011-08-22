@@ -9,7 +9,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"rpc"
 )
 
 func serveBin(name string) func(w http.ResponseWriter, req *http.Request) {
@@ -39,18 +38,9 @@ func main() {
 	}
 
 	c := termite.NewCoordinator(secret)
-	c.HandleHTTP()
-	http.HandleFunc("/bin/worker", serveBin("worker"))
-	http.HandleFunc("/bin/shell-wrapper", serveBin("shell-wrapper"))
-
-	rpc.Register(c)
-	rpc.HandleHTTP()
+	c.Mux.HandleFunc("/bin/worker", serveBin("worker"))
+	c.Mux.HandleFunc("/bin/shell-wrapper", serveBin("shell-wrapper"))
 
 	go c.PeriodicCheck()
-	addr := fmt.Sprintf(":%d", *port)
-	log.Println("Listening on", addr)
-	err = http.ListenAndServe(addr, nil)
-	if err != nil {
-		log.Fatal("ListenAndServe: ", err.String())
-	}
+	c.ServeHTTP(*port)
 }

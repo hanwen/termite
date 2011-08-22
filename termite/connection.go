@@ -23,11 +23,13 @@ func sign(conn net.Conn, challenge []byte, secret []byte, local bool) []byte {
 	h.Write(challenge)
 	l := conn.LocalAddr()
 	r := conn.RemoteAddr()
+	connSignature := ""
 	if local {
-		h.Write([]byte(fmt.Sprintf("%v-%v", l, r)))
+		connSignature = fmt.Sprintf("%v-%v", l, r)
 	} else {
-		h.Write([]byte(fmt.Sprintf("%v-%v", r, l)))
+		connSignature = fmt.Sprintf("%v-%v", r, l)
 	}
+	h.Write([]byte(connSignature))
 	return h.Sum()
 }
 
