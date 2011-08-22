@@ -42,6 +42,7 @@ func (me *WorkRequest) Summary() string {
 type WorkerDaemon struct {
 	secret         []byte
 
+	rpcServer      *rpc.Server
 	contentCache   *ContentCache
 	contentServer  *ContentServer
 	maxJobCount    int
@@ -89,7 +90,10 @@ func NewWorkerDaemon(secret []byte, tmpDir string, cacheDir string, jobs int) *W
 		pending:       NewPendingConnections(),
 		maxJobCount:   jobs,
 		tmpDir:        tmpDir,
+		rpcServer:     rpc.NewServer(),
 	}
+
+	w.rpcServer.Register(w)
 	return w
 }
 
@@ -193,9 +197,7 @@ func (me *WorkerDaemon) RunWorkerServer(port int, coordinator string) {
 		conn := <-out
 		log.Println("Authenticated connection from", conn.RemoteAddr())
 		if !me.pending.Accept(conn) {
-			rpcServer := rpc.NewServer()
-			rpcServer.Register(me)
-			go rpcServer.ServeConn(conn)
+			go me.rpcServer.ServeConn(conn)
 		}
 	}
 }
