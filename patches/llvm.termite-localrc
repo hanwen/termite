@@ -6,10 +6,12 @@
     "Local": true,
     "Recurse": true,
     "SkipRefresh": true
-// TODO - llvm linking also uses cmake, and the link should run remotely.
 }, {
+//    "Regexp": ".*cmake -E cmake_link_script",
+//    "Local": false,
+// }, {
     "Regexp": ".*/cmake",
-    "Local": true
+    "Local": true,
     "SkipRefresh": true
 }, {
     "Regexp": ".*",
