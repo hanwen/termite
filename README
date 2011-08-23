@@ -18,12 +18,12 @@ Use the following recipe
   git clone git://github.com/hanwen/termite.git
   cd go-fuse && sh all.bash
   cd termite && sh all.bash
-  
+
   wget http://ftp.gnu.org/gnu/make/make-3.82.tar.bz2
   tar xjf make-3.28.tar.bz2
   cd make-3.82 && patch -p1 < ../termite/patches/make-*patch
-  ./configure && make && make install	
-  
+  ./configure && make && make install
+
 I do not goinstall go-fuse, since I develop go-fuse in tandem with
 termite, but with some tweaks to the Makefile it should work.
 
@@ -93,7 +93,7 @@ separate build dir -j1: 2.0-2.3x slower
 
 The worker can typically run 2 jobs per available core.
 
-TODO - stats on how many workers saturate a master-core/master-harddisk.  
+TODO - stats on how many workers saturate a master-core/master-harddisk.
 
 
 SECURITY
@@ -142,7 +142,7 @@ TODO
   - compute average parallelism.
   - number of jobs scheduled
   - collect data on cpu used/time used in worker.
-  
+
 * Speed
   - Worker:
     * Do full updates for OpenDir .
@@ -153,7 +153,7 @@ TODO
     * streaming connections for file transport.
     * expand directory deletion in worker.
     * for src/writableRoot, always sync worker and master,
-    so never need to RPC for negative getattr. 
+    so never need to RPC for negative getattr.
   - Worker
     * implement in-memory FileSystem for backing store
 
@@ -161,5 +161,4 @@ TODO
 SUCCESSFUL COMPILES
 
 * Make 3.82. (1.6x slower, Lenovo T60, 2-core, make -j2)
-* LLVM 2.9 (6 minutes, Amazon EC2 64-bit)
-
+* LLVM 2.9 (1.5 slower, Dell T5300 6-core, make -j12)
