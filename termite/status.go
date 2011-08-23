@@ -40,6 +40,7 @@ type WorkerStatusResponse struct {
 	MirrorStatus []MirrorStatusResponse
 	Version      string
 	MaxJobCount  int
+	ShuttingDown bool 
 }
 
 func (me *WorkerDaemon) Status(req *WorkerStatusRequest, rep *WorkerStatusResponse) os.Error {
@@ -55,5 +56,6 @@ func (me *WorkerDaemon) Status(req *WorkerStatusRequest, rep *WorkerStatusRespon
 	}
 	rep.MaxJobCount = me.maxJobCount
 	rep.Version = Version()
+	rep.ShuttingDown = me.shuttingDown
 	return nil
 }

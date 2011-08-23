@@ -98,7 +98,6 @@ func SetupServer(port int, secret []byte, output chan net.Conn) {
 	if err != nil {
 		log.Fatal("net.Listen", err)
 	}
-	log.Println("Listening to", addr)
 
 	for {
 		conn, err := listener.Accept()

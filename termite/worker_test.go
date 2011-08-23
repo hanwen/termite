@@ -25,7 +25,6 @@ type testCase struct {
 	tester          *testing.T
 }
 
-
 func (me *testCase) FindBin(name string) string {
 	full, err := exec.LookPath(name)
 	if err != nil {
@@ -320,5 +319,56 @@ func TestEndToEndSymlink(t *testing.T) {
 
 	if fi, err := os.Lstat(tc.tmp + "/wd/symlink"); err != nil || !fi.IsSymlink() {
 		t.Errorf("should have symlink. Err %v, fi %v", err, fi)
+	}
+}
+
+func TestEndToEndShutdown(t *testing.T) {
+	if os.Geteuid() == 0 {
+		log.Println("This test should not run as root")
+		return
+	}
+
+	tc := NewTestCase(t)
+	defer tc.Clean()
+
+	// In the test, shutdown doesn't really exit the worker, since
+	// we can't stop the already running accept(); retry would
+	// cause the test to hang.
+	tc.master.retryCount = 0
+
+	req := 	WorkRequest{
+		Binary: tc.FindBin("touch"),
+		Argv:   []string{"touch", "file.txt"},
+		Env:    testEnv(),
+		Dir:    tc.tmp + "/wd",
+	}
+	rep := tc.Run(req)
+
+	hostname, err := os.Hostname()
+	if err != nil {
+		t.Fatalf("hostname error %v", err)
+	}
+	conn, err  := DialTypedConnection(
+		fmt.Sprintf("%s:%d", hostname, tc.workerPort), RPC_CHANNEL, tc.secret)
+	if conn == nil {
+		t.Fatal("DialTypedConnection to shutdown worker: ", err)
+	}
+
+	stopReq := 1
+	stopRep := 1
+	err = rpc.NewClient(conn).Call("WorkerDaemon.Shutdown", &stopReq, &stopRep)
+	if err != nil {
+		t.Errorf("Shutdown insuccessful: %v", err)
+	}
+
+	rpcConn := OpenSocketConnection(tc.socket, RPC_CHANNEL)
+	err = rpc.NewClient(rpcConn).Call("LocalMaster.Run", &req, &rep)
+	if err == nil {
+		t.Error("LocalMaster.Run should fail after shutdown")
+	}
+
+	conn, err = DialTypedConnection(fmt.Sprintf(":%d", tc.workerPort), RPC_CHANNEL, tc.secret)
+	if conn != nil  {
+		t.Error("DialTypedConnection should fail after shutdown.")
 	}
 }

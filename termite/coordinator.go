@@ -34,7 +34,7 @@ type WorkerRegistration struct {
 // has a HTTP interface to inspect each worker.
 type Coordinator struct {
 	Mux *http.ServeMux
-	
+
 	mutex   sync.Mutex
 	workers map[string]*WorkerRegistration
 	secret  []byte
@@ -131,6 +131,47 @@ func (me *Coordinator) rootHandler(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+func (me *Coordinator) killHandler(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
+	q := req.URL.Query()
+	vs, ok := q["host"]
+	if !ok || len(vs) == 0 {
+		fmt.Fprintf(w, "<html><body>404 query param 'host' missing</body></html>")
+		return
+	}
+
+	addr := string(vs[0])
+	me.mutex.Lock()
+	defer me.mutex.Unlock()
+
+	_, ok = me.workers[addr]
+
+	fmt.Fprintf(w, "<html><head><title>Termite worker status</title></head>")
+	fmt.Fprintf(w, "<body><h1>Status %s</h1>", addr)
+	defer fmt.Fprintf(w, "</body></html>")
+
+	if !ok {
+		fmt.Fprintf(w, "<p><tt>worker %q unknown<tt>", addr)
+		return
+	}
+
+	conn, err := DialTypedConnection(addr, RPC_CHANNEL, me.secret)
+	if err != nil {
+		fmt.Fprintf(w, "<p><tt>error dialing: %v<tt>", err)
+		return
+	}
+
+	killReq := 1
+	rep := 1
+	err = rpc.NewClient(conn).Call("WorkerDaemon.Shutdown", &killReq, &rep)
+	if err != nil {
+		fmt.Fprintf(w, "<p><tt>RPC error: %v<tt>", err)
+		return
+	}
+
+	fmt.Fprintf(w, "<p>Shutdown of %s in progress", addr)
+}
+
 func (me *Coordinator) workerHandler(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	q := req.URL.Query()
@@ -157,6 +198,7 @@ func (me *Coordinator) workerHandler(w http.ResponseWriter, req *http.Request) {
 	conn, err := DialTypedConnection(addr, RPC_CHANNEL, me.secret)
 	if err != nil {
 		fmt.Fprintf(w, "<p><tt>error dialing: %v<tt>", err)
+		return
 	}
 
 	statusReq := WorkerStatusRequest{}
@@ -165,22 +207,23 @@ func (me *Coordinator) workerHandler(w http.ResponseWriter, req *http.Request) {
 	client := rpc.NewClient(conn)
 	err = client.Call("WorkerDaemon.Status", &statusReq, &status)
 	if err != nil {
-		fmt.Fprintf(w, "<p><tt>RPC error: %v<tt>", err)
+		fmt.Fprintf(w, "<p><tt>RPC error: %v<tt>\n", err)
 		return
 	}
 
-	fmt.Fprintf(w, "<p>Worker %s<p>Version %s<p>Jobs %d", addr, status.Version, status.MaxJobCount)
+	fmt.Fprintf(w, "<p>Worker %s<p>Version %s<p>Jobs %d\n", addr, status.Version, status.MaxJobCount)
 	for _, mirrorStatus := range status.MirrorStatus {
 		me.mirrorStatusHtml(w, mirrorStatus)
 	}
+	fmt.Fprintf(w, "<p><a href=\"/workerkill?host=%s\">Kill worker %s</a>\n", addr, addr)
 }
 
 func (me *Coordinator) mirrorStatusHtml(w http.ResponseWriter, s MirrorStatusResponse) {
 	fmt.Fprintf(w, "<h2>Mirror %s</h2>", s.Root)
-	fmt.Fprintf(w, "<p>%d maximum jobs, %d running, %d waiting tasks, %d unused filesystems.",
+	fmt.Fprintf(w, "<p>%d maximum jobs, %d running, %d waiting tasks, %d unused filesystems.\n",
 		s.Granted, len(s.Running), s.WaitingTasks, s.IdleFses)
 	if s.ShuttingDown {
-		fmt.Fprintf(w, "<p><b>shutting down</b>")
+		fmt.Fprintf(w, "<p><b>shutting down</b>\n")
 	}
 
 	for _, v := range s.Running {
@@ -197,6 +240,10 @@ func (me *Coordinator) ServeHTTP(port int) {
 		func(w http.ResponseWriter, req *http.Request) {
 			me.workerHandler(w, req)
 		})
+	me.Mux.HandleFunc("/workerkill",
+		func(w http.ResponseWriter, req *http.Request) {
+			me.killHandler(w, req)
+		})
 
 	rpcServer := rpc.NewServer()
 	if err := rpcServer.Register(me); err != nil {
@@ -208,7 +255,7 @@ func (me *Coordinator) ServeHTTP(port int) {
 		})
 
 	addr := fmt.Sprintf(":%d", port)
-	log.Println("Listening on", addr)
+	log.Println("Coordinator listening on", addr)
 
 	httpServer := http.Server{
 		Addr: addr,

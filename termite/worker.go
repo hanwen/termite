@@ -5,8 +5,10 @@ import (
 	"log"
 	"net"
 	"os"
+	"os/signal"
 	"rpc"
 	"sync"
+	"syscall"
 	"strings"
 	"runtime"
 	"time"
@@ -49,8 +51,13 @@ type WorkerDaemon struct {
 	pending        *PendingConnections
 	cacheDir       string
 	tmpDir         string
+
+	stopListener   chan int
+
 	mirrorMapMutex sync.Mutex
+	cond           sync.Cond
 	mirrorMap      map[string]*Mirror
+	shuttingDown   bool
 }
 
 func (me *WorkerDaemon) getMirror(rpcConn, revConn net.Conn, reserveCount int) (*Mirror, os.Error) {
@@ -82,7 +89,7 @@ func (me *WorkerDaemon) getMirror(rpcConn, revConn net.Conn, reserveCount int) (
 
 func NewWorkerDaemon(secret []byte, tmpDir string, cacheDir string, jobs int) *WorkerDaemon {
 	cache := NewContentCache(cacheDir)
-	w := &WorkerDaemon{
+	me := &WorkerDaemon{
 		secret:        secret,
 		contentCache:  cache,
 		mirrorMap:     make(map[string]*Mirror),
@@ -92,9 +99,10 @@ func NewWorkerDaemon(secret []byte, tmpDir string, cacheDir string, jobs int) *W
 		tmpDir:        tmpDir,
 		rpcServer:     rpc.NewServer(),
 	}
-
-	w.rpcServer.Register(w)
-	return w
+	me.stopListener = make(chan int, 1)
+	me.cond.L = &me.mirrorMapMutex
+	me.rpcServer.Register(me)
+	return me
 }
 
 const _REPORT_DELAY = 60.0
@@ -163,7 +171,10 @@ type CreateMirrorResponse struct {
 }
 
 func (me *WorkerDaemon) CreateMirror(req *CreateMirrorRequest, rep *CreateMirrorResponse) os.Error {
-	log.Println("CreateMirror")
+	if me.shuttingDown {
+		return os.NewError("Worker is shutting down.")
+	}
+
 	rpcConn := me.pending.WaitConnection(req.RpcId)
 	revConn := me.pending.WaitConnection(req.RevRpcId)
 	mirror, err := me.getMirror(rpcConn, revConn, req.MaxJobCount)
@@ -184,20 +195,59 @@ func (me *WorkerDaemon) DropMirror(mirror *Mirror) {
 
 	log.Println("dropping mirror", mirror.key)
 	me.mirrorMap[mirror.key] = nil, false
-
+	me.cond.Signal()
 	runtime.GC()
+}
+
+func (me *WorkerDaemon) serveConn(conn net.Conn) {
+	log.Println("Authenticated connection from", conn.RemoteAddr())
+	if !me.pending.Accept(conn) {
+		go me.rpcServer.ServeConn(conn)
+	}
 }
 
 func (me *WorkerDaemon) RunWorkerServer(port int, coordinator string) {
 	out := make(chan net.Conn)
+
+	log.Println("Worker listening to", port)
+
 	go SetupServer(port, me.secret, out)
 	go me.PeriodicReport(coordinator, port)
 
 	for {
-		conn := <-out
-		log.Println("Authenticated connection from", conn.RemoteAddr())
-		if !me.pending.Accept(conn) {
-			go me.rpcServer.ServeConn(conn)
+               select {
+               case conn :=  <-out:
+                       log.Println("Authenticated connection from", conn.RemoteAddr())
+                       if !me.pending.Accept(conn) {
+                               go me.rpcServer.ServeConn(conn)
+			}
+		case sig := <-signal.Incoming:
+			switch sig.(os.UnixSignal) {
+			case syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT, syscall.SIGHUP:
+				log.Println("got signal: ", sig)
+				var i, j int
+				me.Shutdown(&i, &j)
+			}
+		case <-me.stopListener:
+			return
 		}
 	}
+}
+
+func (me *WorkerDaemon) Shutdown(req *int, rep *int) os.Error {
+	log.Println("Received Shutdown.")
+	me.mirrorMapMutex.Lock()
+	defer me.mirrorMapMutex.Unlock()
+
+	for _, m := range me.mirrorMap {
+		m.Shutdown()
+	}
+
+	for len(me.mirrorMap) > 0 {
+		log.Println("Live mirror count:", len (me.mirrorMap))
+		me.cond.Wait()
+	}
+	log.Println("All mirrors have shut down.")
+	me.stopListener <- 1
+	return nil
 }
