@@ -63,3 +63,4 @@ func (me *DevNullFs) Truncate(name string, offset uint64) (code fuse.Status) {
 	}
 	return fuse.ENOENT
 }
+

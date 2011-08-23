@@ -17,6 +17,7 @@ type WorkerFuseFs struct {
 	*fuse.MountState
 	fsConnector *fuse.FileSystemConnector
 	unionFs     *unionfs.UnionFs
+	procFs      *ProcFs
 
 	// If nil, we are running this task.
 	task        *WorkerTask
@@ -93,14 +94,14 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string) 
 	}
 
 	tmpFs := fuse.NewLoopbackFileSystem(tmpBacking)
-
+	w.procFs = NewProcFs()
 	w.unionFs = unionfs.NewUnionFs([]fuse.FileSystem{rwFs, rpcFs}, opts)
 	swFs := []fuse.SwitchedFileSystem{
 		{"dev", &DevNullFs{}, true},
 		{"", rpcFs, false},
 		{"tmp", tmpFs, true},
 		{"var/tmp", tmpFs, true},
-
+		{"proc", w.procFs, true},
 		// TODO - configurable.
 		{writableRoot, w.unionFs, false},
 	}
