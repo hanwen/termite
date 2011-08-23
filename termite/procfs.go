@@ -30,19 +30,25 @@ func (me *ProcFs) GetAttr(name string) (*os.FileInfo, fuse.Status) {
 		fi := os.FileInfo{Mode: fuse.S_IFDIR | 0777}
 		return &fi, fuse.OK
 	}
-
+	if name == "stat" {
+		return me.procAttr(name)
+	}
 	if strings.HasPrefix(name, "self/") {
 		name = fmt.Sprintf("%d/%s", me.Pid, name[len("self/"):])
-		fi, code := me.LoopbackFileSystem.GetAttr(name)
-		if fi != nil && fi.IsRegular() && fi.Size == 0 {
-			p := me.LoopbackFileSystem.GetPath(name)
-			content, _ := ioutil.ReadFile(p)
-			fi.Size = int64(len(content))
-		}
-		return fi, code
+		return me.procAttr(name)
 	}
 	
 	return nil, fuse.ENOENT
+}
+
+func (me *ProcFs) procAttr(name string) (*os.FileInfo, fuse.Status) {
+	fi, code := me.LoopbackFileSystem.GetAttr(name)
+	if fi != nil && fi.IsRegular() && fi.Size == 0 {
+		p := me.LoopbackFileSystem.GetPath(name)
+		content, _ := ioutil.ReadFile(p)
+		fi.Size = int64(len(content))
+	}
+	return fi, code
 }
 
 func (me *ProcFs) OpenDir(name string) (stream chan fuse.DirEntry, status fuse.Status) {
