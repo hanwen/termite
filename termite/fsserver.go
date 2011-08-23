@@ -26,6 +26,9 @@ type FsServer struct {
 
 	attrCacheMutex sync.RWMutex
 	attrCache      map[string]FileAttr
+
+	// TODO - add counters and check that the rpcFs.fetchCond is
+	// working.
 }
 
 func NewFsServer(root string, cache *ContentCache, excluded []string) *FsServer {
