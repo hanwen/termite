@@ -163,3 +163,6 @@ SUCCESSFUL COMPILES
 * Make 3.82. (1.6x slower, Lenovo T60, 2-core, make -j2)
 * LLVM 2.9 (6 minutes, Amazon EC2 64-bit)
 
+KNOWN BROKEN
+
+* Guile 2.0 (.go compile tries to read /proc/stat; segfaults.) 
