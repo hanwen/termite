@@ -29,7 +29,7 @@ type Mirror struct {
 	// Map value is the command running.
 	workingFileSystems map[*WorkerFuseFs]string
 	shuttingDown       bool
-	cond               sync.Cond
+	cond               *sync.Cond
 }
 
 func NewMirror(daemon *WorkerDaemon, rpcConn, revConn net.Conn) *Mirror {
@@ -44,7 +44,7 @@ func NewMirror(daemon *WorkerDaemon, rpcConn, revConn net.Conn) *Mirror {
 	}
 	mirror.rpcFs = NewRpcFs(mirror.fileServer, daemon.contentCache)
 	mirror.rpcFs.localRoots = []string{"/lib", "/usr"}
-	mirror.cond.L = &mirror.fuseFileSystemsMutex
+	mirror.cond = sync.NewCond(&mirror.fuseFileSystemsMutex)
 
 	go mirror.serveRpc()
 	return mirror

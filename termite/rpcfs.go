@@ -27,7 +27,7 @@ type RpcFs struct {
 	attrResponse map[string]*FileAttr
 
 	fetchMutex sync.Mutex
-	fetchCond  sync.Cond
+	fetchCond  *sync.Cond
 	fetchMap   map[string]bool
 }
 
@@ -47,7 +47,7 @@ func NewRpcFs(server *rpc.Client, cache *ContentCache) *RpcFs {
 	me.attrResponse = make(map[string]*FileAttr)
 
 	me.fetchMap = make(map[string]bool)
-	me.fetchCond.L = &me.fetchMutex
+	me.fetchCond = sync.NewCond(&me.fetchMutex)
 	return me
 }
 
@@ -146,7 +146,7 @@ func (me *RpcFs) Open(name string, flags uint32) (fuse.File, fuse.Status) {
 
 	p := me.cache.Path(a.Hash)
 	if _, err := os.Lstat(p); fuse.OsErrorToErrno(err) == fuse.ENOENT {
-		log.Printf("Fetching contents for file %s", name)
+		log.Printf("Fetching contents for file %s: %x", name, a.Hash)
 		err = me.FetchHash(a.FileInfo.Size, a.Hash)
 		// should return something else?
 		if err != nil {
@@ -168,25 +168,25 @@ func (me *RpcFs) Open(name string, flags uint32) (fuse.File, fuse.Status) {
 	}, fuse.OK
 }
 
-func (me *RpcFs) FetchHash(size int64, hash string) os.Error {
-	key := string(hash)
+func (me *RpcFs) FetchHash(size int64, key string) os.Error {
 	me.fetchMutex.Lock()
 	defer me.fetchMutex.Unlock()
-	for me.fetchMap[key] && !me.cache.HasHash(hash) {
+	for me.fetchMap[key] && !me.cache.HasHash(key) {
 		me.fetchCond.Wait()
 	}
 
-	if me.cache.HasHash(hash) {
+	if me.cache.HasHash(key) {
 		return nil
 	}
 	me.fetchMap[key] = true
-	defer func() {
-		me.fetchMap[key] = false, false
-		me.fetchCond.Signal()
-	}()
 	me.fetchMutex.Unlock()
-	err := me.fetchOnce(size, hash)
+
+	err := me.fetchOnce(size, key)
+
 	me.fetchMutex.Lock()
+	me.fetchMap[key] = false, false
+	me.fetchCond.Signal()
+
 	return err
 }
 

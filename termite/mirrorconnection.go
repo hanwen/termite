@@ -59,9 +59,9 @@ type mirrorConnections struct {
 	keepAliveNs int64
 
 	wantedMaxJobs int
-	
+
 	// Condition for mutex below.
-	sync.Cond
+	*sync.Cond
 
 	// Protects all of the below.
 	sync.Mutex
@@ -123,7 +123,7 @@ func newMirrorConnections(m *Master, workers []string, coordinator string, maxJo
 
 		go mc.periodicHouseholding()
 	}
-	mc.Cond.L = &mc.Mutex
+	mc.Cond = sync.NewCond(&mc.Mutex)
 	return mc
 }
 

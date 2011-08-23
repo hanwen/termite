@@ -53,7 +53,7 @@ type WorkerDaemon struct {
 	stopListener   chan int
 
 	mirrorMapMutex sync.Mutex
-	cond           sync.Cond
+	cond           *sync.Cond
 	mirrorMap      map[string]*Mirror
 	shuttingDown   bool
 }
@@ -97,8 +97,8 @@ func NewWorkerDaemon(secret []byte, tmpDir string, cacheDir string, jobs int) *W
 		tmpDir:        tmpDir,
 		rpcServer:     rpc.NewServer(),
 	}
+	me.cond = sync.NewCond(&me.mirrorMapMutex)
 	me.stopListener = make(chan int, 1)
-	me.cond.L = &me.mirrorMapMutex
 	me.rpcServer.Register(me)
 	return me
 }
@@ -227,13 +227,15 @@ func (me *WorkerDaemon) RunWorkerServer(port int, coordinator string) {
 
 func (me *WorkerDaemon) Shutdown(req *int, rep *int) os.Error {
 	log.Println("Received Shutdown.")
+
 	me.mirrorMapMutex.Lock()
 	defer me.mirrorMapMutex.Unlock()
 
+	me.shuttingDown = true
 	for _, m := range me.mirrorMap {
 		m.Shutdown()
 	}
-
+	log.Println("Asked all mirrors to shut down.")
 	for len(me.mirrorMap) > 0 {
 		log.Println("Live mirror count:", len (me.mirrorMap))
 		me.cond.Wait()
