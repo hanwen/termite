@@ -6,9 +6,24 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"os/signal"
+	"syscall"
 )
 
 var _ = log.Printf
+
+
+func handleStop(daemon *termite.WorkerDaemon) {
+	for {
+		sig := <-signal.Incoming
+		switch sig.(os.UnixSignal) {
+		case syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT, syscall.SIGHUP:
+			log.Println("got signal: ", sig)
+			var i, j int
+			daemon.Shutdown(&i, &j)
+		}
+	}
+}
 
 func main() {
 	cachedir := flag.String("cachedir", "/var/cache/termite/worker-cache", "content cache")
@@ -29,5 +44,6 @@ func main() {
 	}
 
 	daemon := termite.NewWorkerDaemon(secret, *tmpdir, *cachedir, *jobs)
+	go handleStop(daemon)
 	daemon.RunWorkerServer(*port, *coordinator)
 }

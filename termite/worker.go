@@ -5,10 +5,8 @@ import (
 	"log"
 	"net"
 	"os"
-	"os/signal"
 	"rpc"
 	"sync"
-	"syscall"
 	"strings"
 	"runtime"
 	"time"
@@ -215,18 +213,11 @@ func (me *WorkerDaemon) RunWorkerServer(port int, coordinator string) {
 	go me.PeriodicReport(coordinator, port)
 
 	for {
-               select {
-               case conn :=  <-out:
-                       log.Println("Authenticated connection from", conn.RemoteAddr())
-                       if !me.pending.Accept(conn) {
-                               go me.rpcServer.ServeConn(conn)
-			}
-		case sig := <-signal.Incoming:
-			switch sig.(os.UnixSignal) {
-			case syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT, syscall.SIGHUP:
-				log.Println("got signal: ", sig)
-				var i, j int
-				me.Shutdown(&i, &j)
+		select {
+		case conn :=  <-out:
+			log.Println("Authenticated connection from", conn.RemoteAddr())
+			if !me.pending.Accept(conn) {
+				go me.rpcServer.ServeConn(conn)
 			}
 		case <-me.stopListener:
 			return
