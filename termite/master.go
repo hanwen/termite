@@ -138,18 +138,17 @@ func (me *Master) createMirror(addr string, jobs int) (*mirrorConnection, os.Err
 	if err != nil {
 		return nil, err
 	}
-
+	defer conn.Close()
+	
 	rpcId := ConnectionId()
 	rpcConn, err := DialTypedConnection(addr, rpcId, me.secret)
 	if err != nil {
-		conn.Close()
 		return nil, err
 	}
 
 	revId := ConnectionId()
 	revConn, err := DialTypedConnection(addr, revId, me.secret)
 	if err != nil {
-		conn.Close()
 		rpcConn.Close()
 		return nil, err
 	}
@@ -170,7 +169,10 @@ func (me *Master) createMirror(addr string, jobs int) (*mirrorConnection, os.Err
 		return nil, err
 	}
 
-	go me.fileServerRpc.ServeConn(revConn)
+	go func() {
+		me.fileServerRpc.ServeConn(revConn)
+		revConn.Close()
+	}()
 
 	mc := &mirrorConnection{
 		rpcClient:     rpc.NewClient(rpcConn),

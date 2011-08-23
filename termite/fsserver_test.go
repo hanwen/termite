@@ -95,7 +95,9 @@ func TestRpcFS(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
+	defer l.Close()
+	defer r.Close()
+	
 	rpcServer := rpc.NewServer()
 	rpcServer.Register(server)
 	go rpcServer.ServeConn(l)
@@ -150,5 +152,4 @@ func TestRpcFS(t *testing.T) {
 	if storedHash == "" || storedHash != newData[0].Hash {
 		t.Errorf("cache error %x (%v)", storedHash, storedHash)
 	}
-
 }

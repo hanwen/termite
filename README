@@ -162,3 +162,8 @@ SUCCESSFUL COMPILES
 
 * Make 3.82. (1.6x slower, Lenovo T60, 2-core, make -j2)
 * LLVM 2.9 (1.5 slower, Dell T5300 6-core, make -j12)
+
+
+KNOWN BROKEN
+
+* Guile 2.0 (Tries to read /proc/stat; segfaults.) 

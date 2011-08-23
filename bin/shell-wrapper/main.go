@@ -45,6 +45,7 @@ func Refresh() {
 	if err != nil {
 		log.Fatal("LocalMaster.RefreshAttributeCache: ", err)
 	}
+	conn.Close()
 }
 
 func cleanEnv(input []string) []string {
@@ -147,5 +148,6 @@ func main() {
 	if localWaitMsg == nil {
 		localWaitMsg = rep.Exit
 	}
+	conn.Close()
 	os.Exit(localWaitMsg.ExitStatus())
 }
