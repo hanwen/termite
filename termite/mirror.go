@@ -177,13 +177,15 @@ func (me *Mirror) newWorkerTask(req *WorkRequest, rep *WorkReply) (*WorkerTask, 
 	if req.StdinId != "" {
 		stdin = me.daemon.pending.WaitConnection(req.StdinId)
 	}
-	return &WorkerTask{
+	task := &WorkerTask{
 		WorkRequest: req,
 		WorkReply:   rep,
 		stdinConn:   stdin,
 		mirror:      me,
 		fuseFs:      fuseFs,
-	}, nil
+	}
+	fuseFs.task = task
+	return task, nil
 }
 
 func (me *Mirror) FileContent(req *ContentRequest, rep *ContentResponse) os.Error {

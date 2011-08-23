@@ -26,8 +26,8 @@ func (me *Mirror) Status(req *MirrorStatusRequest, rep *MirrorStatusResponse) os
 	rep.WaitingTasks = me.Waiting
 	rep.IdleFses = len(me.fuseFileSystems)
 	rep.ShuttingDown = me.shuttingDown
-	for _, v := range me.workingFileSystems {
-		rep.Running = append(rep.Running, v)
+	for fs, _ := range me.workingFileSystems {
+		rep.Running = append(rep.Running, fs.task.taskInfo)
 	}
 	return nil
 }
@@ -40,7 +40,7 @@ type WorkerStatusResponse struct {
 	MirrorStatus []MirrorStatusResponse
 	Version      string
 	MaxJobCount  int
-	ShuttingDown bool 
+	ShuttingDown bool
 }
 
 func (me *WorkerDaemon) Status(req *WorkerStatusRequest, rep *WorkerStatusResponse) os.Error {

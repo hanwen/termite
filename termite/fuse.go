@@ -17,6 +17,9 @@ type WorkerFuseFs struct {
 	*fuse.MountState
 	fsConnector *fuse.FileSystemConnector
 	unionFs     *unionfs.UnionFs
+
+	// If nil, we are running this task.
+	task        *WorkerTask
 }
 
 func (me *WorkerFuseFs) Stop() {
@@ -35,6 +38,7 @@ func (me *Mirror) returnFuse(wfs *WorkerFuseFs) {
 	me.fuseFileSystemsMutex.Lock()
 	defer me.fuseFileSystemsMutex.Unlock()
 
+	wfs.task = nil
 	if me.shuttingDown {
 		wfs.Stop()
 	} else {

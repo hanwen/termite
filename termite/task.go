@@ -3,6 +3,7 @@ package termite
 import (
 	"bytes"
 	"exec"
+	"fmt"
 	"github.com/hanwen/go-fuse/fuse"
 	"io/ioutil"
 	"log"
@@ -20,6 +21,8 @@ type WorkerTask struct {
 	*WorkReply
 	stdinConn net.Conn
 	mirror    *Mirror
+
+	taskInfo  string
 }
 
 func (me *WorkerTask) Run() os.Error {
@@ -63,7 +66,12 @@ func (me *WorkerTask) Run() os.Error {
 	printCmd.Env = nil
 	log.Println("starting cmd", printCmd, "in", me.fuseFs.mount)
 
-	err := cmd.Run()
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+
+	me.taskInfo = fmt.Sprintf("Cmd %v, dir %v, proc %v", cmd.Args, cmd.Dir, cmd.Process)
+   	err := cmd.Wait()
 	waitMsg, ok := err.(*os.Waitmsg)
 	if ok {
 		me.WorkReply.Exit = waitMsg
