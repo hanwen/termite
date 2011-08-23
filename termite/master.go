@@ -139,7 +139,7 @@ func (me *Master) createMirror(addr string, jobs int) (*mirrorConnection, os.Err
 		return nil, err
 	}
 	defer conn.Close()
-	
+
 	rpcId := ConnectionId()
 	rpcConn, err := DialTypedConnection(addr, rpcId, me.secret)
 	if err != nil {
@@ -205,6 +205,10 @@ func (me *Master) runOnMirror(mirror *mirrorConnection, req *WorkRequest, rep *W
 	}
 
 	log.Println("Running command", req.Argv)
+	if req.Debug {
+		log.Println("with environment", req.Env)
+	}
+
 	err := mirror.rpcClient.Call("Mirror.Run", &req, &rep)
 	return err
 }
@@ -262,7 +266,7 @@ func (me *Master) runOnce(req *WorkRequest, rep *WorkReply) os.Error {
 
 func (me *Master) run(req *WorkRequest, rep *WorkReply) (err os.Error) {
 	me.stats.MarkReceive()
-	
+
 	err = me.runOnce(req, rep)
 	for i := 0; i < me.retryCount && err != nil; i++ {
 		log.Println("Retrying; last error:", err)

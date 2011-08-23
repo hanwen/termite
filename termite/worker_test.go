@@ -9,6 +9,7 @@ import (
 	"os"
 	"rand"
 	"rpc"
+	"strings"
 	"testing"
 	"time"
 )
@@ -376,4 +377,27 @@ func TestEndToEndShutdown(t *testing.T) {
 	}
 
 	// TODO - check that DialTypedConnection to worker stops working?
+}
+
+func TestEndToEndSpecialEntries(t *testing.T) {
+	tc := NewTestCase(t)
+	defer tc.Clean()
+
+	readlink := tc.FindBin("readlink")
+	req := 	WorkRequest{
+		Binary: readlink,
+		Argv:   []string{"readlink", "proc/self/exe"},
+		Env:    testEnv(),
+		Dir:    "/",
+		Debug: true,
+	}
+	rep := tc.Run(req)
+
+	if rep.Exit.ExitStatus() != 0 {
+		t.Fatalf("readlink should exit cleanly. Rep %v", rep)
+	}
+
+	if out := strings.TrimRight(rep.Stdout, "\n"); out != readlink {
+		t.Errorf("proc/self/exe point to wrong location: got %q, expect %q", out, readlink)
+	}
 }

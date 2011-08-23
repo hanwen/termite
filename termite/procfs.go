@@ -4,46 +4,34 @@ import (
 	"fmt"
 	"github.com/hanwen/go-fuse/fuse"
 	"io/ioutil"
+	"log"
 	"os"
 	"strings"
 )
 
-// Expose /proc/self
+// Read files from proc - since they have 0 size, we must read the
+// file to set the size correctly.
 type ProcFs struct {
 	*fuse.LoopbackFileSystem
-	Pid int
+	StripPrefix string
 }
 
 func NewProcFs() *ProcFs {
 	return &ProcFs{
-		fuse.NewLoopbackFileSystem("/proc"),
-		1,
+		// Is this a security problem?
+		fuse.NewLoopbackFileSystem("/proc/0"),
+		"/",
 	}
+}
+
+func (me *ProcFs) SetPid(pid int) {
+	// TODO - racy access.
+	me.LoopbackFileSystem.Root = fmt.Sprintf("/proc/%d", pid)
 }
 
 func (me *ProcFs) GetAttr(name string) (*os.FileInfo, fuse.Status) {
-	if name == "" {
-		fi := os.FileInfo{Mode: fuse.S_IFDIR | 0777}
-		return &fi, fuse.OK
-	}
-	if name == "self" {
-		fi := os.FileInfo{Mode: fuse.S_IFDIR | 0777}
-		return &fi, fuse.OK
-	}
-	if name == "stat" {
-		return me.procAttr(name)
-	}
-	if strings.HasPrefix(name, "self/") {
-		name = fmt.Sprintf("%d/%s", me.Pid, name[len("self/"):])
-		return me.procAttr(name)
-	}
-	
-	return nil, fuse.ENOENT
-}
-
-func (me *ProcFs) procAttr(name string) (*os.FileInfo, fuse.Status) {
 	fi, code := me.LoopbackFileSystem.GetAttr(name)
-	if fi != nil && fi.IsRegular() && fi.Size == 0 {
+	if fi != nil &&  fi.IsRegular() && fi.Size == 0 {
 		p := me.LoopbackFileSystem.GetPath(name)
 		content, _ := ioutil.ReadFile(p)
 		fi.Size = int64(len(content))
@@ -51,22 +39,11 @@ func (me *ProcFs) procAttr(name string) (*os.FileInfo, fuse.Status) {
 	return fi, code
 }
 
-func (me *ProcFs) OpenDir(name string) (stream chan fuse.DirEntry, status fuse.Status) {
-	if name == "" {
-		stream := make(chan fuse.DirEntry, 1)
-		stream <- fuse.DirEntry{fuse.S_IFDIR | 0666, "self"}
-		close(stream)
-		return stream, fuse.OK
+func (me *ProcFs) Readlink(name string) (string, fuse.Status) {
+	log.Println("Readlink:")
+	val, code := me.LoopbackFileSystem.Readlink(name)
+	if code.Ok() && strings.HasPrefix(val, me.StripPrefix) {
+		val = "/" + strings.TrimLeft(val[len(me.StripPrefix):], "/")
 	}
-	if strings.HasPrefix(name, "self") {
-		name = fmt.Sprintf("%d/%s", me.Pid, name[len("self"):])
-		return me.LoopbackFileSystem.OpenDir(name)
-	}
-	return nil, fuse.ENOENT
+	return val, code
 }
-
-func (me *ProcFs) GetXAttr(name string, attr string) ([]byte, fuse.Status) {
-	return nil, fuse.ENODATA
-}
-
-

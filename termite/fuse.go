@@ -40,6 +40,7 @@ func (me *Mirror) returnFuse(wfs *WorkerFuseFs) {
 	defer me.fuseFileSystemsMutex.Unlock()
 
 	wfs.task = nil
+	wfs.procFs.SetPid(0)
 	if me.shuttingDown {
 		wfs.Stop()
 	} else {
@@ -94,14 +95,18 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string) 
 	}
 
 	tmpFs := fuse.NewLoopbackFileSystem(tmpBacking)
+	entryFs := NewEntryFs(os.FileInfo{ Mode: fuse.S_IFDIR | 0755, Name: "self" })
+
 	w.procFs = NewProcFs()
+	w.procFs.StripPrefix = w.mount
 	w.unionFs = unionfs.NewUnionFs([]fuse.FileSystem{rwFs, rpcFs}, opts)
 	swFs := []fuse.SwitchedFileSystem{
-		{"dev", &DevNullFs{}, true},
+		{"dev", NewDevnullFs(), true},
 		{"", rpcFs, false},
 		{"tmp", tmpFs, true},
 		{"var/tmp", tmpFs, true},
-		{"proc", w.procFs, true},
+		{"proc", entryFs, true},
+		{"proc/self", w.procFs, true},
 		// TODO - configurable.
 		{writableRoot, w.unionFs, false},
 	}
