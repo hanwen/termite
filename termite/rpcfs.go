@@ -277,8 +277,12 @@ func (me *RpcFs) considerSaveLocal(attr FileAttr) {
 	}
 
 	// Avoid fetching local data; this assumes that most paths
-	// will be the same between master and worker.
-	me.cache.SaveImmutablePath(absPath)
+	// will be the same between master and worker.  We mimick
+	// fsserver's logic, so that we don't have nasty surprises
+	// when running server and master on the same machine.
+	if HasDirPrefix(absPath, "/usr") && !HasDirPrefix(absPath, "/usr/local") {
+		me.cache.SaveImmutablePath(absPath)
+	}
 }
 
 func (me *RpcFs) GetAttr(name string) (*os.FileInfo, fuse.Status) {
