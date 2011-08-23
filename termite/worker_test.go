@@ -84,6 +84,14 @@ func NewTestCase(t *testing.T) *testCase {
 	return me
 }
 
+func (me *testCase) fdCount() int {
+	entries, err := ioutil.ReadDir("/proc/self/fd")
+	if err != nil {
+		me.tester.Fatal("ReadDir fd", err)
+	}
+	return len(entries)
+}
+
 func (me *testCase) Clean() {
 	me.master.mirrors.dropConnections()
 	// TODO - should have explicit worker shutdown routine.
@@ -158,7 +166,7 @@ func TestEndToEndBasic(t *testing.T) {
 	statusRep := &WorkerStatusResponse{}
 	tc.worker.Status(statusReq, statusRep)
 	if len(statusRep.MirrorStatus) > 0 {
-		t.Error("Processes still alive.")
+		t.Fatal("Processes still alive.")
 	}
 }
 
@@ -367,8 +375,5 @@ func TestEndToEndShutdown(t *testing.T) {
 		t.Error("LocalMaster.Run should fail after shutdown")
 	}
 
-	conn, err = DialTypedConnection(fmt.Sprintf(":%d", tc.workerPort), RPC_CHANNEL, tc.secret)
-	if conn != nil  {
-		t.Error("DialTypedConnection should fail after shutdown.")
-	}
+	// TODO - check that DialTypedConnection to worker stops working?
 }

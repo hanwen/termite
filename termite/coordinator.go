@@ -168,8 +168,9 @@ func (me *Coordinator) killHandler(w http.ResponseWriter, req *http.Request) {
 		fmt.Fprintf(w, "<p><tt>RPC error: %v<tt>", err)
 		return
 	}
-
+	
 	fmt.Fprintf(w, "<p>Shutdown of %s in progress", addr)
+	conn.Close()
 }
 
 func (me *Coordinator) workerHandler(w http.ResponseWriter, req *http.Request) {
@@ -216,6 +217,7 @@ func (me *Coordinator) workerHandler(w http.ResponseWriter, req *http.Request) {
 		me.mirrorStatusHtml(w, mirrorStatus)
 	}
 	fmt.Fprintf(w, "<p><a href=\"/workerkill?host=%s\">Kill worker %s</a>\n", addr, addr)
+	conn.Close()
 }
 
 func (me *Coordinator) mirrorStatusHtml(w http.ResponseWriter, s MirrorStatusResponse) {
