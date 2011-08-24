@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
 	"rand"
 	"rpc"
 	"strings"
@@ -383,7 +384,7 @@ func TestEndToEndSpecialEntries(t *testing.T) {
 	tc := NewTestCase(t)
 	defer tc.Clean()
 
-	readlink := tc.FindBin("readlink")
+	readlink, _ := filepath.EvalSymlinks(tc.FindBin("readlink"))
 	req := 	WorkRequest{
 		Binary: readlink,
 		Argv:   []string{"readlink", "proc/self/exe"},
@@ -396,8 +397,9 @@ func TestEndToEndSpecialEntries(t *testing.T) {
 	if rep.Exit.ExitStatus() != 0 {
 		t.Fatalf("readlink should exit cleanly. Rep %v", rep)
 	}
-
-	if out := strings.TrimRight(rep.Stdout, "\n"); out != readlink {
+	
+	out, _ := filepath.EvalSymlinks(strings.TrimRight(rep.Stdout, "\n"))
+	if out != readlink {
 		t.Errorf("proc/self/exe point to wrong location: got %q, expect %q", out, readlink)
 	}
 }
