@@ -40,7 +40,7 @@ func isNum(n string) bool {
 	return len(n) > 0
 }
 
-func (me *ProcFs) GetAttr(name string) (*os.FileInfo, fuse.Status) {
+func (me *ProcFs) GetAttr(name string, context *fuse.Context) (*os.FileInfo, fuse.Status) {
 	dir, base := filepath.Split(name)
 	dir = filepath.Clean(dir)
 	if name != "" && dir == "." && !isNum(name) && me.AllowedRootFiles != nil {
@@ -48,17 +48,11 @@ func (me *ProcFs) GetAttr(name string) (*os.FileInfo, fuse.Status) {
 			return nil, fuse.ENOENT
 		}
 	}
-
-	if isNum(dir) && os.Geteuid() == 0 {
-		// We are running as root, so we have to enforce permissions here.
-		// TODO - also return EPERM for OpenDir()
-		p := me.LoopbackFileSystem.GetPath(dir)
-		if fi, err := os.Lstat(p); err != nil || fi.Uid != me.Uid {
-			return nil, fuse.EPERM
-		}
-	}
 	
-	fi, code := me.LoopbackFileSystem.GetAttr(name)
+	fi, code := me.LoopbackFileSystem.GetAttr(name, context)
+	if code.Ok() && isNum(dir) && os.Geteuid() == 0 && uint32(fi.Uid) != context.Uid {
+		return nil, fuse.EPERM
+	}
 	if fi != nil && fi.IsRegular() && fi.Size == 0 {
 		p := me.LoopbackFileSystem.GetPath(name)
 		content, _ := ioutil.ReadFile(p)
@@ -67,12 +61,11 @@ func (me *ProcFs) GetAttr(name string) (*os.FileInfo, fuse.Status) {
 	return fi, code
 }
 
-func (me *ProcFs) Readlink(name string) (string, fuse.Status) {
+func (me *ProcFs) Readlink(name string, context *fuse.Context) (string, fuse.Status) {
 	if name == "self" {
-		// TODO - this is broken if the process fork()s.
-		return fmt.Sprintf("%d", me.SelfPid), fuse.OK
+		return fmt.Sprintf("%d", context.Pid), fuse.OK
 	}
-	val, code := me.LoopbackFileSystem.Readlink(name)
+	val, code := me.LoopbackFileSystem.Readlink(name, context)
 	if code.Ok() && strings.HasPrefix(val, me.StripPrefix) {
 		val = "/" + strings.TrimLeft(val[len(me.StripPrefix):], "/")
 	}

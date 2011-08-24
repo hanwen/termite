@@ -25,7 +25,7 @@ func (me *EntryFs) Name() string {
 	return fmt.Sprintf("EntryFs(%s)", me.FileInfo.Name)
 }
 
-func (me *EntryFs) GetAttr(name string) (*os.FileInfo, fuse.Status) {
+func (me *EntryFs) GetAttr(name string, context *fuse.Context) (*os.FileInfo, fuse.Status) {
 	if name == "" {
 		fi := os.FileInfo{Mode: fuse.S_IFDIR | 0777}
 		return &fi, fuse.OK
@@ -39,7 +39,7 @@ func (me *EntryFs) GetAttr(name string) (*os.FileInfo, fuse.Status) {
 	return nil, fuse.ENOENT
 }
 
-func (me *EntryFs) OpenDir(name string) (stream chan fuse.DirEntry, status fuse.Status) {
+func (me *EntryFs) OpenDir(name string, context *fuse.Context) (stream chan fuse.DirEntry, status fuse.Status) {
 	if name == "" {
 		stream := make(chan fuse.DirEntry, 2)
 		stream <- fuse.DirEntry{fuse.S_IFREG | 0666, me.FileInfo.Name}
@@ -50,11 +50,11 @@ func (me *EntryFs) OpenDir(name string) (stream chan fuse.DirEntry, status fuse.
 	return nil, fuse.ENOENT
 }
 
-func (me *EntryFs) GetXAttr(name string, attr string) ([]byte, fuse.Status) {
+func (me *EntryFs) GetXAttr(name string, attr string, context *fuse.Context) ([]byte, fuse.Status) {
 	return nil, syscall.ENODATA
 }
 
-func (me *EntryFs) Access(name string, mode uint32) (code fuse.Status) {
+func (me *EntryFs) Access(name string, mode uint32, context *fuse.Context) (code fuse.Status) {
 	if name == me.FileInfo.Name {
 		return fuse.OK
 	}
@@ -81,14 +81,14 @@ func (me *DevnullFs) Name() string {
 	return fmt.Sprintf("DevnullFs")
 }
 
-func (me *DevnullFs) Truncate(name string, offset uint64) (code fuse.Status) {
+func (me *DevnullFs) Truncate(name string, offset uint64, context *fuse.Context) (code fuse.Status) {
 	if name == me.FileInfo.Name {
 		return fuse.OK
 	}
 	return fuse.ENOENT
 }
 
-func (me *EntryFs) Open(name string, flags uint32) (file fuse.File, code fuse.Status) {
+func (me *EntryFs) Open(name string, flags uint32, context *fuse.Context) (file fuse.File, code fuse.Status) {
 	if name == me.FileInfo.Name {
 		return fuse.NewDevNullFile(), fuse.OK
 	}

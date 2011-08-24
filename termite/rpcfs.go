@@ -106,7 +106,7 @@ func (me *RpcFs) GetDir(name string) *DirResponse {
 	return rep
 }
 
-func (me *RpcFs) OpenDir(name string) (chan fuse.DirEntry, fuse.Status) {
+func (me *RpcFs) OpenDir(name string, context *fuse.Context) (chan fuse.DirEntry, fuse.Status) {
 	r := me.GetDir(name)
 
 	if r == nil {
@@ -132,7 +132,7 @@ func (me *rpcFsFile) GetAttr() (*os.FileInfo, fuse.Status) {
 	return &me.FileInfo, fuse.OK
 }
 
-func (me *RpcFs) Open(name string, flags uint32) (fuse.File, fuse.Status) {
+func (me *RpcFs) Open(name string, flags uint32, context *fuse.Context) (fuse.File, fuse.Status) {
 	if flags&fuse.O_ANYWRITE != 0 {
 		return nil, fuse.EPERM
 	}
@@ -196,7 +196,7 @@ func (me *RpcFs) fetchOnce(size int64, hash string) os.Error {
 		me.cache)
 }
 
-func (me *RpcFs) Readlink(name string) (string, fuse.Status) {
+func (me *RpcFs) Readlink(name string, context *fuse.Context) (string, fuse.Status) {
 	a := me.getFileAttr(name)
 	if a == nil {
 		return "", fuse.ENOENT
@@ -285,7 +285,7 @@ func (me *RpcFs) considerSaveLocal(attr FileAttr) {
 	}
 }
 
-func (me *RpcFs) GetAttr(name string) (*os.FileInfo, fuse.Status) {
+func (me *RpcFs) GetAttr(name string, context *fuse.Context) (*os.FileInfo, fuse.Status) {
 	if name == "" {
 		return &os.FileInfo{
 			Mode: fuse.S_IFDIR | 0755,
