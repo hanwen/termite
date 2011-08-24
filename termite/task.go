@@ -69,7 +69,8 @@ func (me *WorkerTask) Run() os.Error {
 	if err := cmd.Start(); err != nil {
 		return err
 	}
-	me.fuseFs.procFs.SetPid(cmd.Process.Pid)
+	me.fuseFs.procFs.SelfPid = cmd.Process.Pid
+	log.Println("Started pid", cmd.Process.Pid)
 	me.taskInfo = fmt.Sprintf("Cmd %v, dir %v, proc %v", cmd.Args, cmd.Dir, cmd.Process)
    	err := cmd.Wait()
 	waitMsg, ok := err.(*os.Waitmsg)

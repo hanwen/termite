@@ -390,7 +390,6 @@ func TestEndToEndSpecialEntries(t *testing.T) {
 		Argv:   []string{"readlink", "proc/self/exe"},
 		Env:    testEnv(),
 		Dir:    "/",
-		Debug: true,
 	}
 	rep := tc.Run(req)
 
@@ -401,5 +400,16 @@ func TestEndToEndSpecialEntries(t *testing.T) {
 	out, _ := filepath.EvalSymlinks(strings.TrimRight(rep.Stdout, "\n"))
 	if out != readlink {
 		t.Errorf("proc/self/exe point to wrong location: got %q, expect %q", out, readlink)
+	}
+	
+	req = 	WorkRequest{
+		Binary: tc.FindBin("ls"),
+		Argv:   []string{"ls", "proc/misc"},
+		Env:    testEnv(),
+		Dir:    "/",
+	}
+	rep = tc.Run(req)
+	if rep.Exit.ExitStatus() == 0 {
+		t.Fatalf("ls should have failed", rep)
 	}
 }

@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"os/user"
 )
 
 type WorkerFuseFs struct {
@@ -40,7 +41,7 @@ func (me *Mirror) returnFuse(wfs *WorkerFuseFs) {
 	defer me.fuseFileSystemsMutex.Unlock()
 
 	wfs.task = nil
-	wfs.procFs.SetPid(0)
+	wfs.procFs.SelfPid = 1
 	if me.shuttingDown {
 		wfs.Stop()
 	} else {
@@ -95,18 +96,33 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string) 
 	}
 
 	tmpFs := fuse.NewLoopbackFileSystem(tmpBacking)
-	entryFs := NewEntryFs(os.FileInfo{ Mode: fuse.S_IFDIR | 0755, Name: "self" })
 
 	w.procFs = NewProcFs()
 	w.procFs.StripPrefix = w.mount
+
+	// TODO - pass in uid/gid from outside.
+	nobody, err := user.Lookup("nobody")
+	w.procFs.Uid = nobody.Uid
+	w.procFs.AllowedRootFiles = map[string]int{
+		"meminfo": 1,
+		"cpuinfo": 1,
+		"iomem": 1,
+		"ioport": 1,
+		"loadavg": 1,
+		"stats": 1,
+		"self": 1,
+		"filesystems": 1,
+		"mounts": 1,
+	}
+	
 	w.unionFs = unionfs.NewUnionFs([]fuse.FileSystem{rwFs, rpcFs}, opts)
 	swFs := []fuse.SwitchedFileSystem{
 		{"dev", NewDevnullFs(), true},
 		{"", rpcFs, false},
 		{"tmp", tmpFs, true},
 		{"var/tmp", tmpFs, true},
-		{"proc", entryFs, true},
-		{"proc/self", w.procFs, true},
+		{"proc", w.procFs, true},
+		{"sys", fuse.NewLoopbackFileSystem("/sys"), true},
 		// TODO - configurable.
 		{writableRoot, w.unionFs, false},
 	}
