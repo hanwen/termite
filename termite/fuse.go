@@ -109,7 +109,7 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string) 
 		"iomem": 1,
 		"ioport": 1,
 		"loadavg": 1,
-		"stats": 1,
+		"stat": 1,
 		"self": 1,
 		"filesystems": 1,
 		"mounts": 1,
