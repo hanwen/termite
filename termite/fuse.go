@@ -116,13 +116,14 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string) 
 	}
 	
 	w.unionFs = unionfs.NewUnionFs([]fuse.FileSystem{rwFs, rpcFs}, opts)
+	// TODO - use mounts for the strip versions of the filesystems.
 	swFs := []fuse.SwitchedFileSystem{
 		{"dev", NewDevnullFs(), true},
 		{"", rpcFs, false},
 		{"tmp", tmpFs, true},
 		{"var/tmp", tmpFs, true},
 		{"proc", w.procFs, true},
-		{"sys", fuse.NewLoopbackFileSystem("/sys"), true},
+		{"sys", &fuse.ReadonlyFileSystem{fuse.NewLoopbackFileSystem("/sys")}, true},
 		// TODO - configurable.
 		{writableRoot, w.unionFs, false},
 	}
