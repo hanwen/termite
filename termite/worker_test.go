@@ -33,6 +33,10 @@ func (me *testCase) FindBin(name string) string {
 		me.tester.Fatal("looking for binary:", err)
 	}
 
+	full, err = filepath.EvalSymlinks(full)
+	if err != nil {
+		me.tester.Fatal("EvalSymlinks:", err)
+	}
 	return full
 }
 
