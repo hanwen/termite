@@ -69,6 +69,7 @@ func (me *ProcFs) GetAttr(name string) (*os.FileInfo, fuse.Status) {
 
 func (me *ProcFs) Readlink(name string) (string, fuse.Status) {
 	if name == "self" {
+		// TODO - this is broken if the process fork()s.
 		return fmt.Sprintf("%d", me.SelfPid), fuse.OK
 	}
 	val, code := me.LoopbackFileSystem.Readlink(name)
