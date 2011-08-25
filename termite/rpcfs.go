@@ -20,15 +20,18 @@ type RpcFs struct {
 	localRoots []string
 
 	// Should be acquired before attrMutex if applicable.
-	dirMutex    sync.Mutex
+	dirMutex    sync.RWMutex
+	dirFetchCond *sync.Cond
+	dirFetchMap map[string]bool
 	directories map[string]*DirResponse
-
-	attrMutex    sync.RWMutex
-	attrResponse map[string]*FileAttr
 
 	fetchMutex sync.Mutex
 	fetchCond  *sync.Cond
 	fetchMap   map[string]bool
+
+	attrMutex    sync.RWMutex
+	attrResponse map[string]*FileAttr
+
 }
 
 type UpdateRequest struct {
@@ -43,6 +46,9 @@ func NewRpcFs(server *rpc.Client, cache *ContentCache) *RpcFs {
 	me := &RpcFs{}
 	me.client = server
 	me.directories = make(map[string]*DirResponse)
+	me.dirFetchMap = map[string]bool{}
+	me.dirFetchCond = sync.NewCond(&me.dirMutex)
+
 	me.cache = cache
 	me.attrResponse = make(map[string]*FileAttr)
 
@@ -84,25 +90,42 @@ func (me *RpcFs) updateFiles(files []FileAttr) {
 }
 
 func (me *RpcFs) GetDir(name string) *DirResponse {
-	me.dirMutex.Lock()
-	defer me.dirMutex.Unlock()
-
+	me.dirMutex.RLock()
 	r, ok := me.directories[name]
+	me.dirMutex.RUnlock()
 	if ok {
 		return r
 	}
 
-	// TODO - asynchronous.
-	// TODO - eliminate cut & paste
+	me.dirMutex.Lock()
+	defer me.dirMutex.Unlock()
+	for me.dirFetchMap[name] && me.directories[name] == nil {
+		me.dirFetchCond.Wait()
+	}
+
+	r, ok = me.directories[name]
+	if ok {
+		return r
+	}
+
+	me.dirFetchMap[name] = true
+	me.dirMutex.Unlock()
+
 	req := &DirRequest{Name: "/" + name}
 	rep := &DirResponse{}
 	err := me.client.Call("FsServer.ReadDir", req, rep)
-	if err != nil {
+
+	me.dirMutex.Lock()
+	me.dirFetchMap[name] = false, false
+	me.dirFetchCond.Signal()
+	if err == nil {
+		me.directories[name] = rep
+	} else {
+		// TODO - should be fatal ?
 		log.Println("GetDir error:", err)
 		return nil
 	}
 
-	me.directories[name] = rep
 	return rep
 }
 
@@ -221,6 +244,7 @@ func (me *RpcFs) getFileAttr(name string) *FileAttr {
 		return result
 	}
 
+	// TODO - use cond here too?
 	me.attrMutex.Lock()
 	defer me.attrMutex.Unlock()
 	result, ok = me.attrResponse[name]
