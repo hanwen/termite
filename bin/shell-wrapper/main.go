@@ -109,6 +109,9 @@ func main() {
 	TryRunDirect(*command)
 
 	socket := termite.FindSocket()
+	if socket == "" {
+		log.Fatal("Could not find .termite-socket")
+	}
 	topDir, _ := filepath.Split(socket)
 
 	localWaitMsg, localRule := TryRunLocally(*command, topDir)
