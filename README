@@ -165,5 +165,9 @@ machine.
 
 * Make 3.82. (1.6x slower, Lenovo T60, 2-core, make -j2)
 * LLVM 2.9 (1.5 slower, Dell T5300 6-core, make -j12)
-* GUILE 2.0 (1.1x slower, Dell T5300 6-core, make -j6)
 
+* GUILE 2.0. Must run inside srcdir.
+
+ (1.1x slower, Dell T5300 6-core, make -j6).
+ 
+* Emacs 24 (Must run twice. Emacs attempts to hardlink emacs-VERSION)
