@@ -48,7 +48,7 @@ func (me *Mirror) returnFuse(wfs *WorkerFuseFs) {
 		me.fuseFileSystems = append(me.fuseFileSystems, wfs)
 	}
 	me.workingFileSystems[wfs] = "", false
-	me.cond.Signal()
+	me.cond.Broadcast()
 }
 
 func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string) (*WorkerFuseFs, os.Error) {
@@ -114,7 +114,7 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string) 
 		"filesystems": 1,
 		"mounts": 1,
 	}
-	
+
 	w.unionFs = unionfs.NewUnionFs([]fuse.FileSystem{rwFs, rpcFs}, opts)
 	// TODO - use mounts for the strip versions of the filesystems.
 	swFs := []fuse.SwitchedFileSystem{

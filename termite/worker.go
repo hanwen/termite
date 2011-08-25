@@ -193,7 +193,7 @@ func (me *WorkerDaemon) DropMirror(mirror *Mirror) {
 
 	log.Println("dropping mirror", mirror.key)
 	me.mirrorMap[mirror.key] = nil, false
-	me.cond.Signal()
+	me.cond.Broadcast()
 	runtime.GC()
 }
 

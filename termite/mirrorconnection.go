@@ -241,7 +241,7 @@ func (me *mirrorConnections) jobDone(mc *mirrorConnection) {
 
 	me.lastActionNs = time.Nanoseconds()
 	mc.availableJobs++
-	me.Cond.Signal()
+	me.Cond.Broadcast()
 }
 
 // Tries to connect to one extra worker.  Must already hold mutex.

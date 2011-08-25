@@ -117,7 +117,7 @@ func (me *RpcFs) GetDir(name string) *DirResponse {
 
 	me.dirMutex.Lock()
 	me.dirFetchMap[name] = false, false
-	me.dirFetchCond.Signal()
+	me.dirFetchCond.Broadcast()
 	if err == nil {
 		me.directories[name] = rep
 	} else {
@@ -208,7 +208,7 @@ func (me *RpcFs) FetchHash(size int64, key string) os.Error {
 
 	me.fetchMutex.Lock()
 	me.fetchMap[key] = false, false
-	me.fetchCond.Signal()
+	me.fetchCond.Broadcast()
 
 	return err
 }

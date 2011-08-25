@@ -56,7 +56,7 @@ func (me *Mirror) discardFuse(wfs *WorkerFuseFs) {
 	me.fuseFileSystemsMutex.Lock()
 	defer me.fuseFileSystemsMutex.Unlock()
 	me.workingFileSystems[wfs] = "", false
-	me.cond.Signal()
+	me.cond.Broadcast()
 }
 
 func (me *Mirror) serveRpc() {
