@@ -139,18 +139,13 @@ func (me *Coordinator) killHandler(w http.ResponseWriter, req *http.Request) {
 		fmt.Fprintf(w, "<html><body>404 query param 'host' missing</body></html>")
 		return
 	}
-
 	addr := string(vs[0])
-	me.mutex.Lock()
-	defer me.mutex.Unlock()
-
-	_, ok = me.workers[addr]
 
 	fmt.Fprintf(w, "<html><head><title>Termite worker status</title></head>")
 	fmt.Fprintf(w, "<body><h1>Status %s</h1>", addr)
 	defer fmt.Fprintf(w, "</body></html>")
 
-	if !ok {
+	if !me.haveWorker(addr) {
 		fmt.Fprintf(w, "<p><tt>worker %q unknown<tt>", addr)
 		return
 	}
@@ -168,9 +163,16 @@ func (me *Coordinator) killHandler(w http.ResponseWriter, req *http.Request) {
 		fmt.Fprintf(w, "<p><tt>RPC error: %v<tt>", err)
 		return
 	}
-	
+
 	fmt.Fprintf(w, "<p>Shutdown of %s in progress", addr)
 	conn.Close()
+}
+
+func (me *Coordinator) haveWorker(addr string) bool {
+	me.mutex.Lock()
+	defer me.mutex.Unlock()
+	_, ok := me.workers[addr]
+	return ok
 }
 
 func (me *Coordinator) workerHandler(w http.ResponseWriter, req *http.Request) {
@@ -182,16 +184,11 @@ func (me *Coordinator) workerHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	addr := string(vs[0])
-	me.mutex.Lock()
-	defer me.mutex.Unlock()
-
-	_, ok = me.workers[addr]
-
 	fmt.Fprintf(w, "<html><head><title>Termite worker status</title></head>")
 	fmt.Fprintf(w, "<body><h1>Status %s</h1>", addr)
 	defer fmt.Fprintf(w, "</body></html>")
 
-	if !ok {
+	if !me.haveWorker(addr) {
 		fmt.Fprintf(w, "<p><tt>worker %q unknown<tt>", addr)
 		return
 	}
@@ -228,9 +225,11 @@ func (me *Coordinator) mirrorStatusHtml(w http.ResponseWriter, s MirrorStatusRes
 		fmt.Fprintf(w, "<p><b>shutting down</b>\n")
 	}
 
+	fmt.Fprintf(w, "<ul>\n")
 	for _, v := range s.Running {
-		fmt.Fprintf(w, "<p>FS:\n%s\n", v)
+		fmt.Fprintf(w, "<li>%s\n", v)
 	}
+	fmt.Fprintf(w, "</ul>\n")
 }
 
 func (me *Coordinator) ServeHTTP(port int) {
