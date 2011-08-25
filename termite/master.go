@@ -125,10 +125,7 @@ func (me *Master) Start(sock string) {
 			log.Fatal("listener.accept", err)
 		}
 		if !me.pending.Accept(conn) {
-			go func() {
-				me.localRpcServer.ServeConn(conn)
-				conn.Close()
-			}()
+			go me.localRpcServer.ServeConn(conn)
 		}
 	}
 }
@@ -169,10 +166,7 @@ func (me *Master) createMirror(addr string, jobs int) (*mirrorConnection, os.Err
 		return nil, err
 	}
 
-	go func() {
-		me.fileServerRpc.ServeConn(revConn)
-		revConn.Close()
-	}()
+	go me.fileServerRpc.ServeConn(revConn)
 
 	mc := &mirrorConnection{
 		rpcClient:     rpc.NewClient(rpcConn),

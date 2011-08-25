@@ -200,10 +200,7 @@ func (me *WorkerDaemon) DropMirror(mirror *Mirror) {
 func (me *WorkerDaemon) serveConn(conn net.Conn) {
 	log.Println("Authenticated connection from", conn.RemoteAddr())
 	if !me.pending.Accept(conn) {
-		go func() {
-			me.rpcServer.ServeConn(conn)
-			conn.Close()
-		}()
+		go me.rpcServer.ServeConn(conn)
 	}
 }
 
@@ -217,7 +214,7 @@ func (me *WorkerDaemon) RunWorkerServer(port int, coordinator string) {
 
 	for {
 		select {
-		case conn :=  <-out:
+		case conn := <-out:
 			log.Println("Authenticated connection from", conn.RemoteAddr())
 			if !me.pending.Accept(conn) {
 				go me.rpcServer.ServeConn(conn)
