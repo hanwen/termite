@@ -55,7 +55,8 @@ func NewMaster(cache *ContentCache, coordinator string, workers []string, secret
 func (me *Master) multiplyPaths(name string) []string {
 	names := []string{name}
 	// TODO - cleanpath.
-	if strings.HasPrefix(name, me.writableRoot) && me.srcRoot != "" {
+	if strings.HasPrefix(name, me.writableRoot) && me.srcRoot != "" &&
+		me.srcRoot != me.writableRoot {
 		names = append(names, me.srcRoot+name[len(me.writableRoot):])
 	}
 	for _, n := range names {
