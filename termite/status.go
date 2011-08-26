@@ -24,7 +24,7 @@ func (me *Mirror) Status(req *MirrorStatusRequest, rep *MirrorStatusResponse) os
 	rep.Root = me.writableRoot
 	rep.Granted = me.maxJobCount
 	rep.WaitingTasks = me.Waiting
-	rep.IdleFses = len(me.fuseFileSystems)
+	rep.IdleFses = len(me.unusedFileSystems)
 	rep.ShuttingDown = me.shuttingDown
 	for fs, _ := range me.workingFileSystems {
 		rep.Running = append(rep.Running, fs.task.taskInfo)

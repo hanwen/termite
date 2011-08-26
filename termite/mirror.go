@@ -23,8 +23,7 @@ type Mirror struct {
 	Waiting              int
 	maxJobCount          int
 	fuseFileSystemsMutex sync.Mutex
-	// TODO - rename to unused FS.
-	fuseFileSystems []*WorkerFuseFs
+	unusedFileSystems []*WorkerFuseFs
 
 	// Map value is the command running.
 	workingFileSystems map[*WorkerFuseFs]string
@@ -74,7 +73,7 @@ func (me *Mirror) Shutdown() {
 	}
 	me.shuttingDown = true
 	me.fileServerConn.Close()
-	me.fuseFileSystems = []*WorkerFuseFs{}
+	me.unusedFileSystems = []*WorkerFuseFs{}
 
 	for len(me.workingFileSystems) > 0 {
 		// TODO - access is racy.
@@ -99,10 +98,10 @@ func (me *Mirror) getWorkerFuseFs(name string) (f *WorkerFuseFs, err os.Error) {
 		return nil, os.NewError("shutting down")
 	}
 
-	l := len(me.fuseFileSystems)
+	l := len(me.unusedFileSystems)
 	if l > 0 {
-		f = me.fuseFileSystems[l-1]
-		me.fuseFileSystems = me.fuseFileSystems[:l-1]
+		f = me.unusedFileSystems[l-1]
+		me.unusedFileSystems = me.unusedFileSystems[:l-1]
 	}
 	if f == nil {
 		f, err = me.newWorkerFuseFs()
@@ -122,7 +121,7 @@ func (me *Mirror) updateFiles(attrs []FileAttr) {
 	me.fuseFileSystemsMutex.Lock()
 	defer me.fuseFileSystemsMutex.Unlock()
 
-	for _, fs := range me.fuseFileSystems {
+	for _, fs := range me.unusedFileSystems {
 		fs.update(attrs)
 	}
 	for fs, _ := range me.workingFileSystems {

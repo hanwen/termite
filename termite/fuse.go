@@ -45,7 +45,7 @@ func (me *Mirror) returnFuse(wfs *WorkerFuseFs) {
 	if me.shuttingDown {
 		wfs.Stop()
 	} else {
-		me.fuseFileSystems = append(me.fuseFileSystems, wfs)
+		me.unusedFileSystems = append(me.unusedFileSystems, wfs)
 	}
 	me.workingFileSystems[wfs] = "", false
 	me.cond.Broadcast()
