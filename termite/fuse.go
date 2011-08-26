@@ -38,8 +38,8 @@ func (me *WorkerFuseFs) Stop() {
 }
 
 func (me *WorkerFuseFs) SetDebug(debug bool) {
-	me.fuseFs.MountState.Debug = debug
-	me.fuseFs.fsConnector.Debug = debug
+	me.MountState.Debug = debug
+	me.fsConnector.Debug = debug
 }
 
 func (me *Mirror) returnFuse(wfs *WorkerFuseFs) {
