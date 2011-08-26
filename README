@@ -131,6 +131,9 @@ CAVEATS
 
 TODO
 
+* Packages to compile:
+  - linux kernel
+
 * Security:
   - More sophisticated exclusion for exporting file systems.
   - Security review for the connection scheme.
@@ -164,10 +167,14 @@ Termite timings by running master and single worker on the same
 machine.
 
 * Make 3.82. (1.6x slower, Lenovo T60, 2-core, make -j2)
+
 * LLVM 2.9 (1.5 slower, Dell T5300 6-core, make -j12)
 
-* GUILE 2.0. Must run inside srcdir.
-
- (1.1x slower, Dell T5300 6-core, make -j6).
+* GUILE 2.0.
+ - Must run inside srcdir.
+ - 1.1x slower, Dell T5300 6-core, make -j6
  
-* Emacs 24 (Must run twice. Emacs attempts to hardlink emacs-VERSION)
+* Emacs 24
+ - 1.8x slower (Lenovo T60, make -j2)
+ - Must run in srcdir.
+ - Must run twice: emacs attempts to hardlink emacs-VERSION.
