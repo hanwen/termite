@@ -101,6 +101,7 @@ func TryRunLocally(command string, topdir string) (exit *os.Waitmsg, rule termit
 func main() {
 	command := flag.String("c", "", "command to run.")
 	refresh := flag.Bool("refresh", false, "refresh master file cache.")
+	debug := flag.Bool("dbg", false, "set on debugging in request.")
 	flag.Parse()
 
 	if *refresh {
@@ -135,10 +136,10 @@ func main() {
 	// no-frills command invocation.
 	req := termite.WorkRequest{
 		Binary:     _SHELL,
-		Argv:       os.Args,
+		Argv:       []string{"/bin/sh", "-c", *command},
 		Env:        cleanEnv(os.Environ()),
 		Dir:        wd,
-		Debug:      os.Getenv("TERMITE_DEBUG") != "",
+		Debug:      os.Getenv("TERMITE_DEBUG") != "" || *debug,
 		RanLocally: localWaitMsg != nil,
 	}
 	client := rpc.NewClient(conn)
