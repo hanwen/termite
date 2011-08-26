@@ -13,6 +13,7 @@ import (
 )
 
 func TestFsServerCache(t *testing.T) {
+	log.Println("TestFsServerCache")
 	tmp, _ := ioutil.TempDir("", "")
 	defer os.RemoveAll(tmp)
 
@@ -38,15 +39,8 @@ func TestFsServerCache(t *testing.T) {
 		t.Errorf("cache not empty? %#v", server.attrCache)
 	}
 
-	fa := FileAttr{}
-	err = server.oneGetAttr(orig, &fa)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = server.oneGetAttr(orig+"/file.txt", &fa)
-	if err != nil {
-		t.Fatal(err)
-	}
+	server.oneGetAttr(orig)
+	server.oneGetAttr(orig+"/file.txt")
 
 	if len(server.attrCache) != 2 {
 		t.Errorf("cache should have 2 entries, got %#v", server.attrCache)

@@ -22,11 +22,15 @@ type FsServer struct {
 	multiplyPaths func(string) []string
 
 	hashCacheMutex sync.RWMutex
+	hashCacheCond  *sync.Cond
 	hashCache      map[string]string
+	hashBusyMap    map[string]bool
 
 	attrCacheMutex sync.RWMutex
-	attrCache      map[string]FileAttr
-
+	attrCache      map[string]*FileAttr
+	attrCacheCond  *sync.Cond
+	attrCacheBusy  map[string]bool
+	
 	// TODO - add counters and check that the rpcFs.fetchCond is
 	// working.
 }
@@ -37,9 +41,14 @@ func NewFsServer(root string, cache *ContentCache, excluded []string) *FsServer 
 		contentServer: &ContentServer{Cache: cache},
 		Root:          root,
 		hashCache:     make(map[string]string),
-		attrCache:     make(map[string]FileAttr),
+		hashBusyMap:   map[string]bool{},
+		
+		attrCache:     make(map[string]*FileAttr),
+		attrCacheBusy: map[string]bool{},
 	}
 
+	fs.hashCacheCond = sync.NewCond(&fs.hashCacheMutex)
+	fs.attrCacheCond = sync.NewCond(&fs.attrCacheMutex)
 	fs.excluded = make(map[string]bool)
 	for _, e := range excluded {
 		fs.excluded[e] = true
@@ -120,55 +129,62 @@ func (me *FsServer) GetAttr(req *AttrRequest, rep *AttrResponse) os.Error {
 		names = append(names, req.Name)
 	}
 	for _, n := range names {
-		a := FileAttr{}
-		err := me.oneGetAttr(n, &a)
-		if err != nil {
-			return err
-		}
+		a := me.oneGetAttr(n)
 		if a.Hash != "" {
 			log.Printf("GetAttr %s %v %x", n, a, a.Hash)
 		}
-		rep.Attrs = append(rep.Attrs, a)
+		rep.Attrs = append(rep.Attrs, *a)
 	}
 	return nil
 }
 
-func (me *FsServer) oneGetAttr(name string, rep *FileAttr) os.Error {
-	rep.Path = name
+func (me *FsServer) oneGetAttr(name string) (rep *FileAttr) {
+
 	// TODO - this is not a good security measure, as we are not
 	// checking the prefix; someone might directly ask for
 	// /forbidden/subdir/
 	if me.excluded[name] {
-		rep.Status = fuse.ENOENT
-		return nil
+		return &FileAttr{
+			Path: name,
+			Status: fuse.ENOENT,
+		}
 	}
 
 	me.attrCacheMutex.RLock()
-	attr, ok := me.attrCache[name]
+	rep, ok := me.attrCache[name]
 	me.attrCacheMutex.RUnlock()
-
 	if ok {
-		*rep = attr
-		return nil
+		return rep
 	}
+
 	me.attrCacheMutex.Lock()
 	defer me.attrCacheMutex.Unlock()
-	attr, ok = me.attrCache[name]
-	if ok {
-		*rep = attr
-		return nil
+	for me.attrCacheBusy[name] && me.attrCache[name] == nil {
+		me.attrCacheCond.Wait()
 	}
+	rep, ok = me.attrCache[name]
+	if ok {
+		return rep
+	}
+	me.attrCacheBusy[name] = true
+	me.attrCacheMutex.Unlock()
 
-	fi, err := os.Lstat(me.path(name))
-	rep.FileInfo = fi
-	rep.Status = fuse.OsErrorToErrno(err)
-	rep.Path = name
+	p :=  me.path(name)
+	fi, err := os.Lstat(p)
+	rep = &FileAttr{
+		FileInfo: fi,
+		Status: fuse.OsErrorToErrno(err),
+		Path: name,
+	}
 	if fi != nil {
 		me.fillContent(rep)
 	}
 
-	me.attrCache[name] = *rep
-	return nil
+	me.attrCacheMutex.Lock()
+	me.attrCache[name] = rep
+	me.attrCacheCond.Broadcast()
+	me.attrCacheBusy[name] = false, false
+	return rep
 }
 
 func (me *FsServer) fillContent(rep *FileAttr) {
@@ -193,7 +209,7 @@ func (me *FsServer) updateAttrs(infos []FileAttr) {
 
 	for _, r := range infos {
 		name := r.Path
-		me.attrCache[name] = r
+		me.attrCache[name] = &r
 	}
 }
 
@@ -205,9 +221,11 @@ func (me *FsServer) updateHashes(infos []FileAttr) {
 		name := r.Path
 		if !r.Status.Ok() || r.Link != "" {
 			me.hashCache[name] = "", false
+			me.hashBusyMap[name] = false, false
 		}
 		if r.Hash != "" {
 			me.hashCache[name] = r.Hash
+			me.hashBusyMap[name] = false, false
 		}
 	}
 }
@@ -225,13 +243,16 @@ func (me *FsServer) getHash(name string) (hash string, content []byte) {
 
 	me.hashCacheMutex.Lock()
 	defer me.hashCacheMutex.Unlock()
+	for me.hashBusyMap[name] && me.hashCache[name] == "" {
+		me.hashCacheCond.Wait()
+	}
+	
 	hash = me.hashCache[name]
 	if hash != "" {
 		return hash, nil
 	}
-
-	// TODO - would it be better to not stop other hash lookups
-	// from succeeding?
+	me.hashBusyMap[name] = true
+	me.hashCacheMutex.Unlock()
 
 	// TODO - /usr should be configurable.
 	if HasDirPrefix(fullPath, "/usr") && !HasDirPrefix(fullPath, "/usr/local") {
@@ -240,7 +261,11 @@ func (me *FsServer) getHash(name string) (hash string, content []byte) {
 		hash, content = me.contentCache.SavePath(fullPath)
 	}
 
+	me.hashCacheMutex.Lock()
 	me.hashCache[name] = hash
+	me.hashBusyMap[name] = false, false
+	me.hashCacheCond.Broadcast()
+	
 	return hash, content
 }
 
@@ -276,7 +301,8 @@ func (me *FsServer) refreshAttributeCache(prefix string) []FileAttr {
 	}
 
 	for _, u := range updated {
-		me.attrCache[u.Path] = u
+		newAttr := u
+		me.attrCache[u.Path] = &newAttr
 	}
 	return updated
 }
@@ -287,7 +313,7 @@ func (me *FsServer) copyCache() []FileAttr {
 
 	dump := []FileAttr{}
 	for _, attr := range me.attrCache {
-		dump = append(dump, attr)
+		dump = append(dump, *attr)
 	}
 
 	return dump

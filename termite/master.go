@@ -219,9 +219,8 @@ func (me *Master) prefetchFiles(req *WorkRequest) {
 	}
 
 	for f, _ := range files {
-		a := FileAttr{}
-		me.fileServer.oneGetAttr(f, &a)
-		req.Prefetch = append(req.Prefetch, a)
+		a := me.fileServer.oneGetAttr(f)
+		req.Prefetch = append(req.Prefetch, *a)
 	}
 	if len(req.Prefetch) > 0 {
 		log.Println("Prefetch", req.Prefetch)
