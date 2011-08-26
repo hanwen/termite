@@ -30,6 +30,8 @@ type RpcFs struct {
 	fetchMap   map[string]bool
 
 	attrMutex    sync.RWMutex
+	attrCond     *sync.Cond
+	attrFetchMap map[string]bool
 	attrResponse map[string]*FileAttr
 
 }
@@ -45,15 +47,19 @@ type UpdateResponse struct {
 func NewRpcFs(server *rpc.Client, cache *ContentCache) *RpcFs {
 	me := &RpcFs{}
 	me.client = server
+	
 	me.directories = make(map[string]*DirResponse)
 	me.dirFetchMap = map[string]bool{}
 	me.dirFetchCond = sync.NewCond(&me.dirMutex)
 
-	me.cache = cache
 	me.attrResponse = make(map[string]*FileAttr)
-
+	me.attrFetchMap = map[string]bool{}
+	me.attrCond = sync.NewCond(&me.attrMutex)
+	
+	me.cache = cache
 	me.fetchMap = make(map[string]bool)
 	me.fetchCond = sync.NewCond(&me.fetchMutex)
+	
 	return me
 }
 
@@ -244,20 +250,27 @@ func (me *RpcFs) getFileAttr(name string) *FileAttr {
 		return result
 	}
 
-	// TODO - use cond here too?
 	me.attrMutex.Lock()
 	defer me.attrMutex.Unlock()
+	for me.attrFetchMap[name] && me.attrResponse[name] == nil {
+		me.attrCond.Wait()
+	}
 	result, ok = me.attrResponse[name]
 	if ok {
 		return result
 	}
-
+	me.attrFetchMap[name] = true
+	me.attrMutex.Unlock()
+	
 	abs := "/" + name
-
 	req := &AttrRequest{Name: abs}
 	rep := &AttrResponse{}
 	err := me.client.Call("FsServer.GetAttr", req, rep)
+
+	me.attrMutex.Lock()
+	me.attrFetchMap[name] = false, false
 	if err != nil {
+		// fatal?
 		log.Println("GetAttr error:", err)
 		return nil
 	}
@@ -274,6 +287,8 @@ func (me *RpcFs) getFileAttr(name string) *FileAttr {
 			wanted = &fa
 		}
 	}
+	me.attrCond.Broadcast()
+	
 	return wanted
 }
 
