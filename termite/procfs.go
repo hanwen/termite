@@ -26,6 +26,17 @@ func NewProcFs() *ProcFs {
 	return &ProcFs{
 		LoopbackFileSystem: fuse.NewLoopbackFileSystem("/proc"),
 		StripPrefix:        "/",
+		AllowedRootFiles: map[string]int{
+			"meminfo":     1,
+			"cpuinfo":     1,
+			"iomem":       1,
+			"ioport":      1,
+			"loadavg":     1,
+			"stat":        1,
+			"self":        1,
+			"filesystems": 1,
+			"mounts":      1,
+		},
 	}
 }
 
@@ -57,6 +68,15 @@ func (me *ProcFs) GetAttr(name string, context *fuse.Context) (*os.FileInfo, fus
 		fi.Size = int64(len(content))
 	}
 	return fi, code
+}
+
+func (me *ProcFs) Open(name string, flags uint32, context *fuse.Context) (fuse.File, fuse.Status) {
+	p := me.LoopbackFileSystem.GetPath(name)
+	content, err := ioutil.ReadFile(p)
+	if err == nil {
+		return fuse.NewReadOnlyFile(content), fuse.OK
+	}
+	return nil, fuse.OsErrorToErrno(err)	
 }
 
 func (me *ProcFs) Readlink(name string, context *fuse.Context) (string, fuse.Status) {

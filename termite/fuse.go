@@ -108,23 +108,15 @@ nobody *user.User) (*WorkerFuseFs, os.Error) {
 	w.procFs = NewProcFs()
 	w.procFs.StripPrefix = w.mount
 	w.procFs.Uid = nobody.Uid
-	w.procFs.AllowedRootFiles = map[string]int{
-		"meminfo":     1,
-		"cpuinfo":     1,
-		"iomem":       1,
-		"ioport":      1,
-		"loadavg":     1,
-		"stat":        1,
-		"self":        1,
-		"filesystems": 1,
-		"mounts":      1,
-	}
+
 
 	w.unionFs = unionfs.NewUnionFs([]fuse.FileSystem{rwFs, rpcFs}, opts)
 	swFs := []fuse.SwitchedFileSystem{
 		{"", rpcFs, false},
 		// TODO - configurable.
 		{writableRoot, w.unionFs, false},
+		// TODO - figure out how to mount this normally.
+		{"var/tmp", tmpFs, true},
 	}
 	type submount struct {
 		mountpoint string
@@ -146,12 +138,12 @@ nobody *user.User) (*WorkerFuseFs, os.Error) {
 		// writableRoot, and all our tests will fail.
 		swFs = append(swFs,
 			fuse.SwitchedFileSystem{"/tmp", tmpFs, true},
-			fuse.SwitchedFileSystem{"var/tmp", tmpFs, true})
+		)
 	} else {
 		fuseOpts.AllowOther = true
 		mounts = append(mounts,
 			submount{"/tmp", tmpFs},
-			submount{"/var/tmp", tmpFs})
+		)
 	}
 
 	w.fsConnector = fuse.NewFileSystemConnector(fuse.NewSwitchFileSystem(swFs), &mOpts)
