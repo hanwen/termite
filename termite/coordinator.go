@@ -67,6 +67,12 @@ func (me *Coordinator) Register(req *Registration, rep *int) os.Error {
 	return nil
 }
 
+func (me *Coordinator) WorkerCount() int {
+	me.mutex.Lock()
+	defer me.mutex.Unlock()
+	return len(me.workers)
+}
+
 func (me *Coordinator) List(req *int, rep *Registered) os.Error {
 	me.mutex.Lock()
 	defer me.mutex.Unlock()

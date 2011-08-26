@@ -11,6 +11,7 @@ import (
 	"rand"
 	"rpc"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -60,33 +61,39 @@ func NewTestCase(t *testing.T) *testCase {
 
 	// TODO - pick unused port
 	me.coordinatorPort = int(rand.Int31n(60000) + 1024)
-	c := NewCoordinator(me.secret)
-	go c.PeriodicCheck()
-
-	coordinatorAddr := fmt.Sprintf(":%d", me.coordinatorPort)
-	go c.ServeHTTP(me.coordinatorPort)
-	// TODO - can we do without the sleeps?
-	time.Sleep(0.1e9) // wait for daemon to start up
-
 	me.workerPort = int(rand.Int31n(60000) + 1024)
+	
+	coordinatorAddr := fmt.Sprintf(":%d", me.coordinatorPort)
+	var wg sync.WaitGroup
+
+	wg.Add(2)
+	go func() {
+		me.coordinator = NewCoordinator(me.secret)
+		go me.coordinator.PeriodicCheck()
+		go me.coordinator.ServeHTTP(me.coordinatorPort)
+		wg.Done()
+	}()
+	go func() {
+		masterCache := NewContentCache(me.tmp + "/master-cache")
+		me.master = NewMaster(
+			masterCache, coordinatorAddr,
+			[]string{},
+			me.secret, []string{}, 1)
+		me.master.SetKeepAlive(1.0)
+		me.socket = me.tmp + "/master-socket"
+		go me.master.Start(me.socket)
+		wg.Done()
+	}()
 	go me.worker.RunWorkerServer(me.workerPort, coordinatorAddr)
-
-	// wait worker to be registered on coordinator.
-	time.Sleep(0.1e9)
-
-	masterCache := NewContentCache(me.tmp + "/master-cache")
-	me.master = NewMaster(
-		masterCache, coordinatorAddr,
-		[]string{},
-		me.secret, []string{}, 1)
-
-	me.master.SetKeepAlive(1.0)
-	me.socket = me.tmp + "/master-socket"
-	go me.master.Start(me.socket)
+	
+	wg.Wait()
+	for me.coordinator.WorkerCount() == 0 {
+		log.Println("reporting...")
+		me.worker.report(coordinatorAddr, me.workerPort)
+	}
 
 	wd := me.tmp + "/wd"
 	os.MkdirAll(wd, 0755)
-	time.Sleep(0.1e9) // wait for all daemons to start up
 	return me
 }
 
