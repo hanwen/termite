@@ -107,9 +107,10 @@ nobody *user.User) (*WorkerFuseFs, os.Error) {
 
 	w.procFs = NewProcFs()
 	w.procFs.StripPrefix = w.mount
-	w.procFs.Uid = nobody.Uid
-
-
+	if nobody != nil {
+		w.procFs.Uid = nobody.Uid
+	}
+	
 	w.unionFs = unionfs.NewUnionFs([]fuse.FileSystem{rwFs, rpcFs}, opts)
 	swFs := []fuse.SwitchedFileSystem{
 		{"", rpcFs, false},

@@ -32,6 +32,7 @@ func main() {
 	port := flag.Int("port", 1235, "Where to listen for work requests.")
 	coordinator := flag.String("coordinator", "", "Where to register the worker.")
 	jobs := flag.Int("jobs", 1, "Max number of jobs to run.")
+	user := flag.String("user", "nobody", "Run as this user.")
 	flag.Parse()
 
 	if os.Geteuid() != 0 {
@@ -42,7 +43,15 @@ func main() {
 		log.Fatal("ReadFile", err)
 	}
 
-	daemon := termite.NewWorkerDaemon(secret, *tmpdir, *cachedir, *jobs)
+	opts := termite.WorkerOptions{
+		Secret: secret,
+		TempDir: *tmpdir,
+		CacheDir:  *cachedir,
+		Jobs: *jobs,
+		User: user,
+	}
+	
+	daemon := termite.NewWorkerDaemon(&opts)
 	go handleStop(daemon)
 	daemon.RunWorkerServer(*port, *coordinator)
 }

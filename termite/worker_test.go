@@ -56,8 +56,14 @@ func NewTestCase(t *testing.T) *testCase {
 
 	workerTmp := me.tmp + "/worker-tmp"
 	os.Mkdir(workerTmp, 0700)
-	me.worker = NewWorkerDaemon(me.secret, workerTmp,
-		me.tmp+"/worker-cache", 1)
+	opts := WorkerOptions{
+		Secret: me.secret,
+		TempDir: workerTmp,
+		CacheDir: me.tmp+"/worker-cache",
+		Jobs: 1,
+	}
+	
+	me.worker = NewWorkerDaemon(&opts)
 
 	// TODO - pick unused port
 	me.coordinatorPort = int(rand.Int31n(60000) + 1024)

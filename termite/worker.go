@@ -87,24 +87,36 @@ func (me *WorkerDaemon) getMirror(rpcConn, revConn net.Conn, reserveCount int) (
 	return mirror, nil
 }
 
-func NewWorkerDaemon(secret []byte, tmpDir string, cacheDir string, jobs int) *WorkerDaemon {
-	cache := NewContentCache(cacheDir)
+type WorkerOptions struct {
+	Secret  []byte
+	TempDir  string
+	CacheDir string
+	Jobs     int
+
+	// If set, change user to this for running. 
+	User     *string
+}
+
+
+func NewWorkerDaemon(options *WorkerOptions) *WorkerDaemon {
+	cache := NewContentCache(options.CacheDir)
 	me := &WorkerDaemon{
-		secret:        secret,
+		secret:        options.Secret,
 		contentCache:  cache,
 		mirrorMap:     make(map[string]*Mirror),
 		contentServer: &ContentServer{Cache: cache},
 		pending:       NewPendingConnections(),
-		maxJobCount:   jobs,
-		tmpDir:        tmpDir,
+		maxJobCount:   options.Jobs,
+		tmpDir:        options.TempDir,
 		rpcServer:     rpc.NewServer(),
 	}
-	nobody, err := user.Lookup("nobody")
-	if err != nil && os.Geteuid() == 0 {
-		log.Fatal("can't lookup 'nobody':", err)
+	if os.Geteuid() == 0 && options.User != nil {
+		nobody, err := user.Lookup(*options.User)
+		if err != nil {
+			log.Fatalf("can't lookup %q: %v", options.User, err)
+		}
+		me.Nobody = nobody
 	}
-	me.Nobody = nobody
-
 	me.cond = sync.NewCond(&me.mirrorMapMutex)
 	me.stopListener = make(chan int, 1)
 	me.rpcServer.Register(me)
