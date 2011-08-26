@@ -3,7 +3,6 @@ package termite
 
 import (
 	"log"
-	"sync"
 )
 
 var _ = log.Println
@@ -12,7 +11,6 @@ type MultiResolutionCounter struct {
 	buckets   [][]int
 	timestamp int
 	interval  int64
-	mutex     sync.Mutex
 }
 
 func NewMultiResolutionCounter(interval int64, now int64, resolutions []int) *MultiResolutionCounter {
@@ -61,9 +59,6 @@ func (me *MultiResolutionCounter) update(shift int) {
 }
 
 func (me *MultiResolutionCounter) Add(ns int64, events int) {
-	me.mutex.Lock()
-	defer me.mutex.Unlock()
-
 	ts := int(ns / me.interval)
 
 	dt := ts - me.timestamp
@@ -83,9 +78,6 @@ func sum(b []int) int {
 }
 
 func (me *MultiResolutionCounter) Read() (r []int) {
-	me.mutex.Lock()
-	defer me.mutex.Unlock()
-
 	r = []int{me.buckets[0][0]}
 
 	acc := 0

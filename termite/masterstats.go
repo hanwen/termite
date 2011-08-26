@@ -3,11 +3,13 @@ package termite
 import (
 	"fmt"
 	"http"
+	"sync"
 	"sync/atomic"
 	"time"
 )
 
 type masterStats struct {
+	counterMutex sync.Mutex
 	received *MultiResolutionCounter
 
 	running  int32
@@ -20,6 +22,8 @@ func newMasterStats() *masterStats {
 }
 
 func (me *masterStats) MarkReceive() {
+	me.counterMutex.Lock()
+	defer me.counterMutex.Unlock()
 	me.received.Add(time.Seconds(), 1)
 	atomic.AddInt32(&me.running, 1)
 }
@@ -29,6 +33,8 @@ func (me *masterStats) MarkReturn() {
 }
 
 func (me *masterStats) writeHttp(w http.ResponseWriter) {
+	me.counterMutex.Lock()
+	defer me.counterMutex.Unlock()
 	me.received.Add(time.Seconds(), 0)
 	fmt.Fprintf(w, "<p>Received (sec/min/10min): %v", me.received.Read())
 
