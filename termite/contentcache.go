@@ -140,7 +140,8 @@ func (me *ContentCache) DestructiveSavePath(path string) (md5 string, content []
 	h := crypto.MD5.New()
 	content, err = SavingCopy(h, f, _BUFSIZE)
 	if err != nil {
-		log.Fatal("DestructiveSavePath:", err)
+		log.Println("DestructiveSavePath:", err)
+		return "", nil
 	}
 
 	s := string(h.Sum())
@@ -156,7 +157,8 @@ func (me *ContentCache) DestructiveSavePath(path string) (md5 string, content []
 			os.Remove(p)
 			return s, content
 		}
-		log.Fatal("DestructiveSavePath:", err)
+		log.Println("DestructiveSavePath:", err)
+		return "", nil
 	}
 	return s, content
 }
@@ -164,7 +166,8 @@ func (me *ContentCache) DestructiveSavePath(path string) (md5 string, content []
 func (me *ContentCache) SavePath(path string) (md5 string, content []byte) {
 	f, err := os.Open(path)
 	if err != nil {
-		log.Fatal("SavePath:", err)
+		log.Println("SavePath:", err)
+		return "", nil
 	}
 	defer f.Close()
 
@@ -176,12 +179,14 @@ func (me *ContentCache) SaveImmutablePath(path string) (md5 string, content []by
 
 	f, err := os.Open(path)
 	if err != nil {
-		log.Fatal("SaveImmutablePath:", err)
+		log.Println("SaveImmutablePath:", err)
+		return "", nil
 	}
 	defer f.Close()
 	content, err = SavingCopy(hasher, f, 32*1024)
 	if err != nil && err != os.EOF {
-		log.Fatal("SavingCopy:", err)
+		log.Println("SavingCopy:", err)
+		return "", nil
 	}
 
 	md5 = string(hasher.Sum())
@@ -203,11 +208,13 @@ func (me *ContentCache) SaveStream(input io.Reader) (md5 string, content []byte)
 	dup := me.NewHashWriter()
 	content, err := SavingCopy(dup, input, _BUFSIZE)
 	if err != nil {
-		log.Fatal("SaveStream:", err)
+		log.Println("SaveStream:", err)
+		return "", nil
 	}
 	err = dup.Close()
 	if err != nil {
-		log.Fatal("dup.Close:", err)
+		log.Println("dup.Close:", err)
+		return "", nil
 	}
 	return string(dup.hasher.Sum()), content
 }

@@ -139,7 +139,6 @@ func (me *FsServer) GetAttr(req *AttrRequest, rep *AttrResponse) os.Error {
 }
 
 func (me *FsServer) oneGetAttr(name string) (rep *FileAttr) {
-
 	// TODO - this is not a good security measure, as we are not
 	// checking the prefix; someone might directly ask for
 	// /forbidden/subdir/
@@ -195,6 +194,10 @@ func (me *FsServer) fillContent(rep *FileAttr) {
 		// TODO - saving the content easily overflows memory
 		// on 32-bit.
 		rep.Hash, _ = me.getHash(rep.Path)
+		if rep.Hash == "" {
+			// Typically happens if we want to open /etc/shadow as normal user. 
+			rep.Status = fuse.EPERM
+		}
 	}
 }
 
