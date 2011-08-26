@@ -76,7 +76,6 @@ func (me *Mirror) Shutdown() {
 	me.unusedFileSystems = []*WorkerFuseFs{}
 
 	for len(me.workingFileSystems) > 0 {
-		// TODO - access is racy.
 		me.maxJobCount = len(me.workingFileSystems)
 		me.cond.Wait()
 	}
