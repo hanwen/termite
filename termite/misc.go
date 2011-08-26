@@ -277,5 +277,5 @@ func HumanTrim(s string, l int) string {
 		return s
 	}
 	trail := fmt.Sprintf(" ... (%d bytes)", len(s))
-	return s[:l - len(trail)] + trail
+	return s[:l-len(trail)] + trail
 }

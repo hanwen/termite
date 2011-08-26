@@ -62,7 +62,6 @@ func (me *EntryFs) Access(name string, mode uint32, context *fuse.Context) (code
 	return fuse.ENOENT
 }
 
-
 // DevnullFs: a single entry, the 'null' file.
 
 type DevnullFs struct {
@@ -72,7 +71,7 @@ type DevnullFs struct {
 func NewDevnullFs() *DevnullFs {
 	return &DevnullFs{
 		EntryFs: EntryFs{
-		FileInfo: os.FileInfo{ Mode: fuse.S_IFREG | 0644, Name: "null"},
+			FileInfo: os.FileInfo{Mode: fuse.S_IFREG | 0644, Name: "null"},
 		},
 	}
 }
@@ -95,5 +94,3 @@ func (me *EntryFs) Open(name string, flags uint32, context *fuse.Context) (file 
 
 	return nil, fuse.ENOENT
 }
-
-

@@ -20,10 +20,10 @@ type RpcFs struct {
 	localRoots []string
 
 	// Should be acquired before attrMutex if applicable.
-	dirMutex    sync.RWMutex
+	dirMutex     sync.RWMutex
 	dirFetchCond *sync.Cond
-	dirFetchMap map[string]bool
-	directories map[string]*DirResponse
+	dirFetchMap  map[string]bool
+	directories  map[string]*DirResponse
 
 	fetchMutex sync.Mutex
 	fetchCond  *sync.Cond
@@ -33,7 +33,6 @@ type RpcFs struct {
 	attrCond     *sync.Cond
 	attrFetchMap map[string]bool
 	attrResponse map[string]*FileAttr
-
 }
 
 type UpdateRequest struct {
@@ -47,7 +46,7 @@ type UpdateResponse struct {
 func NewRpcFs(server *rpc.Client, cache *ContentCache) *RpcFs {
 	me := &RpcFs{}
 	me.client = server
-	
+
 	me.directories = make(map[string]*DirResponse)
 	me.dirFetchMap = map[string]bool{}
 	me.dirFetchCond = sync.NewCond(&me.dirMutex)
@@ -55,11 +54,11 @@ func NewRpcFs(server *rpc.Client, cache *ContentCache) *RpcFs {
 	me.attrResponse = make(map[string]*FileAttr)
 	me.attrFetchMap = map[string]bool{}
 	me.attrCond = sync.NewCond(&me.attrMutex)
-	
+
 	me.cache = cache
 	me.fetchMap = make(map[string]bool)
 	me.fetchCond = sync.NewCond(&me.fetchMutex)
-	
+
 	return me
 }
 
@@ -261,7 +260,7 @@ func (me *RpcFs) getFileAttr(name string) *FileAttr {
 	}
 	me.attrFetchMap[name] = true
 	me.attrMutex.Unlock()
-	
+
 	abs := "/" + name
 	req := &AttrRequest{Name: abs}
 	rep := &AttrResponse{}
@@ -288,7 +287,7 @@ func (me *RpcFs) getFileAttr(name string) *FileAttr {
 		}
 	}
 	me.attrCond.Broadcast()
-	
+
 	return wanted
 }
 

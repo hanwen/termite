@@ -17,17 +17,15 @@ var _ = log.Println
 // file to set the size correctly.
 type ProcFs struct {
 	*fuse.LoopbackFileSystem
-	StripPrefix string
+	StripPrefix      string
 	AllowedRootFiles map[string]int
-	SelfPid int
-	Uid     int
+	Uid              int
 }
 
 func NewProcFs() *ProcFs {
 	return &ProcFs{
 		LoopbackFileSystem: fuse.NewLoopbackFileSystem("/proc"),
-		StripPrefix: "/",
-		SelfPid: 1,
+		StripPrefix:        "/",
 	}
 }
 
@@ -48,7 +46,7 @@ func (me *ProcFs) GetAttr(name string, context *fuse.Context) (*os.FileInfo, fus
 			return nil, fuse.ENOENT
 		}
 	}
-	
+
 	fi, code := me.LoopbackFileSystem.GetAttr(name, context)
 	if code.Ok() && isNum(dir) && os.Geteuid() == 0 && uint32(fi.Uid) != context.Uid {
 		return nil, fuse.EPERM

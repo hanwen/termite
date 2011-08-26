@@ -13,9 +13,9 @@ import (
 var _ = log.Println
 
 type Registration struct {
-	Address           string
-	Name              string
-	Version           string
+	Address string
+	Name    string
+	Version string
 	// TODO - hash of the secret?
 }
 
@@ -44,7 +44,7 @@ func NewCoordinator(secret []byte) *Coordinator {
 	return &Coordinator{
 		workers: make(map[string]*WorkerRegistration),
 		secret:  secret,
-		Mux: http.NewServeMux(),
+		Mux:     http.NewServeMux(),
 	}
 }
 
@@ -265,7 +265,7 @@ func (me *Coordinator) ServeHTTP(port int) {
 	log.Println("Coordinator listening on", addr)
 
 	httpServer := http.Server{
-		Addr: addr,
+		Addr:    addr,
 		Handler: me.Mux,
 	}
 	err := httpServer.ListenAndServe()

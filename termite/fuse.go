@@ -22,7 +22,7 @@ type WorkerFuseFs struct {
 	procFs      *ProcFs
 
 	// If nil, we are running this task.
-	task        *WorkerTask
+	task *WorkerTask
 }
 
 func (me *WorkerFuseFs) Stop() {
@@ -47,9 +47,8 @@ func (me *Mirror) returnFuse(wfs *WorkerFuseFs) {
 	defer me.fuseFileSystemsMutex.Unlock()
 
 	wfs.task = nil
-	wfs.procFs.SelfPid = 1
 	wfs.SetDebug(false)
-	
+
 	if me.shuttingDown {
 		wfs.Stop()
 	} else {
@@ -60,7 +59,7 @@ func (me *Mirror) returnFuse(wfs *WorkerFuseFs) {
 }
 
 func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string,
-	nobody *user.User) (*WorkerFuseFs, os.Error) {
+nobody *user.User) (*WorkerFuseFs, os.Error) {
 	tmpDir, err := ioutil.TempDir(tmpDir, "termite-task")
 	if err != nil {
 		return nil, err
@@ -110,15 +109,15 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string,
 	w.procFs.StripPrefix = w.mount
 	w.procFs.Uid = nobody.Uid
 	w.procFs.AllowedRootFiles = map[string]int{
-		"meminfo": 1,
-		"cpuinfo": 1,
-		"iomem": 1,
-		"ioport": 1,
-		"loadavg": 1,
-		"stat": 1,
-		"self": 1,
+		"meminfo":     1,
+		"cpuinfo":     1,
+		"iomem":       1,
+		"ioport":      1,
+		"loadavg":     1,
+		"stat":        1,
+		"self":        1,
 		"filesystems": 1,
-		"mounts": 1,
+		"mounts":      1,
 	}
 
 	w.unionFs = unionfs.NewUnionFs([]fuse.FileSystem{rwFs, rpcFs}, opts)
@@ -129,7 +128,7 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string,
 	}
 	type submount struct {
 		mountpoint string
-		fs fuse.FileSystem
+		fs         fuse.FileSystem
 	}
 	mounts := []submount{
 		{"/proc", w.procFs},
@@ -154,7 +153,7 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string,
 			submount{"/tmp", tmpFs},
 			submount{"/var/tmp", tmpFs})
 	}
-	
+
 	w.fsConnector = fuse.NewFileSystemConnector(fuse.NewSwitchFileSystem(swFs), &mOpts)
 	w.MountState = fuse.NewMountState(w.fsConnector)
 

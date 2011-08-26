@@ -65,9 +65,9 @@ type mirrorConnections struct {
 
 	// Protects all of the below.
 	sync.Mutex
-	workers       map[string]bool
-	mirrors       map[string]*mirrorConnection
-	lastActionNs  int64
+	workers      map[string]bool
+	mirrors      map[string]*mirrorConnection
+	lastActionNs int64
 }
 
 func (me *mirrorConnections) fetchWorkers() (newMap map[string]bool) {

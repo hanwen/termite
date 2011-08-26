@@ -12,7 +12,6 @@ import (
 
 var _ = log.Printf
 
-
 func handleStop(daemon *termite.WorkerDaemon) {
 	for {
 		sig := <-signal.Incoming

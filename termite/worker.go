@@ -24,7 +24,7 @@ type WorkReply struct {
 
 type WorkRequest struct {
 	Prefetch []FileAttr
-	
+
 	// Id of connection streaming stdin.
 	StdinId      string
 	Debug        bool
@@ -41,18 +41,18 @@ func (me *WorkRequest) Summary() string {
 }
 
 type WorkerDaemon struct {
-	Nobody         *user.User
-	secret         []byte
+	Nobody *user.User
+	secret []byte
 
-	rpcServer      *rpc.Server
-	contentCache   *ContentCache
-	contentServer  *ContentServer
-	maxJobCount    int
-	pending        *PendingConnections
-	cacheDir       string
-	tmpDir         string
+	rpcServer     *rpc.Server
+	contentCache  *ContentCache
+	contentServer *ContentServer
+	maxJobCount   int
+	pending       *PendingConnections
+	cacheDir      string
+	tmpDir        string
 
-	stopListener   chan int
+	stopListener chan int
 
 	mirrorMapMutex sync.Mutex
 	cond           *sync.Cond
@@ -100,7 +100,7 @@ func NewWorkerDaemon(secret []byte, tmpDir string, cacheDir string, jobs int) *W
 		rpcServer:     rpc.NewServer(),
 	}
 	nobody, err := user.Lookup("nobody")
-	if err != nil  && os.Geteuid() == 0 {
+	if err != nil && os.Geteuid() == 0 {
 		log.Fatal("can't lookup 'nobody':", err)
 	}
 	me.Nobody = nobody
@@ -162,7 +162,6 @@ func (me *WorkerDaemon) report(coordinator string, port int) {
 func (me *WorkerDaemon) FileContent(req *ContentRequest, rep *ContentResponse) os.Error {
 	return me.contentServer.FileContent(req, rep)
 }
-
 
 type CreateMirrorRequest struct {
 	RpcId        string
@@ -245,7 +244,7 @@ func (me *WorkerDaemon) Shutdown(req *int, rep *int) os.Error {
 	}
 	log.Println("Asked all mirrors to shut down.")
 	for len(me.mirrorMap) > 0 {
-		log.Println("Live mirror count:", len (me.mirrorMap))
+		log.Println("Live mirror count:", len(me.mirrorMap))
 		me.cond.Wait()
 	}
 	log.Println("All mirrors have shut down.")

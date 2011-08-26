@@ -97,7 +97,7 @@ func TestRpcFS(t *testing.T) {
 	}
 	defer l.Close()
 	defer r.Close()
-	
+
 	rpcServer := rpc.NewServer()
 	rpcServer.Register(server)
 	go rpcServer.ServeConn(l)

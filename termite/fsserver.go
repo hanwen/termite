@@ -22,7 +22,7 @@ type FsServer struct {
 	multiplyPaths func(string) []string
 
 	hashCacheMutex sync.RWMutex
-	hashCache map[string]string
+	hashCache      map[string]string
 
 	attrCacheMutex sync.RWMutex
 	attrCache      map[string]FileAttr

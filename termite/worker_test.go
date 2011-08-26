@@ -62,7 +62,7 @@ func NewTestCase(t *testing.T) *testCase {
 	// TODO - pick unused port
 	me.coordinatorPort = int(rand.Int31n(60000) + 1024)
 	me.workerPort = int(rand.Int31n(60000) + 1024)
-	
+
 	coordinatorAddr := fmt.Sprintf(":%d", me.coordinatorPort)
 	var wg sync.WaitGroup
 
@@ -85,7 +85,7 @@ func NewTestCase(t *testing.T) *testCase {
 		wg.Done()
 	}()
 	go me.worker.RunWorkerServer(me.workerPort, coordinatorAddr)
-	
+
 	wg.Wait()
 	for me.coordinator.WorkerCount() == 0 {
 		log.Println("reporting...")
@@ -142,7 +142,7 @@ func TestEndToEndBasic(t *testing.T) {
 
 		// Will not be filtered, since /tmp/foo is more
 		// specific than /tmp
-		Dir:   tc.tmp + "/wd",
+		Dir: tc.tmp + "/wd",
 	}
 
 	// TODO - should separate dial/listen in the daemons?
@@ -357,7 +357,7 @@ func TestEndToEndShutdown(t *testing.T) {
 	// cause the test to hang.
 	tc.master.retryCount = 0
 
-	req := 	WorkRequest{
+	req := WorkRequest{
 		Binary: tc.FindBin("touch"),
 		Argv:   []string{"touch", "file.txt"},
 		Env:    testEnv(),
@@ -369,7 +369,7 @@ func TestEndToEndShutdown(t *testing.T) {
 	if err != nil {
 		t.Fatalf("hostname error %v", err)
 	}
-	conn, err  := DialTypedConnection(
+	conn, err := DialTypedConnection(
 		fmt.Sprintf("%s:%d", hostname, tc.workerPort), RPC_CHANNEL, tc.secret)
 	if conn == nil {
 		t.Fatal("DialTypedConnection to shutdown worker: ", err)
@@ -396,7 +396,7 @@ func TestEndToEndSpecialEntries(t *testing.T) {
 	defer tc.Clean()
 
 	readlink, _ := filepath.EvalSymlinks(tc.FindBin("readlink"))
-	req := 	WorkRequest{
+	req := WorkRequest{
 		Binary: readlink,
 		Argv:   []string{"readlink", "proc/self/exe"},
 		Env:    testEnv(),
@@ -407,13 +407,13 @@ func TestEndToEndSpecialEntries(t *testing.T) {
 	if rep.Exit.ExitStatus() != 0 {
 		t.Fatalf("readlink should exit cleanly. Rep %v", rep)
 	}
-	
+
 	out, _ := filepath.EvalSymlinks(strings.TrimRight(rep.Stdout, "\n"))
 	if out != readlink {
 		t.Errorf("proc/self/exe point to wrong location: got %q, expect %q", out, readlink)
 	}
-	
-	req = 	WorkRequest{
+
+	req = WorkRequest{
 		Binary: tc.FindBin("ls"),
 		Argv:   []string{"ls", "proc/misc"},
 		Env:    testEnv(),

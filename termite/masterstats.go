@@ -10,9 +10,9 @@ import (
 
 type masterStats struct {
 	counterMutex sync.Mutex
-	received *MultiResolutionCounter
+	received     *MultiResolutionCounter
 
-	running  int32
+	running int32
 }
 
 func newMasterStats() *masterStats {
@@ -39,6 +39,6 @@ func (me *masterStats) writeHttp(w http.ResponseWriter) {
 	fmt.Fprintf(w, "<p>Received (sec/min/10min): %v", me.received.Read())
 
 	r := atomic.AddInt32(&me.running, 0)
-	fmt.Fprintf(w, "<p>Jobs in receive status: %d " + 
+	fmt.Fprintf(w, "<p>Jobs in receive status: %d "+
 		"(measure the maximum parallelism of the job", r)
 }

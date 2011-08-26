@@ -21,7 +21,7 @@ type WorkerTask struct {
 	stdinConn net.Conn
 	mirror    *Mirror
 
-	taskInfo  string
+	taskInfo string
 }
 
 func (me *WorkerTask) Run() os.Error {
@@ -63,7 +63,7 @@ func (me *WorkerTask) Run() os.Error {
 	}
 	log.Println("Started pid", cmd.Process.Pid)
 	me.taskInfo = fmt.Sprintf("Cmd %v, dir %v, proc %v", cmd.Args, cmd.Dir, cmd.Process)
-   	err := cmd.Wait()
+	err := cmd.Wait()
 	waitMsg, ok := err.(*os.Waitmsg)
 	if ok {
 		me.WorkReply.Exit = *waitMsg

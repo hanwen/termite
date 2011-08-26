@@ -23,7 +23,7 @@ type Mirror struct {
 	Waiting              int
 	maxJobCount          int
 	fuseFileSystemsMutex sync.Mutex
-	unusedFileSystems []*WorkerFuseFs
+	unusedFileSystems    []*WorkerFuseFs
 
 	// Map value is the command running.
 	workingFileSystems map[*WorkerFuseFs]string
