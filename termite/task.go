@@ -9,7 +9,6 @@ import (
 	"log"
 	"net"
 	"os"
-	"os/user"
 	"path/filepath"
 	"strings"
 	"syscall"
@@ -36,15 +35,10 @@ func (me *WorkerTask) Run() os.Error {
 		me.WorkRequest.Argv[1:]...)
 	cmd.Args[0] = me.WorkRequest.Argv[0]
 	if os.Geteuid() == 0 {
-		nobody, err := user.Lookup("nobody")
-		if err != nil {
-			return err
-		}
-
 		attr := &syscall.SysProcAttr{}
 		attr.Credential = &syscall.Credential{
-			Uid: uint32(nobody.Uid),
-			Gid: uint32(nobody.Gid),
+			Uid: uint32(me.mirror.daemon.Nobody.Uid),
+			Gid: uint32(me.mirror.daemon.Nobody.Gid),
 		}
 		attr.Chroot = me.fuseFs.mount
 

@@ -5,6 +5,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"os/user"
 	"rpc"
 	"sync"
 	"strings"
@@ -23,7 +24,7 @@ type WorkReply struct {
 
 type WorkRequest struct {
 	Prefetch []FileAttr
-
+	
 	// Id of connection streaming stdin.
 	StdinId      string
 	Debug        bool
@@ -40,6 +41,7 @@ func (me *WorkRequest) Summary() string {
 }
 
 type WorkerDaemon struct {
+	Nobody         *user.User
 	secret         []byte
 
 	rpcServer      *rpc.Server
@@ -97,6 +99,12 @@ func NewWorkerDaemon(secret []byte, tmpDir string, cacheDir string, jobs int) *W
 		tmpDir:        tmpDir,
 		rpcServer:     rpc.NewServer(),
 	}
+	nobody, err := user.Lookup("nobody")
+	if err != nil  && os.Geteuid() == 0 {
+		log.Fatal("can't lookup 'nobody':", err)
+	}
+	me.Nobody = nobody
+
 	me.cond = sync.NewCond(&me.mirrorMapMutex)
 	me.stopListener = make(chan int, 1)
 	me.rpcServer.Register(me)

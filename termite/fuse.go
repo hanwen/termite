@@ -51,7 +51,8 @@ func (me *Mirror) returnFuse(wfs *WorkerFuseFs) {
 	me.cond.Broadcast()
 }
 
-func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string) (*WorkerFuseFs, os.Error) {
+func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string,
+	nobody *user.User) (*WorkerFuseFs, os.Error) {
 	tmpDir, err := ioutil.TempDir(tmpDir, "termite-task")
 	if err != nil {
 		return nil, err
@@ -99,9 +100,6 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string) 
 
 	w.procFs = NewProcFs()
 	w.procFs.StripPrefix = w.mount
-
-	// TODO - pass in uid/gid from outside.
-	nobody, err := user.Lookup("nobody")
 	w.procFs.Uid = nobody.Uid
 	w.procFs.AllowedRootFiles = map[string]int{
 		"meminfo": 1,
