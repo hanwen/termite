@@ -69,11 +69,8 @@ func (me *WorkerTask) Run() os.Error {
    	err := cmd.Wait()
 	waitMsg, ok := err.(*os.Waitmsg)
 	if ok {
-		me.WorkReply.Exit = waitMsg
+		me.WorkReply.Exit = *waitMsg
 		err = nil
-	} else {
-		// TODO - use struct instead?
-		me.WorkReply.Exit = &os.Waitmsg{}
 	}
 
 	// No waiting: if the process exited, we kill the connection.
@@ -149,7 +146,6 @@ func (me *fileSaver) savePath(path string, osInfo *os.FileInfo) {
 	switch ftype {
 	case fuse.S_IFDIR:
 		// nothing.
-		// TODO - remove dir.
 	case fuse.S_IFREG:
 		var content []byte
 		fi.Hash, content = me.cache.DestructiveSavePath(path)

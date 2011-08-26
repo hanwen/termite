@@ -149,7 +149,7 @@ func main() {
 
 	// TODO -something with signals.
 	if localWaitMsg == nil {
-		localWaitMsg = rep.Exit
+		localWaitMsg = &rep.Exit
 	}
 	conn.Close()
 	os.Exit(localWaitMsg.ExitStatus())

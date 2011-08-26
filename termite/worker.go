@@ -16,7 +16,7 @@ import (
 var _ = log.Println
 
 type WorkReply struct {
-	Exit   *os.Waitmsg
+	Exit   os.Waitmsg
 	Files  []FileAttr
 	Stderr string
 	Stdout string
