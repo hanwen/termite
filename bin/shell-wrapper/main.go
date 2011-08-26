@@ -14,6 +14,11 @@ import (
 const _SHELL = "/bin/sh"
 
 func TryRunDirect(cmd string) {
+	if cmd == ":" {
+		os.Exit(0)
+	}
+	
+	
 	parsed := termite.ParseCommand(cmd)
 	if len(parsed) == 0 {
 		return
