@@ -424,3 +424,21 @@ func TestEndToEndSpecialEntries(t *testing.T) {
 		t.Fatalf("ls should have failed", rep)
 	}
 }
+
+func TestEndToEndEnvironment(t *testing.T) {
+	tc := NewTestCase(t)
+	defer tc.Clean()
+
+	req := WorkRequest{
+		Binary: tc.FindBin("sh"),
+		Argv:   []string{"sh", "-c", "echo $MAGIC"},
+		Env:    testEnv(),
+		Dir:    "/",
+	}
+	req.Env = append(req.Env, "MAGIC=777")
+	rep := tc.Run(req)
+	out := strings.TrimRight(rep.Stdout, "\n")
+	if out != "777" {
+		t.Errorf("environment got lost. Got %q", out)
+	}
+}

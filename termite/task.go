@@ -54,14 +54,16 @@ func (me *WorkerTask) Run() os.Error {
 		cmd.Stdin = me.stdinConn
 	}
 
-	printCmd := cmd
-	printCmd.Env = nil
-	log.Println("starting cmd", printCmd, "in", me.fuseFs.mount)
-
 	if err := cmd.Start(); err != nil {
 		return err
 	}
-	log.Println("Started pid", cmd.Process.Pid)
+
+	// Must modify printCmd after starting the process.
+	printCmd := cmd
+	if !me.WorkRequest.Debug {
+		printCmd.Env = nil
+	}
+	log.Println("started cmd", printCmd, "in", me.fuseFs.mount)
 	me.taskInfo = fmt.Sprintf("Cmd %v, dir %v, proc %v", cmd.Args, cmd.Dir, cmd.Process)
 	err := cmd.Wait()
 	waitMsg, ok := err.(*os.Waitmsg)
