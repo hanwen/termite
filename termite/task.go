@@ -25,9 +25,7 @@ type WorkerTask struct {
 }
 
 func (me *WorkerTask) Run() os.Error {
-	me.fuseFs.MountState.Debug = me.WorkRequest.Debug
-	me.fuseFs.fsConnector.Debug = me.WorkRequest.Debug
-
+	me.fuseFs.SetDebug(me.WorkRequest.Debug)
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
 

@@ -1,14 +1,15 @@
 package termite
 
 import (
+	"fmt"
 	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/go-fuse/unionfs"
 	"io/ioutil"
 	"log"
 	"os"
+	"os/user"
 	"path/filepath"
 	"strings"
-	"os/user"
 )
 
 type WorkerFuseFs struct {
@@ -36,12 +37,19 @@ func (me *WorkerFuseFs) Stop() {
 	}
 }
 
+func (me *WorkerFuseFs) SetDebug(debug bool) {
+	me.fuseFs.MountState.Debug = debug
+	me.fuseFs.fsConnector.Debug = debug
+}
+
 func (me *Mirror) returnFuse(wfs *WorkerFuseFs) {
 	me.fuseFileSystemsMutex.Lock()
 	defer me.fuseFileSystemsMutex.Unlock()
 
 	wfs.task = nil
 	wfs.procFs.SelfPid = 1
+	wfs.SetDebug(false)
+	
 	if me.shuttingDown {
 		wfs.Stop()
 	} else {
@@ -114,33 +122,51 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string,
 	}
 
 	w.unionFs = unionfs.NewUnionFs([]fuse.FileSystem{rwFs, rpcFs}, opts)
-	// TODO - use mounts for the strip versions of the filesystems.
 	swFs := []fuse.SwitchedFileSystem{
-		{"dev", NewDevnullFs(), true},
 		{"", rpcFs, false},
-		{"tmp", tmpFs, true},
-		{"var/tmp", tmpFs, true},
-		{"proc", w.procFs, true},
-		{"sys", &fuse.ReadonlyFileSystem{fuse.NewLoopbackFileSystem("/sys")}, true},
 		// TODO - configurable.
 		{writableRoot, w.unionFs, false},
 	}
-
-	w.fsConnector = fuse.NewFileSystemConnector(fuse.NewSwitchFileSystem(swFs), &mOpts)
-	w.MountState = fuse.NewMountState(w.fsConnector)
-
+	type submount struct {
+		mountpoint string
+		fs fuse.FileSystem
+	}
+	mounts := []submount{
+		{"/proc", w.procFs},
+		{"/sys", &fuse.ReadonlyFileSystem{fuse.NewLoopbackFileSystem("/sys")}},
+		{"/dev", NewDevnullFs()},
+	}
 	fuseOpts := fuse.MountOptions{
 		// Compilers are not that highly parallel.  A lower
 		// number also helps stacktrace be less overwhelming.
 		MaxBackground: 4,
 	}
-	if os.Geteuid() == 0 {
+	if os.Geteuid() != 0 {
+		// Typically, we run our tests as non-root under /tmp.
+		// If we use go-fuse to mount /tmp, it will hide
+		// writableRoot, and all our tests will fail.
+		swFs = append(swFs,
+			fuse.SwitchedFileSystem{"/tmp", tmpFs, true},
+			fuse.SwitchedFileSystem{"var/tmp", tmpFs, true})
+	} else {
 		fuseOpts.AllowOther = true
+		mounts = append(mounts,
+			submount{"/tmp", tmpFs},
+			submount{"/var/tmp", tmpFs})
 	}
+	
+	w.fsConnector = fuse.NewFileSystemConnector(fuse.NewSwitchFileSystem(swFs), &mOpts)
+	w.MountState = fuse.NewMountState(w.fsConnector)
 
 	err = w.MountState.Mount(w.mount, &fuseOpts)
 	if err != nil {
 		return nil, err
+	}
+	for _, s := range mounts {
+		code := w.fsConnector.Mount(s.mountpoint, s.fs, nil)
+		if !code.Ok() {
+			return nil, os.NewError(fmt.Sprintf("submount error for %v: %v", s.mountpoint, code))
+		}
 	}
 
 	go w.MountState.Loop(true)
