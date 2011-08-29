@@ -62,7 +62,7 @@ func NewTestCase(t *testing.T) *testCase {
 		CacheDir: me.tmp+"/worker-cache",
 		Jobs: 1,
 	}
-	
+
 	me.worker = NewWorkerDaemon(&opts)
 
 	// TODO - pick unused port
@@ -218,7 +218,6 @@ func TestEndToEndNegativeNotify(t *testing.T) {
 			Path:     tc.tmp + "/wd/output.txt",
 			FileInfo: &os.FileInfo{Mode: fuse.S_IFREG | 0644, Size: int64(len(newContent))},
 			Hash:     hash,
-			Content:  newContent,
 		},
 	}
 	tc.master.mirrors.queueFiles(nil, updated)

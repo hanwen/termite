@@ -275,7 +275,7 @@ func (me *Master) replayFileModifications(worker *rpc.Client, infos []FileAttr) 
 	// Must get data before we modify the file-system, so we don't
 	// leave the FS in a half-finished state.
 	for _, info := range infos {
-		if info.Hash != "" && info.Content == nil {
+		if info.Hash != "" {
 			// TODO - stream directly from network connection to file.
 			err := FetchBetweenContentServers(
 				worker, "Mirror.FileContent", info.FileInfo.Size, info.Hash,
@@ -317,7 +317,7 @@ func (me *Master) replayFileModifications(worker *rpc.Client, infos []FileAttr) 
 		}
 		if info.Hash != "" {
 			log.Printf("Replay file content %s %x", name, info.Hash)
-			content := info.Content
+			content := me.cache.ContentsIfLoaded(info.Hash)
 
 			if content == nil {
 				err = CopyFile(info.Path, me.cache.Path(info.Hash), int(info.FileInfo.Mode))

@@ -280,12 +280,9 @@ func (me *RpcFs) getFileAttr(name string) *FileAttr {
 		log.Println("GetAttr error:", err)
 		return nil
 	}
+
 	var wanted *FileAttr
 	for _, attr := range rep.Attrs {
-		if attr.Content != nil {
-			me.cache.Save(attr.Content)
-		}
-
 		me.considerSaveLocal(attr)
 		fa := attr
 		me.attrResponse[strings.TrimLeft(attr.Path, "/")] = &fa

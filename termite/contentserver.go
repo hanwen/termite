@@ -29,6 +29,15 @@ type ContentServer struct {
 }
 
 func (me *ContentServer) FileContent(req *ContentRequest, rep *ContentResponse) os.Error {
+	if c := me.Cache.ContentsIfLoaded(req.Hash); c != nil {
+		end := req.End
+		if end > len(c) {
+			end = len(c)
+		}
+		rep.Chunk = c[req.Start:end]
+		return nil
+	}
+
 	f, err := os.Open(me.Cache.Path(req.Hash))
 	if err != nil {
 		return err

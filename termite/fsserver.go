@@ -66,11 +66,11 @@ type FileAttr struct {
 	fuse.Status
 	Hash    string
 	Link    string
-	Content []byte // optional.
 }
 
 type AttrResponse struct {
-	Attrs []FileAttr
+	Attrs    []FileAttr
+	// TODO - should send along file contents if necessary?
 }
 
 func (me FileAttr) String() string {
