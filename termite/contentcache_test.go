@@ -21,7 +21,7 @@ func TestDiskCache(t *testing.T) {
 	f.Write(content)
 	f.Close()
 
-	savedSum, _ := cache.SavePath(f.Name())
+	savedSum := cache.SavePath(f.Name())
 	if savedSum != checksum {
 		t.Fatal("mismatch", savedSum, checksum)
 	}
@@ -43,11 +43,12 @@ func TestLocalPath(t *testing.T) {
 	defer os.RemoveAll(d)
 	cache := NewContentCache(d)
 
-	saved, content := cache.SaveImmutablePath(f.Name())
-	if string(md5(content)) != string(saved) {
+	saved := cache.SaveImmutablePath(f.Name())
+/*	content := cache.inMemoryCache.Get(f.Name())
+	if string(md5(content.([]byte))) != string(saved) {
 		t.Fatal("hash mismatch")
 	}
-
+*/
 	if f.Name() != cache.Path(saved) {
 		t.Error("path mismatch")
 	}
@@ -66,7 +67,7 @@ func TestDiskCacheDestructiveSave(t *testing.T) {
 		t.Error(err)
 	}
 
-	saved, _ := cache.DestructiveSavePath(fn)
+	saved := cache.DestructiveSavePath(fn)
 	if string(saved) != string(md5(content)) {
 		t.Error("mismatch")
 	}
@@ -81,7 +82,7 @@ func TestDiskCacheDestructiveSave(t *testing.T) {
 		t.Error(err)
 	}
 
-	saved, _ = cache.DestructiveSavePath(fn)
+	saved = cache.DestructiveSavePath(fn)
 	if saved == "" || saved != md5(content) {
 		t.Error("mismatch")
 	}
@@ -102,7 +103,7 @@ func TestDiskCacheStream(t *testing.T) {
 	checksum := string(h.Sum())
 
 	b := bytes.NewBuffer(content)
-	savedSum, _ := cache.SaveStream(b)
+	savedSum := cache.SaveStream(b)
 	if string(savedSum) != string(md5(content)) {
 		t.Fatal("mismatch")
 	}
@@ -131,9 +132,10 @@ func TestDiskCacheStreamReturnContent(t *testing.T) {
 	cache := NewContentCache(d)
 
 	b := bytes.NewBuffer(content)
-	_, c := cache.SaveStream(b)
-	if string(content) != string(c) {
-		t.Error("content mismatch")
+	hash := cache.SaveStream(b)
+
+	if !cache.inMemoryCache.Has(hash) {
+		t.Errorf("should have key %x", hash)
 	}
 
 	content = make([]byte, _BUFSIZE+1)
@@ -142,8 +144,8 @@ func TestDiskCacheStreamReturnContent(t *testing.T) {
 	}
 
 	b = bytes.NewBuffer(content)
-	_, c = cache.SaveStream(b)
-	if c != nil {
-		t.Error("should not save")
+	hash = cache.SaveStream(b)
+	if cache.inMemoryCache.Has(hash) {
+		t.Errorf("should not have key %x %v", hash, cache.inMemoryCache.Get(hash))
 	}
 }

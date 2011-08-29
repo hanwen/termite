@@ -21,10 +21,14 @@ import (
 type ContentCache struct {
 	dir string
 
-	hashPathMapMutex sync.Mutex
+	mutex sync.Mutex
 	hashPathMap      map[string]string
+	inMemoryCache    *FifoCache
 }
 
+// NewContentCache creates a content cache based in directory d.
+// memorySize sets the maximum number of file contents to keep in
+// memory.
 func NewContentCache(d string) *ContentCache {
 	if fi, _ := os.Lstat(d); fi == nil {
 		err := os.MkdirAll(d, 0700)
@@ -36,8 +40,18 @@ func NewContentCache(d string) *ContentCache {
 	return &ContentCache{
 		dir:         d,
 		hashPathMap: make(map[string]string),
+		inMemoryCache: NewFifoCache(1024),
 	}
 }
+
+// SetMemoryCacheSize readjusts the size of the in-memory content
+// cache.  Not thread safe.
+func (me *ContentCache) SetMemoryCacheSize(fileCount int) {
+	if me.inMemoryCache.Size() != fileCount {
+		me.inMemoryCache = NewFifoCache(fileCount)
+	}
+}
+
 
 func HashPath(dir string, md5 string) string {
 	s := fmt.Sprintf("%x", md5)
@@ -52,21 +66,39 @@ func HashPath(dir string, md5 string) string {
 }
 
 func (me *ContentCache) localPath(hash string) string {
-	me.hashPathMapMutex.Lock()
-	defer me.hashPathMapMutex.Unlock()
+	me.mutex.Lock()
+	defer me.mutex.Unlock()
 
-	return me.hashPathMap[string(hash)]
+	return me.hashPathMap[hash]
 }
 
 func (me *ContentCache) HasHash(hash string) bool {
-	p := me.localPath(hash)
-	if p != "" {
+	me.mutex.Lock()
+	defer me.mutex.Unlock()
+
+	_, ok := me.hashPathMap[hash]
+	if ok {
 		return true
 	}
 
-	p = HashPath(me.dir, hash)
+	ok = me.inMemoryCache.Has(hash)
+	if ok {
+		return true
+	}
+
+	p := HashPath(me.dir, hash)
 	_, err := os.Lstat(p)
 	return err == nil
+}
+
+func (me *ContentCache) ContentsIfLoaded(hash string) []byte {
+	me.mutex.Lock()
+	defer me.mutex.Unlock()
+	c := me.inMemoryCache.Get(hash)
+	if c != nil {
+		return c.([]byte)
+	}
+	return nil
 }
 
 func (me *ContentCache) Path(hash string) string {
@@ -130,24 +162,29 @@ func (me *HashWriter) Close() os.Error {
 
 const _BUFSIZE = 32 * 1024
 
-func (me *ContentCache) DestructiveSavePath(path string) (md5 string, content []byte) {
+func (me *ContentCache) DestructiveSavePath(path string) (md5 string) {
 	f, err := os.Open(path)
 	if err != nil {
-		return "", nil
+		return ""
 	}
 	defer f.Close()
 
 	h := crypto.MD5.New()
-	content, err = SavingCopy(h, f, _BUFSIZE)
+	content, err := SavingCopy(h, f, _BUFSIZE)
 	if err != nil {
 		log.Println("DestructiveSavePath:", err)
-		return "", nil
+		return ""
 	}
-
 	s := string(h.Sum())
 	if me.HasHash(s) {
 		os.Remove(path)
-		return s, nil
+		return s
+	}
+
+	if content != nil {
+		me.mutex.Lock()
+		me.inMemoryCache.Add(s, content)
+		me.mutex.Unlock()
 	}
 
 	p := me.Path(s)
@@ -155,66 +192,78 @@ func (me *ContentCache) DestructiveSavePath(path string) (md5 string, content []
 	if err != nil {
 		if fi, _ := os.Lstat(p); fi != nil {
 			os.Remove(p)
-			return s, content
+			return s
 		}
 		log.Println("DestructiveSavePath:", err)
-		return "", nil
+		return ""
 	}
-	return s, content
+	return s
 }
 
-func (me *ContentCache) SavePath(path string) (md5 string, content []byte) {
+func (me *ContentCache) SavePath(path string) (md5 string) {
 	f, err := os.Open(path)
 	if err != nil {
 		log.Println("SavePath:", err)
-		return "", nil
+		return ""
 	}
 	defer f.Close()
 
 	return me.SaveStream(f)
 }
 
-func (me *ContentCache) SaveImmutablePath(path string) (md5 string, content []byte) {
+func (me *ContentCache) SaveImmutablePath(path string) (md5 string) {
 	hasher := crypto.MD5.New()
 
 	f, err := os.Open(path)
 	if err != nil {
 		log.Println("SaveImmutablePath:", err)
-		return "", nil
+		return ""
 	}
 	defer f.Close()
-	content, err = SavingCopy(hasher, f, 32*1024)
+
+	content, err := SavingCopy(hasher, f, 32*1024)
 	if err != nil && err != os.EOF {
 		log.Println("SavingCopy:", err)
-		return "", nil
+		return ""
 	}
 
 	md5 = string(hasher.Sum())
-	me.hashPathMapMutex.Lock()
-	defer me.hashPathMapMutex.Unlock()
-	me.hashPathMap[string(md5)] = path
+	me.mutex.Lock()
+	defer me.mutex.Unlock()
+	me.hashPathMap[md5] = path
+	if content != nil {
+		me.inMemoryCache.Add(md5, content)
+	}
 
 	log.Printf("hashed %s to %x", path, md5)
-	return md5, content
+	return md5
 }
 
 func (me *ContentCache) Save(content []byte) (md5 string) {
 	buf := bytes.NewBuffer(content)
-	md5, _ = me.SaveStream(buf)
-	return md5
+	return me.SaveStream(buf)
+
 }
 
-func (me *ContentCache) SaveStream(input io.Reader) (md5 string, content []byte) {
+func (me *ContentCache) SaveStream(input io.Reader) (md5 string) {
 	dup := me.NewHashWriter()
 	content, err := SavingCopy(dup, input, _BUFSIZE)
 	if err != nil {
 		log.Println("SaveStream:", err)
-		return "", nil
+		return ""
 	}
 	err = dup.Close()
 	if err != nil {
 		log.Println("dup.Close:", err)
-		return "", nil
+		return ""
 	}
-	return string(dup.hasher.Sum()), content
+	hash := string(dup.hasher.Sum())
+
+	if content != nil {
+		me.mutex.Lock()
+		defer me.mutex.Unlock()
+		me.inMemoryCache.Add(hash, content)
+	}
+
+	return hash
 }

@@ -172,6 +172,13 @@ func (me *RpcFs) Open(name string, flags uint32, context *fuse.Context) (fuse.Fi
 		return nil, a.Status
 	}
 
+	if contents := me.cache.ContentsIfLoaded(a.Hash); contents != nil {
+		return &fuse.WithFlags{
+			fuse.NewReadOnlyFile(contents),
+			fuse.FOPEN_KEEP_CACHE,
+		}, fuse.OK
+	}
+
 	p := me.cache.Path(a.Hash)
 	if _, err := os.Lstat(p); fuse.OsErrorToErrno(err) == fuse.ENOENT {
 		log.Printf("Fetching contents for file %s: %x", name, a.Hash)

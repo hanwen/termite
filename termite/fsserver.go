@@ -30,7 +30,7 @@ type FsServer struct {
 	attrCache      map[string]*FileAttr
 	attrCacheCond  *sync.Cond
 	attrCacheBusy  map[string]bool
-	
+
 	// TODO - add counters and check that the rpcFs.fetchCond is
 	// working.
 }
@@ -42,7 +42,7 @@ func NewFsServer(root string, cache *ContentCache, excluded []string) *FsServer 
 		Root:          root,
 		hashCache:     make(map[string]string),
 		hashBusyMap:   map[string]bool{},
-		
+
 		attrCache:     make(map[string]*FileAttr),
 		attrCacheBusy: map[string]bool{},
 	}
@@ -193,9 +193,9 @@ func (me *FsServer) fillContent(rep *FileAttr) {
 	if rep.FileInfo.IsRegular() {
 		// TODO - saving the content easily overflows memory
 		// on 32-bit.
-		rep.Hash, _ = me.getHash(rep.Path)
+		rep.Hash = me.getHash(rep.Path)
 		if rep.Hash == "" {
-			// Typically happens if we want to open /etc/shadow as normal user. 
+			// Typically happens if we want to open /etc/shadow as normal user.
 			rep.Status = fuse.EPERM
 		}
 	}
@@ -233,7 +233,7 @@ func (me *FsServer) updateHashes(infos []FileAttr) {
 	}
 }
 
-func (me *FsServer) getHash(name string) (hash string, content []byte) {
+func (me *FsServer) getHash(name string) (hash string) {
 	fullPath := me.path(name)
 
 	me.hashCacheMutex.RLock()
@@ -241,7 +241,7 @@ func (me *FsServer) getHash(name string) (hash string, content []byte) {
 	me.hashCacheMutex.RUnlock()
 
 	if hash != "" {
-		return hash, nil
+		return hash
 	}
 
 	me.hashCacheMutex.Lock()
@@ -249,27 +249,27 @@ func (me *FsServer) getHash(name string) (hash string, content []byte) {
 	for me.hashBusyMap[name] && me.hashCache[name] == "" {
 		me.hashCacheCond.Wait()
 	}
-	
+
 	hash = me.hashCache[name]
 	if hash != "" {
-		return hash, nil
+		return hash
 	}
 	me.hashBusyMap[name] = true
 	me.hashCacheMutex.Unlock()
 
 	// TODO - /usr should be configurable.
 	if HasDirPrefix(fullPath, "/usr") && !HasDirPrefix(fullPath, "/usr/local") {
-		hash, content = me.contentCache.SaveImmutablePath(fullPath)
+		hash = me.contentCache.SaveImmutablePath(fullPath)
 	} else {
-		hash, content = me.contentCache.SavePath(fullPath)
+		hash = me.contentCache.SavePath(fullPath)
 	}
 
 	me.hashCacheMutex.Lock()
 	me.hashCache[name] = hash
 	me.hashBusyMap[name] = false, false
 	me.hashCacheCond.Broadcast()
-	
-	return hash, content
+
+	return hash
 }
 
 // TODO - decide between []FileAttr and []*FileAttr.

@@ -1,9 +1,13 @@
 package termite
 
 import (
+	"bytes"
 	"io/ioutil"
+	"log"
 	"testing"
 )
+
+var _ = log.Println
 
 func TestHasDirPrefix(t *testing.T) {
 	if !HasDirPrefix("a/b", "a") {
@@ -96,5 +100,22 @@ func TestParseCommand(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+func TestSavingCopy(t *testing.T) {
+	content := make([]byte, _BUFSIZE+1)
+	for i, _ := range content {
+		content[i] = 'y'
+	}
+
+	readFrom := bytes.NewBuffer(content)
+	writeTo := &bytes.Buffer{}
+	content, err := SavingCopy(writeTo, readFrom, _BUFSIZE)
+	if err != nil {
+		t.Fatalf("SavingCopy failed with %v", err)
+	}
+	if content != nil {
+		t.Errorf("Should drop contents for large copies.")
 	}
 }

@@ -93,13 +93,19 @@ type WorkerOptions struct {
 	CacheDir string
 	Jobs     int
 
-	// If set, change user to this for running. 
+	// If set, change user to this for running.
 	User     *string
+	FileContentCount int
 }
 
 
 func NewWorkerDaemon(options *WorkerOptions) *WorkerDaemon {
+	if options.FileContentCount == 0 {
+		options.FileContentCount = 1024
+	}
+
 	cache := NewContentCache(options.CacheDir)
+	cache.SetMemoryCacheSize(options.FileContentCount)
 	me := &WorkerDaemon{
 		secret:        options.Secret,
 		contentCache:  cache,
