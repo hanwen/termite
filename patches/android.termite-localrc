@@ -1,0 +1,29 @@
+// -*-js-*-
+//
+// To compile android with termite.
+
+[{
+    "Regexp": ".*termite-make",
+    "Local": true,
+    "Recurse": true,
+    "SkipRefresh": true
+}, {
+    "Regexp": "^cd [^&]* && find[^;&|]*",
+    "Local": true,
+    "Recurse": false,
+    "SkipRefresh": true
+}, {
+    "Regexp": "^if \\[ -d [^ ]* \\] ; then cd [^ ]* ; find ./ -type f -and -not -type l ; fi",
+    "Local": true,
+    "Recurse": false,
+    "SkipRefresh": true
+}, {
+    "Regexp": "^build/tools/findleaves.py[^;&|]*$",
+    "Local": true,
+    "Recurse": false,
+    "SkipRefresh": true
+}, {
+    "Regexp": ".*",
+    "Local": false
+}]
+
