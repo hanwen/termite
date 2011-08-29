@@ -50,7 +50,7 @@ func (me *localDecider) ShouldRunLocally(command string) LocalRule {
 	for _, r := range me.rules {
 		m, err := regexp.MatchString(r.Regexp, command)
 		if err != nil {
-			log.Println("regexp error:", err)
+			log.Fatal("regexp error:", err)
 			continue
 		}
 		if m {
@@ -67,7 +67,11 @@ func NewLocalDecider(dir string) *localDecider {
 	f, _ := os.Open(localRc)
 	if f != nil {
 		defer f.Close()
-		return newLocalDecider(f)
+		d := newLocalDecider(f)
+		if d == nil {
+			log.Fatal("could not parse:", localRc)
+		}
+		return d
 	}
 
 	rules := []LocalRule{
