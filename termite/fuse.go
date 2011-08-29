@@ -101,6 +101,10 @@ nobody *user.User) (*WorkerFuseFs, os.Error) {
 		EntryTimeout:    ttl,
 		AttrTimeout:     ttl,
 		NegativeTimeout: ttl,
+
+		// 32-bit programs have trouble with 64-bit inode
+		// numbers.
+		SkipCheckHandles: true,
 	}
 
 	tmpFs := fuse.NewLoopbackFileSystem(tmpBacking)
@@ -110,7 +114,7 @@ nobody *user.User) (*WorkerFuseFs, os.Error) {
 	if nobody != nil {
 		w.procFs.Uid = nobody.Uid
 	}
-	
+
 	w.unionFs = unionfs.NewUnionFs([]fuse.FileSystem{rwFs, rpcFs}, opts)
 	swFs := []fuse.SwitchedFileSystem{
 		{"", rpcFs, false},
