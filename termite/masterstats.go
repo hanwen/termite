@@ -40,5 +40,5 @@ func (me *masterStats) writeHttp(w http.ResponseWriter) {
 
 	r := atomic.AddInt32(&me.running, 0)
 	fmt.Fprintf(w, "<p>Jobs in receive status: %d "+
-		"(measure the maximum parallelism of the job", r)
+		"(parallelism of the job)", r)
 }
