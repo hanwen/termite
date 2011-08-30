@@ -47,7 +47,7 @@ compile.  It creates a .termite-socket that the wrapper below uses.
 The choice between remote and local can be set through the file
 .termite-localrc in the same dir as .termite-socket.  The file is in
 json format, and you can find examples in the patches/ subdirectory.
-The default is
+The default
 
   [{
     "Regexp": ".*termite-make",
@@ -59,14 +59,18 @@ The default is
     "Local": false
   }]
 
-ie., only recursive make calls are run locally. The rest is distributed.
+(ie., only recursive make calls are run locally) should work for most
+projects, but for performance reasons, you might want to run more
+commands locally.
 
-You should only run build-system commands locally (eg. make, cmake), or
-commands without filesystem side-effects (eg: echo without redirection).
+Typically, build-system commands should run locally (eg. make, cmake).
 
 Commands that modify build artefacts should not run locally: local
 commands do not run inside a FUSE sandbox, so termite can't tell what
 files they modify, and how to update filesystem caches on the workers.
+By default, after executing a local command, the termite master scans
+for changed files.  If you know this is not the case, you can skip
+this with SkipRefresh: true.
 
 
 
