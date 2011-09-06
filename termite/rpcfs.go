@@ -174,8 +174,8 @@ func (me *RpcFs) Open(name string, flags uint32, context *fuse.Context) (fuse.Fi
 
 	if contents := me.cache.ContentsIfLoaded(a.Hash); contents != nil {
 		return &fuse.WithFlags{
-			fuse.NewReadOnlyFile(contents),
-			fuse.FOPEN_KEEP_CACHE,
+			File: fuse.NewReadOnlyFile(contents),
+			FuseFlags: fuse.FOPEN_KEEP_CACHE,
 		}, fuse.OK
 	}
 
@@ -195,11 +195,11 @@ func (me *RpcFs) Open(name string, flags uint32, context *fuse.Context) (fuse.Fi
 	}
 
 	return &fuse.WithFlags{
-		&rpcFsFile{
+		File: &rpcFsFile{
 			fuse.LoopbackFile{File: f},
 			*a.FileInfo,
 		},
-		fuse.FOPEN_KEEP_CACHE,
+		FuseFlags: fuse.FOPEN_KEEP_CACHE,
 	}, fuse.OK
 }
 

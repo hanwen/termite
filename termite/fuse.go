@@ -20,7 +20,7 @@ type WorkerFuseFs struct {
 	fsConnector *fuse.FileSystemConnector
 	unionFs     *unionfs.UnionFs
 	procFs      *ProcFs
-
+	nodeFs      *fuse.PathNodeFs
 	// If nil, we are running this task.
 	task *WorkerTask
 }
@@ -128,9 +128,9 @@ nobody *user.User) (*WorkerFuseFs, os.Error) {
 		fs         fuse.FileSystem
 	}
 	mounts := []submount{
-		{"/proc", w.procFs},
-		{"/sys", &fuse.ReadonlyFileSystem{fuse.NewLoopbackFileSystem("/sys")}},
-		{"/dev", NewDevnullFs()},
+		{"proc", w.procFs},
+		{"sys", &fuse.ReadonlyFileSystem{fuse.NewLoopbackFileSystem("/sys")}},
+		{"dev", NewDevnullFs()},
 	}
 	fuseOpts := fuse.MountOptions{
 		// Compilers are not that highly parallel.  A lower
@@ -147,11 +147,12 @@ nobody *user.User) (*WorkerFuseFs, os.Error) {
 	} else {
 		fuseOpts.AllowOther = true
 		mounts = append(mounts,
-			submount{"/tmp", tmpFs},
+			submount{"tmp", tmpFs},
 		)
 	}
 
-	w.fsConnector = fuse.NewFileSystemConnector(fuse.NewSwitchFileSystem(swFs), &mOpts)
+	w.nodeFs = fuse.NewPathNodeFs(fuse.NewSwitchFileSystem(swFs))
+	w.fsConnector = fuse.NewFileSystemConnector(w.nodeFs, &mOpts)
 	w.MountState = fuse.NewMountState(w.fsConnector)
 
 	err = w.MountState.Mount(w.mount, &fuseOpts)
@@ -159,7 +160,7 @@ nobody *user.User) (*WorkerFuseFs, os.Error) {
 		return nil, err
 	}
 	for _, s := range mounts {
-		code := w.fsConnector.Mount(s.mountpoint, s.fs, nil)
+		code := w.fsConnector.Mount(w.nodeFs.Root().Inode(), s.mountpoint, fuse.NewPathNodeFs(s.fs), nil)
 		if !code.Ok() {
 			return nil, os.NewError(fmt.Sprintf("submount error for %v: %v", s.mountpoint, code))
 		}

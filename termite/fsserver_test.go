@@ -99,7 +99,7 @@ func TestRpcFS(t *testing.T) {
 	rpcClient := rpc.NewClient(r)
 	fs := NewRpcFs(rpcClient, NewContentCache(clientCache))
 
-	state, _, err := fuse.MountFileSystem(mnt, fs, nil)
+	state, _, err := fuse.MountPathFileSystem(mnt, fs, nil)
 	state.Debug = true
 	if err != nil {
 		t.Fatal("Mount", err)

@@ -10,7 +10,7 @@ import (
 func setupDevNullFs() (wd string, clean func()) {
 	fs := NewDevnullFs()
 	mountPoint := fuse.MakeTempDir()
-	state, _, err := fuse.MountFileSystem(mountPoint, fs, nil)
+	state, _, err := fuse.MountPathFileSystem(mountPoint, fs, nil)
 	if err != nil {
 		panic(err)
 	}
