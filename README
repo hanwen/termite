@@ -185,4 +185,3 @@ machine.
 * Emacs 24
  - 1.8x slower (Lenovo T60, make -j2)
  - Must run in srcdir.
- - Must run twice: emacs attempts to hardlink emacs-VERSION.
