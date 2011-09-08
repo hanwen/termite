@@ -178,7 +178,7 @@ func (me *WorkerFuseFs) update(attrs []FileAttr) {
 		paths = append(paths, path)
 
 		if attr.Status.Ok() {
-			me.fsConnector.Notify(path)
+			me.nodeFs.Notify(path)
 		} else {
 			// Even if GetAttr() returns ENOENT, FUSE will
 			// happily try to Open() the file afterwards.
@@ -186,7 +186,7 @@ func (me *WorkerFuseFs) update(attrs []FileAttr) {
 			// than inode notify.
 			dir, base := filepath.Split(path)
 			dir = filepath.Clean(dir)
-			me.fsConnector.EntryNotify(dir, base)
+			me.nodeFs.EntryNotify(dir, base)
 		}
 	}
 	me.unionFs.DropBranchCache(paths)
