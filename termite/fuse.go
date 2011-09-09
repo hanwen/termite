@@ -25,6 +25,16 @@ type WorkerFuseFs struct {
 	task *WorkerTask
 }
 
+// We have to reroute statfs, so it goes to the writable part.
+type SwitchFileSystem struct {
+	*fuse.SwitchFileSystem
+	statFsFs fuse.FileSystem
+}
+
+func (me *SwitchFileSystem) StatFs() *fuse.StatfsOut {
+	return me.statFsFs.StatFs()
+}
+
 func (me *WorkerFuseFs) Stop() {
 	err := me.MountState.Unmount()
 	if err != nil {
@@ -151,7 +161,13 @@ nobody *user.User) (*WorkerFuseFs, os.Error) {
 		)
 	}
 
-	w.nodeFs = fuse.NewPathNodeFs(fuse.NewSwitchFileSystem(swFs))
+
+	mySwitchFs := &SwitchFileSystem{
+		fuse.NewSwitchFileSystem(swFs),
+		w.unionFs,
+	}
+
+	w.nodeFs = fuse.NewPathNodeFs(mySwitchFs)
 	w.fsConnector = fuse.NewFileSystemConnector(w.nodeFs, &mOpts)
 	w.MountState = fuse.NewMountState(w.fsConnector)
 
