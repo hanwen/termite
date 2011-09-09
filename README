@@ -82,11 +82,11 @@ RUNNING
 
   dd if=/dev/random of=secret.txt bs=1 count=20 && chmod 0600 secret.txt
   ${TERMITE_DIR}/bin/coordinator/coordinator &
-  sudo ${TERMITE_DIR}/bin/worker/worker -jobs 4
+  sudo ${TERMITE_DIR}/bin/worker/worker -jobs 4 -coordinator localhost:1233
 
   # Run distributed build
-  ln -s ./termite-make  ~/bin/
-  ln -s ./bin/shell-wrapper ~/bin
+  ln -s ${TERMITE_DIR}/termite-make  ~/bin/
+  ln -s ${TERMITE_DIR}/bin/shell-wrapper/shell-wrapper ~/bin/
 
   cd ${PROJECT}
   ${TERMITE_DIR}/bin/master/master -jobs 4 \
