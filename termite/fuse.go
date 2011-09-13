@@ -114,7 +114,7 @@ nobody *user.User) (*WorkerFuseFs, os.Error) {
 
 		// 32-bit programs have trouble with 64-bit inode
 		// numbers.
-		SkipCheckHandles: true,
+		PortableInodes: true,
 	}
 
 	tmpFs := fuse.NewLoopbackFileSystem(tmpBacking)
