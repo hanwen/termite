@@ -152,7 +152,7 @@ func (me *RpcFs) OpenDir(name string, context *fuse.Context) (chan fuse.DirEntry
 }
 
 type rpcFsFile struct {
-	fuse.LoopbackFile
+	fuse.File
 	os.FileInfo
 }
 
@@ -174,7 +174,7 @@ func (me *RpcFs) Open(name string, flags uint32, context *fuse.Context) (fuse.Fi
 
 	if contents := me.cache.ContentsIfLoaded(a.Hash); contents != nil {
 		return &fuse.WithFlags{
-			File: fuse.NewReadOnlyFile(contents),
+			File: fuse.NewDataFile(contents),
 			FuseFlags: fuse.FOPEN_KEEP_CACHE,
 		}, fuse.OK
 	}
@@ -196,7 +196,7 @@ func (me *RpcFs) Open(name string, flags uint32, context *fuse.Context) (fuse.Fi
 
 	return &fuse.WithFlags{
 		File: &rpcFsFile{
-			fuse.LoopbackFile{File: f},
+			&fuse.ReadOnlyFile{&fuse.LoopbackFile{File: f}},
 			*a.FileInfo,
 		},
 		FuseFlags: fuse.FOPEN_KEEP_CACHE,

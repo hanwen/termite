@@ -74,9 +74,9 @@ func (me *ProcFs) Open(name string, flags uint32, context *fuse.Context) (fuse.F
 	p := me.LoopbackFileSystem.GetPath(name)
 	content, err := ioutil.ReadFile(p)
 	if err == nil {
-		return fuse.NewReadOnlyFile(content), fuse.OK
+		return fuse.NewDataFile(content), fuse.OK
 	}
-	return nil, fuse.OsErrorToErrno(err)	
+	return nil, fuse.OsErrorToErrno(err)
 }
 
 func (me *ProcFs) Readlink(name string, context *fuse.Context) (string, fuse.Status) {
