@@ -47,5 +47,5 @@ func main() {
 	}
 
 	state.Debug = true
-	state.Loop(false)
+	state.Loop()
 }
