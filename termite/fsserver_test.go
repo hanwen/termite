@@ -33,7 +33,8 @@ func TestFsServerCache(t *testing.T) {
 
 	cache := NewContentCache(srvCache)
 	server := NewFsServer("/", cache, nil)
-
+	server.excludePrivate = false
+	
 	server.refreshAttributeCache(orig)
 	if len(server.attrCache) > 0 {
 		t.Errorf("cache not empty? %#v", server.attrCache)
