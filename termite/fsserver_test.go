@@ -12,6 +12,8 @@ import (
 	"testing"
 )
 
+// TODO - fold common code.
+
 func TestFsServerCache(t *testing.T) {
 	log.Println("TestFsServerCache")
 	tmp, _ := ioutil.TempDir("", "")
@@ -85,6 +87,7 @@ func TestRpcFS(t *testing.T) {
 
 	cache := NewContentCache(srvCache)
 	server := NewFsServer(orig, cache, []string{})
+	server.excludePrivate = false
 
 	l, r, err := fuse.Socketpair("unix")
 	if err != nil {
