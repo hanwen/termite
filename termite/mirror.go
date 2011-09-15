@@ -168,10 +168,6 @@ func (me *Mirror) newWorkerFuseFs() (*WorkerFuseFs, os.Error) {
 }
 
 func (me *Mirror) newWorkerTask(req *WorkRequest, rep *WorkReply) (*WorkerTask, os.Error) {
-	fuseFs, err := me.getWorkerFuseFs(req.Summary())
-	if err != nil {
-		return nil, err
-	}
 	var stdin net.Conn
 	if req.StdinId != "" {
 		stdin = me.daemon.pending.WaitConnection(req.StdinId)
@@ -181,9 +177,7 @@ func (me *Mirror) newWorkerTask(req *WorkRequest, rep *WorkReply) (*WorkerTask, 
 		WorkReply:   rep,
 		stdinConn:   stdin,
 		mirror:      me,
-		fuseFs:      fuseFs,
 	}
-	fuseFs.task = task
 	return task, nil
 }
 

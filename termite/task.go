@@ -15,7 +15,6 @@ import (
 )
 
 type WorkerTask struct {
-	fuseFs *WorkerFuseFs
 	*WorkRequest
 	*WorkReply
 	stdinConn net.Conn
@@ -25,7 +24,25 @@ type WorkerTask struct {
 }
 
 func (me *WorkerTask) Run() os.Error {
-	me.fuseFs.SetDebug(me.WorkRequest.Debug)
+	fuseFs, err := me.mirror.getWorkerFuseFs(me.WorkRequest.Summary())
+	if err != nil {
+		return err
+	}
+
+	fuseFs.task = me
+	err = me.runInFuse(fuseFs)
+	if err != nil {
+		log.Println("discarding FUSE due to error:", fuseFs.mount, err)
+		me.mirror.discardFuse(fuseFs)
+		return err
+	}
+	
+	me.mirror.returnFuse(fuseFs)
+	return nil
+}
+
+func (me *WorkerTask) runInFuse(fuseFs *WorkerFuseFs) os.Error {
+	fuseFs.SetDebug(me.WorkRequest.Debug)
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
 
@@ -38,13 +55,13 @@ func (me *WorkerTask) Run() os.Error {
 			Uid: uint32(me.mirror.daemon.Nobody.Uid),
 			Gid: uint32(me.mirror.daemon.Nobody.Gid),
 		}
-		attr.Chroot = me.fuseFs.mount
+		attr.Chroot = fuseFs.mount
 
 		cmd.SysProcAttr = attr
 		cmd.Dir = me.WorkRequest.Dir
 	} else {
-		cmd.Path = filepath.Join(me.fuseFs.mount, me.WorkRequest.Binary)
-		cmd.Dir = filepath.Join(me.fuseFs.mount, me.WorkRequest.Dir)
+		cmd.Path = filepath.Join(fuseFs.mount, me.WorkRequest.Binary)
+		cmd.Dir = filepath.Join(fuseFs.mount, me.WorkRequest.Dir)
 	}
 
 	cmd.Env = me.WorkRequest.Env
@@ -55,7 +72,6 @@ func (me *WorkerTask) Run() os.Error {
 	}
 
 	if err := cmd.Start(); err != nil {
-		me.mirror.discardFuse(me.fuseFs)
 		return err
 	}
 
@@ -64,7 +80,7 @@ func (me *WorkerTask) Run() os.Error {
 	if !me.WorkRequest.Debug {
 		printCmd.Env = nil
 	}
-	log.Println("started cmd", printCmd, "in", me.fuseFs.mount)
+	log.Println("started cmd", printCmd, "in", fuseFs.mount)
 	me.taskInfo = fmt.Sprintf("Cmd %v, dir %v, proc %v", cmd.Args, cmd.Dir, cmd.Process)
 	err := cmd.Wait()
 	waitMsg, ok := err.(*os.Waitmsg)
@@ -82,23 +98,19 @@ func (me *WorkerTask) Run() os.Error {
 	me.WorkReply.Stdout = stdout.String()
 	me.WorkReply.Stderr = stderr.String()
 
-	err = me.fillReply()
-	if err != nil {
-		log.Println("discarding FUSE due to error:", me.fuseFs.mount, err)
-		me.mirror.discardFuse(me.fuseFs)
-	} else {
+	err = me.fillReply(fuseFs.rwDir)
+	if err == nil {
 		// Must do updateFiles before ReturnFuse, since the
 		// next job should not see out-of-date files.
 		me.mirror.updateFiles(me.WorkReply.Files)
-		me.mirror.returnFuse(me.fuseFs)
 	}
 
 	return err
 }
 
-func (me *WorkerTask) fillReply() os.Error {
+func (me *WorkerTask) fillReply(rwDir string) os.Error {
 	saver := &fileSaver{
-		rwDir:  me.fuseFs.rwDir,
+		rwDir:  rwDir,
 		prefix: me.mirror.writableRoot,
 		cache:  me.mirror.daemon.contentCache,
 	}
