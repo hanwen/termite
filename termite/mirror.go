@@ -149,7 +149,7 @@ func (me *Mirror) Run(req *WorkRequest, rep *WorkReply) os.Error {
 
 	err = task.Run()
 	if err != nil {
-		log.Println("Error", err)
+		log.Println("task.Run:", err)
 		return err
 	}
 

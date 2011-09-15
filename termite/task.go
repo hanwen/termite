@@ -55,6 +55,7 @@ func (me *WorkerTask) Run() os.Error {
 	}
 
 	if err := cmd.Start(); err != nil {
+		me.mirror.discardFuse(me.fuseFs)
 		return err
 	}
 
