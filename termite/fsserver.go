@@ -36,6 +36,26 @@ type FsServer struct {
 	// working.
 }
 
+
+var paranoia = false
+
+func (me *FsServer) verify() {
+	if !paranoia {
+		return
+	}
+	me.attrCacheMutex.RLock()
+	defer me.attrCacheMutex.RUnlock()
+
+	for k, v := range me.attrCache {
+		if v.Path != k {
+			panic(fmt.Sprintf("attrCache mismatch %q %#v", k, v))
+		}
+		if _, ok := me.attrCacheBusy[k]; ok {
+			panic(fmt.Sprintf("attrCacheBusy and attrCache entry for %q", k))
+		}
+	}
+}
+
 func NewFsServer(root string, cache *ContentCache, excluded []string) *FsServer {
 	fs := &FsServer{
 		contentCache:  cache,
@@ -84,7 +104,10 @@ func (me FileAttr) String() string {
 	}
 	if me.Deletion() {
 		id = " (del)"
+	} else if !me.Status.Ok() {
+		id = " " + me.Status.String()  
 	}
+	
 	return fmt.Sprintf("%s%s", me.Path, id)
 }
 
@@ -132,7 +155,7 @@ func (me *FsServer) GetAttr(req *AttrRequest, rep *AttrResponse) os.Error {
 	for _, n := range names {
 		a := me.oneGetAttr(n)
 		if a.Hash != "" {
-			log.Printf("GetAttr %s %v %x", n, a, a.Hash)
+			log.Printf("GetAttr %q %v %x", n, a, a.Hash)
 		}
 		rep.Attrs = append(rep.Attrs, *a)
 	}
@@ -140,7 +163,10 @@ func (me *FsServer) GetAttr(req *AttrRequest, rep *AttrResponse) os.Error {
 }
 
 func (me *FsServer) oneGetAttr(name string) (rep *FileAttr) {
+	defer me.verify()
+	
 	if me.excluded[name] {
+		log.Printf("Denied access to excluded file %q", name)
 		return &FileAttr{
 			Path: name,
 			Status: fuse.ENOENT,
@@ -177,6 +203,7 @@ func (me *FsServer) oneGetAttr(name string) (rep *FileAttr) {
 	// We don't want to expose the master's private files to the
 	// world.
 	if me.excludePrivate && fi != nil && fi.Mode & 0077 == 0 {
+		log.Printf("Denied access to private file %q", name)
 		rep.FileInfo = nil
 		rep.Status = fuse.EPERM
 		fi = nil
@@ -212,16 +239,21 @@ func (me *FsServer) updateFiles(infos []FileAttr) {
 }
 
 func (me *FsServer) updateAttrs(infos []FileAttr) {
+	defer me.verify()
+	
 	me.attrCacheMutex.Lock()
 	defer me.attrCacheMutex.Unlock()
 
 	for _, r := range infos {
+		copy := r
 		name := r.Path
-		me.attrCache[name] = &r
+		me.attrCache[name] = &copy
 	}
 }
 
 func (me *FsServer) updateHashes(infos []FileAttr) {
+	defer me.verify()
+	
 	me.hashCacheMutex.Lock()
 	defer me.hashCacheMutex.Unlock()
 

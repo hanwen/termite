@@ -14,7 +14,13 @@ import (
 
 // TODO - fold common code.
 
+func init() {
+	paranoia = true
+}
+
+
 func TestFsServerCache(t *testing.T) {
+	paranoia = true
 	log.Println("TestFsServerCache")
 	tmp, _ := ioutil.TempDir("", "term-fss")
 	defer os.RemoveAll(tmp)
@@ -143,6 +149,10 @@ func TestRpcFS(t *testing.T) {
 		FileAttr{
 			Path: "/file.txt",
 			Hash: md5str("somethingelse"),
+		},
+		FileAttr{
+			Path: "/foobar.txt",
+			Hash: md5str("contentsoffoobar"),
 		},
 	}
 	server.updateFiles(newData)
