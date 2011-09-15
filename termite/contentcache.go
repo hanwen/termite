@@ -135,8 +135,8 @@ func (me *HashWriter) Write(p []byte) (n int, err os.Error) {
 }
 
 func (me *HashWriter) Close() os.Error {
+	me.dest.Chmod(0444)
 	err := me.dest.Close()
-
 	if err != nil {
 		return err
 	}
@@ -193,6 +193,7 @@ func (me *ContentCache) DestructiveSavePath(path string) (md5 string) {
 		log.Println("DestructiveSavePath:", err)
 		return ""
 	}
+	f.Chmod(0444)
 	return s
 }
 
