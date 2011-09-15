@@ -1,0 +1,19 @@
+// -*-js-*-
+//
+
+[{
+    "Regexp": ".*termite-make",
+    "Local": true,
+    "Recurse": true,
+    "SkipRefresh": true
+}, {
+// Configuration stuff:
+    "Regexp": ".*echo.*; else echo \"\"",
+    "Local": true,
+    "Recurse": false,
+    "SkipRefresh": true
+}, {
+    "Regexp": ".*",
+    "Local": false
+}]
+
