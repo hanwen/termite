@@ -86,7 +86,7 @@ func NewTestCase(t *testing.T) *testCase {
 			[]string{},
 			me.secret, []string{}, 1)
 		me.master.fileServer.excludePrivate = false
-		me.master.SetKeepAlive(1.0)
+		me.master.SetKeepAlive(0.5)
 		me.socket = me.tmp + "/master-socket"
 		go me.master.Start(me.socket)
 		wg.Done()
@@ -113,6 +113,7 @@ func (me *testCase) fdCount() int {
 }
 
 func (me *testCase) Clean() {
+	log.Println("cleaning up testcase.")
 	me.worker.Shutdown(nil, nil)
 	me.master.mirrors.dropConnections()
 	// TODO - should have explicit worker shutdown routine.
@@ -191,8 +192,6 @@ func TestEndToEndBasic(t *testing.T) {
 	}
 }
 
-// This shows a case that is not handled correctly yet: we have no way
-// to flush the cache on negative entries.
 func TestEndToEndNegativeNotify(t *testing.T) {
 	if os.Geteuid() == 0 {
 		log.Println("This test should not run as root")
