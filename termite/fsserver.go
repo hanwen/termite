@@ -91,7 +91,7 @@ type FileAttr struct {
 }
 
 type AttrResponse struct {
-	Attrs    []FileAttr
+	Attrs    []*FileAttr
 }
 
 func (me FileAttr) String() string {
@@ -157,7 +157,7 @@ func (me *FsServer) GetAttr(req *AttrRequest, rep *AttrResponse) os.Error {
 		if a.Hash != "" {
 			log.Printf("GetAttr %q %v %x", n, a, a.Hash)
 		}
-		rep.Attrs = append(rep.Attrs, *a)
+		rep.Attrs = append(rep.Attrs, a)
 	}
 	return nil
 }
@@ -233,25 +233,23 @@ func (me *FsServer) fillContent(rep *FileAttr) {
 	}
 }
 
-func (me *FsServer) updateFiles(infos []FileAttr) {
+func (me *FsServer) updateFiles(infos []*FileAttr) {
 	me.updateHashes(infos)
 	me.updateAttrs(infos)
 }
 
-func (me *FsServer) updateAttrs(infos []FileAttr) {
+func (me *FsServer) updateAttrs(infos []*FileAttr) {
 	defer me.verify()
 	
 	me.attrCacheMutex.Lock()
 	defer me.attrCacheMutex.Unlock()
 
 	for _, r := range infos {
-		copy := r
-		name := r.Path
-		me.attrCache[name] = &copy
+		me.attrCache[r.Path] = r
 	}
 }
 
-func (me *FsServer) updateHashes(infos []FileAttr) {
+func (me *FsServer) updateHashes(infos []*FileAttr) {
 	defer me.verify()
 	
 	me.hashCacheMutex.Lock()
@@ -309,12 +307,11 @@ func (me *FsServer) getHash(name string) (hash string) {
 	return hash
 }
 
-// TODO - decide between []FileAttr and []*FileAttr.
-func (me *FsServer) refreshAttributeCache(prefix string) []FileAttr {
+func (me *FsServer) refreshAttributeCache(prefix string) []*FileAttr {
 	me.attrCacheMutex.Lock()
 	defer me.attrCacheMutex.Unlock()
 
-	updated := []FileAttr{}
+	updated := []*FileAttr{}
 	for key, attr := range me.attrCache {
 		// TODO -should just do everything?
 		if !HasDirPrefix(key, prefix) {
@@ -327,7 +324,7 @@ func (me *FsServer) refreshAttributeCache(prefix string) []FileAttr {
 				Path:   key,
 				Status: fuse.ENOENT,
 			}
-			updated = append(updated, del)
+			updated = append(updated, &del)
 		}
 		if fi != nil && attr.FileInfo != nil && EncodeFileInfo(*attr.FileInfo) != EncodeFileInfo(*fi) {
 			newEnt := FileAttr{
@@ -336,24 +333,25 @@ func (me *FsServer) refreshAttributeCache(prefix string) []FileAttr {
 				FileInfo: fi,
 			}
 			me.fillContent(&newEnt)
-			updated = append(updated, newEnt)
+			updated = append(updated, &newEnt)
 		}
 	}
 
 	for _, u := range updated {
-		newAttr := u
-		me.attrCache[u.Path] = &newAttr
+		copy := *u
+		me.attrCache[u.Path] = &copy
 	}
 	return updated
 }
 
-func (me *FsServer) copyCache() []FileAttr {
+func (me *FsServer) copyCache() []*FileAttr {
 	me.attrCacheMutex.RLock()
 	defer me.attrCacheMutex.RUnlock()
 
-	dump := []FileAttr{}
+	dump := []*FileAttr{}
 	for _, attr := range me.attrCache {
-		dump = append(dump, *attr)
+		copy := *attr
+		dump = append(dump, &copy)
 	}
 
 	return dump

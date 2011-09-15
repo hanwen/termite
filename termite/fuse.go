@@ -188,7 +188,7 @@ nobody *user.User) (*WorkerFuseFs, os.Error) {
 	return &w, nil
 }
 
-func (me *WorkerFuseFs) update(attrs []FileAttr, origin *WorkerFuseFs) {
+func (me *WorkerFuseFs) update(attrs []*FileAttr, origin *WorkerFuseFs) {
 	paths := []string{}
 	for _, attr := range attrs {
 		path := strings.TrimLeft(attr.Path, "/")

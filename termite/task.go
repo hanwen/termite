@@ -124,7 +124,7 @@ type fileSaver struct {
 	rwDir  string
 	prefix string
 	err    os.Error
-	files  []FileAttr
+	files  []*FileAttr
 	cache  *ContentCache
 }
 
@@ -172,7 +172,7 @@ func (me *fileSaver) savePath(path string, osInfo *os.FileInfo) {
 		log.Fatalf("Unknown file type %o", ftype)
 	}
 
-	me.files = append(me.files, fi)
+	me.files = append(me.files, &fi)
 }
 
 func (me *fileSaver) reapBackingStore() {
@@ -192,7 +192,7 @@ func (me *fileSaver) reapBackingStore() {
 				return
 			}
 
-			me.files = append(me.files, FileAttr{
+			me.files = append(me.files, &FileAttr{
 				Status: fuse.ENOENT,
 				Path:   "/" + string(contents),
 			})

@@ -118,7 +118,7 @@ func (me *Mirror) Update(req *UpdateRequest, rep *UpdateResponse) os.Error {
 	return nil
 }
 
-func (me *Mirror) updateFiles(attrs []FileAttr, origin *WorkerFuseFs) {
+func (me *Mirror) updateFiles(attrs []*FileAttr, origin *WorkerFuseFs) {
 	me.rpcFs.updateFiles(attrs)
 
 	me.fuseFileSystemsMutex.Lock()
@@ -132,7 +132,7 @@ func (me *Mirror) updateFiles(attrs []FileAttr, origin *WorkerFuseFs) {
 	}
 }
 
-func (me *Mirror) fetchFiles(files []FileAttr) {
+func (me *Mirror) fetchFiles(files []*FileAttr) {
 	for _, f := range files {
 		if f.Hash != "" {
 			me.rpcFs.FetchHash(f.FileInfo.Size, f.Hash)

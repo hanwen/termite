@@ -145,12 +145,12 @@ func TestRpcFS(t *testing.T) {
 		t.Errorf("cache error %x (%v)", storedHash, storedHash)
 	}
 
-	newData := []FileAttr{
-		FileAttr{
+	newData := []*FileAttr{
+		&FileAttr{
 			Path: "/file.txt",
 			Hash: md5str("somethingelse"),
 		},
-		FileAttr{
+		&FileAttr{
 			Path: "/foobar.txt",
 			Hash: md5str("contentsoffoobar"),
 		},

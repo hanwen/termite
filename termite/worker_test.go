@@ -214,8 +214,8 @@ func TestEndToEndNegativeNotify(t *testing.T) {
 
 	newContent := []byte("new content")
 	hash := tc.master.cache.Save(newContent)
-	updated := []FileAttr{
-		FileAttr{
+	updated := []*FileAttr{
+		&FileAttr{
 			Path:     tc.tmp + "/wd/output.txt",
 			FileInfo: &os.FileInfo{Mode: fuse.S_IFREG | 0644, Size: int64(len(newContent))},
 			Hash:     hash,

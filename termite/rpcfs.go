@@ -36,7 +36,7 @@ type RpcFs struct {
 }
 
 type UpdateRequest struct {
-	Files []FileAttr
+	Files []*FileAttr
 }
 
 type UpdateResponse struct {
@@ -67,7 +67,7 @@ func (me *RpcFs) Update(req *UpdateRequest, resp *UpdateResponse) os.Error {
 	return nil
 }
 
-func (me *RpcFs) updateFiles(files []FileAttr) {
+func (me *RpcFs) updateFiles(files []*FileAttr) {
 	me.dirMutex.Lock()
 	defer me.dirMutex.Unlock()
 
@@ -85,8 +85,8 @@ func (me *RpcFs) updateFiles(files []FileAttr) {
 			flushDirs = append(flushDirs, d)
 		}
 
-		newVal := r
-		me.attrResponse[p] = &newVal
+		copy := *r
+		me.attrResponse[p] = &copy
 	}
 
 	for _, d := range flushDirs {
@@ -284,10 +284,9 @@ func (me *RpcFs) getFileAttr(name string) *FileAttr {
 	var wanted *FileAttr
 	for _, attr := range rep.Attrs {
 		me.considerSaveLocal(attr)
-		fa := attr
-		me.attrResponse[strings.TrimLeft(attr.Path, "/")] = &fa
+		me.attrResponse[strings.TrimLeft(attr.Path, "/")] = attr
 		if attr.Path == abs {
-			wanted = &fa
+			wanted = attr
 		}
 	}
 	me.attrCond.Broadcast()
@@ -295,7 +294,7 @@ func (me *RpcFs) getFileAttr(name string) *FileAttr {
 	return wanted
 }
 
-func (me *RpcFs) considerSaveLocal(attr FileAttr) {
+func (me *RpcFs) considerSaveLocal(attr *FileAttr) {
 	absPath := attr.Path
 	if !attr.Status.Ok() || !attr.FileInfo.IsRegular() {
 		return

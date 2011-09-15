@@ -221,7 +221,7 @@ func (me *Master) prefetchFiles(req *WorkRequest) {
 
 	for f, _ := range files {
 		a := me.fileServer.oneGetAttr(f)
-		req.Prefetch = append(req.Prefetch, *a)
+		req.Prefetch = append(req.Prefetch, a)
 	}
 	if len(req.Prefetch) > 0 {
 		log.Println("Prefetch", req.Prefetch)
@@ -272,7 +272,7 @@ func (me *Master) run(req *WorkRequest, rep *WorkReply) (err os.Error) {
 	return err
 }
 
-func (me *Master) replayFileModifications(worker *rpc.Client, infos []FileAttr) os.Error {
+func (me *Master) replayFileModifications(worker *rpc.Client, infos []*FileAttr) os.Error {
 	// Must get data before we modify the file-system, so we don't
 	// leave the FS in a half-finished state.
 	for _, info := range infos {
@@ -288,9 +288,9 @@ func (me *Master) replayFileModifications(worker *rpc.Client, infos []FileAttr) 
 
 	entries := make(map[string]*FileAttr)
 	names := []string{}
-	for i, info := range infos {
+	for _, info := range infos {
 		names = append(names, info.Path)
-		entries[info.Path] = &infos[i]
+		entries[info.Path] = info
 	}
 
 	deletes := []string{}

@@ -21,10 +21,10 @@ type mirrorConnection struct {
 	// Any file updates that we should ship to the worker before
 	// running any jobs.
 	pendingChangesMutex sync.Mutex
-	pendingChanges      []FileAttr
+	pendingChanges      []*FileAttr
 }
 
-func (me *mirrorConnection) queueFiles(files []FileAttr) {
+func (me *mirrorConnection) queueFiles(files []*FileAttr) {
 	me.pendingChangesMutex.Lock()
 	defer me.pendingChangesMutex.Unlock()
 	for _, a := range files {
@@ -185,7 +185,7 @@ func (me *mirrorConnections) dropConnections() {
 	me.mirrors = make(map[string]*mirrorConnection)
 }
 
-func (me *mirrorConnections) queueFiles(origin *mirrorConnection, infos []FileAttr) {
+func (me *mirrorConnections) queueFiles(origin *mirrorConnection, infos []*FileAttr) {
 	for _, w := range me.mirrors {
 		if origin != w {
 			w.queueFiles(infos)

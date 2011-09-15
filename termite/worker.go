@@ -17,13 +17,13 @@ var _ = log.Println
 
 type WorkReply struct {
 	Exit   os.Waitmsg
-	Files  []FileAttr
+	Files  []*FileAttr
 	Stderr string
 	Stdout string
 }
 
 type WorkRequest struct {
-	Prefetch []FileAttr
+	Prefetch []*FileAttr
 
 	// Id of connection streaming stdin.
 	StdinId      string
