@@ -102,7 +102,7 @@ func (me *WorkerTask) runInFuse(fuseFs *WorkerFuseFs) os.Error {
 	if err == nil {
 		// Must do updateFiles before ReturnFuse, since the
 		// next job should not see out-of-date files.
-		me.mirror.updateFiles(me.WorkReply.Files)
+		me.mirror.updateFiles(me.WorkReply.Files, fuseFs)
 	}
 
 	return err

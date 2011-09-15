@@ -50,6 +50,7 @@ func (me *WorkerFuseFs) Stop() {
 func (me *WorkerFuseFs) SetDebug(debug bool) {
 	me.MountState.Debug = debug
 	me.fsConnector.Debug = debug
+	me.nodeFs.Debug = debug 
 }
 
 func (me *Mirror) returnFuse(wfs *WorkerFuseFs) {
@@ -187,12 +188,16 @@ nobody *user.User) (*WorkerFuseFs, os.Error) {
 	return &w, nil
 }
 
-func (me *WorkerFuseFs) update(attrs []FileAttr) {
+func (me *WorkerFuseFs) update(attrs []FileAttr, origin *WorkerFuseFs) {
 	paths := []string{}
 	for _, attr := range attrs {
 		path := strings.TrimLeft(attr.Path, "/")
 		paths = append(paths, path)
 
+		if origin == me {
+			continue
+		}
+		
 		if attr.Status.Ok() {
 			me.nodeFs.Notify(path)
 		} else {
