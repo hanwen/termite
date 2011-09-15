@@ -33,6 +33,7 @@ func main() {
 	coordinator := flag.String("coordinator", "", "Where to register the worker.")
 	jobs := flag.Int("jobs", 1, "Max number of jobs to run.")
 	user := flag.String("user", "nobody", "Run as this user.")
+	memcache := flag.Int("filecache", 1024, "number of <32k files to cache in memory")
 	flag.Parse()
 
 	if os.Geteuid() != 0 {
@@ -49,6 +50,7 @@ func main() {
 		CacheDir:  *cachedir,
 		Jobs: *jobs,
 		User: user,
+		FileContentCount: *memcache,
 	}
 	
 	daemon := termite.NewWorkerDaemon(&opts)
