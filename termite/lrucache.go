@@ -21,8 +21,7 @@ type LruCache struct {
 	lastUsedKeys []*cacheEntry
 	nextEvict    int
 
-	// the key => contents map.  TODO - should use string rather
-	// than []byte?
+	// the key => contents map.
 	contents     map[string]*cacheEntry
 }
 

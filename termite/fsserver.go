@@ -72,7 +72,6 @@ type FileAttr struct {
 
 type AttrResponse struct {
 	Attrs    []FileAttr
-	// TODO - should send along file contents if necessary?
 }
 
 func (me FileAttr) String() string {
@@ -141,9 +140,6 @@ func (me *FsServer) GetAttr(req *AttrRequest, rep *AttrResponse) os.Error {
 }
 
 func (me *FsServer) oneGetAttr(name string) (rep *FileAttr) {
-	// TODO - this is not a good security measure, as we are not
-	// checking the prefix; someone might directly ask for
-	// /forbidden/subdir/
 	if me.excluded[name] {
 		return &FileAttr{
 			Path: name,
@@ -202,8 +198,6 @@ func (me *FsServer) fillContent(rep *FileAttr) {
 		rep.Link, _ = os.Readlink(rep.Path)
 	}
 	if rep.FileInfo.IsRegular() {
-		// TODO - saving the content easily overflows memory
-		// on 32-bit.
 		rep.Hash = me.getHash(rep.Path)
 		if rep.Hash == "" {
 			// Typically happens if we want to open /etc/shadow as normal user.

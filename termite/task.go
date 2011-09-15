@@ -163,9 +163,6 @@ func (me *fileSaver) savePath(path string, osInfo *os.FileInfo) {
 		if fi.Hash == "" {
 			me.err = os.NewError("DestructiveSavePath fail")
 		}
-		// TODO - optionally save contents too? Should cap
-		// with a limit to avoid choking on mv of large
-		// directory.
 	case fuse.S_IFLNK:
 		val, err := os.Readlink(path)
 		me.err = err

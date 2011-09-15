@@ -277,7 +277,6 @@ func (me *Master) replayFileModifications(worker *rpc.Client, infos []FileAttr) 
 	// leave the FS in a half-finished state.
 	for _, info := range infos {
 		if info.Hash != "" {
-			// TODO - stream directly from network connection to file.
 			err := FetchBetweenContentServers(
 				worker, "Mirror.FileContent", info.FileInfo.Size, info.Hash,
 				me.cache)
@@ -301,7 +300,6 @@ func (me *Master) replayFileModifications(worker *rpc.Client, infos []FileAttr) 
 		info := entries[name]
 		var err os.Error
 
-		// TODO - deletion test.
 		logStr := ""
 		if info.FileInfo != nil && info.FileInfo.IsDirectory() {
 			if name == "" {

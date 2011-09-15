@@ -20,8 +20,6 @@ type WorkReply struct {
 	Files  []FileAttr
 	Stderr string
 	Stdout string
-
-	// TODO - optionally send contents back too?
 }
 
 type WorkRequest struct {
