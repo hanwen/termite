@@ -6,7 +6,7 @@ import (
 )
 
 func TestListFilesRecursively(t *testing.T) {
-	dir, _ := ioutil.TempDir("", "")
+	dir, _ := ioutil.TempDir("", "listfiles")
 	ioutil.WriteFile(dir+"/foo", []byte{42}, 0644)
 	entries := ListFilesRecursively(dir)
 	if len(entries) != 2 {

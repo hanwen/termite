@@ -113,6 +113,7 @@ func (me *testCase) fdCount() int {
 }
 
 func (me *testCase) Clean() {
+	me.worker.Shutdown(nil, nil)
 	me.master.mirrors.dropConnections()
 	// TODO - should have explicit worker shutdown routine.
 	time.Sleep(0.1e9)

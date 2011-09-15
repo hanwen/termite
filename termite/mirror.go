@@ -74,7 +74,10 @@ func (me *Mirror) Shutdown() {
 	me.shuttingDown = true
 	me.fileServer.Close()
 	me.fileServerConn.Close()
-	me.unusedFileSystems = []*WorkerFuseFs{}
+	for _, fs := range me.unusedFileSystems {
+		fs.Stop()
+	}
+	me.unusedFileSystems = nil
 
 	for len(me.workingFileSystems) > 0 {
 		me.maxJobCount = len(me.workingFileSystems)

@@ -11,7 +11,7 @@ import (
 func TestDiskCache(t *testing.T) {
 	content := []byte("hello")
 
-	d, _ := ioutil.TempDir("", "")
+	d, _ := ioutil.TempDir("", "term-cc")
 	defer os.RemoveAll(d)
 
 	cache := NewContentCache(d)
@@ -39,7 +39,7 @@ func TestLocalPath(t *testing.T) {
 	}
 	f.Close()
 
-	d, _ := ioutil.TempDir("", "")
+	d, _ := ioutil.TempDir("", "term-cc")
 	defer os.RemoveAll(d)
 	cache := NewContentCache(d)
 
@@ -57,7 +57,7 @@ func TestLocalPath(t *testing.T) {
 func TestDiskCacheDestructiveSave(t *testing.T) {
 	content := []byte("hello")
 
-	d, _ := ioutil.TempDir("", "")
+	d, _ := ioutil.TempDir("", "term-cc")
 	defer os.RemoveAll(d)
 	cache := NewContentCache(d)
 
@@ -94,7 +94,7 @@ func TestDiskCacheDestructiveSave(t *testing.T) {
 func TestDiskCacheStream(t *testing.T) {
 	content := []byte("hello")
 
-	d, _ := ioutil.TempDir("", "")
+	d, _ := ioutil.TempDir("", "term-cc")
 	defer os.RemoveAll(d)
 	cache := NewContentCache(d)
 
@@ -127,7 +127,7 @@ func TestDiskCacheStreamReturnContent(t *testing.T) {
 		content[i] = 'x'
 	}
 
-	d, _ := ioutil.TempDir("", "")
+	d, _ := ioutil.TempDir("", "term-cc")
 	defer os.RemoveAll(d)
 	cache := NewContentCache(d)
 

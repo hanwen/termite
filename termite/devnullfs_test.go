@@ -9,7 +9,7 @@ import (
 
 func setupDevNullFs() (wd string, clean func()) {
 	fs := NewDevnullFs()
-	mountPoint := fuse.MakeTempDir()
+	mountPoint, _ := ioutil.TempDir("", "termite")
 	state, _, err := fuse.MountPathFileSystem(mountPoint, fs, nil)
 	if err != nil {
 		panic(err)

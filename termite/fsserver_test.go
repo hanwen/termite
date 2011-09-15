@@ -16,7 +16,7 @@ import (
 
 func TestFsServerCache(t *testing.T) {
 	log.Println("TestFsServerCache")
-	tmp, _ := ioutil.TempDir("", "")
+	tmp, _ := ioutil.TempDir("", "term-fss")
 	defer os.RemoveAll(tmp)
 
 	orig := tmp + "/orig"
@@ -68,7 +68,7 @@ func TestFsServerCache(t *testing.T) {
 }
 
 func TestRpcFS(t *testing.T) {
-	tmp, _ := ioutil.TempDir("", "")
+	tmp, _ := ioutil.TempDir("", "term-fss")
 	defer os.RemoveAll(tmp)
 
 	mnt := tmp + "/mnt"
