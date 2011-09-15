@@ -14,7 +14,7 @@ type cacheEntry struct {
 // A fixed entry count cache with FIFO eviction policy.
 //
 // Should be protected by a Mutex (not RWMutex) for all methods.
-type FifoCache struct {
+type LruCache struct {
 	size int
 
 	// Circular buffer.
@@ -26,8 +26,8 @@ type FifoCache struct {
 	contents     map[string]*cacheEntry
 }
 
-func NewFifoCache(size int) (me *FifoCache) {
-	me = &FifoCache{
+func NewLruCache(size int) (me *LruCache) {
+	me = &LruCache{
 		size: size,
 		lastUsedKeys: make([]*cacheEntry, size),
 		contents: map[string]*cacheEntry{},
@@ -36,7 +36,7 @@ func NewFifoCache(size int) (me *FifoCache) {
 	return me
 }
 
-func (me *FifoCache) Add(key string, val interface{}) {
+func (me *LruCache) Add(key string, val interface{}) {
 	evict := me.lastUsedKeys[me.nextEvict]
 	if evict != nil {
 		me.contents[evict.key] = nil, false
@@ -53,7 +53,7 @@ func (me *FifoCache) Add(key string, val interface{}) {
 	me.nextEvict = (me.nextEvict + 1)%me.size
 }
 
-func (me *FifoCache) swap(i, j int) {
+func (me *LruCache) swap(i, j int) {
 	me.lastUsedKeys[i], me.lastUsedKeys[j] = me.lastUsedKeys[j], me.lastUsedKeys[i]
 
 	if me.lastUsedKeys[i] != nil {
@@ -64,16 +64,16 @@ func (me *FifoCache) swap(i, j int) {
 	}
 }
 
-func (me *FifoCache) Has(key string) bool {
+func (me *LruCache) Has(key string) bool {
 	_, ok := me.contents[key]
 	return ok
 }
 
-func (me *FifoCache) Size() int {
+func (me *LruCache) Size() int {
 	return me.size
 }
 
-func (me *FifoCache) Get(key string) (val interface{}) {
+func (me *LruCache) Get(key string) (val interface{}) {
 	v, ok := me.contents[key]
 	if !ok {
 		return nil

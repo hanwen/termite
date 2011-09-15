@@ -4,8 +4,8 @@ import (
 	"testing"
 )
 
-func TestFifoCache(t *testing.T) {
-	c := NewFifoCache(2)
+func TestLruCache(t *testing.T) {
+	c := NewLruCache(2)
 
 	v1 := interface{}(1)
 	v2 := interface{}(2)

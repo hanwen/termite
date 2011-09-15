@@ -14,16 +14,12 @@ import (
 )
 
 // Content based addressing cache.
-//
-// TODO - a successful GetAttr() will often be followed by a read.  we
-// should have a small LRU cache for the content so we can serve the
-// contents from memory.
 type ContentCache struct {
 	dir string
 
 	mutex sync.Mutex
 	hashPathMap      map[string]string
-	inMemoryCache    *FifoCache
+	inMemoryCache    *LruCache
 }
 
 // NewContentCache creates a content cache based in directory d.
@@ -40,7 +36,7 @@ func NewContentCache(d string) *ContentCache {
 	return &ContentCache{
 		dir:         d,
 		hashPathMap: make(map[string]string),
-		inMemoryCache: NewFifoCache(1024),
+		inMemoryCache: NewLruCache(1024),
 	}
 }
 
@@ -48,7 +44,7 @@ func NewContentCache(d string) *ContentCache {
 // cache.  Not thread safe.
 func (me *ContentCache) SetMemoryCacheSize(fileCount int) {
 	if me.inMemoryCache.Size() != fileCount {
-		me.inMemoryCache = NewFifoCache(fileCount)
+		me.inMemoryCache = NewLruCache(fileCount)
 	}
 }
 
