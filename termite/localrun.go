@@ -16,6 +16,7 @@ type LocalRule struct {
 	Local       bool
 	Recurse     bool
 	SkipRefresh bool
+	Debug       bool
 }
 
 type localDecider struct {

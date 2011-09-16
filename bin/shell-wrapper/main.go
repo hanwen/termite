@@ -17,8 +17,8 @@ func TryRunDirect(cmd string) {
 	if cmd == ":" {
 		os.Exit(0)
 	}
-	
-	
+
+
 	parsed := termite.ParseCommand(cmd)
 	if len(parsed) == 0 {
 		return
@@ -140,9 +140,9 @@ func main() {
 		Argv:       []string{"/bin/sh", "-c", *command},
 		Env:        cleanEnv(os.Environ()),
 		Dir:        wd,
-		Debug:      os.Getenv("TERMITE_DEBUG") != "" || *debug,
 		RanLocally: localWaitMsg != nil,
 	}
+	req.Debug = localRule.Debug || os.Getenv("TERMITE_DEBUG") != "" || *debug
 	client := rpc.NewClient(conn)
 
 	rep := termite.WorkReply{}
