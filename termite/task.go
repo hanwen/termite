@@ -36,7 +36,7 @@ func (me *WorkerTask) Run() os.Error {
 		me.mirror.discardFuse(fuseFs)
 		return err
 	}
-	
+
 	me.mirror.returnFuse(fuseFs)
 	return nil
 }
@@ -128,22 +128,13 @@ type fileSaver struct {
 	cache  *ContentCache
 }
 
-func (me *fileSaver) VisitFile(path string, osInfo *os.FileInfo) {
-	me.savePath(path, osInfo)
-}
-
-func (me *fileSaver) VisitDir(path string, osInfo *os.FileInfo) bool {
-	me.savePath(path, osInfo)
-	return me.err == nil
-}
-
-func (me *fileSaver) savePath(path string, osInfo *os.FileInfo) {
-	if me.err != nil {
-		return
+func (me *fileSaver) savePath(path string, osInfo *os.FileInfo, err os.Error) os.Error {
+	if err != nil {
+		return err
 	}
+
 	if !strings.HasPrefix(path, me.rwDir) {
-		log.Println("Weird file", path)
-		return
+		return os.NewError(fmt.Sprintf("File %q does not have prefix %q", path, me.rwDir))
 	}
 
 	fi := FileAttr{
@@ -151,7 +142,7 @@ func (me *fileSaver) savePath(path string, osInfo *os.FileInfo) {
 		Path:     path[len(me.rwDir):],
 	}
 	if !strings.HasPrefix(fi.Path, me.prefix) || fi.Path == "/"+_DELETIONS {
-		return
+		return nil
 	}
 
 	ftype := osInfo.Mode &^ 07777
@@ -161,18 +152,20 @@ func (me *fileSaver) savePath(path string, osInfo *os.FileInfo) {
 	case fuse.S_IFREG:
 		fi.Hash = me.cache.DestructiveSavePath(path)
 		if fi.Hash == "" {
-			me.err = os.NewError("DestructiveSavePath fail")
+			return os.NewError("DestructiveSavePath fail")
 		}
 	case fuse.S_IFLNK:
-		val, err := os.Readlink(path)
-		me.err = err
-		fi.Link = val
+		fi.Link, err = os.Readlink(path)
+		if err != nil {
+			return err
+		}
 		os.Remove(path)
 	default:
 		log.Fatalf("Unknown file type %o", ftype)
 	}
 
 	me.files = append(me.files, &fi)
+	return nil
 }
 
 func (me *fileSaver) reapBackingStore() {
@@ -204,7 +197,10 @@ func (me *fileSaver) reapBackingStore() {
 	}
 
 	if me.err == nil {
-		filepath.Walk(me.rwDir, me, nil)
+		me.err = filepath.Walk(me.rwDir,
+			func(path string, fi *os.FileInfo, err os.Error) os.Error {
+			   return me.savePath(path, fi, err)
+		})
 	}
 
 	for i, _ := range me.files {
