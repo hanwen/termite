@@ -14,7 +14,6 @@ MANUAL_GOFILES=\
 	diskcache.go \
 	fsserver.go \
 	fuse.go \
-	listfiles.go \
 	lrucache.go \
 	localrun.go \
 	master.go \
