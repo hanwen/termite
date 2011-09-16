@@ -98,6 +98,7 @@ func (me *WorkerTask) runInFuse(fuseFs *WorkerFuseFs) os.Error {
 	me.WorkReply.Stdout = stdout.String()
 	me.WorkReply.Stderr = stderr.String()
 
+	fuseFs.switchFs.WaitClose()
 	err = me.fillReply(fuseFs.rwDir)
 	if err == nil {
 		// Must do updateFiles before ReturnFuse, since the
