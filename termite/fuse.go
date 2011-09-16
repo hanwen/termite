@@ -10,7 +10,57 @@ import (
 	"os/user"
 	"path/filepath"
 	"strings"
+	"sync"
 )
+
+// We have to reroute statfs, so it goes to the writable part.
+type SwitchFileSystem struct {
+	*fuse.SwitchFileSystem
+	statFsFs fuse.FileSystem
+
+	openMutex sync.Mutex
+	openCond  *sync.Cond
+	openCount int32
+}
+
+func NewSwitchFileSystem(fs *fuse.SwitchFileSystem, statFsFs fuse.FileSystem) *SwitchFileSystem {
+	me :=  &SwitchFileSystem{
+		SwitchFileSystem: fs,
+		statFsFs: statFsFs,
+	}
+	me.openCond = sync.NewCond(&me.openMutex)
+	return me
+}
+
+func (me *SwitchFileSystem) StatFs() *fuse.StatfsOut {
+	return me.statFsFs.StatFs()
+}
+
+func (me *SwitchFileSystem) Flush(name string) (code fuse.Status) {
+	me.openMutex.Lock()
+	defer me.openMutex.Unlock()
+	me.openCount--
+	me.openCond.Broadcast()
+	return fuse.OK
+}
+
+func (me *SwitchFileSystem) Open(name string, flags uint32, context *fuse.Context) (file fuse.File, code fuse.Status) {
+	file, code = me.SwitchFileSystem.Open(name, flags, context)
+	if code.Ok() && flags & fuse.O_ANYWRITE != 0 {
+		me.openMutex.Lock()
+		defer me.openMutex.Unlock()
+		me.openCount++
+	}
+	return
+}
+
+func (me *SwitchFileSystem) WaitClose() {
+	me.openMutex.Lock()
+	defer me.openMutex.Unlock()
+	for me.openCount > 0 {
+		me.openCond.Wait()
+	}
+}
 
 type WorkerFuseFs struct {
 	rwDir  string
@@ -18,21 +68,12 @@ type WorkerFuseFs struct {
 	mount  string
 	*fuse.MountState
 	fsConnector *fuse.FileSystemConnector
+	switchFs    *SwitchFileSystem
 	unionFs     *unionfs.UnionFs
 	procFs      *ProcFs
 	nodeFs      *fuse.PathNodeFs
 	// If nil, we are running this task.
 	task *WorkerTask
-}
-
-// We have to reroute statfs, so it goes to the writable part.
-type SwitchFileSystem struct {
-	*fuse.SwitchFileSystem
-	statFsFs fuse.FileSystem
-}
-
-func (me *SwitchFileSystem) StatFs() *fuse.StatfsOut {
-	return me.statFsFs.StatFs()
 }
 
 func (me *WorkerFuseFs) Stop() {
@@ -50,7 +91,7 @@ func (me *WorkerFuseFs) Stop() {
 func (me *WorkerFuseFs) SetDebug(debug bool) {
 	me.MountState.Debug = debug
 	me.fsConnector.Debug = debug
-	me.nodeFs.Debug = debug 
+	me.nodeFs.Debug = debug
 }
 
 func (me *Mirror) returnFuse(wfs *WorkerFuseFs) {
@@ -162,13 +203,8 @@ nobody *user.User) (*WorkerFuseFs, os.Error) {
 		)
 	}
 
-
-	mySwitchFs := &SwitchFileSystem{
-		fuse.NewSwitchFileSystem(swFs),
-		w.unionFs,
-	}
-
-	w.nodeFs = fuse.NewPathNodeFs(mySwitchFs)
+	w.switchFs =  NewSwitchFileSystem(fuse.NewSwitchFileSystem(swFs), w.unionFs)
+	w.nodeFs = fuse.NewPathNodeFs(w.switchFs)
 	w.fsConnector = fuse.NewFileSystemConnector(w.nodeFs, &mOpts)
 	w.MountState = fuse.NewMountState(w.fsConnector)
 
@@ -197,7 +233,7 @@ func (me *WorkerFuseFs) update(attrs []*FileAttr, origin *WorkerFuseFs) {
 		if origin == me {
 			continue
 		}
-		
+
 		if attr.Status.Ok() {
 			me.nodeFs.Notify(path)
 		} else {
