@@ -74,23 +74,20 @@ func (me *RpcFs) updateFiles(files []*FileAttr) {
 	me.attrMutex.Lock()
 	defer me.attrMutex.Unlock()
 
-	flushDirs := []string{}
 	for _, r := range files {
 		p := strings.TrimLeft(r.Path, string(filepath.Separator))
-
-		d, _ := filepath.Split(p)
-		a, existed := me.attrResponse[p]
-
-		if r.Deletion() || (existed && a.Status != fuse.ENOENT) {
-			flushDirs = append(flushDirs, d)
-		}
-
 		copy := *r
 		me.attrResponse[p] = &copy
-	}
 
-	for _, d := range flushDirs {
-		me.directories[d] = nil, false
+		d, basename := filepath.Split(p)
+		d = strings.TrimRight(d, string(filepath.Separator))
+		if dir, ok := me.directories[d]; ok {
+			if r.Deletion() {
+				dir.NameModeMap[basename] = 0, false
+			} else {
+				dir.NameModeMap[basename] = r.Mode ^ 0777
+			}
+		}
 	}
 }
 

@@ -138,6 +138,67 @@ func (me *rpcFsTestCase) Clean() {
 	me.sockR.Close()
 }
 
+func check(err os.Error) {
+	if err != nil {
+		panic(err)
+	}
+}
+
+func TestRpcFsReadDirCache(t *testing.T) {
+	me := newRpcFsTestCase(t)
+	defer me.Clean()
+
+	os.Mkdir(me.orig+"/subdir", 0700)
+	content := "hello"
+	err := ioutil.WriteFile(me.orig+"/subdir/file.txt", []byte(content), 0644)
+	check(err)
+
+	entries, err := ioutil.ReadDir(me.mnt + "/subdir")
+	check(err)
+
+	seen := false
+	for _, v := range entries {
+		if v.Name == "file.txt" {
+			seen = true
+		}
+	}
+
+	if !seen {
+		t.Fatalf("Missing entry %q %v", "file.txt", entries)
+	}
+
+	newData := []*FileAttr{
+		&FileAttr{
+			Path: "/subdir/unstatted.txt",
+			Hash: md5str("somethingelse"),
+			FileInfo: &os.FileInfo{
+				Mode: fuse.S_IFREG | 0644,
+			},
+		},
+		&FileAttr{
+			Path: "/subdir/file.txt",
+			Status: fuse.ENOENT,
+		},
+	}
+
+	me.server.updateFiles(newData)
+	me.rpcFs.updateFiles(newData)
+	_, err = ioutil.ReadDir(me.mnt + "/subdir")
+	check(err)
+
+	dir := me.rpcFs.directories["subdir"]
+	if dir == nil {
+		t.Fatalf("Should have cache entry for /subdir")
+	}
+
+	if _, ok := dir.NameModeMap["file.txt"]; ok {
+		t.Errorf("file.txt should have disappeared.")
+	}
+	if _, ok := dir.NameModeMap["unstatted.txt"]; !ok {
+		t.Errorf("unstatted.txt should have appeared.")
+	}
+}
+
 func TestRpcFS(t *testing.T) {
 	me := newRpcFsTestCase(t)
 	defer me.Clean()
