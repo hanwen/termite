@@ -10,57 +10,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"strings"
-	"sync"
 )
-
-// We have to reroute statfs, so it goes to the writable part.
-type SwitchFileSystem struct {
-	*fuse.SwitchFileSystem
-	statFsFs fuse.FileSystem
-
-	openMutex sync.Mutex
-	openCond  *sync.Cond
-	openCount int32
-}
-
-func NewSwitchFileSystem(fs *fuse.SwitchFileSystem, statFsFs fuse.FileSystem) *SwitchFileSystem {
-	me :=  &SwitchFileSystem{
-		SwitchFileSystem: fs,
-		statFsFs: statFsFs,
-	}
-	me.openCond = sync.NewCond(&me.openMutex)
-	return me
-}
-
-func (me *SwitchFileSystem) StatFs() *fuse.StatfsOut {
-	return me.statFsFs.StatFs()
-}
-
-func (me *SwitchFileSystem) Flush(name string) (code fuse.Status) {
-	me.openMutex.Lock()
-	defer me.openMutex.Unlock()
-	me.openCount--
-	me.openCond.Broadcast()
-	return fuse.OK
-}
-
-func (me *SwitchFileSystem) Open(name string, flags uint32, context *fuse.Context) (file fuse.File, code fuse.Status) {
-	file, code = me.SwitchFileSystem.Open(name, flags, context)
-	if code.Ok() && flags & fuse.O_ANYWRITE != 0 {
-		me.openMutex.Lock()
-		defer me.openMutex.Unlock()
-		me.openCount++
-	}
-	return
-}
-
-func (me *SwitchFileSystem) WaitClose() {
-	me.openMutex.Lock()
-	defer me.openMutex.Unlock()
-	for me.openCount > 0 {
-		me.openCond.Wait()
-	}
-}
 
 type WorkerFuseFs struct {
 	rwDir  string
