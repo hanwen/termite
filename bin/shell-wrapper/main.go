@@ -158,9 +158,9 @@ func main() {
 	// TODO -something with signals.
 	if localWaitMsg == nil {
 		localWaitMsg = &rep.Exit
-	}
-	if localWaitMsg.ExitStatus() != 0 {
-		log.Printf("Failed: %q", *command)
+		if localWaitMsg.ExitStatus() != 0 {
+			log.Printf("Failed: %q", *command)
+		}
 	}
 	conn.Close()
 	os.Exit(localWaitMsg.ExitStatus())
