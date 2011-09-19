@@ -5,6 +5,7 @@ package termite
 
 import (
 	"github.com/hanwen/go-fuse/fuse"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -42,7 +43,7 @@ func TestFsServerCache(t *testing.T) {
 	cache := NewContentCache(srvCache)
 	server := NewFsServer("/", cache, nil)
 	server.excludePrivate = false
-	
+
 	server.refreshAttributeCache(orig)
 	if len(server.attrCache) > 0 {
 		t.Errorf("cache not empty? %#v", server.attrCache)
@@ -73,74 +74,98 @@ func TestFsServerCache(t *testing.T) {
 	}
 }
 
-func TestRpcFS(t *testing.T) {
-	tmp, _ := ioutil.TempDir("", "term-fss")
-	defer os.RemoveAll(tmp)
 
-	mnt := tmp + "/mnt"
-	orig := tmp + "/orig"
-	srvCache := tmp + "/server-cache"
-	clientCache := tmp + "/client-cache"
+type rpcFsTestCase struct {
+	tmp string
+	mnt string
+	orig string
 
-	os.Mkdir(mnt, 0700)
-	os.Mkdir(orig, 0700)
-	os.Mkdir(orig+"/subdir", 0700)
-	content := "hello"
-	err := ioutil.WriteFile(orig+"/file.txt", []byte(content), 0644)
-	if err != nil {
-		t.Fatal(err)
-	}
+	cache *ContentCache
+	server *FsServer
+	rpcFs  *RpcFs
+	state  *fuse.MountState
+
+	sockL, sockR io.ReadWriteCloser
+}
+
+func newRpcFsTestCase(t *testing.T) (me *rpcFsTestCase) {
+	me = &rpcFsTestCase{}
+	me.tmp, _ = ioutil.TempDir("", "term-fss")
+
+	me.mnt = me.tmp + "/mnt"
+	me.orig = me.tmp + "/orig"
+	srvCache := me.tmp + "/server-cache"
+	clientCache := me.tmp + "/client-cache"
+
+	os.Mkdir(me.mnt, 0700)
+	os.Mkdir(me.orig, 0700)
 
 	cache := NewContentCache(srvCache)
-	server := NewFsServer(orig, cache, []string{})
-	server.excludePrivate = false
+	me.server = NewFsServer(me.orig, cache, []string{})
+	me.server.excludePrivate = false
 
-	l, r, err := fuse.Socketpair("unix")
+	var err os.Error
+	me.sockL, me.sockR, err = fuse.Socketpair("unix")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer l.Close()
-	defer r.Close()
 
 	rpcServer := rpc.NewServer()
-	rpcServer.Register(server)
-	go rpcServer.ServeConn(l)
+	rpcServer.Register(me.server)
+	go rpcServer.ServeConn(me.sockL)
 
-	rpcClient := rpc.NewClient(r)
-	fs := NewRpcFs(rpcClient, NewContentCache(clientCache))
+	rpcClient := rpc.NewClient(me.sockR)
+	me.rpcFs = NewRpcFs(rpcClient, NewContentCache(clientCache))
 
-	state, _, err := fuse.MountPathFileSystem(mnt, fs, nil)
-	state.Debug = true
+	me.state, _, err = fuse.MountPathFileSystem(me.mnt, me.rpcFs, nil)
+	me.state.Debug = true
 	if err != nil {
 		t.Fatal("Mount", err)
 	}
-	defer func() {
-		log.Println("unmounting")
-		err := state.Unmount()
-		if err == nil {
-			os.RemoveAll(tmp)
-		}
-	}()
 
-	go state.Loop()
+	go me.state.Loop()
+	return me
+}
 
-	fi, err := os.Lstat(mnt + "/subdir")
+func (me *rpcFsTestCase) Clean() {
+	err := me.state.Unmount()
+	if err == nil {
+		os.RemoveAll(me.tmp)
+	} else {
+		panic("fuse unmount failed.")
+	}
+	me.sockL.Close()
+	me.sockR.Close()
+}
+
+func TestRpcFS(t *testing.T) {
+	me := newRpcFsTestCase(t)
+	defer me.Clean()
+
+	os.Mkdir(me.orig+"/subdir", 0700)
+	content := "hello"
+	err := ioutil.WriteFile(me.orig+"/file.txt", []byte(content), 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	fi, err := os.Lstat(me.mnt + "/subdir")
 	if fi == nil || !fi.IsDirectory() {
 		t.Fatal("subdir stat", fi, err)
 	}
 
-	c, err := ioutil.ReadFile(mnt + "/file.txt")
+	c, err := ioutil.ReadFile(me.mnt + "/file.txt")
 	if err != nil || string(c) != "hello" {
 		t.Error("Readfile", c)
 	}
 
-	entries, err := ioutil.ReadDir(mnt)
+	entries, err := ioutil.ReadDir(me.mnt)
 	if err != nil || len(entries) != 2 {
 		t.Error("Readdir", err, entries)
 	}
 
 	// This test implementation detail - should be separate?
-	storedHash := server.hashCache["/file.txt"]
+	storedHash := me.server.hashCache["/file.txt"]
 	if storedHash == "" || string(storedHash) != string(md5str(content)) {
 		t.Errorf("cache error %x (%v)", storedHash, storedHash)
 	}
@@ -155,8 +180,8 @@ func TestRpcFS(t *testing.T) {
 			Hash: md5str("contentsoffoobar"),
 		},
 	}
-	server.updateFiles(newData)
-	storedHash = server.hashCache["/file.txt"]
+	me.server.updateFiles(newData)
+	storedHash = me.server.hashCache["/file.txt"]
 	if storedHash == "" || storedHash != newData[0].Hash {
 		t.Errorf("cache error %x (%v)", storedHash, storedHash)
 	}
