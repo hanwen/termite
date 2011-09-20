@@ -154,7 +154,10 @@ nobody *user.User) (*WorkerFuseFs, os.Error) {
 	}
 
 	w.switchFs =  NewSwitchFileSystem(fuse.NewSwitchFileSystem(swFs), w.unionFs)
-	w.nodeFs = fuse.NewPathNodeFs(w.switchFs)
+	pathOpts := fuse.PathNodeFsOptions{
+		ClientInodes: true,
+	}
+	w.nodeFs = fuse.NewPathNodeFs(w.switchFs, &pathOpts)
 	w.fsConnector = fuse.NewFileSystemConnector(w.nodeFs, &mOpts)
 	w.MountState = fuse.NewMountState(w.fsConnector)
 
@@ -163,7 +166,7 @@ nobody *user.User) (*WorkerFuseFs, os.Error) {
 		return nil, err
 	}
 	for _, s := range mounts {
-		code := w.fsConnector.Mount(w.nodeFs.Root().Inode(), s.mountpoint, fuse.NewPathNodeFs(s.fs), nil)
+		code := w.fsConnector.Mount(w.nodeFs.Root().Inode(), s.mountpoint, fuse.NewPathNodeFs(s.fs, nil), nil)
 		if !code.Ok() {
 			return nil, os.NewError(fmt.Sprintf("submount error for %v: %v", s.mountpoint, code))
 		}
@@ -176,6 +179,11 @@ nobody *user.User) (*WorkerFuseFs, os.Error) {
 
 func (me *WorkerFuseFs) update(attrs []*FileAttr, origin *WorkerFuseFs) {
 	paths := []string{}
+	if me == origin {
+		// TODO - should reread inode numbers, in case they
+		// are reused.
+	}
+
 	for _, attr := range attrs {
 		path := strings.TrimLeft(attr.Path, "/")
 		paths = append(paths, path)
