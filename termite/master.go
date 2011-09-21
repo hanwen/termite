@@ -388,3 +388,7 @@ func (me *LocalMaster) RefreshAttributeCache(input *int, output *int) os.Error {
 	log.Println("Refresh done")
 	return nil
 }
+
+func (me *LocalMaster) InspectFile(req *AttrRequest, rep *AttrResponse) os.Error {
+	return me.master.fileServer.GetAttr(req, rep)
+}

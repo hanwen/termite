@@ -11,6 +11,8 @@ import (
 	"strings"
 )
 
+// TODO - this file is a mess. Clean it up.
+
 const _SHELL = "/bin/sh"
 
 func TryRunDirect(cmd string) {
@@ -69,6 +71,29 @@ func cleanEnv(input []string) []string {
 	return env
 }
 
+func Inspect(files []string) {
+	socket := termite.FindSocket()
+	conn := termite.OpenSocketConnection(socket, termite.RPC_CHANNEL)
+	client := rpc.NewClient(conn)
+	wd, _ := os.Getwd()
+	for _, p := range files {
+		if p[0] != '/' {
+			p = filepath.Join(wd, p)
+		}
+
+		req := termite.AttrRequest{Name: p}
+		rep := termite.AttrResponse{}
+		err := client.Call("LocalMaster.InspectFile", &req, &rep)
+		if err != nil {
+			log.Fatal("LocalMaster.InspectFile: ", err)
+		}
+
+		for _, a := range rep.Attrs {
+			log.Printf("%v", *a)
+		}
+	}
+}
+
 func TryRunLocally(command string, topdir string) (exit *os.Waitmsg, rule termite.LocalRule) {
 	decider := termite.NewLocalDecider(topdir)
 	if !(len(os.Args) == 3 && os.Args[0] == _SHELL && os.Args[1] == "-c") {
@@ -102,6 +127,7 @@ func TryRunLocally(command string, topdir string) (exit *os.Waitmsg, rule termit
 func main() {
 	command := flag.String("c", "", "command to run.")
 	refresh := flag.Bool("refresh", false, "refresh master file cache.")
+	inspect := flag.Bool("inspect", false, "inspect files on master.")
 	debug := flag.Bool("dbg", false, "set on debugging in request.")
 	flag.Parse()
 
@@ -109,6 +135,10 @@ func main() {
 		Refresh()
 	}
 
+	if *inspect {
+		Inspect(flag.Args())
+	}
+	
 	if *command == "" {
 		return
 	}
@@ -162,6 +192,7 @@ func main() {
 			log.Printf("Failed: %q", *command)
 		}
 	}
+	
 	conn.Close()
 	os.Exit(localWaitMsg.ExitStatus())
 }

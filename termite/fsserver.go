@@ -105,7 +105,10 @@ func (me FileAttr) String() string {
 	if me.Deletion() {
 		id = " (del)"
 	} else if !me.Status.Ok() {
-		id = " " + me.Status.String()  
+		id = " " + me.Status.String()
+	}
+	if me.Status.Ok() {
+		id += fmt.Sprintf(" m=%o", me.FileInfo.Mode)
 	}
 	
 	return fmt.Sprintf("%s%s", me.Path, id)
