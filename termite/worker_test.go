@@ -307,6 +307,37 @@ func TestEndToEndStdout(t *testing.T) {
 	}
 }
 
+func TestEndToEndModeChange(t *testing.T) {
+	if os.Geteuid() == 0 {
+		log.Println("This test should not run as root")
+		return
+	}
+
+	tc := NewTestCase(t)
+	defer tc.Clean()
+
+	err := ioutil.WriteFile(tc.tmp+"/wd/file.txt", []byte{42}, 0644)
+	check(err)
+
+	rep := tc.Run(WorkRequest{
+		Binary: tc.FindBin("chmod"),
+		Argv:   []string{"chmod", "a+x", "file.txt"},
+		Env:    testEnv(),
+		Dir:    tc.tmp + "/wd",
+	})
+	
+	fi, err := os.Lstat(tc.tmp + "/wd/file.txt");
+	check(err)
+	
+	if !fi.IsRegular() || fi.Mode & 0111 == 0 {
+		t.Fatalf("wd/file.txt did not change mode: %o", fi.Mode)
+	}
+	if rep.Exit.ExitStatus() != 0 {
+		t.Fatalf("chmod should exit cleanly. Rep %v", rep)
+	}
+}
+
+
 func TestEndToEndSymlink(t *testing.T) {
 	if os.Geteuid() == 0 {
 		log.Println("This test should not run as root")

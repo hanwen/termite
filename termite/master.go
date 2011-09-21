@@ -326,10 +326,6 @@ func (me *Master) replayFileModifications(worker *rpc.Client, infos []*FileAttr)
 				err = ioutil.WriteFile(info.Path, content, info.FileInfo.Mode&07777)
 				logStr += "WriteFile,"
 			}
-			if err == nil {
-				err = os.Chtimes(info.Path, info.FileInfo.Atime_ns, info.FileInfo.Mtime_ns)
-				logStr += "Chtimes,"
-			}
 		}
 		if info.Link != "" {
 			os.Remove(info.Path) // ignore error.
@@ -341,6 +337,17 @@ func (me *Master) replayFileModifications(worker *rpc.Client, infos []*FileAttr)
 				deletes = append(deletes, info.Path)
 			} else {
 				log.Fatal("Unknown status for replay", info.Status)
+			}
+		}
+		
+		if info.FileInfo != nil && !info.FileInfo.IsSymlink() {
+			if err == nil {
+				err = os.Chtimes(info.Path, info.FileInfo.Atime_ns, info.FileInfo.Mtime_ns)
+				logStr += "Chtimes,"
+			}
+			if err == nil {
+				err = os.Chmod(info.Path, info.FileInfo.Mode&07777)
+				logStr += "Chmod,"
 			}
 		}
 
