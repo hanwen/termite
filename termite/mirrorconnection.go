@@ -57,7 +57,8 @@ type mirrorConnections struct {
 	coordinator string
 
 	keepAliveNs int64
-
+	periodNs    int64
+	
 	wantedMaxJobs int
 
 	// Condition for mutex below.
@@ -105,32 +106,39 @@ func (me *mirrorConnections) refreshWorkers() {
 }
 
 func newMirrorConnections(m *Master, workers []string, coordinator string, maxJobs int) *mirrorConnections {
-	mc := &mirrorConnections{
+	me := &mirrorConnections{
 		master:        m,
 		wantedMaxJobs: maxJobs,
 		workers:       make(map[string]bool),
 		mirrors:       make(map[string]*mirrorConnection),
 		coordinator:   coordinator,
-		keepAliveNs:   60e9,
 	}
+	me.setKeepAliveNs(60e9, 60e9)
+	
 	for _, w := range workers {
-		mc.workers[w] = true
+		me.workers[w] = true
 	}
 	if coordinator != "" {
 		if workers != nil {
 			log.Println("coordinator will overwrite workers.")
 		}
 
-		go mc.periodicHouseholding()
+		go me.periodicHouseholding()
 	}
-	mc.Cond = sync.NewCond(&mc.Mutex)
-	return mc
+	me.Cond = sync.NewCond(&me.Mutex)
+	return me
+}
+
+
+func (me *mirrorConnections) setKeepAliveNs(keepAliveNs float64, periodNs float64) {
+	me.keepAliveNs = int64(keepAliveNs)
+	me.periodNs = int64(periodNs)
 }
 
 func (me *mirrorConnections) periodicHouseholding() {
 	me.refreshWorkers()
 	for {
-		c := time.After(me.keepAliveNs)
+		c := time.After(me.periodNs)
 		<-c
 		me.refreshWorkers()
 		me.maybeDropConnections()

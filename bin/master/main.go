@@ -23,6 +23,8 @@ func main() {
 	srcRoot := flag.String("sourcedir", "", "root of corresponding source directory")
 	jobs := flag.Int("jobs", 1, "number of jobs to run")
 	port := flag.Int("port", 1237, "http status port")
+	houseHoldPeriod := flag.Float64("time.household", 60.0, "how often to do house hold tasks.")
+	keepAlive := flag.Float64("time.keepalive", 60.0, "for how long to keep workers reserved.")
 
 	flag.Parse()
 	secret, err := ioutil.ReadFile(*secretFile)
@@ -36,6 +38,7 @@ func main() {
 	master := termite.NewMaster(
 		c, *coordinator, workerList, secret, excludeList, *jobs)
 	master.SetSrcRoot(*srcRoot)
+	master.SetKeepAlive(*keepAlive, *houseHoldPeriod)
 	go master.ServeHTTP(*port)
 	master.Start(*socket)
 }
