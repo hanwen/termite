@@ -33,7 +33,8 @@ func main() {
 
 	cache := termite.NewContentCache(*cachedir)
 	fs := termite.NewRpcFs(rpc.NewClient(rpcConn), cache)
-	conn := fuse.NewFileSystemConnector(fuse.NewPathNodeFs(fs), nil)
+	pathfs := fuse.NewPathNodeFs(fs, nil)
+	conn := fuse.NewFileSystemConnector(pathfs, nil)
 	state := fuse.NewMountState(conn)
 	opts := fuse.MountOptions{}
 	if os.Geteuid() == 0 {
