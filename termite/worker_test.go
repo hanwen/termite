@@ -86,7 +86,7 @@ func NewTestCase(t *testing.T) *testCase {
 			[]string{},
 			me.secret, []string{}, 1)
 		me.master.fileServer.excludePrivate = false
-		me.master.SetKeepAlive(0.5)
+		me.master.SetKeepAlive(0.5, 0.5)
 		me.socket = me.tmp + "/master-socket"
 		go me.master.Start(me.socket)
 		wg.Done()
@@ -325,10 +325,10 @@ func TestEndToEndModeChange(t *testing.T) {
 		Env:    testEnv(),
 		Dir:    tc.tmp + "/wd",
 	})
-	
+
 	fi, err := os.Lstat(tc.tmp + "/wd/file.txt");
 	check(err)
-	
+
 	if !fi.IsRegular() || fi.Mode & 0111 == 0 {
 		t.Fatalf("wd/file.txt did not change mode: %o", fi.Mode)
 	}
