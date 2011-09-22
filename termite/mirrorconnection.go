@@ -14,6 +14,9 @@ type mirrorConnection struct {
 	rpcClient  *rpc.Client
 	connection net.Conn
 
+	// For serving the Fileserver.
+	reverseConnection net.Conn
+	
 	// Protected by mirrorConnections.Mutex.
 	maxJobs       int
 	availableJobs int
@@ -189,6 +192,7 @@ func (me *mirrorConnections) dropConnections() {
 	for _, mc := range me.mirrors {
 		mc.rpcClient.Close()
 		mc.connection.Close()
+		mc.reverseConnection.Close()
 	}
 	me.mirrors = make(map[string]*mirrorConnection)
 }

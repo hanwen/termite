@@ -172,6 +172,7 @@ func (me *Master) createMirror(addr string, jobs int) (*mirrorConnection, os.Err
 
 	mc := &mirrorConnection{
 		rpcClient:     rpc.NewClient(rpcConn),
+		reverseConnection: revConn,
 		connection:    rpcConn,
 		maxJobs:       rep.GrantedJobCount,
 		availableJobs: rep.GrantedJobCount,
