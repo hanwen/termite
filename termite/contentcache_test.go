@@ -44,11 +44,11 @@ func TestLocalPath(t *testing.T) {
 	cache := NewContentCache(d)
 
 	saved := cache.SaveImmutablePath(f.Name())
-/*	content := cache.inMemoryCache.Get(f.Name())
-	if string(md5(content.([]byte))) != string(saved) {
-		t.Fatal("hash mismatch")
-	}
-*/
+	/*	content := cache.inMemoryCache.Get(f.Name())
+		if string(md5(content.([]byte))) != string(saved) {
+			t.Fatal("hash mismatch")
+		}
+	*/
 	if f.Name() != cache.Path(saved) {
 		t.Error("path mismatch")
 	}

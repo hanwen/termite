@@ -107,7 +107,6 @@ func AuthenticatedListener(port int, secret []byte) net.Listener {
 	return &Listener{listener, secret}
 }
 
-
 func (me *Listener) Accept() (net.Conn, os.Error) {
 	for {
 		c, err := me.Listener.Accept()
@@ -123,7 +122,6 @@ func (me *Listener) Accept() (net.Conn, os.Error) {
 	}
 	return nil, os.EOF
 }
-
 
 // ids:
 //

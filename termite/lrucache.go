@@ -1,4 +1,5 @@
 package termite
+
 import (
 	"log"
 )
@@ -6,9 +7,9 @@ import (
 var _ = log.Println
 
 type cacheEntry struct {
-	key string
-	val interface {}
-	index  int
+	key   string
+	val   interface{}
+	index int
 }
 
 // A fixed entry count cache with FIFO eviction policy.
@@ -22,14 +23,14 @@ type LruCache struct {
 	nextEvict    int
 
 	// the key => contents map.
-	contents     map[string]*cacheEntry
+	contents map[string]*cacheEntry
 }
 
 func NewLruCache(size int) (me *LruCache) {
 	me = &LruCache{
-		size: size,
+		size:         size,
 		lastUsedKeys: make([]*cacheEntry, size),
-		contents: map[string]*cacheEntry{},
+		contents:     map[string]*cacheEntry{},
 	}
 
 	return me
@@ -42,14 +43,14 @@ func (me *LruCache) Add(key string, val interface{}) {
 	}
 
 	e := &cacheEntry{
-		key: key,
-		val: val,
+		key:   key,
+		val:   val,
 		index: me.nextEvict,
 	}
 
 	me.contents[key] = e
 	me.lastUsedKeys[me.nextEvict] = e
-	me.nextEvict = (me.nextEvict + 1)%me.size
+	me.nextEvict = (me.nextEvict + 1) % me.size
 }
 
 func (me *LruCache) swap(i, j int) {

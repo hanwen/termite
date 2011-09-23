@@ -17,9 +17,9 @@ import (
 type ContentCache struct {
 	dir string
 
-	mutex sync.Mutex
-	hashPathMap      map[string]string
-	inMemoryCache    *LruCache
+	mutex         sync.Mutex
+	hashPathMap   map[string]string
+	inMemoryCache *LruCache
 }
 
 // NewContentCache creates a content cache based in directory d.
@@ -34,8 +34,8 @@ func NewContentCache(d string) *ContentCache {
 	}
 
 	return &ContentCache{
-		dir:         d,
-		hashPathMap: make(map[string]string),
+		dir:           d,
+		hashPathMap:   make(map[string]string),
 		inMemoryCache: NewLruCache(1024),
 	}
 }
@@ -47,7 +47,6 @@ func (me *ContentCache) SetMemoryCacheSize(fileCount int) {
 		me.inMemoryCache = NewLruCache(fileCount)
 	}
 }
-
 
 func HashPath(dir string, md5 string) string {
 	s := fmt.Sprintf("%x", md5)

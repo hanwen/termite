@@ -45,7 +45,7 @@ func (me *ContentServer) FileContent(req *ContentRequest, rep *ContentResponse) 
 //
 // TODO - open a connection for this instead.
 func FetchBetweenContentServers(client *rpc.Client, rpcName string, size int64, hash string,
-dest *ContentCache) os.Error {
+	dest *ContentCache) os.Error {
 	chunkSize := 1 << 18
 
 	output := dest.NewHashWriter()

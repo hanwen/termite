@@ -200,8 +200,8 @@ func (me *fileSaver) reapBackingStore() {
 	if me.err == nil {
 		me.err = filepath.Walk(me.rwDir,
 			func(path string, fi *os.FileInfo, err os.Error) os.Error {
-			   return me.savePath(path, fi, err)
-		})
+				return me.savePath(path, fi, err)
+			})
 	}
 
 	for i, _ := range me.files {

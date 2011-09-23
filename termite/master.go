@@ -77,7 +77,7 @@ func (me *Master) SetSrcRoot(root string) {
 
 func (me *Master) SetKeepAlive(keepalive float64, household float64) {
 	if household > 0.0 || keepalive > 0.0 {
-		me.mirrors.setKeepAliveNs(1e9 * keepalive, 1e9 * household)
+		me.mirrors.setKeepAliveNs(1e9*keepalive, 1e9*household)
 	}
 }
 
@@ -159,7 +159,7 @@ func (me *Master) createMirror(addr string, jobs int) (*mirrorConnection, os.Err
 	cl := rpc.NewClient(conn)
 	err = cl.Call("WorkerDaemon.CreateMirror", &req, &rep)
 	cl.Close()
-	
+
 	if err != nil {
 		revConn.Close()
 		rpcConn.Close()
@@ -169,11 +169,11 @@ func (me *Master) createMirror(addr string, jobs int) (*mirrorConnection, os.Err
 	go me.fileServerRpc.ServeConn(revConn)
 
 	mc := &mirrorConnection{
-		rpcClient:     rpc.NewClient(rpcConn),
+		rpcClient:         rpc.NewClient(rpcConn),
 		reverseConnection: revConn,
-		connection:    rpcConn,
-		maxJobs:       rep.GrantedJobCount,
-		availableJobs: rep.GrantedJobCount,
+		connection:        rpcConn,
+		maxJobs:           rep.GrantedJobCount,
+		availableJobs:     rep.GrantedJobCount,
 	}
 
 	mc.queueFiles(me.fileServer.copyCache())
@@ -338,7 +338,7 @@ func (me *Master) replayFileModifications(worker *rpc.Client, infos []*FileAttr)
 				log.Fatal("Unknown status for replay", info.Status)
 			}
 		}
-		
+
 		if info.FileInfo != nil && !info.FileInfo.IsSymlink() {
 			if err == nil {
 				err = os.Chtimes(info.Path, info.FileInfo.Atime_ns, info.FileInfo.Mtime_ns)

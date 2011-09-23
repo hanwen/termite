@@ -20,7 +20,6 @@ func TryRunDirect(cmd string) {
 		os.Exit(0)
 	}
 
-
 	parsed := termite.ParseCommand(cmd)
 	if len(parsed) == 0 {
 		return
@@ -138,7 +137,7 @@ func main() {
 	if *inspect {
 		Inspect(flag.Args())
 	}
-	
+
 	if *command == "" {
 		return
 	}
@@ -192,7 +191,7 @@ func main() {
 			log.Printf("Failed: %q", *command)
 		}
 	}
-	
+
 	conn.Close()
 	os.Exit(localWaitMsg.ExitStatus())
 }

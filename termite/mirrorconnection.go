@@ -16,7 +16,7 @@ type mirrorConnection struct {
 
 	// For serving the Fileserver.
 	reverseConnection net.Conn
-	
+
 	// Protected by mirrorConnections.Mutex.
 	maxJobs       int
 	availableJobs int
@@ -61,7 +61,7 @@ type mirrorConnections struct {
 
 	keepAliveNs int64
 	periodNs    int64
-	
+
 	wantedMaxJobs int
 
 	// Condition for mutex below.
@@ -117,7 +117,7 @@ func newMirrorConnections(m *Master, workers []string, coordinator string, maxJo
 		coordinator:   coordinator,
 	}
 	me.setKeepAliveNs(60e9, 60e9)
-	
+
 	for _, w := range workers {
 		me.workers[w] = true
 	}
@@ -131,7 +131,6 @@ func newMirrorConnections(m *Master, workers []string, coordinator string, maxJo
 	me.Cond = sync.NewCond(&me.Mutex)
 	return me
 }
-
 
 func (me *mirrorConnections) setKeepAliveNs(keepAliveNs float64, periodNs float64) {
 	me.keepAliveNs = int64(keepAliveNs)

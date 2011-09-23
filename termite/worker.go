@@ -15,8 +15,6 @@ import (
 
 var _ = log.Println
 
-
-
 type WorkerDaemon struct {
 	Nobody *user.User
 	secret []byte
@@ -66,16 +64,15 @@ func (me *WorkerDaemon) getMirror(rpcConn, revConn net.Conn, reserveCount int) (
 }
 
 type WorkerOptions struct {
-	Secret  []byte
+	Secret   []byte
 	TempDir  string
 	CacheDir string
 	Jobs     int
 
 	// If set, change user to this for running.
-	User     *string
+	User             *string
 	FileContentCount int
 }
-
 
 func NewWorkerDaemon(options *WorkerOptions) *WorkerDaemon {
 	if options.FileContentCount == 0 {
@@ -208,7 +205,7 @@ func (me *WorkerDaemon) RunWorkerServer(port int, coordinator string) {
 		log.Println("Authenticated connection from", conn.RemoteAddr())
 		if !me.pending.Accept(conn) {
 			go me.rpcServer.ServeConn(conn)
-		}		
+		}
 	}
 }
 

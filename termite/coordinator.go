@@ -37,9 +37,9 @@ type Coordinator struct {
 	Mux *http.ServeMux
 
 	listener net.Listener
-	mutex   sync.Mutex
-	workers map[string]*WorkerRegistration
-	secret  []byte
+	mutex    sync.Mutex
+	workers  map[string]*WorkerRegistration
+	secret   []byte
 }
 
 func NewCoordinator(secret []byte) *Coordinator {
@@ -278,7 +278,7 @@ func (me *Coordinator) ServeHTTP(port int) {
 		log.Fatal("net.Listen: ", err.String())
 	}
 	log.Println("Coordinator listening on", addr)
-	
+
 	httpServer := http.Server{
 		Addr:    addr,
 		Handler: me.Mux,

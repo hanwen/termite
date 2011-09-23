@@ -59,10 +59,10 @@ func NewTestCase(t *testing.T) *testCase {
 	workerTmp := me.tmp + "/worker-tmp"
 	os.Mkdir(workerTmp, 0700)
 	opts := WorkerOptions{
-		Secret: me.secret,
-		TempDir: workerTmp,
-		CacheDir: me.tmp+"/worker-cache",
-		Jobs: 1,
+		Secret:   me.secret,
+		TempDir:  workerTmp,
+		CacheDir: me.tmp + "/worker-cache",
+		Jobs:     1,
 	}
 
 	me.worker = NewWorkerDaemon(&opts)
@@ -129,7 +129,7 @@ func (me *testCase) Clean() {
 		dir := "/proc/self/fd"
 		entries, _ := ioutil.ReadDir(dir)
 		for _, e := range entries {
-			l, _  := os.Readlink(filepath.Join(dir, e.Name))
+			l, _ := os.Readlink(filepath.Join(dir, e.Name))
 			log.Printf("%s -> %q", e.Name, l)
 		}
 	}
@@ -341,17 +341,16 @@ func TestEndToEndModeChange(t *testing.T) {
 		Dir:    tc.tmp + "/wd",
 	})
 
-	fi, err := os.Lstat(tc.tmp + "/wd/file.txt");
+	fi, err := os.Lstat(tc.tmp + "/wd/file.txt")
 	check(err)
 
-	if !fi.IsRegular() || fi.Mode & 0111 == 0 {
+	if !fi.IsRegular() || fi.Mode&0111 == 0 {
 		t.Fatalf("wd/file.txt did not change mode: %o", fi.Mode)
 	}
 	if rep.Exit.ExitStatus() != 0 {
 		t.Fatalf("chmod should exit cleanly. Rep %v", rep)
 	}
 }
-
 
 func TestEndToEndSymlink(t *testing.T) {
 	if os.Geteuid() == 0 {

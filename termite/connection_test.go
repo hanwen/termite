@@ -24,7 +24,7 @@ func TestAuthenticate(t *testing.T) {
 			}
 		}
 	}()
-	
+
 	time.Sleep(1e9)
 	hostname, _ := os.Hostname()
 	addr := fmt.Sprintf("%s:%d", hostname, port)
@@ -71,7 +71,7 @@ func TestPendingConnection(t *testing.T) {
 	defer a2.Close()
 	defer b1.Close()
 	defer b2.Close()
-	
+
 	conn1 := &dummyConn{b1}
 	conn2 := &dummyConn{b2}
 

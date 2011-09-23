@@ -14,10 +14,10 @@ import (
 var _ = fmt.Println
 
 type FsServer struct {
-	contentServer *ContentServer
-	contentCache  *ContentCache
-	Root          string
-	excluded      map[string]bool
+	contentServer  *ContentServer
+	contentCache   *ContentCache
+	Root           string
+	excluded       map[string]bool
 	excludePrivate bool
 
 	multiplyPaths func(string) []string
@@ -35,7 +35,6 @@ type FsServer struct {
 	// TODO - add counters and check that the rpcFs.fetchCond is
 	// working.
 }
-
 
 var paranoia = false
 
@@ -64,9 +63,9 @@ func NewFsServer(root string, cache *ContentCache, excluded []string) *FsServer 
 		hashCache:     make(map[string]string),
 		hashBusyMap:   map[string]bool{},
 
-		attrCache:     make(map[string]*FileAttr),
-		attrCacheBusy: map[string]bool{},
-		excludePrivate:true,
+		attrCache:      make(map[string]*FileAttr),
+		attrCacheBusy:  map[string]bool{},
+		excludePrivate: true,
 	}
 
 	fs.hashCacheCond = sync.NewCond(&fs.hashCacheMutex)
@@ -77,7 +76,6 @@ func NewFsServer(root string, cache *ContentCache, excluded []string) *FsServer 
 	}
 	return fs
 }
-
 
 func (me FileAttr) String() string {
 	id := ""
@@ -95,14 +93,13 @@ func (me FileAttr) String() string {
 	if me.Status.Ok() {
 		id += fmt.Sprintf(" m=%o", me.FileInfo.Mode)
 	}
-	
+
 	return fmt.Sprintf("%s%s", me.Path, id)
 }
 
 func (me FileAttr) Deletion() bool {
 	return me.Status == fuse.ENOENT
 }
-
 
 func (me *FsServer) path(n string) string {
 	if me.Root == "" {
@@ -145,11 +142,11 @@ func (me *FsServer) GetAttr(req *AttrRequest, rep *AttrResponse) os.Error {
 
 func (me *FsServer) oneGetAttr(name string) (rep *FileAttr) {
 	defer me.verify()
-	
+
 	if me.excluded[name] {
 		log.Printf("Denied access to excluded file %q", name)
 		return &FileAttr{
-			Path: name,
+			Path:   name,
 			Status: fuse.ENOENT,
 		}
 	}
@@ -173,23 +170,23 @@ func (me *FsServer) oneGetAttr(name string) (rep *FileAttr) {
 	me.attrCacheBusy[name] = true
 	me.attrCacheMutex.Unlock()
 
-	p :=  me.path(name)
+	p := me.path(name)
 	fi, err := os.Lstat(p)
 	rep = &FileAttr{
 		FileInfo: fi,
-		Status: fuse.OsErrorToErrno(err),
-		Path: name,
+		Status:   fuse.OsErrorToErrno(err),
+		Path:     name,
 	}
 
 	// We don't want to expose the master's private files to the
 	// world.
-	if me.excludePrivate && fi != nil && fi.Mode & 0077 == 0 {
+	if me.excludePrivate && fi != nil && fi.Mode&0077 == 0 {
 		log.Printf("Denied access to private file %q", name)
 		rep.FileInfo = nil
 		rep.Status = fuse.EPERM
 		fi = nil
 	}
-	
+
 	if fi != nil {
 		me.fillContent(rep)
 	}
@@ -221,7 +218,7 @@ func (me *FsServer) updateFiles(infos []*FileAttr) {
 
 func (me *FsServer) updateAttrs(infos []*FileAttr) {
 	defer me.verify()
-	
+
 	me.attrCacheMutex.Lock()
 	defer me.attrCacheMutex.Unlock()
 
@@ -232,7 +229,7 @@ func (me *FsServer) updateAttrs(infos []*FileAttr) {
 
 func (me *FsServer) updateHashes(infos []*FileAttr) {
 	defer me.verify()
-	
+
 	me.hashCacheMutex.Lock()
 	defer me.hashCacheMutex.Unlock()
 

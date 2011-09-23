@@ -19,7 +19,6 @@ func init() {
 	paranoia = true
 }
 
-
 func TestFsServerCache(t *testing.T) {
 	paranoia = true
 	log.Println("TestFsServerCache")
@@ -50,7 +49,7 @@ func TestFsServerCache(t *testing.T) {
 	}
 
 	server.oneGetAttr(orig)
-	server.oneGetAttr(orig+"/file.txt")
+	server.oneGetAttr(orig + "/file.txt")
 
 	if len(server.attrCache) != 2 {
 		t.Errorf("cache should have 2 entries, got %#v", server.attrCache)
@@ -74,13 +73,12 @@ func TestFsServerCache(t *testing.T) {
 	}
 }
 
-
 type rpcFsTestCase struct {
-	tmp string
-	mnt string
+	tmp  string
+	mnt  string
 	orig string
 
-	cache *ContentCache
+	cache  *ContentCache
 	server *FsServer
 	rpcFs  *RpcFs
 	state  *fuse.MountState
@@ -176,7 +174,7 @@ func TestRpcFsReadDirCache(t *testing.T) {
 			},
 		},
 		&FileAttr{
-			Path: "/subdir/file.txt",
+			Path:   "/subdir/file.txt",
 			Status: fuse.ENOENT,
 		},
 	}

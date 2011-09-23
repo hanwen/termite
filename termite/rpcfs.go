@@ -35,7 +35,6 @@ type RpcFs struct {
 	attrResponse map[string]*FileAttr
 }
 
-
 func NewRpcFs(server *rpc.Client, cache *ContentCache) *RpcFs {
 	me := &RpcFs{}
 	me.client = server
@@ -164,7 +163,7 @@ func (me *RpcFs) Open(name string, flags uint32, context *fuse.Context) (fuse.Fi
 
 	if contents := me.cache.ContentsIfLoaded(a.Hash); contents != nil {
 		return &fuse.WithFlags{
-			File: fuse.NewDataFile(contents),
+			File:      fuse.NewDataFile(contents),
 			FuseFlags: fuse.FOPEN_KEEP_CACHE,
 		}, fuse.OK
 	}

@@ -45,14 +45,14 @@ func main() {
 	}
 
 	opts := termite.WorkerOptions{
-		Secret: secret,
-		TempDir: *tmpdir,
-		CacheDir:  *cachedir,
-		Jobs: *jobs,
-		User: user,
+		Secret:           secret,
+		TempDir:          *tmpdir,
+		CacheDir:         *cachedir,
+		Jobs:             *jobs,
+		User:             user,
 		FileContentCount: *memcache,
 	}
-	
+
 	daemon := termite.NewWorkerDaemon(&opts)
 	go handleStop(daemon)
 	daemon.RunWorkerServer(*port, *coordinator)

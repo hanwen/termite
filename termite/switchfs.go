@@ -7,12 +7,12 @@ import (
 
 /*
  A FS for the worker.
- 
+
  - We have to reroute statfs, so it goes to the writable part.
- 
+
  - We must wait for the last file to be closed before reading.
 
- */
+*/
 type SwitchFileSystem struct {
 	*fuse.SwitchFileSystem
 	statFsFs fuse.FileSystem
@@ -41,9 +41,9 @@ func (me *countFile) Release() {
 }
 
 func NewSwitchFileSystem(fs *fuse.SwitchFileSystem, statFsFs fuse.FileSystem) *SwitchFileSystem {
-	me :=  &SwitchFileSystem{
+	me := &SwitchFileSystem{
 		SwitchFileSystem: fs,
-		statFsFs: statFsFs,
+		statFsFs:         statFsFs,
 	}
 	me.openCond = sync.NewCond(&me.openMutex)
 	return me
@@ -58,8 +58,8 @@ func (me *SwitchFileSystem) Create(name string, flags uint32, mode uint32, conte
 	if code.Ok() {
 		file = me.newFile(file)
 	}
-	
-	return 
+
+	return
 }
 
 func (me *SwitchFileSystem) newFile(file fuse.File) *countFile {
@@ -71,7 +71,7 @@ func (me *SwitchFileSystem) newFile(file fuse.File) *countFile {
 
 func (me *SwitchFileSystem) Open(name string, flags uint32, context *fuse.Context) (file fuse.File, code fuse.Status) {
 	file, code = me.SwitchFileSystem.Open(name, flags, context)
-	if code.Ok() && flags & fuse.O_ANYWRITE != 0 {
+	if code.Ok() && flags&fuse.O_ANYWRITE != 0 {
 		file = me.newFile(file)
 	}
 	return

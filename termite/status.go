@@ -4,7 +4,6 @@ import (
 	"os"
 )
 
-
 func (me *Mirror) Status(req *MirrorStatusRequest, rep *MirrorStatusResponse) os.Error {
 	me.fuseFileSystemsMutex.Lock()
 	defer me.fuseFileSystemsMutex.Unlock()
@@ -19,8 +18,6 @@ func (me *Mirror) Status(req *MirrorStatusRequest, rep *MirrorStatusResponse) os
 	}
 	return nil
 }
-
-
 
 func (me *WorkerDaemon) Status(req *WorkerStatusRequest, rep *WorkerStatusResponse) os.Error {
 	me.mirrorMapMutex.Lock()
