@@ -18,8 +18,6 @@ type Master struct {
 	fileServerRpc *rpc.Server
 	secret        []byte
 
-	*localDecider
-
 	stats          *masterStats
 	retryCount     int
 	mirrors        *mirrorConnections
