@@ -15,8 +15,16 @@ func TestAuthenticate(t *testing.T) {
 	secret := RandomBytes(20)
 	port := int(rand.Int31n(60000) + 1024)
 
-	out := make(chan net.Conn)
-	go SetupServer(int(port), secret, out)
+	l := AuthenticatedListener(port, secret)
+	go func() {
+		for {
+			_, err := l.Accept()
+			if err != nil {
+				break
+			}
+		}
+	}()
+	
 	time.Sleep(1e9)
 	hostname, _ := os.Hostname()
 	addr := fmt.Sprintf("%s:%d", hostname, port)
@@ -24,12 +32,12 @@ func TestAuthenticate(t *testing.T) {
 	if err != nil {
 		t.Fatal("unexpected failure", err)
 	}
-	<-out
 
 	c, err := DialTypedConnection(addr, RPC_CHANNEL, []byte("foobar"))
 	if c != nil {
 		t.Error("expect failure")
 	}
+	l.Close()
 }
 
 type DummyConn struct {

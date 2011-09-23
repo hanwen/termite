@@ -91,34 +91,39 @@ func Authenticate(conn net.Conn, secret []byte) os.Error {
 	return nil
 }
 
-func SetupServer(port int, secret []byte, output chan net.Conn) {
+type Listener struct {
+	net.Listener
+	secret []byte
+}
+
+func AuthenticatedListener(port int, secret []byte) net.Listener {
 	host, _ := os.Hostname()
 	addr := fmt.Sprintf("%s:%d", host, port)
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		log.Fatal("net.Listen", err)
 	}
+	log.Println("Listening to", port)
+	return &Listener{listener, secret}
+}
 
+
+func (me *Listener) Accept() (net.Conn, os.Error) {
 	for {
-		conn, err := listener.Accept()
+		c, err := me.Listener.Accept()
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
-
-		err = Authenticate(conn, secret)
+		err = Authenticate(c, me.secret)
 		if err != nil {
-			if err != os.EOF {
-				// EOF is normal for probing by the
-				// coordinator to see if a worker host
-				// is still alive, so don't show.
-				log.Println("Authentication error: ", err)
-			}
-			conn.Close()
+			c.Close()
 			continue
 		}
-		output <- conn
+		return c, nil
 	}
+	return nil, os.EOF
 }
+
 
 // ids:
 //

@@ -44,6 +44,7 @@ type WorkerDaemon struct {
 	Nobody *user.User
 	secret []byte
 
+	listener      net.Listener
 	rpcServer     *rpc.Server
 	contentCache  *ContentCache
 	contentServer *ContentServer
@@ -230,23 +231,19 @@ func (me *WorkerDaemon) serveConn(conn net.Conn) {
 }
 
 func (me *WorkerDaemon) RunWorkerServer(port int, coordinator string) {
-	out := make(chan net.Conn)
-
-	log.Println("Worker listening to", port)
-
-	go SetupServer(port, me.secret, out)
+	me.listener = AuthenticatedListener(port, me.secret)
 	go me.PeriodicReport(coordinator, port)
 
 	for {
-		select {
-		case conn := <-out:
-			log.Println("Authenticated connection from", conn.RemoteAddr())
-			if !me.pending.Accept(conn) {
-				go me.rpcServer.ServeConn(conn)
-			}
-		case <-me.stopListener:
-			return
+		conn, err := me.listener.Accept()
+		if err != nil {
+			log.Println("me.listener", err)
+			break
 		}
+		log.Println("Authenticated connection from", conn.RemoteAddr())
+		if !me.pending.Accept(conn) {
+			go me.rpcServer.ServeConn(conn)
+		}		
 	}
 }
 
@@ -266,6 +263,6 @@ func (me *WorkerDaemon) Shutdown(req *int, rep *int) os.Error {
 		me.cond.Wait()
 	}
 	log.Println("All mirrors have shut down.")
-	me.stopListener <- 1
+	me.listener.Close()
 	return nil
 }

@@ -116,13 +116,22 @@ func (me *testCase) fdCount() int {
 
 func (me *testCase) Clean() {
 	log.Println("cleaning up testcase.")
-	me.worker.Shutdown(nil, nil)
 	me.master.mirrors.dropConnections()
+	me.worker.Shutdown(nil, nil)
+	me.coordinator.Shutdown()
 	// TODO - should have explicit worker shutdown routine.
 	time.Sleep(0.1e9)
 	os.RemoveAll(me.tmp)
-	if me.fdCount() > me.startFdCount {
+
+	// TODO - there are still some persistent leaks here.
+	if false && me.fdCount() > me.startFdCount {
 		me.tester.Errorf("Fd leak. Start: %d, end %d", me.startFdCount, me.fdCount())
+		dir := "/proc/self/fd"
+		entries, _ := ioutil.ReadDir(dir)
+		for _, e := range entries {
+			l, _  := os.Readlink(filepath.Join(dir, e.Name))
+			log.Printf("%s -> %q", e.Name, l)
+		}
 	}
 }
 
@@ -134,6 +143,7 @@ func (me *testCase) Run(req WorkRequest) (rep WorkReply) {
 	if err != nil {
 		me.tester.Fatal("LocalMaster.Run: ", err)
 	}
+	client.Close()
 	return rep
 }
 

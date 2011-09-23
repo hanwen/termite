@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"http"
 	"log"
+	"net"
 	"os"
 	"rpc"
 	"sync"
@@ -35,6 +36,7 @@ type WorkerRegistration struct {
 type Coordinator struct {
 	Mux *http.ServeMux
 
+	listener net.Listener
 	mutex   sync.Mutex
 	workers map[string]*WorkerRegistration
 	secret  []byte
@@ -241,6 +243,11 @@ func (me *Coordinator) mirrorStatusHtml(w http.ResponseWriter, s MirrorStatusRes
 	fmt.Fprintf(w, "</ul>\n")
 }
 
+func (me *Coordinator) Shutdown() {
+	log.Println("Coordinator shutdown.")
+	me.listener.Close()
+}
+
 func (me *Coordinator) ServeHTTP(port int) {
 	me.Mux.HandleFunc("/",
 		func(w http.ResponseWriter, req *http.Request) {
@@ -265,14 +272,19 @@ func (me *Coordinator) ServeHTTP(port int) {
 		})
 
 	addr := fmt.Sprintf(":%d", port)
+	var err os.Error
+	me.listener, err = net.Listen("tcp", addr)
+	if err != nil {
+		log.Fatal("net.Listen: ", err.String())
+	}
 	log.Println("Coordinator listening on", addr)
-
+	
 	httpServer := http.Server{
 		Addr:    addr,
 		Handler: me.Mux,
 	}
-	err := httpServer.ListenAndServe()
+	err = httpServer.Serve(me.listener)
 	if err != nil {
-		log.Fatal("ListenAndServe: ", err.String())
+		log.Println("httpServer.Serve: ", err)
 	}
 }
