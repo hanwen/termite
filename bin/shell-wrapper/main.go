@@ -164,9 +164,14 @@ func main() {
 
 	// TODO - could skip the shell if we can deduce it is a
 	// no-frills command invocation.
+
+	shell := os.Getenv("SHELL")
+	if shell == "" {
+		shell = "/bin/sh"
+	}
 	req := termite.WorkRequest{
 		Binary:     _SHELL,
-		Argv:       []string{"/bin/sh", "-c", *command},
+		Argv:       []string{shell, "-c", *command},
 		Env:        cleanEnv(os.Environ()),
 		Dir:        wd,
 		RanLocally: localWaitMsg != nil,
