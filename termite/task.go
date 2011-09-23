@@ -41,7 +41,7 @@ func (me *WorkerTask) Run() os.Error {
 	return nil
 }
 
-func (me *WorkerTask) runInFuse(fuseFs *WorkerFuseFs) os.Error {
+func (me *WorkerTask) runInFuse(fuseFs *workerFuseFs) os.Error {
 	fuseFs.SetDebug(me.WorkRequest.Debug)
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}

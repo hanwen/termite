@@ -23,10 +23,10 @@ type Mirror struct {
 	Waiting              int
 	maxJobCount          int
 	fuseFileSystemsMutex sync.Mutex
-	unusedFileSystems    []*WorkerFuseFs
+	unusedFileSystems    []*workerFuseFs
 
 	// Map value is the command running.
-	workingFileSystems map[*WorkerFuseFs]string
+	workingFileSystems map[*workerFuseFs]string
 	shuttingDown       bool
 	cond               *sync.Cond
 }
@@ -39,7 +39,7 @@ func NewMirror(daemon *WorkerDaemon, rpcConn, revConn net.Conn) *Mirror {
 		rpcConn:            rpcConn,
 		fileServer:         rpc.NewClient(revConn),
 		daemon:             daemon,
-		workingFileSystems: make(map[*WorkerFuseFs]string),
+		workingFileSystems: make(map[*workerFuseFs]string),
 	}
 	mirror.rpcFs = NewRpcFs(mirror.fileServer, daemon.contentCache)
 	mirror.rpcFs.localRoots = []string{"/lib", "/usr"}
@@ -49,7 +49,7 @@ func NewMirror(daemon *WorkerDaemon, rpcConn, revConn net.Conn) *Mirror {
 	return mirror
 }
 
-func (me *Mirror) discardFuse(wfs *WorkerFuseFs) {
+func (me *Mirror) discardFuse(wfs *workerFuseFs) {
 	wfs.Stop()
 
 	me.fuseFileSystemsMutex.Lock()
@@ -88,7 +88,7 @@ func (me *Mirror) Shutdown() {
 	go me.daemon.DropMirror(me)
 }
 
-func (me *Mirror) getWorkerFuseFs(name string) (f *WorkerFuseFs, err os.Error) {
+func (me *Mirror) getWorkerFuseFs(name string) (f *workerFuseFs, err os.Error) {
 	me.fuseFileSystemsMutex.Lock()
 	defer me.fuseFileSystemsMutex.Unlock()
 
@@ -118,7 +118,7 @@ func (me *Mirror) Update(req *UpdateRequest, rep *UpdateResponse) os.Error {
 	return nil
 }
 
-func (me *Mirror) updateFiles(attrs []*FileAttr, origin *WorkerFuseFs) {
+func (me *Mirror) updateFiles(attrs []*FileAttr, origin *workerFuseFs) {
 	me.rpcFs.updateFiles(attrs)
 
 	me.fuseFileSystemsMutex.Lock()
@@ -166,7 +166,7 @@ func (me *Mirror) Run(req *WorkRequest, rep *WorkReply) os.Error {
 
 const _DELETIONS = "DELETIONS"
 
-func (me *Mirror) newWorkerFuseFs() (*WorkerFuseFs, os.Error) {
+func (me *Mirror) newWorkerFuseFs() (*workerFuseFs, os.Error) {
 	return newWorkerFuseFs(me.daemon.tmpDir, me.rpcFs, me.writableRoot, me.daemon.Nobody)
 }
 

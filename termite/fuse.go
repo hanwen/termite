@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-type WorkerFuseFs struct {
+type workerFuseFs struct {
 	rwDir  string
 	tmpDir string
 	mount  string
@@ -26,7 +26,7 @@ type WorkerFuseFs struct {
 	task *WorkerTask
 }
 
-func (me *WorkerFuseFs) Stop() {
+func (me *workerFuseFs) Stop() {
 	err := me.MountState.Unmount()
 	if err != nil {
 		// TODO - Should be fatal?
@@ -38,13 +38,13 @@ func (me *WorkerFuseFs) Stop() {
 	}
 }
 
-func (me *WorkerFuseFs) SetDebug(debug bool) {
+func (me *workerFuseFs) SetDebug(debug bool) {
 	me.MountState.Debug = debug
 	me.fsConnector.Debug = debug
 	me.nodeFs.Debug = debug
 }
 
-func (me *Mirror) returnFuse(wfs *WorkerFuseFs) {
+func (me *Mirror) returnFuse(wfs *workerFuseFs) {
 	me.fuseFileSystemsMutex.Lock()
 	defer me.fuseFileSystemsMutex.Unlock()
 
@@ -60,13 +60,12 @@ func (me *Mirror) returnFuse(wfs *WorkerFuseFs) {
 	me.cond.Broadcast()
 }
 
-func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string,
-nobody *user.User) (*WorkerFuseFs, os.Error) {
+func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string, nobody *user.User) (*workerFuseFs, os.Error) {
 	tmpDir, err := ioutil.TempDir(tmpDir, "termite-task")
 	if err != nil {
 		return nil, err
 	}
-	w := WorkerFuseFs{
+	w := workerFuseFs{
 		tmpDir: tmpDir,
 	}
 
@@ -177,7 +176,7 @@ nobody *user.User) (*WorkerFuseFs, os.Error) {
 	return &w, nil
 }
 
-func (me *WorkerFuseFs) update(attrs []*FileAttr, origin *WorkerFuseFs) {
+func (me *workerFuseFs) update(attrs []*FileAttr, origin *workerFuseFs) {
 	paths := []string{}
 	if me == origin {
 		// TODO - should reread inode numbers, in case they
