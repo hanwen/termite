@@ -10,19 +10,6 @@ import (
 // TODO - should have an interface that opens a network connection and
 // streams the whole file directly, to avoid choppy RPCs?
 
-type ContentRequest struct {
-	Hash       string
-	Start, End int
-}
-
-func (me *ContentRequest) String() string {
-	return fmt.Sprintf("%x [%d, %d]", me.Hash, me.Start, me.End)
-}
-
-type ContentResponse struct {
-	Chunk []byte
-}
-
 // Content server exposes an md5 keyed content store for RPC.
 type ContentServer struct {
 	Cache *ContentCache

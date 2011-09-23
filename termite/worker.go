@@ -15,30 +15,7 @@ import (
 
 var _ = log.Println
 
-type WorkReply struct {
-	Exit   os.Waitmsg
-	Files  []*FileAttr
-	Stderr string
-	Stdout string
-}
 
-type WorkRequest struct {
-	Prefetch []*FileAttr
-
-	// Id of connection streaming stdin.
-	StdinId      string
-	Debug        bool
-	WritableRoot string
-	Binary       string
-	Argv         []string
-	Env          []string
-	Dir          string
-	RanLocally   bool
-}
-
-func (me *WorkRequest) Summary() string {
-	return fmt.Sprintf("stdin %s cmd %s", me.StdinId, me.Argv)
-}
 
 type WorkerDaemon struct {
 	Nobody *user.User
@@ -180,18 +157,6 @@ func (me *WorkerDaemon) report(coordinator string, port int) {
 // TODO - should expose under ContentServer name?
 func (me *WorkerDaemon) FileContent(req *ContentRequest, rep *ContentResponse) os.Error {
 	return me.contentServer.FileContent(req, rep)
-}
-
-type CreateMirrorRequest struct {
-	RpcId        string
-	RevRpcId     string
-	WritableRoot string
-	// Max number of processes to reserve.
-	MaxJobCount int
-}
-
-type CreateMirrorResponse struct {
-	GrantedJobCount int
 }
 
 func (me *WorkerDaemon) CreateMirror(req *CreateMirrorRequest, rep *CreateMirrorResponse) os.Error {

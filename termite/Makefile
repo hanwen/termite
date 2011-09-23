@@ -23,6 +23,7 @@ MANUAL_GOFILES=\
 	mirrorconnection.go \
 	misc.go \
 	procfs.go \
+	rpc.go \
 	rpcfs.go \
 	status.go \
 	switchfs.go \

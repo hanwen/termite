@@ -140,7 +140,7 @@ func (me *Mirror) fetchFiles(files []*FileAttr) {
 	}
 }
 
-func (me *Mirror) Run(req *WorkRequest, rep *WorkReply) os.Error {
+func (me *Mirror) Run(req *WorkRequest, rep *WorkResponse) os.Error {
 	// Don't run me.updateFiles() as we don't want to issue
 	// unneeded cache invalidations.
 	me.rpcFs.updateFiles(req.Prefetch)
@@ -170,14 +170,14 @@ func (me *Mirror) newWorkerFuseFs() (*workerFuseFs, os.Error) {
 	return newWorkerFuseFs(me.daemon.tmpDir, me.rpcFs, me.writableRoot, me.daemon.Nobody)
 }
 
-func (me *Mirror) newWorkerTask(req *WorkRequest, rep *WorkReply) (*WorkerTask, os.Error) {
+func (me *Mirror) newWorkerTask(req *WorkRequest, rep *WorkResponse) (*WorkerTask, os.Error) {
 	var stdin net.Conn
 	if req.StdinId != "" {
 		stdin = me.daemon.pending.WaitConnection(req.StdinId)
 	}
 	task := &WorkerTask{
 		WorkRequest: req,
-		WorkReply:   rep,
+		WorkResponse:   rep,
 		stdinConn:   stdin,
 		mirror:      me,
 	}

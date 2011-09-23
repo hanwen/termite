@@ -181,7 +181,7 @@ func (me *Master) createMirror(addr string, jobs int) (*mirrorConnection, os.Err
 	return mc, nil
 }
 
-func (me *Master) runOnMirror(mirror *mirrorConnection, req *WorkRequest, rep *WorkReply) os.Error {
+func (me *Master) runOnMirror(mirror *mirrorConnection, req *WorkRequest, rep *WorkResponse) os.Error {
 	defer me.mirrors.jobDone(mirror)
 
 	// Tunnel stdin.
@@ -227,7 +227,7 @@ func (me *Master) prefetchFiles(req *WorkRequest) {
 	}
 }
 
-func (me *Master) runOnce(req *WorkRequest, rep *WorkReply) os.Error {
+func (me *Master) runOnce(req *WorkRequest, rep *WorkResponse) os.Error {
 	localRep := *rep
 	mirror, err := me.mirrors.pick()
 	if err != nil {
@@ -258,7 +258,7 @@ func (me *Master) runOnce(req *WorkRequest, rep *WorkReply) os.Error {
 	return err
 }
 
-func (me *Master) run(req *WorkRequest, rep *WorkReply) (err os.Error) {
+func (me *Master) run(req *WorkRequest, rep *WorkResponse) (err os.Error) {
 	me.stats.MarkReceive()
 
 	err = me.runOnce(req, rep)
@@ -379,7 +379,7 @@ type LocalMaster struct {
 	master *Master
 }
 
-func (me *LocalMaster) Run(req *WorkRequest, rep *WorkReply) os.Error {
+func (me *LocalMaster) Run(req *WorkRequest, rep *WorkResponse) os.Error {
 	if req.RanLocally {
 		log.Println("Ran command locally:", req.Argv)
 		return nil

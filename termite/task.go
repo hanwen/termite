@@ -16,7 +16,7 @@ import (
 
 type WorkerTask struct {
 	*WorkRequest
-	*WorkReply
+	*WorkResponse
 	stdinConn net.Conn
 	mirror    *Mirror
 
@@ -85,7 +85,7 @@ func (me *WorkerTask) runInFuse(fuseFs *workerFuseFs) os.Error {
 	err := cmd.Wait()
 	waitMsg, ok := err.(*os.Waitmsg)
 	if ok {
-		me.WorkReply.Exit = *waitMsg
+		me.WorkResponse.Exit = *waitMsg
 		err = nil
 	}
 
@@ -95,15 +95,15 @@ func (me *WorkerTask) runInFuse(fuseFs *workerFuseFs) os.Error {
 	}
 
 	// We could use a connection here too, but this is simpler.
-	me.WorkReply.Stdout = stdout.String()
-	me.WorkReply.Stderr = stderr.String()
+	me.WorkResponse.Stdout = stdout.String()
+	me.WorkResponse.Stderr = stderr.String()
 
 	fuseFs.switchFs.WaitClose()
 	err = me.fillReply(fuseFs.rwDir)
 	if err == nil {
 		// Must do updateFiles before ReturnFuse, since the
 		// next job should not see out-of-date files.
-		me.mirror.updateFiles(me.WorkReply.Files, fuseFs)
+		me.mirror.updateFiles(me.WorkResponse.Files, fuseFs)
 	}
 
 	return err
@@ -116,7 +116,7 @@ func (me *WorkerTask) fillReply(rwDir string) os.Error {
 		cache:  me.mirror.daemon.contentCache,
 	}
 	saver.reapBackingStore()
-	me.WorkReply.Files = saver.files
+	me.WorkResponse.Files = saver.files
 
 	return saver.err
 }

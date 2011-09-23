@@ -135,7 +135,7 @@ func (me *testCase) Clean() {
 	}
 }
 
-func (me *testCase) Run(req WorkRequest) (rep WorkReply) {
+func (me *testCase) Run(req WorkRequest) (rep WorkResponse) {
 	rpcConn := OpenSocketConnection(me.socket, RPC_CHANNEL)
 	client := rpc.NewClient(rpcConn)
 

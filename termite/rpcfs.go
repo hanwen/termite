@@ -35,13 +35,6 @@ type RpcFs struct {
 	attrResponse map[string]*FileAttr
 }
 
-type UpdateRequest struct {
-	Files []*FileAttr
-}
-
-type UpdateResponse struct {
-
-}
 
 func NewRpcFs(server *rpc.Client, cache *ContentCache) *RpcFs {
 	me := &RpcFs{}

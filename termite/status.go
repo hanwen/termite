@@ -4,18 +4,6 @@ import (
 	"os"
 )
 
-type MirrorStatusRequest struct {
-
-}
-
-type MirrorStatusResponse struct {
-	Root         string
-	Granted      int
-	Running      []string
-	ShuttingDown bool
-	WaitingTasks int
-	IdleFses     int
-}
 
 func (me *Mirror) Status(req *MirrorStatusRequest, rep *MirrorStatusResponse) os.Error {
 	me.fuseFileSystemsMutex.Lock()
@@ -32,16 +20,7 @@ func (me *Mirror) Status(req *MirrorStatusRequest, rep *MirrorStatusResponse) os
 	return nil
 }
 
-type WorkerStatusRequest struct {
 
-}
-
-type WorkerStatusResponse struct {
-	MirrorStatus []MirrorStatusResponse
-	Version      string
-	MaxJobCount  int
-	ShuttingDown bool
-}
 
 func (me *WorkerDaemon) Status(req *WorkerStatusRequest, rep *WorkerStatusResponse) os.Error {
 	me.mirrorMapMutex.Lock()

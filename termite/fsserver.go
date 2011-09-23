@@ -78,21 +78,6 @@ func NewFsServer(root string, cache *ContentCache, excluded []string) *FsServer 
 	return fs
 }
 
-type AttrRequest struct {
-	Name string
-}
-
-type FileAttr struct {
-	Path string
-	*os.FileInfo
-	fuse.Status
-	Hash    string
-	Link    string
-}
-
-type AttrResponse struct {
-	Attrs    []*FileAttr
-}
 
 func (me FileAttr) String() string {
 	id := ""
@@ -118,13 +103,6 @@ func (me FileAttr) Deletion() bool {
 	return me.Status == fuse.ENOENT
 }
 
-type DirRequest struct {
-	Name string
-}
-
-type DirResponse struct {
-	NameModeMap map[string]uint32
-}
 
 func (me *FsServer) path(n string) string {
 	if me.Root == "" {
