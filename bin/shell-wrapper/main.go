@@ -13,8 +13,6 @@ import (
 
 // TODO - this file is a mess. Clean it up.
 
-const _SHELL = "/bin/sh"
-
 func TryRunDirect(cmd string) {
 	if cmd == ":" {
 		os.Exit(0)
@@ -93,9 +91,17 @@ func Inspect(files []string) {
 	}
 }
 
+func Shell() string {
+	shell := os.Getenv("SHELL")
+	if shell == "" {
+		shell = "/bin/sh"
+	}
+	return shell
+}
+
 func TryRunLocally(command string, topdir string) (exit *os.Waitmsg, rule termite.LocalRule) {
 	decider := termite.NewLocalDecider(topdir)
-	if !(len(os.Args) == 3 && os.Args[0] == _SHELL && os.Args[1] == "-c") {
+	if !(len(os.Args) == 3 && os.Args[0] == Shell() && os.Args[1] == "-c") {
 		return
 	}
 
@@ -106,7 +112,7 @@ func TryRunLocally(command string, topdir string) (exit *os.Waitmsg, rule termit
 			env = cleanEnv(env)
 		}
 
-		proc, err := os.StartProcess(_SHELL, os.Args, &os.ProcAttr{
+		proc, err := os.StartProcess(Shell(), os.Args, &os.ProcAttr{
 			Env:   env,
 			Files: []*os.File{os.Stdin, os.Stdout, os.Stderr},
 		})
@@ -141,7 +147,7 @@ func main() {
 	if *command == "" {
 		return
 	}
-	os.Args[0] = _SHELL
+	os.Args[0] = Shell()
 	TryRunDirect(*command)
 
 	socket := termite.FindSocket()
@@ -165,13 +171,9 @@ func main() {
 	// TODO - could skip the shell if we can deduce it is a
 	// no-frills command invocation.
 
-	shell := os.Getenv("SHELL")
-	if shell == "" {
-		shell = "/bin/sh"
-	}
 	req := termite.WorkRequest{
-		Binary:     _SHELL,
-		Argv:       []string{shell, "-c", *command},
+		Binary:     Shell(),
+		Argv:       []string{Shell(), "-c", *command},
 		Env:        cleanEnv(os.Environ()),
 		Dir:        wd,
 		RanLocally: localWaitMsg != nil,
