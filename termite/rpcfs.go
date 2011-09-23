@@ -70,6 +70,9 @@ func (me *RpcFs) updateFiles(files []*FileAttr) {
 		p := strings.TrimLeft(r.Path, string(filepath.Separator))
 		copy := *r
 		me.attrResponse[p] = &copy
+		if r.Deletion() {
+			me.directories[p] = nil, false
+		}
 
 		d, basename := filepath.Split(p)
 		d = strings.TrimRight(d, string(filepath.Separator))
@@ -112,12 +115,13 @@ func (me *RpcFs) GetDir(name string) *DirResponse {
 	me.dirMutex.Lock()
 	me.dirFetchMap[name] = false, false
 	me.dirFetchCond.Broadcast()
-	if err == nil {
+	if err != nil {
+		log.Fatal("GetDir error:", err)
+	}
+
+	if rep.Status.Ok() {
+		// TODO - caching for negative responses too.
 		me.directories[name] = rep
-	} else {
-		// TODO - should be fatal ?
-		log.Println("GetDir error:", err)
-		return nil
 	}
 
 	return rep
@@ -125,10 +129,10 @@ func (me *RpcFs) GetDir(name string) *DirResponse {
 
 func (me *RpcFs) OpenDir(name string, context *fuse.Context) (chan fuse.DirEntry, fuse.Status) {
 	r := me.GetDir(name)
-
-	if r == nil {
-		return nil, fuse.ENOENT
+	if !r.Status.Ok() {
+		return nil, r.Status
 	}
+
 	c := make(chan fuse.DirEntry, len(r.NameModeMap))
 	for k, mode := range r.NameModeMap {
 		c <- fuse.DirEntry{

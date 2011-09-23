@@ -2,7 +2,7 @@ package termite
 
 import (
 	"fmt"
-	"github.com/hanwen/go-fuse/fuse"	
+	"github.com/hanwen/go-fuse/fuse"
 	"os"
 )
 
@@ -18,7 +18,7 @@ func (me *ContentRequest) String() string {
 type ContentResponse struct {
 	Chunk []byte
 }
- 
+
 type AttrRequest struct {
 	Name string
 }
@@ -34,16 +34,17 @@ type FileAttr struct {
 type AttrResponse struct {
 	Attrs    []*FileAttr
 }
- 
- 
+
+
 type DirRequest struct {
 	Name string
 }
 
 type DirResponse struct {
 	NameModeMap map[string]uint32
+	fuse.Status
 }
- 
+
 type UpdateRequest struct {
 	Files []*FileAttr
 }
@@ -51,7 +52,7 @@ type UpdateRequest struct {
 type UpdateResponse struct {
 
 }
- 
+
 type MirrorStatusRequest struct {
 
 }
@@ -64,9 +65,9 @@ type MirrorStatusResponse struct {
 	WaitingTasks int
 	IdleFses     int
 }
- 
+
 type WorkerStatusRequest struct {
- 
+
 }
 
 type WorkerStatusResponse struct {
@@ -75,7 +76,7 @@ type WorkerStatusResponse struct {
 	MaxJobCount  int
 	ShuttingDown bool
 }
- 
+
 type WorkResponse struct {
 	Exit   os.Waitmsg
 	Files  []*FileAttr
@@ -96,7 +97,7 @@ type WorkRequest struct {
 	Dir          string
 	RanLocally   bool
 }
- 
+
 func (me *WorkRequest) Summary() string {
 	return fmt.Sprintf("stdin %s cmd %s", me.StdinId, me.Argv)
 }

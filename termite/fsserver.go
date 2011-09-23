@@ -119,7 +119,8 @@ func (me *FsServer) ReadDir(req *DirRequest, r *DirResponse) os.Error {
 	for _, v := range d {
 		r.NameModeMap[v.Name] = v.Mode
 	}
-	return e
+	r.Status = fuse.OsErrorToErrno(e)
+	return nil
 }
 
 func (me *FsServer) GetAttr(req *AttrRequest, rep *AttrResponse) os.Error {
