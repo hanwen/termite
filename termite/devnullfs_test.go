@@ -8,9 +8,9 @@ import (
 )
 
 func setupDevNullFs() (wd string, clean func()) {
-	fs := NewDevnullFs()
+	fs := NewDevNullFs()
 	mountPoint, _ := ioutil.TempDir("", "termite")
-	state, _, err := fuse.MountPathFileSystem(mountPoint, fs, nil)
+	state, _, err := fuse.MountNodeFileSystem(mountPoint, fs, nil)
 	if err != nil {
 		panic(err)
 	}

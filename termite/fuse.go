@@ -131,7 +131,6 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string, 
 	mounts := []submount{
 		{"proc", w.procFs},
 		{"sys", &fuse.ReadonlyFileSystem{fuse.NewLoopbackFileSystem("/sys")}},
-		{"dev", NewDevnullFs()},
 	}
 	fuseOpts := fuse.MountOptions{}
 	if os.Geteuid() != 0 {
@@ -166,6 +165,7 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string, 
 			return nil, os.NewError(fmt.Sprintf("submount error for %v: %v", s.mountpoint, code))
 		}
 	}
+	w.fsConnector.Mount(w.nodeFs.Root().Inode(), "dev", NewDevNullFs(), nil)
 
 	go w.MountState.Loop()
 
