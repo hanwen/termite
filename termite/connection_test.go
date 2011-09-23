@@ -40,36 +40,40 @@ func TestAuthenticate(t *testing.T) {
 	l.Close()
 }
 
-type DummyConn struct {
+type dummyConn struct {
 	*os.File
 }
 
-func (me *DummyConn) LocalAddr() net.Addr {
+func (me *dummyConn) LocalAddr() net.Addr {
 	return &net.UnixAddr{}
 }
 
-func (me *DummyConn) RemoteAddr() net.Addr {
+func (me *dummyConn) RemoteAddr() net.Addr {
 	return &net.UnixAddr{}
 }
 
-func (me *DummyConn) SetTimeout(nsec int64) os.Error {
+func (me *dummyConn) SetTimeout(nsec int64) os.Error {
 	return nil
 }
 
-func (me *DummyConn) SetReadTimeout(nsec int64) os.Error {
+func (me *dummyConn) SetReadTimeout(nsec int64) os.Error {
 	return nil
 }
 
-func (me *DummyConn) SetWriteTimeout(nsec int64) os.Error {
+func (me *dummyConn) SetWriteTimeout(nsec int64) os.Error {
 	return nil
 }
 
 func TestPendingConnection(t *testing.T) {
 	a1, b1, _ := fuse.Socketpair("unix")
 	a2, b2, _ := fuse.Socketpair("unix")
-
-	conn1 := &DummyConn{b1}
-	conn2 := &DummyConn{b2}
+	defer a1.Close()
+	defer a2.Close()
+	defer b1.Close()
+	defer b2.Close()
+	
+	conn1 := &dummyConn{b1}
+	conn2 := &dummyConn{b2}
 
 	id1 := "pqrxyzab"
 	id2 := "pqrxy111"

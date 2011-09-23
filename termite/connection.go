@@ -138,7 +138,7 @@ func ConnectionId() string {
 	return fmt.Sprintf(_ID_FMT, id)
 }
 
-type PendingConnection struct {
+type pendingConnection struct {
 	Id    string
 	Ready sync.Cond
 	Conn  net.Conn
@@ -148,17 +148,17 @@ type PendingConnection struct {
 // The id is sent as the first 8 bytes, after the authentication.
 type PendingConnections struct {
 	connectionsMutex sync.Mutex
-	connections      map[string]*PendingConnection
+	connections      map[string]*pendingConnection
 }
 
 func NewPendingConnections() *PendingConnections {
 	return &PendingConnections{
-		connections: make(map[string]*PendingConnection),
+		connections: make(map[string]*pendingConnection),
 	}
 }
 
-func (me *PendingConnections) newPendingConnection(id string) *PendingConnection {
-	p := &PendingConnection{
+func (me *PendingConnections) newPendingConnection(id string) *pendingConnection {
+	p := &pendingConnection{
 		Id: id,
 	}
 	p.Ready.L = &me.connectionsMutex
