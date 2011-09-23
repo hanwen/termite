@@ -8,8 +8,7 @@ for target in "clean" ""
 do
   for d in termite \
       bin/coordinator \
-      bin/worker bin/fsserver \
-      bin/rpcfs bin/master bin/shell-wrapper ; \
+      bin/worker bin/master bin/shell-wrapper ; \
   do
     gomake -C $d $target
   done
