@@ -26,6 +26,7 @@ type testCase struct {
 	coordinatorPort int
 	workerPort      int
 	tester          *testing.T
+	startFdCount    int
 }
 
 func (me *testCase) FindBin(name string) string {
@@ -54,6 +55,7 @@ func NewTestCase(t *testing.T) *testCase {
 	me.secret = RandomBytes(20)
 	me.tmp, _ = ioutil.TempDir("", "")
 
+	me.startFdCount = me.fdCount()
 	workerTmp := me.tmp + "/worker-tmp"
 	os.Mkdir(workerTmp, 0700)
 	opts := WorkerOptions{
@@ -119,6 +121,9 @@ func (me *testCase) Clean() {
 	// TODO - should have explicit worker shutdown routine.
 	time.Sleep(0.1e9)
 	os.RemoveAll(me.tmp)
+	if me.fdCount() > me.startFdCount {
+		me.tester.Errorf("Fd leak. Start: %d, end %d", me.startFdCount, me.fdCount())
+	}
 }
 
 func (me *testCase) Run(req WorkRequest) (rep WorkReply) {
