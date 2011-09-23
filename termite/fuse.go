@@ -133,11 +133,7 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string, 
 		{"sys", &fuse.ReadonlyFileSystem{fuse.NewLoopbackFileSystem("/sys")}},
 		{"dev", NewDevnullFs()},
 	}
-	fuseOpts := fuse.MountOptions{
-		// Compilers are not that highly parallel.  A lower
-		// number also helps stacktrace be less overwhelming.
-		MaxBackground: 4,
-	}
+	fuseOpts := fuse.MountOptions{}
 	if os.Geteuid() != 0 {
 		// Typically, we run our tests as non-root under /tmp.
 		// If we use go-fuse to mount /tmp, it will hide
@@ -152,7 +148,7 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string, 
 		)
 	}
 
-	w.switchFs =  NewSwitchFileSystem(fuse.NewSwitchFileSystem(swFs), w.unionFs)
+	w.switchFs = NewSwitchFileSystem(fuse.NewSwitchFileSystem(swFs), w.unionFs)
 	pathOpts := fuse.PathNodeFsOptions{
 		ClientInodes: true,
 	}
