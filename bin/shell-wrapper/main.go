@@ -174,7 +174,7 @@ func main() {
 	req.Debug = localRule.Debug || os.Getenv("TERMITE_DEBUG") != "" || *debug
 	client := rpc.NewClient(conn)
 
-	rep := termite.WorkReply{}
+	rep := termite.WorkResponse{}
 	err = client.Call("LocalMaster.Run", &req, &rep)
 	client.Close()
 	if err != nil {
