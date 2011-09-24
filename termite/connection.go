@@ -98,7 +98,8 @@ type Listener struct {
 
 func AuthenticatedListener(port int, secret []byte) net.Listener {
 	host, _ := os.Hostname()
-	addr := fmt.Sprintf("%s:%d", host, port)
+	_ = host
+	addr := fmt.Sprintf(":%d", port)
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		log.Fatal("net.Listen", err)
