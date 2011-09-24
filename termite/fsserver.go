@@ -134,7 +134,7 @@ func (me *FsServer) GetAttr(req *AttrRequest, rep *AttrResponse) os.Error {
 	for _, n := range names {
 		a := me.oneGetAttr(n)
 		if a.Hash != "" {
-			log.Printf("GetAttr %q %v %x", n, a, a.Hash)
+			log.Printf("GetAttr %v %x", n, a, a.Hash)
 		}
 		rep.Attrs = append(rep.Attrs, a)
 	}
