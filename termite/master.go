@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"rpc"
 	"sort"
-	"strings"
 )
 
 type Master struct {
@@ -36,7 +35,6 @@ func NewMaster(cache *ContentCache, coordinator string, workers []string, secret
 		retryCount: 3,
 		stats:      newMasterStats(),
 	}
-	me.fileServer.multiplyPaths = func(n string) []string { return me.multiplyPaths(n) }
 	me.mirrors = newMirrorConnections(me, workers, coordinator, maxJobs)
 	me.localServer = &LocalMaster{me}
 	me.secret = secret
@@ -47,26 +45,6 @@ func NewMaster(cache *ContentCache, coordinator string, workers []string, secret
 	me.localRpcServer.Register(me.localServer)
 
 	return me
-}
-
-// TODO - write e2e test for this.
-func (me *Master) multiplyPaths(name string) []string {
-	names := []string{name}
-	// TODO - cleanpath.
-	if strings.HasPrefix(name, me.writableRoot) && me.srcRoot != "" &&
-		me.srcRoot != me.writableRoot {
-		names = append(names, me.srcRoot+name[len(me.writableRoot):])
-	}
-	for _, n := range names {
-		// TODO - configurable
-		if strings.HasSuffix(n, ".gch") {
-			names = append(names, n[:len(n)-len(".gch")])
-		}
-	}
-	if len(names) > 1 {
-		log.Println("multiplied", names)
-	}
-	return names
 }
 
 func (me *Master) SetSrcRoot(root string) {
