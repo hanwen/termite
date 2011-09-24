@@ -126,9 +126,13 @@ SECURITY
   - a malicious user may try to run a binary on the worker that tries
     to break out of chroot.
 
+* The master will never serve files that have no group/other
+  permissions.
+
 * Wrapper and master run as the same user and use IPC unix domain
   sockets to communicate.  The socket mode is 0700.
 
+  
 
 CAVEATS
 
@@ -146,7 +150,8 @@ TODO
 
 * Features
   - Collect worker log information and expose on HTTP.
-
+  - Restart workers from coordinator. 
+  
 * Data collection:
   - compute average parallelism.
   - number of jobs scheduled
@@ -154,13 +159,11 @@ TODO
 
 * Speed
   - Worker:
-    * Do full updates for OpenDir .
   - Master:
     * add in-memory cache for file contents.
     * worker <-> worker file content fetching
   - Master/Worker:
     * streaming connections for file transport.
-    * expand directory deletion in worker.
     * for src/writableRoot, always sync worker and master,
     so never need to RPC for negative getattr.
   - Worker
