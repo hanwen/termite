@@ -285,6 +285,8 @@ func (me *Master) replayFileModifications(worker *rpc.Client, infos []*FileAttr)
 		}
 	}
 
+	// TODO - if we have all readdir results in memory, we could
+	// do the update of the FS asynchronous.
 	entries := make(map[string]*FileAttr)
 	names := []string{}
 	for _, info := range infos {
