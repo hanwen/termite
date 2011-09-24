@@ -244,11 +244,30 @@ func (me *RpcFs) getFileAttr(name string) *FileAttr {
 	me.attrMutex.RLock()
 	result, ok := me.attrResponse[name]
 	me.attrMutex.RUnlock()
-
 	if ok {
 		return result
 	}
 
+	dir, base := filepath.Split(name)
+	dir = strings.TrimRight(dir, "/")
+	dirResp := me.GetDir(dir)
+	code := dirResp.Status
+	if code.Ok() {
+		if _, ok := dirResp.NameModeMap[base]; !ok {
+			code = fuse.ENOENT
+		}
+	}
+	if !code.Ok() {
+		me.attrMutex.Lock()
+		defer me.attrMutex.Unlock()
+		fa := &FileAttr{
+			Status: code,
+			Path: name,
+		}
+		me.attrResponse[name] = fa
+		return fa
+	}
+	
 	me.attrMutex.Lock()
 	defer me.attrMutex.Unlock()
 	for me.attrFetchMap[name] && me.attrResponse[name] == nil {
