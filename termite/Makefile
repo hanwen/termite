@@ -5,7 +5,6 @@ TARG=github.com/hanwen/termite/termite
 DEPS=../../go-fuse/fuse ../../go-fuse/unionfs
 
 MANUAL_GOFILES=\
-	avgstat.go \
 	connection.go \
 	contentcache.go \
 	contentserver.go \
@@ -23,6 +22,7 @@ MANUAL_GOFILES=\
 	mirror.go \
 	mirrorconnection.go \
 	misc.go \
+	periodicsampler.go \
 	procfs.go \
 	rpc.go \
 	rpcfs.go \
