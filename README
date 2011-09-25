@@ -155,19 +155,17 @@ TODO
 * Data collection:
   - compute average parallelism.
   - number of jobs scheduled
-  - collect data on cpu used/time used in worker.
 
 * Speed
   - Worker:
   - Master:
-    * add in-memory cache for file contents.
+    * readdir caching.
+    * send known attrs together with readdir.
     * worker <-> worker file content fetching
   - Master/Worker:
     * streaming connections for file transport.
-    * for src/writableRoot, always sync worker and master,
-    so never need to RPC for negative getattr.
   - Worker
-    * implement in-memory FileSystem for backing store
+    * use MemUnionFs.
 
 
 SUCCESSFUL COMPILES
