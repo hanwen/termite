@@ -17,7 +17,7 @@ func NewDevNullFs() *DevNullFs {
 }
 
 func (me *DevNullFs) OnMount(fsc *fuse.FileSystemConnector) {
-	n := me.root.Inode().NewSynthetic(false, &devNullNode{})
+	n := me.root.Inode().New(false, &devNullNode{})
 	me.root.Inode().AddChild("null", n)
 }
 
@@ -27,6 +27,10 @@ func (me *DevNullFs) Root() fuse.FsNode {
 
 type devNullNode struct {
 	fuse.DefaultFsNode
+}
+
+func (me *devNullNode) Deletable() bool {
+	return false
 }
 
 func (me *devNullNode) Access(mode uint32, context *fuse.Context) (code fuse.Status) {
