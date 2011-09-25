@@ -64,6 +64,8 @@ type mirrorConnections struct {
 
 	wantedMaxJobs int
 
+        stats *masterStats
+	
 	// Condition for mutex below.
 	*sync.Cond
 
@@ -115,6 +117,7 @@ func newMirrorConnections(m *Master, workers []string, coordinator string, maxJo
 		workers:       make(map[string]bool),
 		mirrors:       make(map[string]*mirrorConnection),
 		coordinator:   coordinator,
+		stats:         newMasterStats(),
 	}
 	me.setKeepAliveNs(60e9, 60e9)
 
@@ -194,6 +197,7 @@ func (me *mirrorConnections) dropConnections() {
 		mc.reverseConnection.Close()
 	}
 	me.mirrors = make(map[string]*mirrorConnection)
+	me.stats = newMasterStats()
 }
 
 func (me *mirrorConnections) queueFiles(origin *mirrorConnection, infos []*FileAttr) {

@@ -70,11 +70,25 @@ type WorkerStatusRequest struct {
 
 }
 
+
+type CpuStat struct {
+	SelfCpu int64
+	SelfSys int64
+	ChildCpu int64
+	ChildSys int64
+}
+
 type WorkerStatusResponse struct {
 	MirrorStatus []MirrorStatusResponse
 	Version      string
 	MaxJobCount  int
 	ShuttingDown bool
+	CpuStats     []CpuStat
+}
+
+type Timing struct {
+	Name string
+	Dt   float64
 }
 
 type WorkResponse struct {
@@ -82,6 +96,10 @@ type WorkResponse struct {
 	Files  []*FileAttr
 	Stderr string
 	Stdout string
+
+	Timings []Timing
+
+	LastTime int64
 }
 
 type WorkRequest struct {

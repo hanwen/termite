@@ -17,7 +17,6 @@ type Master struct {
 	fileServerRpc *rpc.Server
 	secret        []byte
 
-	stats          *masterStats
 	retryCount     int
 	mirrors        *mirrorConnections
 	localRpcServer *rpc.Server
@@ -33,7 +32,6 @@ func NewMaster(cache *ContentCache, coordinator string, workers []string, secret
 		fileServer: NewFsServer("/", cache, excluded),
 		secret:     secret,
 		retryCount: 3,
-		stats:      newMasterStats(),
 	}
 	me.mirrors = newMirrorConnections(me, workers, coordinator, maxJobs)
 	me.localServer = &LocalMaster{me}
@@ -182,7 +180,8 @@ func (me *Master) runOnMirror(mirror *mirrorConnection, req *WorkRequest, rep *W
 		log.Println("with environment", req.Env)
 	}
 
-	err := mirror.rpcClient.Call("Mirror.Run", &req, &rep)
+	err := mirror.rpcClient.Call("Mirror.Run", req, rep)
+	rep.resetClock()
 	return err
 }
 
@@ -225,7 +224,9 @@ func (me *Master) runOnce(req *WorkRequest, rep *WorkResponse) os.Error {
 	}
 
 	err = me.replayFileModifications(mirror.rpcClient, localRep.Files)
+	localRep.clock("master.replay")
 	me.fileServer.updateFiles(localRep.Files)
+	localRep.clock("master.updateServer")
 	if err != nil {
 		return err
 	}
@@ -233,11 +234,12 @@ func (me *Master) runOnce(req *WorkRequest, rep *WorkResponse) os.Error {
 	rep.Files = nil
 
 	me.mirrors.queueFiles(mirror, localRep.Files)
+	rep.clock("master.queueFiles")
 	return err
 }
 
 func (me *Master) run(req *WorkRequest, rep *WorkResponse) (err os.Error) {
-	me.stats.MarkReceive()
+	me.mirrors.stats.MarkReceive()
 
 	err = me.runOnce(req, rep)
 	for i := 0; i < me.retryCount && err != nil; i++ {
@@ -245,7 +247,7 @@ func (me *Master) run(req *WorkRequest, rep *WorkResponse) (err os.Error) {
 		err = me.runOnce(req, rep)
 	}
 
-	me.stats.MarkReturn()
+	me.mirrors.stats.MarkReturn(rep)
 	return err
 }
 

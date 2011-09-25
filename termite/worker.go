@@ -27,7 +27,8 @@ type WorkerDaemon struct {
 	pending       *PendingConnections
 	cacheDir      string
 	tmpDir        string
-
+	stats         *workerStats
+	
 	stopListener chan int
 
 	mirrorMapMutex sync.Mutex
@@ -90,6 +91,7 @@ func NewWorkerDaemon(options *WorkerOptions) *WorkerDaemon {
 		maxJobCount:   options.Jobs,
 		tmpDir:        options.TempDir,
 		rpcServer:     rpc.NewServer(),
+		stats:         newWorkerStats(),
 	}
 	if os.Geteuid() == 0 && options.User != nil {
 		nobody, err := user.Lookup(*options.User)

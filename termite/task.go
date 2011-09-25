@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+	"time"
 )
 
 type WorkerTask struct {
@@ -21,13 +22,32 @@ type WorkerTask struct {
 	mirror    *Mirror
 
 	taskInfo string
+
+	lastTime int64
+}
+
+func (me *WorkResponse) resetClock() {
+	me.LastTime = time.Nanoseconds()
+}
+
+func (me *WorkResponse) clock(name string) {
+	t := time.Nanoseconds()
+	me.Timings = append(me.Timings,
+		Timing{name, 1.0e-6 * float64(t-me.LastTime)})
+	me.LastTime = t
+}
+
+func (me *WorkerTask) clock(name string) {
+	me.WorkResponse.clock(name)
 }
 
 func (me *WorkerTask) Run() os.Error {
+	me.resetClock()
 	fuseFs, err := me.mirror.getWorkerFuseFs(me.WorkRequest.Summary())
 	if err != nil {
 		return err
 	}
+	me.clock("worker.getWorkerFuseFs")
 
 	fuseFs.task = me
 	err = me.runInFuse(fuseFs)
@@ -38,6 +58,7 @@ func (me *WorkerTask) Run() os.Error {
 	}
 
 	me.mirror.returnFuse(fuseFs)
+	me.clock("worker.returnFuse")
 	return nil
 }
 
@@ -83,6 +104,7 @@ func (me *WorkerTask) runInFuse(fuseFs *workerFuseFs) os.Error {
 	log.Println("started cmd", printCmd, "in", fuseFs.mount)
 	me.taskInfo = fmt.Sprintf("Cmd %v, dir %v, proc %v", cmd.Args, cmd.Dir, cmd.Process)
 	err := cmd.Wait()
+	
 	waitMsg, ok := err.(*os.Waitmsg)
 	if ok {
 		me.WorkResponse.Exit = *waitMsg
@@ -99,11 +121,14 @@ func (me *WorkerTask) runInFuse(fuseFs *workerFuseFs) os.Error {
 	me.WorkResponse.Stderr = stderr.String()
 
 	fuseFs.switchFs.WaitClose()
+	me.clock("worker.runCommand")
 	err = me.fillReply(fuseFs.rwDir)
+	me.clock("worker.fillReply")
 	if err == nil {
 		// Must do updateFiles before ReturnFuse, since the
 		// next job should not see out-of-date files.
 		me.mirror.updateFiles(me.WorkResponse.Files, fuseFs)
+		me.clock("worker.updateFiles")
 	}
 
 	return err

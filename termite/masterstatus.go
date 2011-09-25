@@ -13,7 +13,7 @@ func (me *Master) statusHandler(w http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(w, "<body><h1>Master for %s</h1>", me.writableRoot)
 	defer fmt.Fprintf(w, "</body></html>")
 
-	me.stats.writeHttp(w)
+	me.mirrors.stats.writeHttp(w)
 
 	fmt.Fprintf(w, "<p>Master parallelism (--jobs): %d. Reserved job slots: %d",
 		me.mirrors.wantedMaxJobs, me.mirrors.maxJobs())

@@ -156,10 +156,11 @@ func (me *Mirror) Run(req *WorkRequest, rep *WorkResponse) os.Error {
 		return err
 	}
 
+	rep.LastTime = 0
 	summary := *rep
 	summary.Stdout = HumanTrim(summary.Stdout, 1024)
 	summary.Stderr = HumanTrim(summary.Stderr, 1024)
-
+	
 	log.Println("sending back", summary)
 	return nil
 }
