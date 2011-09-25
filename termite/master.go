@@ -257,8 +257,7 @@ func (me *Master) replayFileModifications(worker *rpc.Client, infos []*FileAttr)
 	for _, info := range infos {
 		if info.Hash != "" {
 			err := FetchBetweenContentServers(
-				worker, "Mirror.FileContent", info.FileInfo.Size, info.Hash,
-				me.cache)
+				worker, "Mirror.FileContent", info.Hash, me.cache)
 			if err != nil {
 				return err
 			}

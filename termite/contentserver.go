@@ -1,7 +1,6 @@
 package termite
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"rpc"
@@ -44,7 +43,7 @@ func (me *ContentServer) FileContent(req *ContentRequest, rep *ContentResponse) 
 // FetchHash issues a FileContent RPC to read an entire file, and store into ContentCache.
 //
 // TODO - open a connection for this instead.
-func FetchBetweenContentServers(client *rpc.Client, rpcName string, size int64, hash string,
+func FetchBetweenContentServers(client *rpc.Client, rpcName string, hash string,
 	dest *ContentCache) os.Error {
 	chunkSize := 1 << 18
 
@@ -72,11 +71,6 @@ func FetchBetweenContentServers(client *rpc.Client, rpcName string, size int64, 
 		if len(rep.Chunk) < chunkSize {
 			break
 		}
-	}
-
-	if written < int(size) {
-		return os.NewError(
-			fmt.Sprintf("Size mismatch %d != %d", written, size))
 	}
 
 	output.Close()

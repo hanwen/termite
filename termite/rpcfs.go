@@ -209,7 +209,7 @@ func (me *RpcFs) FetchHash(size int64, key string) os.Error {
 	me.fetchMap[key] = true
 	me.fetchMutex.Unlock()
 
-	err := me.fetchOnce(size, key)
+	err := me.fetchOnce(key)
 
 	me.fetchMutex.Lock()
 	me.fetchMap[key] = false, false
@@ -218,9 +218,9 @@ func (me *RpcFs) FetchHash(size int64, key string) os.Error {
 	return err
 }
 
-func (me *RpcFs) fetchOnce(size int64, hash string) os.Error {
+func (me *RpcFs) fetchOnce(hash string) os.Error {
 	// TODO - should save in smaller chunks.
-	return FetchBetweenContentServers(me.client, "FsServer.FileContent", size, hash,
+	return FetchBetweenContentServers(me.client, "FsServer.FileContent", hash,
 		me.cache)
 }
 
