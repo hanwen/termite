@@ -28,7 +28,7 @@ type WorkerDaemon struct {
 	cacheDir      string
 	tmpDir        string
 	stats         *workerStats
-	
+
 	stopListener chan int
 
 	mirrorMapMutex sync.Mutex

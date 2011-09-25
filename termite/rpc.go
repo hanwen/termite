@@ -27,14 +27,13 @@ type FileAttr struct {
 	Path string
 	*os.FileInfo
 	fuse.Status
-	Hash    string
-	Link    string
+	Hash string
+	Link string
 }
 
 type AttrResponse struct {
-	Attrs    []*FileAttr
+	Attrs []*FileAttr
 }
-
 
 type DirRequest struct {
 	Name string
@@ -70,10 +69,9 @@ type WorkerStatusRequest struct {
 
 }
 
-
 type CpuStat struct {
-	SelfCpu int64
-	SelfSys int64
+	SelfCpu  int64
+	SelfSys  int64
 	ChildCpu int64
 	ChildSys int64
 }
@@ -119,6 +117,7 @@ type WorkRequest struct {
 func (me *WorkRequest) Summary() string {
 	return fmt.Sprintf("stdin %s cmd %s", me.StdinId, me.Argv)
 }
+
 type CreateMirrorRequest struct {
 	RpcId        string
 	RevRpcId     string

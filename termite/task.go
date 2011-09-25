@@ -104,7 +104,7 @@ func (me *WorkerTask) runInFuse(fuseFs *workerFuseFs) os.Error {
 	log.Println("started cmd", printCmd, "in", fuseFs.mount)
 	me.taskInfo = fmt.Sprintf("Cmd %v, dir %v, proc %v", cmd.Args, cmd.Dir, cmd.Process)
 	err := cmd.Wait()
-	
+
 	waitMsg, ok := err.(*os.Waitmsg)
 	if ok {
 		me.WorkResponse.Exit = *waitMsg

@@ -262,12 +262,12 @@ func (me *RpcFs) getFileAttr(name string) *FileAttr {
 		defer me.attrMutex.Unlock()
 		fa := &FileAttr{
 			Status: code,
-			Path: name,
+			Path:   name,
 		}
 		me.attrResponse[name] = fa
 		return fa
 	}
-	
+
 	me.attrMutex.Lock()
 	defer me.attrMutex.Unlock()
 	for me.attrFetchMap[name] && me.attrResponse[name] == nil {

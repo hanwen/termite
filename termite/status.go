@@ -10,7 +10,6 @@ import (
 const RUSAGE_SELF = 0
 const RUSAGE_CHILDREN = -1
 
-
 func sampleTime() interface{} {
 	c := CpuStat{}
 	r := syscall.Rusage{}
@@ -19,7 +18,7 @@ func sampleTime() interface{} {
 		log.Println("Getrusage:", errNo)
 		return nil
 	}
-	
+
 	c.SelfCpu = syscall.TimevalToNsec(r.Utime)
 	c.SelfSys = syscall.TimevalToNsec(r.Stime)
 
@@ -35,8 +34,8 @@ func sampleTime() interface{} {
 
 func (me *CpuStat) Diff(x CpuStat) CpuStat {
 	return CpuStat{
-		SelfSys: me.SelfSys - x.SelfSys,
-		SelfCpu: me.SelfCpu - x.SelfCpu,
+		SelfSys:  me.SelfSys - x.SelfSys,
+		SelfCpu:  me.SelfCpu - x.SelfCpu,
 		ChildSys: me.ChildSys - x.ChildSys,
 		ChildCpu: me.ChildCpu - x.ChildCpu,
 	}
@@ -55,7 +54,7 @@ func newWorkerStats() *workerStats {
 
 func (me *workerStats) CpuStats() (out []CpuStat) {
 	vals := me.cpuTimes.Values()
-	var last *CpuStat 
+	var last *CpuStat
 	for _, v := range vals {
 		s := v.(*CpuStat)
 		if last != nil {

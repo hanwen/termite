@@ -19,7 +19,7 @@ type masterStats struct {
 
 func newMasterStats() *masterStats {
 	return &masterStats{
-		received: NewMultiResolutionCounter(1, time.Seconds(), []int{60, 10}),
+		received:         NewMultiResolutionCounter(1, time.Seconds(), []int{60, 10}),
 		workerPhaseStats: map[string]float64{},
 	}
 }

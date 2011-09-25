@@ -64,8 +64,8 @@ type mirrorConnections struct {
 
 	wantedMaxJobs int
 
-        stats *masterStats
-	
+	stats *masterStats
+
 	// Condition for mutex below.
 	*sync.Cond
 

@@ -1,4 +1,5 @@
 package termite
+
 import (
 	"log"
 	"time"
@@ -7,19 +8,19 @@ import (
 var _ = log.Println
 
 type PeriodicSampler struct {
-	curr    int
-	dtNs    int64
-	samples []interface{}
-	measureFunc  func() interface{}
+	curr        int
+	dtNs        int64
+	samples     []interface{}
+	measureFunc func() interface{}
 
-	stop    bool
+	stop bool
 }
 
 func NewPeriodicSampler(period float64, samples int, measure func() interface{}) *PeriodicSampler {
 	me := &PeriodicSampler{
-		samples: make([]interface{}, samples),
+		samples:     make([]interface{}, samples),
 		measureFunc: measure,
-		dtNs: int64(period * 1e9),
+		dtNs:        int64(period * 1e9),
 	}
 	go me.sample()
 	return me
@@ -31,7 +32,7 @@ func (me *PeriodicSampler) sample() {
 		if m == nil {
 			continue
 		}
-		
+
 		me.curr = (me.curr + 1) % len(me.samples)
 		me.samples[me.curr] = m
 		time.Sleep(me.dtNs)
@@ -54,4 +55,3 @@ func (me *PeriodicSampler) Values() []interface{} {
 	}
 	return v
 }
-
