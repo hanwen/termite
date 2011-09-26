@@ -225,8 +225,10 @@ func (me *mirrorConnections) pick() (*mirrorConnection, os.Error) {
 			// locally.
 			return nil, os.NewError("No workers found at all.")
 		}
-
-		me.Cond.Wait()
+		
+		if me.availableJobs() == 0 {
+			me.Cond.Wait()
+		}
 	}
 
 	var found *mirrorConnection
