@@ -312,9 +312,8 @@ func (me *RpcFs) Open(name string, flags uint32, context *fuse.Context) (fuse.Fi
 	if _, err := os.Lstat(p); fuse.OsErrorToErrno(err) == fuse.ENOENT {
 		log.Printf("Fetching contents for file %s: %x", name, a.Hash)
 		err = me.FetchHash(a.FileInfo.Size, a.Hash)
-		// should return something else?
 		if err != nil {
-			return nil, fuse.ENOENT
+			log.Fatal("Error fetching contents: ", err)
 		}
 	}
 
