@@ -230,6 +230,11 @@ func (me *Coordinator) workerHandler(w http.ResponseWriter, req *http.Request) {
 	}
 	fmt.Fprintf(w, "</table>")
 
+	t := status.TotalCpu.Total()
+	fmt.Fprintf(w, "<p>Total CPU: %d %% self cpu, %d %% self sys, %d %% child cpu, %d %% child sys",
+		(100*status.TotalCpu.SelfCpu)/t , (status.TotalCpu.SelfSys*100)/t,
+		(status.TotalCpu.ChildCpu*100)/t, (status.TotalCpu.ChildSys*100)/t)
+
 	for _, mirrorStatus := range status.MirrorStatus {
 		me.mirrorStatusHtml(w, mirrorStatus)
 	}

@@ -11,6 +11,11 @@ const RUSAGE_SELF = 0
 const RUSAGE_CHILDREN = -1
 
 func sampleTime() interface{} {
+	c := TotalCpuStat()
+	return c
+}
+
+func TotalCpuStat() *CpuStat {
 	c := CpuStat{}
 	r := syscall.Rusage{}
 	errNo := syscall.Getrusage(RUSAGE_SELF, &r)
@@ -39,6 +44,10 @@ func (me *CpuStat) Diff(x CpuStat) CpuStat {
 		ChildSys: me.ChildSys - x.ChildSys,
 		ChildCpu: me.ChildCpu - x.ChildCpu,
 	}
+}
+
+func (me *CpuStat) Total() int64 {
+	return me.SelfSys + me.SelfCpu + me.ChildSys + me.ChildCpu
 }
 
 type workerStats struct {
@@ -95,5 +104,6 @@ func (me *WorkerDaemon) Status(req *WorkerStatusRequest, rep *WorkerStatusRespon
 	rep.Version = Version()
 	rep.ShuttingDown = me.shuttingDown
 	rep.CpuStats = me.stats.CpuStats()
+	rep.TotalCpu = *TotalCpuStat()
 	return nil
 }

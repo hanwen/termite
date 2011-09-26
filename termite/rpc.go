@@ -82,6 +82,7 @@ type WorkerStatusResponse struct {
 	MaxJobCount  int
 	ShuttingDown bool
 	CpuStats     []CpuStat
+	TotalCpu     CpuStat
 }
 
 type Timing struct {

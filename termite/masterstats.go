@@ -52,7 +52,7 @@ func (me *masterStats) writeHttp(w http.ResponseWriter) {
 
 	fmt.Fprintf(w, "<p>Request phases:<ul>")
 	for k, v := range me.workerPhaseStats {
-		fmt.Fprintf(w, "<li>%s: %.1f ms\n", k, v)
+		fmt.Fprintf(w, "<li>%s: %.03f s\n", k, float64(v) * 1e-3)
 	}
 	fmt.Fprintf(w, "</ul>")
 }
