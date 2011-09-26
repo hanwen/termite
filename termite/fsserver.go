@@ -197,6 +197,7 @@ func (me *FsServer) fillContent(rep *FileAttr) {
 		rep.Hash = me.getHash(rep.Path)
 		if rep.Hash == "" {
 			// Typically happens if we want to open /etc/shadow as normal user.
+			log.Println("fillContent returning EPERM for", rep.Path)
 			rep.Status = fuse.EPERM
 		}
 	}
