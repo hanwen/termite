@@ -213,21 +213,19 @@ func (me *mirrorConnections) pick() (*mirrorConnection, os.Error) {
 	me.Mutex.Lock()
 	defer me.Mutex.Unlock()
 
-	if me.availableJobs() <= 0 {
+	for me.availableJobs() <= 0 {
 		if len(me.workers) == 0 {
 			me.workers = me.fetchWorkers()
 		}
 		me.tryConnect()
-	}
+	
+		if me.maxJobs() == 0 {
+			// Didn't connect to anything.  Should
+			// probably direct the wrapper to compile
+			// locally.
+			return nil, os.NewError("No workers found at all.")
+		}
 
-	if me.maxJobs() == 0 {
-		// Didn't connect to anything.  Should
-		// probably direct the wrapper to compile
-		// locally.
-		return nil, os.NewError("No workers found at all.")
-	}
-
-	for me.availableJobs() == 0 {
 		me.Cond.Wait()
 	}
 
