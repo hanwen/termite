@@ -1,6 +1,7 @@
 package termite
 
 import (
+	"fmt"
 	"os"
 	"log"
 	"sync"
@@ -307,7 +308,10 @@ func (me *RpcFs) Open(name string, flags uint32, context *fuse.Context) (fuse.Fi
 
 	if contents := me.cache.ContentsIfLoaded(a.Hash); contents != nil {
 		return &fuse.WithFlags{
-			File:      fuse.NewDataFile(contents),
+			File: &rpcFsFile{
+				fuse.NewDataFile(contents),
+				*a.FileInfo,
+			},
 			FuseFlags: fuse.FOPEN_KEEP_CACHE,
 		}, fuse.OK
 	}
