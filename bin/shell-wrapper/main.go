@@ -133,6 +133,9 @@ func main() {
 	command := flag.String("c", "", "command to run.")
 	refresh := flag.Bool("refresh", false, "refresh master file cache.")
 	inspect := flag.Bool("inspect", false, "inspect files on master.")
+	exec := flag.Bool("exec", false, "run command args without shell.")
+	directory := flag.String("dir", "", "directory from where to run (default: cwd).")
+	
 	debug := flag.Bool("dbg", false, "set on debugging in request.")
 	flag.Parse()
 
@@ -144,11 +147,19 @@ func main() {
 		Inspect(flag.Args())
 	}
 
-	if *command == "" {
-		return
+	if *directory == "" {
+		wd, err := os.Getwd()
+		if err != nil {
+			log.Fatal("Getwd", err)
+		}
+
+		directory = &wd
 	}
+	
 	os.Args[0] = Shell()
-	TryRunDirect(*command)
+	if *command != "" {
+		TryRunDirect(*command)
+	}
 
 	socket := termite.FindSocket()
 	if socket == "" {
@@ -161,11 +172,6 @@ func main() {
 		Refresh()
 	}
 
-	wd, err := os.Getwd()
-	if err != nil {
-		log.Fatal("Getwd", err)
-	}
-
 	conn := termite.OpenSocketConnection(socket, termite.RPC_CHANNEL)
 
 	// TODO - could skip the shell if we can deduce it is a
@@ -175,14 +181,20 @@ func main() {
 		Binary:     Shell(),
 		Argv:       []string{Shell(), "-c", *command},
 		Env:        cleanEnv(os.Environ()),
-		Dir:        wd,
+		Dir:        *directory,
 		RanLocally: localWaitMsg != nil,
 	}
+	if *exec {
+		req.Binary = flag.Args()[0]
+		req.Argv = flag.Args()
+		log.Println(req)
+	}
+	
 	req.Debug = localRule.Debug || os.Getenv("TERMITE_DEBUG") != "" || *debug
 	client := rpc.NewClient(conn)
 
 	rep := termite.WorkResponse{}
-	err = client.Call("LocalMaster.Run", &req, &rep)
+	err := client.Call("LocalMaster.Run", &req, &rep)
 	client.Close()
 	if err != nil {
 		log.Fatal("LocalMaster.Run: ", err)
