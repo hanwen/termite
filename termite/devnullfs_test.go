@@ -15,7 +15,7 @@ func setupDevNullFs() (wd string, clean func()) {
 		panic(err)
 	}
 
-	state.Debug = true
+	state.Debug = fuse.VerboseTest()
 	go state.Loop()
 	return mountPoint, func() {
 		state.Unmount()

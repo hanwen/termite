@@ -116,7 +116,7 @@ func newRpcFsTestCase(t *testing.T) (me *rpcFsTestCase) {
 	me.rpcFs = NewRpcFs(rpcClient, NewContentCache(clientCache))
 
 	me.state, _, err = fuse.MountPathFileSystem(me.mnt, me.rpcFs, nil)
-	me.state.Debug = true
+	me.state.Debug = fuse.VerboseTest()
 	if err != nil {
 		t.Fatal("Mount", err)
 	}
