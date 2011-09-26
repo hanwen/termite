@@ -120,7 +120,6 @@ func (me *WorkerTask) runInFuse(fuseFs *workerFuseFs) os.Error {
 	me.WorkResponse.Stdout = stdout.String()
 	me.WorkResponse.Stderr = stderr.String()
 
-	fuseFs.switchFs.WaitClose()
 	me.clock("worker.runCommand")
 	err = me.fillReply(fuseFs.rwDir)
 	me.clock("worker.fillReply")
@@ -134,21 +133,21 @@ func (me *WorkerTask) runInFuse(fuseFs *workerFuseFs) os.Error {
 	return err
 }
 
-func (me *WorkerTask) fillReply(rwDir string) os.Error {
+func (me *WorkerTask) fillReply(backingStore string) os.Error {
 	saver := &fileSaver{
-		rwDir:  rwDir,
-		prefix: me.mirror.writableRoot,
+		rwDir:  backingStore,
 		cache:  me.mirror.daemon.contentCache,
 	}
 	saver.reapBackingStore()
+	for _, f := range saver.files {
+		f.Path = filepath.Join(me.mirror.writableRoot, f.Path)
+	}
 	me.WorkResponse.Files = saver.files
-
 	return saver.err
 }
 
 type fileSaver struct {
 	rwDir  string
-	prefix string
 	err    os.Error
 	files  []*FileAttr
 	cache  *ContentCache
@@ -162,13 +161,13 @@ func (me *fileSaver) savePath(path string, osInfo *os.FileInfo, err os.Error) os
 	if !strings.HasPrefix(path, me.rwDir) {
 		return os.NewError(fmt.Sprintf("File %q does not have prefix %q", path, me.rwDir))
 	}
-
+	if path == filepath.Join(me.rwDir, _DELETIONS) {
+		return nil
+	}
+	
 	fi := FileAttr{
 		FileInfo: osInfo,
 		Path:     path[len(me.rwDir):],
-	}
-	if !strings.HasPrefix(fi.Path, me.prefix) || fi.Path == "/"+_DELETIONS {
-		return nil
 	}
 
 	ftype := osInfo.Mode &^ 07777
@@ -220,6 +219,7 @@ func (me *fileSaver) reapBackingStore() {
 				break
 			}
 		}
+		os.Remove(dir)
 	}
 
 	if me.err == nil {
@@ -234,7 +234,7 @@ func (me *fileSaver) reapBackingStore() {
 			break
 		}
 		f := me.files[len(me.files)-i-1]
-		if f.FileInfo != nil && f.FileInfo.IsDirectory() && f.Path != me.prefix {
+		if f.FileInfo != nil && f.FileInfo.IsDirectory() {
 			me.err = os.Remove(filepath.Join(me.rwDir, f.Path))
 		}
 	}

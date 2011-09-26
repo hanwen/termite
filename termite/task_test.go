@@ -23,7 +23,6 @@ func TestFileSaver(t *testing.T) {
 
 	s := fileSaver{
 		rwDir:  rw,
-		prefix: "/dir",
 		cache:  NewContentCache(dir + "/cache"),
 	}
 
@@ -51,7 +50,7 @@ func TestFileSaver(t *testing.T) {
 	}
 
 	_, ok = byPath["/ignore"]
-	if ok {
+	if !ok {
 		t.Fatal("/ignore", f)
 	}
 }

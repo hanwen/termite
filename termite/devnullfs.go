@@ -25,6 +25,10 @@ func (me *DevNullFs) Root() fuse.FsNode {
 	return &me.root
 }
 
+func (me *DevNullFs) String() string {
+	return "DevNullFs"
+}
+
 type devNullNode struct {
 	fuse.DefaultFsNode
 }

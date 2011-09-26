@@ -16,12 +16,15 @@ type workerFuseFs struct {
 	rwDir  string
 	tmpDir string
 	mount  string
+
+	// without leading /
+	writableRoot string
 	*fuse.MountState
 	fsConnector *fuse.FileSystemConnector
-	switchFs    *SwitchFileSystem
 	unionFs     *unionfs.UnionFs
 	procFs      *ProcFs
 	nodeFs      *fuse.PathNodeFs
+	unionNodeFs *fuse.PathNodeFs
 	// If nil, we are running this task.
 	task *WorkerTask
 }
@@ -42,6 +45,7 @@ func (me *workerFuseFs) SetDebug(debug bool) {
 	me.MountState.Debug = debug
 	me.fsConnector.Debug = debug
 	me.nodeFs.Debug = debug
+	me.unionNodeFs.Debug = debug
 }
 
 func (me *Mirror) returnFuse(wfs *workerFuseFs) {
@@ -65,8 +69,9 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string, 
 	if err != nil {
 		return nil, err
 	}
-	w := workerFuseFs{
+	me := &workerFuseFs{
 		tmpDir: tmpDir,
+		writableRoot: strings.TrimLeft(writableRoot, "/"),
 	}
 
 	type dirInit struct {
@@ -74,30 +79,26 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string, 
 		val string
 	}
 
+	tmpBacking := ""
 	for _, v := range []dirInit{
-		dirInit{&w.rwDir, "rw"},
-		dirInit{&w.mount, "mnt"},
+		dirInit{&me.rwDir, "rw"},
+		dirInit{&me.mount, "mnt"},	
+		dirInit{&tmpBacking, "tmp-backing"},
 	} {
-		*v.dst = filepath.Join(w.tmpDir, v.val)
+		*v.dst = filepath.Join(me.tmpDir, v.val)
 		err = os.Mkdir(*v.dst, 0700)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	tmpBacking := filepath.Join(w.tmpDir, "tmp-backingstore")
-	if err := os.Mkdir(tmpBacking, 0700); err != nil {
-		return nil, err
+	fuseOpts := fuse.MountOptions{}
+	if os.Geteuid() == 0 {
+		fuseOpts.AllowOther = true
 	}
-
-	rwFs := fuse.NewLoopbackFileSystem(w.rwDir)
-
+	
+	me.nodeFs = fuse.NewPathNodeFs(rpcFs, nil)
 	ttl := 30.0
-	opts := unionfs.UnionFsOptions{
-		BranchCacheTTLSecs:   ttl,
-		DeletionCacheTTLSecs: ttl,
-		DeletionDirName:      _DELETIONS,
-	}
 	mOpts := fuse.FileSystemOptions{
 		EntryTimeout:    ttl,
 		AttrTimeout:     ttl,
@@ -107,69 +108,64 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string, 
 		// numbers.
 		PortableInodes: true,
 	}
-
-	tmpFs := fuse.NewLoopbackFileSystem(tmpBacking)
-
-	w.procFs = NewProcFs()
-	w.procFs.StripPrefix = w.mount
-	if nobody != nil {
-		w.procFs.Uid = nobody.Uid
-	}
-
-	w.unionFs = unionfs.NewUnionFs([]fuse.FileSystem{rwFs, rpcFs}, opts)
-	swFs := []fuse.SwitchedFileSystem{
-		{"", rpcFs, false},
-		// TODO - configurable.
-		{writableRoot, w.unionFs, false},
-		// TODO - figure out how to mount this normally.
-		{"var/tmp", tmpFs, true},
-	}
-	type submount struct {
-		mountpoint string
-		fs         fuse.FileSystem
-	}
-	mounts := []submount{
-		{"proc", w.procFs},
-		{"sys", &fuse.ReadonlyFileSystem{fuse.NewLoopbackFileSystem("/sys")}},
-	}
-	fuseOpts := fuse.MountOptions{}
-	if os.Geteuid() != 0 {
-		// Typically, we run our tests as non-root under /tmp.
-		// If we use go-fuse to mount /tmp, it will hide
-		// writableRoot, and all our tests will fail.
-		swFs = append(swFs,
-			fuse.SwitchedFileSystem{"/tmp", tmpFs, true},
-		)
-	} else {
-		fuseOpts.AllowOther = true
-		mounts = append(mounts,
-			submount{"tmp", tmpFs},
-		)
-	}
-
-	w.switchFs = NewSwitchFileSystem(fuse.NewSwitchFileSystem(swFs), w.unionFs)
-	pathOpts := fuse.PathNodeFsOptions{
-		ClientInodes: true,
-	}
-	w.nodeFs = fuse.NewPathNodeFs(w.switchFs, &pathOpts)
-	w.fsConnector = fuse.NewFileSystemConnector(w.nodeFs, &mOpts)
-	w.MountState = fuse.NewMountState(w.fsConnector)
-
-	err = w.MountState.Mount(w.mount, &fuseOpts)
+		
+	me.fsConnector = fuse.NewFileSystemConnector(me.nodeFs, &mOpts)
+	me.MountState = fuse.NewMountState(me.fsConnector)
+	err = me.MountState.Mount(me.mount, &fuseOpts)
 	if err != nil {
 		return nil, err
 	}
+	go me.MountState.Loop()
+	
+	rwFs := fuse.NewLoopbackFileSystem(me.rwDir)
+	opts := unionfs.UnionFsOptions{
+		BranchCacheTTLSecs:   ttl,
+		DeletionCacheTTLSecs: ttl,
+		DeletionDirName:      _DELETIONS,
+	}
+	me.unionFs = unionfs.NewUnionFs([]fuse.FileSystem{rwFs,
+		&fuse.PrefixFileSystem{rpcFs, me.writableRoot}}, opts)
+
+	me.procFs = NewProcFs()
+	me.procFs.StripPrefix = me.mount
+	if nobody != nil {
+		me.procFs.Uid = nobody.Uid
+	}
+	type submount struct {
+		mountpoint string
+		fs         fuse.NodeFileSystem
+	}
+	
+	mounts := []submount{
+		{"proc", fuse.NewPathNodeFs(me.procFs, nil)},
+		{"sys", fuse.NewPathNodeFs(&fuse.ReadonlyFileSystem{fuse.NewLoopbackFileSystem("/sys")}, nil)},
+		{"tmp", fuse.NewMemNodeFs(tmpBacking + "tmp")},
+		{"dev", NewDevNullFs()},
+		{"var/tmp", fuse.NewMemNodeFs(tmpBacking + "vartmp")},
+	}
 	for _, s := range mounts {
-		code := w.fsConnector.Mount(w.nodeFs.Root().Inode(), s.mountpoint, fuse.NewPathNodeFs(s.fs, nil), nil)
+		code := me.nodeFs.Mount(s.mountpoint, s.fs, nil)
 		if !code.Ok() {
-			return nil, os.NewError(fmt.Sprintf("submount error for %v: %v", s.mountpoint, code))
+			me.MountState.Unmount()
+			return nil, os.NewError(fmt.Sprintf("submount error for %s: %v", s.mountpoint, code))
 		}
 	}
-	w.fsConnector.Mount(w.nodeFs.Root().Inode(), "dev", NewDevNullFs(), nil)
-
-	go w.MountState.Loop()
-
-	return &w, nil
+	if strings.HasPrefix(me.writableRoot, "tmp/") {
+		parent, _ := filepath.Split(me.writableRoot)
+		err := os.MkdirAll(filepath.Join(me.mount, parent), 0755)
+		if err != nil {
+			me.MountState.Unmount()
+			return nil, os.NewError(fmt.Sprintf("Mkdir of %q in /tmp fail: %v", parent, err))
+		}
+	}
+	me.unionNodeFs = fuse.NewPathNodeFs(me.unionFs, &fuse.PathNodeFsOptions{ClientInodes: true})
+	code := me.nodeFs.Mount(me.writableRoot, me.unionNodeFs, nil)
+	if !code.Ok() {
+		me.MountState.Unmount()
+		return nil, os.NewError(fmt.Sprintf("submount error for %s: %v", me.writableRoot, code))
+	}
+	
+	return me, nil
 }
 
 func (me *workerFuseFs) update(attrs []*FileAttr, origin *workerFuseFs) {
@@ -181,14 +177,20 @@ func (me *workerFuseFs) update(attrs []*FileAttr, origin *workerFuseFs) {
 
 	for _, attr := range attrs {
 		path := strings.TrimLeft(attr.Path, "/")
+		if !strings.HasPrefix(path, me.writableRoot) {
+			log.Printf("invalid prefix on %q, expect %q", path, me.writableRoot)
+			continue
+		}
+		path = strings.TrimLeft(path[len(me.writableRoot):], "/")
 		paths = append(paths, path)
 
 		if origin == me {
 			continue
 		}
-
+		
 		if attr.Status.Ok() {
-			me.nodeFs.Notify(path)
+			log.Printf("ok notify %q", path)
+			me.unionNodeFs.Notify(path)
 		} else {
 			// Even if GetAttr() returns ENOENT, FUSE will
 			// happily try to Open() the file afterwards.
@@ -196,7 +198,7 @@ func (me *workerFuseFs) update(attrs []*FileAttr, origin *workerFuseFs) {
 			// than inode notify.
 			dir, base := filepath.Split(path)
 			dir = filepath.Clean(dir)
-			me.nodeFs.EntryNotify(dir, base)
+			me.unionNodeFs.EntryNotify(dir, base)
 		}
 	}
 	me.unionFs.DropBranchCache(paths)

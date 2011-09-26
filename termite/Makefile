@@ -27,7 +27,6 @@ MANUAL_GOFILES=\
 	rpc.go \
 	rpcfs.go \
 	status.go \
-	switchfs.go \
 	task.go \
 	timer.go \
 	version.go \

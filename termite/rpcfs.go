@@ -11,6 +11,7 @@ import (
 )
 
 type RpcFs struct {
+	StatFsFs fuse.FileSystem
 	fuse.DefaultFileSystem
 	cache *ContentCache
 
@@ -127,74 +128,6 @@ func (me *RpcFs) GetDir(name string) *DirResponse {
 	return rep
 }
 
-func (me *RpcFs) OpenDir(name string, context *fuse.Context) (chan fuse.DirEntry, fuse.Status) {
-	r := me.GetDir(name)
-	if !r.Status.Ok() {
-		return nil, r.Status
-	}
-
-	c := make(chan fuse.DirEntry, len(r.NameModeMap))
-	for k, mode := range r.NameModeMap {
-		c <- fuse.DirEntry{
-			Name: k,
-			Mode: mode,
-		}
-	}
-	close(c)
-	return c, fuse.OK
-}
-
-type rpcFsFile struct {
-	fuse.File
-	os.FileInfo
-}
-
-func (me *rpcFsFile) GetAttr() (*os.FileInfo, fuse.Status) {
-	return &me.FileInfo, fuse.OK
-}
-
-func (me *RpcFs) Open(name string, flags uint32, context *fuse.Context) (fuse.File, fuse.Status) {
-	if flags&fuse.O_ANYWRITE != 0 {
-		return nil, fuse.EPERM
-	}
-	a := me.getFileAttr(name)
-	if a == nil {
-		return nil, fuse.ENOENT
-	}
-	if !a.Status.Ok() {
-		return nil, a.Status
-	}
-
-	if contents := me.cache.ContentsIfLoaded(a.Hash); contents != nil {
-		return &fuse.WithFlags{
-			File:      fuse.NewDataFile(contents),
-			FuseFlags: fuse.FOPEN_KEEP_CACHE,
-		}, fuse.OK
-	}
-
-	p := me.cache.Path(a.Hash)
-	if _, err := os.Lstat(p); fuse.OsErrorToErrno(err) == fuse.ENOENT {
-		log.Printf("Fetching contents for file %s: %x", name, a.Hash)
-		err = me.FetchHash(a.FileInfo.Size, a.Hash)
-		// should return something else?
-		if err != nil {
-			return nil, fuse.ENOENT
-		}
-	}
-
-	f, err := os.Open(p)
-	if err != nil {
-		return nil, fuse.OsErrorToErrno(err)
-	}
-
-	return &fuse.WithFlags{
-		File: &rpcFsFile{
-			&fuse.ReadOnlyFile{&fuse.LoopbackFile{File: f}},
-			*a.FileInfo,
-		},
-		FuseFlags: fuse.FOPEN_KEEP_CACHE,
-	}, fuse.OK
-}
 
 func (me *RpcFs) FetchHash(size int64, key string) os.Error {
 	me.fetchMutex.Lock()
@@ -224,21 +157,6 @@ func (me *RpcFs) fetchOnce(hash string) os.Error {
 		me.cache)
 }
 
-func (me *RpcFs) Readlink(name string, context *fuse.Context) (string, fuse.Status) {
-	a := me.getFileAttr(name)
-	if a == nil {
-		return "", fuse.ENOENT
-	}
-
-	if !a.Status.Ok() {
-		return "", a.Status
-	}
-	if !a.FileInfo.IsSymlink() {
-		return "", fuse.EINVAL
-	}
-
-	return a.Link, fuse.OK
-}
 
 func (me *RpcFs) getFileAttr(name string) *FileAttr {
 	me.attrMutex.RLock()
@@ -338,6 +256,98 @@ func (me *RpcFs) considerSaveLocal(attr *FileAttr) {
 	}
 }
 
+////////////////////////////////////////////////////////////////
+// FS API
+
+func (me *RpcFs) String() string {
+	return "RpcFs"
+}
+
+func (me *RpcFs) OpenDir(name string, context *fuse.Context) (chan fuse.DirEntry, fuse.Status) {
+	r := me.GetDir(name)
+	if !r.Status.Ok() {
+		return nil, r.Status
+	}
+
+	c := make(chan fuse.DirEntry, len(r.NameModeMap))
+	for k, mode := range r.NameModeMap {
+		c <- fuse.DirEntry{
+			Name: k,
+			Mode: mode,
+		}
+	}
+	close(c)
+	return c, fuse.OK
+}
+
+type rpcFsFile struct {
+	fuse.File
+	os.FileInfo
+}
+
+func (me *rpcFsFile) GetAttr() (*os.FileInfo, fuse.Status) {
+	return &me.FileInfo, fuse.OK
+}
+
+func (me *RpcFs) Open(name string, flags uint32, context *fuse.Context) (fuse.File, fuse.Status) {
+	if flags&fuse.O_ANYWRITE != 0 {
+		return nil, fuse.EPERM
+	}
+	a := me.getFileAttr(name)
+	if a == nil {
+		return nil, fuse.ENOENT
+	}
+	if !a.Status.Ok() {
+		return nil, a.Status
+	}
+
+	if contents := me.cache.ContentsIfLoaded(a.Hash); contents != nil {
+		return &fuse.WithFlags{
+			File:      fuse.NewDataFile(contents),
+			FuseFlags: fuse.FOPEN_KEEP_CACHE,
+		}, fuse.OK
+	}
+
+	p := me.cache.Path(a.Hash)
+	if _, err := os.Lstat(p); fuse.OsErrorToErrno(err) == fuse.ENOENT {
+		log.Printf("Fetching contents for file %s: %x", name, a.Hash)
+		err = me.FetchHash(a.FileInfo.Size, a.Hash)
+		// should return something else?
+		if err != nil {
+			return nil, fuse.ENOENT
+		}
+	}
+
+	f, err := os.Open(p)
+	if err != nil {
+		return nil, fuse.OsErrorToErrno(err)
+	}
+
+	return &fuse.WithFlags{
+		File: &rpcFsFile{
+			&fuse.ReadOnlyFile{&fuse.LoopbackFile{File: f}},
+			*a.FileInfo,
+		},
+		FuseFlags: fuse.FOPEN_KEEP_CACHE,
+	}, fuse.OK
+}
+
+func (me *RpcFs) Readlink(name string, context *fuse.Context) (string, fuse.Status) {
+	a := me.getFileAttr(name)
+	if a == nil {
+		return "", fuse.ENOENT
+	}
+
+	if !a.Status.Ok() {
+		return "", a.Status
+	}
+	if !a.FileInfo.IsSymlink() {
+		return "", fuse.EINVAL
+	}
+
+	return a.Link, fuse.OK
+}
+
 func (me *RpcFs) GetAttr(name string, context *fuse.Context) (*os.FileInfo, fuse.Status) {
 	if name == "" {
 		return &os.FileInfo{
@@ -352,3 +362,26 @@ func (me *RpcFs) GetAttr(name string, context *fuse.Context) (*os.FileInfo, fuse
 
 	return r.FileInfo, r.Status
 }
+
+// TODO - fix this in go-fuse instead.
+func (me *RpcFs) StatFs() *fuse.StatfsOut {
+	if me.StatFsFs != nil {
+		return me.StatFsFs.StatFs()
+	}
+	return nil
+}
+
+func (me *RpcFs) Access(name string, mode uint32, context *fuse.Context) (code fuse.Status) {
+	if mode == fuse.F_OK {
+		_, code := me.GetAttr(name, context)
+		return code
+	}
+	if mode & fuse.W_OK != 0 {
+		return fuse.EACCES
+	}
+	return fuse.OK
+}
+
+
+
+

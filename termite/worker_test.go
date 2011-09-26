@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/hanwen/go-fuse/fuse"
 	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
 	"rand"
@@ -22,6 +21,7 @@ type testCase struct {
 	coordinator     *Coordinator
 	secret          []byte
 	tmp             string
+	wd              string
 	socket          string
 	coordinatorPort int
 	workerPort      int
@@ -65,6 +65,9 @@ func NewTestCase(t *testing.T) *testCase {
 		Jobs:     1,
 	}
 
+	me.wd = me.tmp + "/wd"
+	os.MkdirAll(me.wd, 0755)
+	
 	me.worker = NewWorkerDaemon(&opts)
 
 	// TODO - pick unused port
@@ -89,7 +92,7 @@ func NewTestCase(t *testing.T) *testCase {
 			me.secret, []string{}, 1)
 		me.master.fileServer.excludePrivate = false
 		me.master.SetKeepAlive(0.5, 0.5)
-		me.socket = me.tmp + "/master-socket"
+		me.socket = me.wd + "/master-socket"
 		go me.master.Start(me.socket)
 		wg.Done()
 	}()
@@ -97,12 +100,9 @@ func NewTestCase(t *testing.T) *testCase {
 
 	wg.Wait()
 	for me.coordinator.WorkerCount() == 0 {
-		log.Println("reporting...")
 		me.worker.report(coordinatorAddr, me.workerPort)
 	}
 
-	wd := me.tmp + "/wd"
-	os.MkdirAll(wd, 0755)
 	return me
 }
 
@@ -115,7 +115,6 @@ func (me *testCase) fdCount() int {
 }
 
 func (me *testCase) Clean() {
-	log.Println("cleaning up testcase.")
 	me.master.mirrors.dropConnections()
 	me.worker.Shutdown(nil, nil)
 	me.coordinator.Shutdown()
@@ -130,7 +129,7 @@ func (me *testCase) Clean() {
 		entries, _ := ioutil.ReadDir(dir)
 		for _, e := range entries {
 			l, _ := os.Readlink(filepath.Join(dir, e.Name))
-			log.Printf("%s -> %q", e.Name, l)
+			me.tester.Logf("%s -> %q", e.Name, l)
 		}
 	}
 }
@@ -151,7 +150,7 @@ func (me *testCase) Run(req WorkRequest) (rep WorkResponse) {
 // basic assurance that things work as expected.
 func TestEndToEndBasic(t *testing.T) {
 	if os.Geteuid() == 0 {
-		log.Println("This test should not run as root")
+		t.Log("This test should not run as root")
 		return
 	}
 
@@ -166,7 +165,7 @@ func TestEndToEndBasic(t *testing.T) {
 
 		// Will not be filtered, since /tmp/foo is more
 		// specific than /tmp
-		Dir: tc.tmp + "/wd",
+		Dir:     tc.wd,
 	}
 
 	// TODO - should separate dial/listen in the daemons?
@@ -177,7 +176,7 @@ func TestEndToEndBasic(t *testing.T) {
 	}()
 
 	tc.Run(req)
-	content, err := ioutil.ReadFile(tc.tmp + "/wd/output.txt")
+	content, err := ioutil.ReadFile(tc.wd + "/output.txt")
 	if err != nil {
 		t.Error(err)
 	}
@@ -189,10 +188,10 @@ func TestEndToEndBasic(t *testing.T) {
 		Binary: tc.FindBin("rm"),
 		Argv:   []string{"rm", "output.txt"},
 		Env:    testEnv(),
-		Dir:    tc.tmp + "/wd",
+		Dir:    tc.wd,
 	})
 
-	if fi, _ := os.Lstat(tc.tmp + "/wd/output.txt"); fi != nil {
+	if fi, _ := os.Lstat(tc.wd + "/output.txt"); fi != nil {
 		t.Error("file should have been deleted", fi)
 	}
 
@@ -207,9 +206,31 @@ func TestEndToEndBasic(t *testing.T) {
 	}
 }
 
+func TestEndToEndExec(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Log("This test should not run as root")
+		return
+	}
+
+	tc := NewTestCase(t)
+	defer tc.Clean()
+
+	rep := tc.Run(WorkRequest{
+		Binary: tc.FindBin("true"),
+		Argv:   []string{"true"},
+		Env:    testEnv(),
+		Dir:    tc.wd,
+		Debug: true,
+	})
+
+	if rep.Exit.ExitStatus() != 0 {
+		t.Fatal("expect exit status == 0", rep.Exit.ExitStatus())
+	}	
+}
+
 func TestEndToEndNegativeNotify(t *testing.T) {
 	if os.Geteuid() == 0 {
-		log.Println("This test should not run as root")
+		t.Log("This test should not run as root")
 		return
 	}
 
@@ -220,7 +241,8 @@ func TestEndToEndNegativeNotify(t *testing.T) {
 		Binary: tc.FindBin("cat"),
 		Argv:   []string{"cat", "output.txt"},
 		Env:    testEnv(),
-		Dir:    tc.tmp + "/wd",
+		Dir:    tc.wd,
+		Debug:  true,
 	})
 
 	if rep.Exit.ExitStatus() == 0 {
@@ -229,9 +251,10 @@ func TestEndToEndNegativeNotify(t *testing.T) {
 
 	newContent := []byte("new content")
 	hash := tc.master.cache.Save(newContent)
+	ioutil.WriteFile(tc.wd + "/output.txt", newContent, 0644)
 	updated := []*FileAttr{
 		&FileAttr{
-			Path:     tc.tmp + "/wd/output.txt",
+			Path:     tc.wd + "/output.txt",
 			FileInfo: &os.FileInfo{Mode: fuse.S_IFREG | 0644, Size: int64(len(newContent))},
 			Hash:     hash,
 		},
@@ -242,13 +265,13 @@ func TestEndToEndNegativeNotify(t *testing.T) {
 		Binary: tc.FindBin("cat"),
 		Argv:   []string{"cat", "output.txt"},
 		Env:    testEnv(),
-		Dir:    tc.tmp + "/wd",
+		Dir:    tc.wd,
+		Debug:  true,
 	})
 
 	if rep.Exit.ExitStatus() != 0 {
 		t.Fatal("expect exit status == 0", rep.Exit.ExitStatus())
 	}
-	log.Println("new content:", rep.Stdout)
 	if string(rep.Stdout) != string(newContent) {
 		t.Error("Mismatch", string(rep.Stdout), string(newContent))
 	}
@@ -256,7 +279,7 @@ func TestEndToEndNegativeNotify(t *testing.T) {
 
 func TestEndToEndMove(t *testing.T) {
 	if os.Geteuid() == 0 {
-		log.Println("This test should not run as root")
+		t.Log("This test should not run as root")
 		return
 	}
 
@@ -267,7 +290,7 @@ func TestEndToEndMove(t *testing.T) {
 		Binary: tc.FindBin("mkdir"),
 		Argv:   []string{"mkdir", "-p", "a/b/c"},
 		Env:    testEnv(),
-		Dir:    tc.tmp + "/wd",
+		Dir:    tc.wd,
 	})
 	if rep.Exit.ExitStatus() != 0 {
 		t.Fatalf("mkdir should exit cleanly. Rep %v", rep)
@@ -276,20 +299,20 @@ func TestEndToEndMove(t *testing.T) {
 		Binary: tc.FindBin("mv"),
 		Argv:   []string{"mv", "a", "q"},
 		Env:    testEnv(),
-		Dir:    tc.tmp + "/wd",
+		Dir:    tc.wd,
 	})
 	if rep.Exit.ExitStatus() != 0 {
 		t.Fatalf("mv should exit cleanly. Rep %v", rep)
 	}
 
-	if fi, err := os.Lstat(tc.tmp + "/wd/q/b/c"); err != nil || !fi.IsDirectory() {
+	if fi, err := os.Lstat(tc.wd + "/q/b/c"); err != nil || !fi.IsDirectory() {
 		t.Errorf("dir should have been moved. Err %v, fi %v", err, fi)
 	}
 }
 
 func TestEndToEndStdout(t *testing.T) {
 	if os.Geteuid() == 0 {
-		log.Println("This test should not run as root")
+		t.Log("This test should not run as root")
 		return
 	}
 
@@ -314,7 +337,7 @@ func TestEndToEndStdout(t *testing.T) {
 		Binary: tc.FindBin("cat"),
 		Argv:   []string{"cat", "file.txt"},
 		Env:    testEnv(),
-		Dir:    tc.tmp + "/wd",
+		Dir:    tc.wd,
 	})
 
 	if string(rep.Stdout) != string(shcmd) {
@@ -324,7 +347,7 @@ func TestEndToEndStdout(t *testing.T) {
 
 func TestEndToEndModeChange(t *testing.T) {
 	if os.Geteuid() == 0 {
-		log.Println("This test should not run as root")
+		t.Log("This test should not run as root")
 		return
 	}
 
@@ -338,10 +361,10 @@ func TestEndToEndModeChange(t *testing.T) {
 		Binary: tc.FindBin("chmod"),
 		Argv:   []string{"chmod", "a+x", "file.txt"},
 		Env:    testEnv(),
-		Dir:    tc.tmp + "/wd",
+		Dir:    tc.wd,
 	})
 
-	fi, err := os.Lstat(tc.tmp + "/wd/file.txt")
+	fi, err := os.Lstat(tc.wd + "/file.txt")
 	check(err)
 
 	if !fi.IsRegular() || fi.Mode&0111 == 0 {
@@ -354,7 +377,7 @@ func TestEndToEndModeChange(t *testing.T) {
 
 func TestEndToEndSymlink(t *testing.T) {
 	if os.Geteuid() == 0 {
-		log.Println("This test should not run as root")
+		t.Log("This test should not run as root")
 		return
 	}
 
@@ -370,10 +393,10 @@ func TestEndToEndSymlink(t *testing.T) {
 		Binary: tc.FindBin("touch"),
 		Argv:   []string{"touch", "file.txt"},
 		Env:    testEnv(),
-		Dir:    tc.tmp + "/wd",
+		Dir:    tc.wd,
 	})
 
-	if fi, err := os.Lstat(tc.tmp + "/wd/file.txt"); err != nil || !fi.IsRegular() || fi.Size != 0 {
+	if fi, err := os.Lstat(tc.wd + "/file.txt"); err != nil || !fi.IsRegular() || fi.Size != 0 {
 		t.Fatalf("wd/file.txt was not created. Err: %v, fi: %v", err, fi)
 	}
 	if rep.Exit.ExitStatus() != 0 {
@@ -383,20 +406,20 @@ func TestEndToEndSymlink(t *testing.T) {
 		Binary: tc.FindBin("ln"),
 		Argv:   []string{"ln", "-sf", "foo", "symlink"},
 		Env:    testEnv(),
-		Dir:    tc.tmp + "/wd",
+		Dir:    tc.wd,
 	})
 	if rep.Exit.ExitStatus() != 0 {
 		t.Fatalf("ln -s should exit cleanly. Rep %v", rep)
 	}
 
-	if fi, err := os.Lstat(tc.tmp + "/wd/symlink"); err != nil || !fi.IsSymlink() {
+	if fi, err := os.Lstat(tc.wd + "/symlink"); err != nil || !fi.IsSymlink() {
 		t.Errorf("should have symlink. Err %v, fi %v", err, fi)
 	}
 }
 
 func TestEndToEndShutdown(t *testing.T) {
 	if os.Geteuid() == 0 {
-		log.Println("This test should not run as root")
+		t.Log("This test should not run as root")
 		return
 	}
 
@@ -412,7 +435,7 @@ func TestEndToEndShutdown(t *testing.T) {
 		Binary: tc.FindBin("touch"),
 		Argv:   []string{"touch", "file.txt"},
 		Env:    testEnv(),
-		Dir:    tc.tmp + "/wd",
+		Dir:    tc.wd,
 	}
 	rep := tc.Run(req)
 
