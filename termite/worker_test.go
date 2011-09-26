@@ -162,9 +162,6 @@ func TestEndToEndBasic(t *testing.T) {
 		Binary:  tc.FindBin("tee"),
 		Argv:    []string{"tee", "output.txt"},
 		Env:     testEnv(),
-
-		// Will not be filtered, since /tmp/foo is more
-		// specific than /tmp
 		Dir:     tc.wd,
 	}
 
@@ -220,7 +217,6 @@ func TestEndToEndExec(t *testing.T) {
 		Argv:   []string{"true"},
 		Env:    testEnv(),
 		Dir:    tc.wd,
-		Debug: true,
 	})
 
 	if rep.Exit.ExitStatus() != 0 {
@@ -242,7 +238,6 @@ func TestEndToEndNegativeNotify(t *testing.T) {
 		Argv:   []string{"cat", "output.txt"},
 		Env:    testEnv(),
 		Dir:    tc.wd,
-		Debug:  true,
 	})
 
 	if rep.Exit.ExitStatus() == 0 {
@@ -266,7 +261,6 @@ func TestEndToEndNegativeNotify(t *testing.T) {
 		Argv:   []string{"cat", "output.txt"},
 		Env:    testEnv(),
 		Dir:    tc.wd,
-		Debug:  true,
 	})
 
 	if rep.Exit.ExitStatus() != 0 {

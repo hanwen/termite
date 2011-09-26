@@ -5,7 +5,7 @@ import (
 	"exec"
 	"fmt"
 	"github.com/hanwen/go-fuse/fuse"
-	"io/ioutil"
+	"github.com/hanwen/go-fuse/unionfs"
 	"log"
 	"net"
 	"os"
@@ -121,7 +121,7 @@ func (me *WorkerTask) runInFuse(fuseFs *workerFuseFs) os.Error {
 	me.WorkResponse.Stderr = stderr.String()
 
 	me.clock("worker.runCommand")
-	err = me.fillReply(fuseFs.rwDir)
+	err = me.fillReply(fuseFs.unionFs)
 	me.clock("worker.fillReply")
 	if err == nil {
 		// Must do updateFiles before ReturnFuse, since the
@@ -133,109 +133,42 @@ func (me *WorkerTask) runInFuse(fuseFs *workerFuseFs) os.Error {
 	return err
 }
 
-func (me *WorkerTask) fillReply(backingStore string) os.Error {
-	saver := &fileSaver{
-		rwDir:  backingStore,
-		cache:  me.mirror.daemon.contentCache,
-	}
-	saver.reapBackingStore()
-	for _, f := range saver.files {
-		f.Path = filepath.Join(me.mirror.writableRoot, f.Path)
-	}
-	me.WorkResponse.Files = saver.files
-	return saver.err
-}
+func (me *WorkerTask) fillReply(ufs *unionfs.MemUnionFs) os.Error {
+	yield := ufs.Reap()
+	ufs.Clear()
+	wrRoot := strings.TrimLeft(me.mirror.writableRoot, "/")
+	cache := me.mirror.daemon.contentCache
 
-type fileSaver struct {
-	rwDir  string
-	err    os.Error
-	files  []*FileAttr
-	cache  *ContentCache
-}
-
-func (me *fileSaver) savePath(path string, osInfo *os.FileInfo, err os.Error) os.Error {
-	if err != nil {
-		return err
-	}
-
-	if !strings.HasPrefix(path, me.rwDir) {
-		return os.NewError(fmt.Sprintf("File %q does not have prefix %q", path, me.rwDir))
-	}
-	if path == filepath.Join(me.rwDir, _DELETIONS) {
-		return nil
-	}
-	
-	fi := FileAttr{
-		FileInfo: osInfo,
-		Path:     path[len(me.rwDir):],
-	}
-
-	ftype := osInfo.Mode &^ 07777
-	switch ftype {
-	case fuse.S_IFDIR:
-		// nothing.
-	case fuse.S_IFREG:
-		fi.Hash = me.cache.DestructiveSavePath(path)
-		if fi.Hash == "" {
-			return os.NewError("DestructiveSavePath fail")
+	files := []*FileAttr{}
+	for path, v := range yield {
+		f := &FileAttr{
+			Path: "/" + filepath.Join(wrRoot, path),
 		}
-	case fuse.S_IFLNK:
-		fi.Link, err = os.Readlink(path)
-		if err != nil {
-			return err
-		}
-		os.Remove(path)
-	default:
-		log.Fatalf("Unknown file type %o", ftype)
-	}
 
-	me.files = append(me.files, &fi)
+		if v.FileInfo == nil  {
+			f.Status = fuse.ENOENT
+		} else {
+			f.FileInfo = v.FileInfo
+			f.Link = v.Link
+			if f.FileInfo.IsRegular() {
+				if v.Original != "" {
+					contentPath := filepath.Join(wrRoot, v.Original)
+					fa := me.mirror.rpcFs.getFileAttr(contentPath)
+					if fa.Hash == "" {
+						panic(fmt.Sprintf("Contents for %q disappeared.", contentPath))
+					}
+					f.Hash = fa.Hash
+				} else {
+					f.Hash = cache.DestructiveSavePath(v.Backing)
+					if f.Hash == "" {
+						return os.NewError(fmt.Sprintf("DestructiveSavePath fail %q", v.Backing))
+					}
+				}
+			}
+		}
+
+		files = append(files, f)
+	}
+	me.WorkResponse.Files = files
 	return nil
-}
-
-func (me *fileSaver) reapBackingStore() {
-	dir := filepath.Join(me.rwDir, _DELETIONS)
-	_, err := os.Lstat(dir)
-	if err == nil {
-		matches, err := filepath.Glob(dir + "/*")
-		if err != nil {
-			me.err = err
-			return
-		}
-
-		for _, fullPath := range matches {
-			contents, err := ioutil.ReadFile(fullPath)
-			if err != nil {
-				me.err = err
-				return
-			}
-
-			me.files = append(me.files, &FileAttr{
-				Status: fuse.ENOENT,
-				Path:   "/" + string(contents),
-			})
-			me.err = os.Remove(fullPath)
-			if me.err != nil {
-				break
-			}
-		}
-		os.Remove(dir)
-	}
-
-	if me.err == nil {
-		me.err = filepath.Walk(me.rwDir,
-			func(path string, fi *os.FileInfo, err os.Error) os.Error {
-				return me.savePath(path, fi, err)
-			})
-	}
-
-	for i, _ := range me.files {
-		if me.err != nil {
-			break
-		}
-		f := me.files[len(me.files)-i-1]
-		if f.FileInfo != nil && f.FileInfo.IsDirectory() {
-			me.err = os.Remove(filepath.Join(me.rwDir, f.Path))
-		}
-	}
 }

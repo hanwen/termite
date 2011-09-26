@@ -21,7 +21,7 @@ type workerFuseFs struct {
 	writableRoot string
 	*fuse.MountState
 	fsConnector *fuse.FileSystemConnector
-	unionFs     *unionfs.UnionFs
+	unionFs     *unionfs.MemUnionFs
 	procFs      *ProcFs
 	nodeFs      *fuse.PathNodeFs
 	unionNodeFs *fuse.PathNodeFs
@@ -45,7 +45,6 @@ func (me *workerFuseFs) SetDebug(debug bool) {
 	me.MountState.Debug = debug
 	me.fsConnector.Debug = debug
 	me.nodeFs.Debug = debug
-	me.unionNodeFs.Debug = debug
 }
 
 func (me *Mirror) returnFuse(wfs *workerFuseFs) {
@@ -117,14 +116,8 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string, 
 	}
 	go me.MountState.Loop()
 	
-	rwFs := fuse.NewLoopbackFileSystem(me.rwDir)
-	opts := unionfs.UnionFsOptions{
-		BranchCacheTTLSecs:   ttl,
-		DeletionCacheTTLSecs: ttl,
-		DeletionDirName:      _DELETIONS,
-	}
-	me.unionFs = unionfs.NewUnionFs([]fuse.FileSystem{rwFs,
-		&fuse.PrefixFileSystem{rpcFs, me.writableRoot}}, opts)
+	me.unionFs = unionfs.NewMemUnionFs(
+		me.rwDir, &fuse.PrefixFileSystem{rpcFs, me.writableRoot})
 
 	me.procFs = NewProcFs()
 	me.procFs.StripPrefix = me.mount
@@ -158,8 +151,7 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string, 
 			return nil, os.NewError(fmt.Sprintf("Mkdir of %q in /tmp fail: %v", parent, err))
 		}
 	}
-	me.unionNodeFs = fuse.NewPathNodeFs(me.unionFs, &fuse.PathNodeFsOptions{ClientInodes: true})
-	code := me.nodeFs.Mount(me.writableRoot, me.unionNodeFs, nil)
+	code := me.nodeFs.Mount(me.writableRoot, me.unionFs, nil)
 	if !code.Ok() {
 		me.MountState.Unmount()
 		return nil, os.NewError(fmt.Sprintf("submount error for %s: %v", me.writableRoot, code))
@@ -169,12 +161,12 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string, 
 }
 
 func (me *workerFuseFs) update(attrs []*FileAttr, origin *workerFuseFs) {
-	paths := []string{}
 	if me == origin {
 		// TODO - should reread inode numbers, in case they
 		// are reused.
 	}
 
+	updates := map[string]*unionfs.Result{}
 	for _, attr := range attrs {
 		path := strings.TrimLeft(attr.Path, "/")
 		if !strings.HasPrefix(path, me.writableRoot) {
@@ -182,25 +174,17 @@ func (me *workerFuseFs) update(attrs []*FileAttr, origin *workerFuseFs) {
 			continue
 		}
 		path = strings.TrimLeft(path[len(me.writableRoot):], "/")
-		paths = append(paths, path)
 
-		if origin == me {
-			continue
-		}
-		
-		if attr.Status.Ok() {
-			log.Printf("ok notify %q", path)
-			me.unionNodeFs.Notify(path)
+		if !attr.Status.Ok() {
+			updates[path] = &unionfs.Result{}
 		} else {
-			// Even if GetAttr() returns ENOENT, FUSE will
-			// happily try to Open() the file afterwards.
-			// So, issue entry notify for deletions rather
-			// than inode notify.
-			dir, base := filepath.Split(path)
-			dir = filepath.Clean(dir)
-			me.unionNodeFs.EntryNotify(dir, base)
+			updates[path] = &unionfs.Result{
+				FileInfo: attr.FileInfo,
+				Original: "",
+				Backing: "",
+				Link: attr.Link,
+			}
 		}
 	}
-	me.unionFs.DropBranchCache(paths)
-	me.unionFs.DropDeletionCache()
+	me.unionFs.Update(updates)
 }
