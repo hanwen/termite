@@ -247,8 +247,10 @@ func (me *mirrorConnections) drop(mc *mirrorConnection, err os.Error) {
 
 	log.Printf("Dropping mirror %s. Reason: %s", mc.workerAddr, err)
 	mc.connection.Close()
+	mc.reverseConnection.Close()
 	me.mirrors[mc.workerAddr] = nil, false
 	me.workers[mc.workerAddr] = false, false
+	me.Cond.Broadcast()
 }
 
 func (me *mirrorConnections) jobDone(mc *mirrorConnection) {
