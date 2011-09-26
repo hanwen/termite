@@ -79,6 +79,10 @@ func (me *ProcFs) Open(name string, flags uint32, context *fuse.Context) (fuse.F
 	return nil, fuse.OsErrorToErrno(err)
 }
 
+func (me *ProcFs) String() string {
+	return "ProcFs"
+}
+
 func (me *ProcFs) Readlink(name string, context *fuse.Context) (string, fuse.Status) {
 	if name == "self" {
 		return fmt.Sprintf("%d", context.Pid), fuse.OK
