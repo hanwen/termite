@@ -289,6 +289,10 @@ func (me *rpcFsFile) GetAttr() (*os.FileInfo, fuse.Status) {
 	return &me.FileInfo, fuse.OK
 }
 
+func (me *rpcFsFile) String() string {
+	return fmt.Sprintf("rpcFsFile(%s)", me.File.String())
+}
+
 func (me *RpcFs) Open(name string, flags uint32, context *fuse.Context) (fuse.File, fuse.Status) {
 	if flags&fuse.O_ANYWRITE != 0 {
 		return nil, fuse.EPERM
