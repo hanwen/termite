@@ -145,7 +145,6 @@ TODO
   - linux kernel
 
 * Security:
-  - More sophisticated exclusion for exporting file systems.
   - Security review for the connection scheme.
 
 * Features
@@ -164,9 +163,6 @@ TODO
     * worker <-> worker file content fetching
   - Master/Worker:
     * streaming connections for file transport.
-  - Worker
-    * use MemUnionFs.
-
 
 SUCCESSFUL COMPILES
 

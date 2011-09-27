@@ -137,7 +137,12 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string, 
 		{"var/tmp", fuse.NewMemNodeFs(tmpBacking + "vartmp")},
 	}
 	for _, s := range mounts {
-		code := me.nodeFs.Mount(s.mountpoint, s.fs, nil)
+		subOpts := &mOpts
+		if s.mountpoint == "proc" {
+			subOpts = nil
+		}
+		
+		code := me.nodeFs.Mount(s.mountpoint, s.fs, subOpts)
 		if !code.Ok() {
 			me.MountState.Unmount()
 			return nil, os.NewError(fmt.Sprintf("submount error for %s: %v", s.mountpoint, code))
