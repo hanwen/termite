@@ -135,7 +135,6 @@ func (me *WorkerTask) runInFuse(fuseFs *workerFuseFs) os.Error {
 
 func (me *WorkerTask) fillReply(ufs *unionfs.MemUnionFs) os.Error {
 	yield := ufs.Reap()
-	ufs.Clear()
 	wrRoot := strings.TrimLeft(me.mirror.writableRoot, "/")
 	cache := me.mirror.daemon.contentCache
 
@@ -170,5 +169,6 @@ func (me *WorkerTask) fillReply(ufs *unionfs.MemUnionFs) os.Error {
 		files = append(files, f)
 	}
 	me.WorkResponse.Files = files
+	ufs.Clear()
 	return nil
 }
