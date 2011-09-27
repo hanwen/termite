@@ -12,7 +12,6 @@ import (
 )
 
 type RpcFs struct {
-	StatFsFs fuse.FileSystem
 	fuse.DefaultFileSystem
 	cache *ContentCache
 
@@ -368,14 +367,6 @@ func (me *RpcFs) GetAttr(name string, context *fuse.Context) (*os.FileInfo, fuse
 	}
 
 	return r.FileInfo, r.Status
-}
-
-// TODO - fix this in go-fuse instead.
-func (me *RpcFs) StatFs() *fuse.StatfsOut {
-	if me.StatFsFs != nil {
-		return me.StatFsFs.StatFs()
-	}
-	return nil
 }
 
 func (me *RpcFs) Access(name string, mode uint32, context *fuse.Context) (code fuse.Status) {
