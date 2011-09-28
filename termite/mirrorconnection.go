@@ -9,6 +9,7 @@ import (
 	"time"
 )
 
+
 type mirrorConnection struct {
 	workerAddr string // key in map.
 	rpcClient  *rpc.Client
@@ -21,11 +22,14 @@ type mirrorConnection struct {
 	maxJobs       int
 	availableJobs int
 
+	*fileSetWaiter
+	
 	// Any file updates that we should ship to the worker before
 	// running any jobs.
 	pendingChangesMutex sync.Mutex
 	pendingChanges      []*FileAttr
 }
+
 
 func (me *mirrorConnection) queueFiles(files []*FileAttr) {
 	me.pendingChangesMutex.Lock()
@@ -52,6 +56,7 @@ func (me *mirrorConnection) sendFiles() os.Error {
 	me.pendingChanges = me.pendingChanges[:0]
 	return nil
 }
+
 
 // mirrorConnection manages connections from the master to the mirrors
 // on the workers.

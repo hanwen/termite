@@ -25,8 +25,11 @@ type workerFuseFs struct {
 	procFs      *ProcFs
 	nodeFs      *fuse.PathNodeFs
 	unionNodeFs *fuse.PathNodeFs
-	// If nil, we are running this task.
-	task *WorkerTask
+
+	// Protected by Mirror.fsMutex
+	id          int
+	reaping     bool
+	tasks       map[*WorkerTask]bool
 }
 
 func (me *workerFuseFs) Stop() {
@@ -47,22 +50,6 @@ func (me *workerFuseFs) SetDebug(debug bool) {
 	me.nodeFs.Debug = debug
 }
 
-func (me *Mirror) returnFuse(wfs *workerFuseFs) {
-	me.fuseFileSystemsMutex.Lock()
-	defer me.fuseFileSystemsMutex.Unlock()
-
-	wfs.task = nil
-	wfs.SetDebug(false)
-
-	if me.shuttingDown {
-		wfs.Stop()
-	} else {
-		me.unusedFileSystems = append(me.unusedFileSystems, wfs)
-	}
-	me.workingFileSystems[wfs] = "", false
-	me.cond.Broadcast()
-}
-
 func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string, nobody *user.User) (*workerFuseFs, os.Error) {
 	tmpDir, err := ioutil.TempDir(tmpDir, "termite-task")
 	if err != nil {
@@ -71,6 +58,7 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string, 
 	me := &workerFuseFs{
 		tmpDir: tmpDir,
 		writableRoot: strings.TrimLeft(writableRoot, "/"),
+		tasks: map[*WorkerTask]bool{},
 	}
 
 	type dirInit struct {

@@ -22,8 +22,6 @@ type WorkerTask struct {
 	mirror    *Mirror
 
 	taskInfo string
-
-	lastTime int64
 }
 
 func (me *WorkResponse) resetClock() {
@@ -43,21 +41,21 @@ func (me *WorkerTask) clock(name string) {
 
 func (me *WorkerTask) Run() os.Error {
 	me.resetClock()
-	fuseFs, err := me.mirror.getWorkerFuseFs(me.WorkRequest.Summary())
+	fuseFs, err := me.mirror.newFs(me)
 	if err != nil {
 		return err
 	}
 	me.clock("worker.getWorkerFuseFs")
 
-	fuseFs.task = me
 	err = me.runInFuse(fuseFs)
 	if err != nil {
-		log.Println("discarding FUSE due to error:", fuseFs.mount, err)
-		me.mirror.discardFuse(fuseFs)
 		return err
 	}
+	if me.mirror.considerReap(fuseFs, me) {
+		me.WorkResponse.FileSet = me.mirror.reapFuse(fuseFs)
+	}
 
-	me.mirror.returnFuse(fuseFs)
+	me.mirror.returnFs(fuseFs)
 	me.clock("worker.returnFuse")
 	return nil
 }
@@ -121,22 +119,13 @@ func (me *WorkerTask) runInFuse(fuseFs *workerFuseFs) os.Error {
 	me.WorkResponse.Stderr = stderr.String()
 
 	me.clock("worker.runCommand")
-	err = me.fillReply(fuseFs.unionFs)
-	me.clock("worker.fillReply")
-	if err == nil {
-		// Must do updateFiles before ReturnFuse, since the
-		// next job should not see out-of-date files.
-		me.mirror.updateFiles(me.WorkResponse.Files, fuseFs)
-		me.clock("worker.updateFiles")
-	}
-
 	return err
 }
 
-func (me *WorkerTask) fillReply(ufs *unionfs.MemUnionFs) os.Error {
+func (me *Mirror) fillReply(ufs *unionfs.MemUnionFs) *FileSet {
 	yield := ufs.Reap()
-	wrRoot := strings.TrimLeft(me.mirror.writableRoot, "/")
-	cache := me.mirror.daemon.contentCache
+	wrRoot := strings.TrimLeft(me.writableRoot, "/")
+	cache := me.daemon.contentCache
 
 	files := []*FileAttr{}
 	for path, v := range yield {
@@ -152,7 +141,7 @@ func (me *WorkerTask) fillReply(ufs *unionfs.MemUnionFs) os.Error {
 			if f.FileInfo.IsRegular() {
 				if v.Original != "" {
 					contentPath := filepath.Join(wrRoot, v.Original)
-					fa := me.mirror.rpcFs.getFileAttr(contentPath)
+					fa := me.rpcFs.getFileAttr(contentPath)
 					if fa.Hash == "" {
 						panic(fmt.Sprintf("Contents for %q disappeared.", contentPath))
 					}
@@ -160,7 +149,7 @@ func (me *WorkerTask) fillReply(ufs *unionfs.MemUnionFs) os.Error {
 				} else {
 					f.Hash = cache.DestructiveSavePath(v.Backing)
 					if f.Hash == "" {
-						return os.NewError(fmt.Sprintf("DestructiveSavePath fail %q", v.Backing))
+						log.Fatalf("DestructiveSavePath fail %q", v.Backing)
 					}
 				}
 			}
@@ -168,7 +157,6 @@ func (me *WorkerTask) fillReply(ufs *unionfs.MemUnionFs) os.Error {
 
 		files = append(files, f)
 	}
-	me.WorkResponse.Files = files
 	ufs.Clear()
-	return nil
+	return &FileSet{files}
 }

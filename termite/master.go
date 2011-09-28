@@ -151,6 +151,7 @@ func (me *Master) createMirror(addr string, jobs int) (*mirrorConnection, os.Err
 		maxJobs:           rep.GrantedJobCount,
 		availableJobs:     rep.GrantedJobCount,
 	}
+	mc.fileSetWaiter = newFileSetWaiter(me, mc)
 
 	mc.queueFiles(me.fileServer.copyCache())
 
@@ -180,8 +181,11 @@ func (me *Master) runOnMirror(mirror *mirrorConnection, req *WorkRequest, rep *W
 		log.Println("with environment", req.Env)
 	}
 
+	ch := mirror.getChannel()
 	err := mirror.rpcClient.Call("Mirror.Run", req, rep)
-	rep.resetClock()
+	if err == nil {
+		err = mirror.fileSetWaiter.wait(rep, ch)
+	}
 	return err
 }
 
@@ -205,7 +209,6 @@ func (me *Master) prefetchFiles(req *WorkRequest) {
 }
 
 func (me *Master) runOnce(req *WorkRequest, rep *WorkResponse) os.Error {
-	localRep := *rep
 	mirror, err := me.mirrors.pick()
 	if err != nil {
 		return err
@@ -217,23 +220,17 @@ func (me *Master) runOnce(req *WorkRequest, rep *WorkResponse) os.Error {
 	}
 
 	me.prefetchFiles(req)
-	err = me.runOnMirror(mirror, req, &localRep)
+	err = me.runOnMirror(mirror, req, rep)
 	if err != nil {
 		me.mirrors.drop(mirror, err)
 		return err
 	}
 
-	err = me.replayFileModifications(mirror.rpcClient, localRep.Files)
-	localRep.clock("master.replay")
-	me.fileServer.updateFiles(localRep.Files)
-	localRep.clock("master.updateServer")
 	if err != nil {
 		return err
 	}
-	*rep = localRep
-	rep.Files = nil
+	rep.FileSet = nil
 
-	me.mirrors.queueFiles(mirror, localRep.Files)
 	rep.clock("master.queueFiles")
 	return err
 }
@@ -343,6 +340,7 @@ func (me *Master) replayFileModifications(worker *rpc.Client, infos []*FileAttr)
 			log.Println("delete replay: ", err)
 		}
 	}
+
 	return nil
 }
 

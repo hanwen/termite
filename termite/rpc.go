@@ -90,15 +90,21 @@ type Timing struct {
 	Dt   float64
 }
 
+type FileSet struct {
+	Files  []*FileAttr
+}
+
 type WorkResponse struct {
 	Exit   os.Waitmsg
-	Files  []*FileAttr
 	Stderr string
 	Stdout string
 
 	Timings []Timing
 
 	LastTime int64
+
+	*FileSet
+	FileSetId int
 }
 
 type WorkRequest struct {

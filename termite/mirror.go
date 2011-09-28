@@ -22,40 +22,30 @@ type Mirror struct {
 
 	Waiting              int
 	maxJobCount          int
-	fuseFileSystemsMutex sync.Mutex
-	unusedFileSystems    []*workerFuseFs
 
-	// Map value is the command running.
-	workingFileSystems map[*workerFuseFs]string
-	shuttingDown       bool
+	fsMutex            sync.Mutex
 	cond               *sync.Cond
+	nextId             int
+	activeFses         map[*workerFuseFs]bool
+	shuttingDown       bool
 }
 
 func NewMirror(daemon *WorkerDaemon, rpcConn, revConn net.Conn) *Mirror {
 	log.Println("Mirror for", rpcConn, revConn)
 
 	mirror := &Mirror{
+		activeFses:         map[*workerFuseFs]bool{},
 		fileServerConn:     revConn,
 		rpcConn:            rpcConn,
 		fileServer:         rpc.NewClient(revConn),
 		daemon:             daemon,
-		workingFileSystems: make(map[*workerFuseFs]string),
 	}
+	mirror.cond = sync.NewCond(&mirror.fsMutex)
 	mirror.rpcFs = NewRpcFs(mirror.fileServer, daemon.contentCache)
 	mirror.rpcFs.localRoots = []string{"/lib", "/usr"}
-	mirror.cond = sync.NewCond(&mirror.fuseFileSystemsMutex)
 
 	go mirror.serveRpc()
 	return mirror
-}
-
-func (me *Mirror) discardFuse(wfs *workerFuseFs) {
-	wfs.Stop()
-
-	me.fuseFileSystemsMutex.Lock()
-	defer me.fuseFileSystemsMutex.Unlock()
-	me.workingFileSystems[wfs] = "", false
-	me.cond.Broadcast()
 }
 
 func (me *Mirror) serveRpc() {
@@ -66,21 +56,22 @@ func (me *Mirror) serveRpc() {
 }
 
 func (me *Mirror) Shutdown() {
-	me.fuseFileSystemsMutex.Lock()
-	defer me.fuseFileSystemsMutex.Unlock()
+	me.fsMutex.Lock()
+	defer me.fsMutex.Unlock()
 	if me.shuttingDown {
 		return
 	}
 	me.shuttingDown = true
 	me.fileServer.Close()
 	me.fileServerConn.Close()
-	for _, fs := range me.unusedFileSystems {
-		fs.Stop()
+	for fs, _ := range me.activeFses {
+		if len(fs.tasks) == 0 {
+			fs.Stop()
+			me.activeFses[fs] = false, false
+		}
 	}
-	me.unusedFileSystems = nil
-
-	for len(me.workingFileSystems) > 0 {
-		me.maxJobCount = len(me.workingFileSystems)
+	
+	for len(me.activeFses) > 0 {
 		me.cond.Wait()
 	}
 	me.rpcConn.Close()
@@ -88,29 +79,68 @@ func (me *Mirror) Shutdown() {
 	go me.daemon.DropMirror(me)
 }
 
-func (me *Mirror) getWorkerFuseFs(name string) (f *workerFuseFs, err os.Error) {
-	me.fuseFileSystemsMutex.Lock()
-	defer me.fuseFileSystemsMutex.Unlock()
+func (me *Mirror) newFs(t *WorkerTask) (fs *workerFuseFs, err os.Error) {
+	me.fsMutex.Lock()
+	defer me.fsMutex.Unlock()
 
-	me.Waiting++
-	for len(me.workingFileSystems) >= me.maxJobCount {
-		me.cond.Wait()
-	}
-	me.Waiting--
 	if me.shuttingDown {
 		return nil, os.NewError("shutting down")
 	}
 
-	l := len(me.unusedFileSystems)
-	if l > 0 {
-		f = me.unusedFileSystems[l-1]
-		me.unusedFileSystems = me.unusedFileSystems[:l-1]
+	for fs, _ := range me.activeFses {
+		if !fs.reaping {
+			fs.tasks[t] = true
+			return fs, nil
+		}
 	}
-	if f == nil {
-		f, err = me.newWorkerFuseFs()
+	fs, err = me.newWorkerFuseFs()
+	if err != nil {
+		return nil, err
 	}
-	me.workingFileSystems[f] = name
-	return f, err
+
+	fs.id = me.nextId
+	me.nextId++
+
+	fs.tasks[t] = true
+	me.activeFses[fs] = true
+	return fs, nil
+}
+
+func (me *Mirror) considerReap(fs *workerFuseFs, task *WorkerTask) bool {
+	me.fsMutex.Lock()
+	defer me.fsMutex.Unlock()
+	fs.tasks[task] = false, false
+	if len(fs.tasks) == 0 {
+		fs.reaping = true
+	}
+	return fs.reaping
+}
+
+func (me *Mirror) reapFuse(fs *workerFuseFs) (results *FileSet) {
+	results = me.fillReply(fs.unionFs)
+	
+	// Must do updateFiles before ReturnFuse, since the
+	// next job should not see out-of-date files.
+	me.updateFiles(results.Files, fs)
+	return results
+}
+
+func (me *Mirror) returnFs(fs *workerFuseFs) {
+	me.fsMutex.Lock()
+	defer me.fsMutex.Unlock()
+	
+	if fs.reaping {
+		fs.reaping = false
+		fs.id = me.nextId
+		me.nextId++
+	}
+
+	fs.SetDebug(false)
+	if me.shuttingDown {
+		fs.Stop()
+		me.activeFses[fs] = false, false
+		me.cond.Broadcast()
+	} 
 }
 
 func (me *Mirror) Update(req *UpdateRequest, rep *UpdateResponse) os.Error {
@@ -121,13 +151,10 @@ func (me *Mirror) Update(req *UpdateRequest, rep *UpdateResponse) os.Error {
 func (me *Mirror) updateFiles(attrs []*FileAttr, origin *workerFuseFs) {
 	me.rpcFs.updateFiles(attrs)
 
-	me.fuseFileSystemsMutex.Lock()
-	defer me.fuseFileSystemsMutex.Unlock()
+	me.fsMutex.Lock()
+	defer me.fsMutex.Unlock()
 
-	for _, fs := range me.unusedFileSystems {
-		fs.update(attrs, origin)
-	}
-	for fs, _ := range me.workingFileSystems {
+	for fs, _ := range me.activeFses {
 		fs.update(attrs, origin)
 	}
 }

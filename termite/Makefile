@@ -12,6 +12,7 @@ MANUAL_GOFILES=\
 	counter.go \
 	devnullfs.go \
 	diskcache.go \
+	fileset.go \
 	fsserver.go \
 	fuse.go \
 	lrucache.go \
