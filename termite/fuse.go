@@ -144,7 +144,7 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string, 
 			return nil, os.NewError(fmt.Sprintf("Mkdir of %q in /tmp fail: %v", parent, err))
 		}
 	}
-	code := me.nodeFs.Mount(me.writableRoot, me.unionFs, nil)
+	code := me.nodeFs.Mount(me.writableRoot, me.unionFs, &mOpts)
 	if !code.Ok() {
 		me.MountState.Unmount()
 		return nil, os.NewError(fmt.Sprintf("submount error for %s: %v", me.writableRoot, code))
