@@ -6,6 +6,8 @@ import (
 	"sync"
 )
 
+var _ = log.Println
+
 type fileSetWaiter struct {
 	master *Master
 	mirror *mirrorConnection

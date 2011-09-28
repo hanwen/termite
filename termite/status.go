@@ -1,6 +1,7 @@
 package termite
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"syscall"
@@ -75,10 +76,20 @@ func (me *workerStats) CpuStats() (out []CpuStat) {
 }
 
 func (me *Mirror) Status(req *MirrorStatusRequest, rep *MirrorStatusResponse) os.Error {
+	me.fsMutex.Lock()
+	defer me.fsMutex.Unlock()
 	rep.Root = me.writableRoot
 	rep.Granted = me.maxJobCount
 	rep.WaitingTasks = me.Waiting
 	rep.ShuttingDown = me.shuttingDown
+
+	i := 0
+	for fs, _ := range me.activeFses {
+		i++
+		for t, _ := range fs.tasks {
+			rep.Running = append(rep.Running, fmt.Sprintf("fs %d: %s", i, t.taskInfo))
+		}
+	}
 	return nil
 }
 
