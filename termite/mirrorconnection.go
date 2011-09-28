@@ -4,11 +4,11 @@ import (
 	"log"
 	"net"
 	"os"
+	"rand"
 	"rpc"
 	"sync"
 	"time"
 )
-
 
 type mirrorConnection struct {
 	workerAddr string // key in map.
@@ -70,9 +70,6 @@ type mirrorConnections struct {
 	wantedMaxJobs int
 
 	stats *masterStats
-
-	// Condition for mutex below.
-	*sync.Cond
 
 	// Protects all of the below.
 	sync.Mutex
@@ -136,7 +133,6 @@ func newMirrorConnections(m *Master, workers []string, coordinator string, maxJo
 
 		go me.periodicHouseholding()
 	}
-	me.Cond = sync.NewCond(&me.Mutex)
 	return me
 }
 
@@ -159,7 +155,9 @@ func (me *mirrorConnections) periodicHouseholding() {
 func (me *mirrorConnections) availableJobs() int {
 	a := 0
 	for _, mc := range me.mirrors {
-		a += mc.availableJobs
+		if mc.availableJobs > 0 {
+			a += mc.availableJobs
+		}
 	}
 	return a
 }
@@ -218,7 +216,7 @@ func (me *mirrorConnections) pick() (*mirrorConnection, os.Error) {
 	me.Mutex.Lock()
 	defer me.Mutex.Unlock()
 
-	for me.availableJobs() <= 0 {
+	if me.availableJobs() <= 0 {
 		if len(me.workers) == 0 {
 			me.workers = me.fetchWorkers()
 		}
@@ -230,17 +228,20 @@ func (me *mirrorConnections) pick() (*mirrorConnection, os.Error) {
 			// locally.
 			return nil, os.NewError("No workers found at all.")
 		}
-		
-		if me.availableJobs() == 0 {
-			me.Cond.Wait()
-		}
+	}
+
+	j := len(me.mirrors)
+	if me.availableJobs() ==  0 {
+		// All workers full: schedule on a random one.
+		j = rand.Intn(j)
 	}
 
 	var found *mirrorConnection
 	for _, v := range me.mirrors {
-		if v.availableJobs > 0 {
+		if j <= 0 || v.availableJobs > 0 {
 			found = v
 		}
+		j--
 	}
 	found.availableJobs--
 	return found, nil
@@ -255,7 +256,6 @@ func (me *mirrorConnections) drop(mc *mirrorConnection, err os.Error) {
 	mc.reverseConnection.Close()
 	me.mirrors[mc.workerAddr] = nil, false
 	me.workers[mc.workerAddr] = false, false
-	me.Cond.Broadcast()
 }
 
 func (me *mirrorConnections) jobDone(mc *mirrorConnection) {
@@ -264,7 +264,6 @@ func (me *mirrorConnections) jobDone(mc *mirrorConnection) {
 
 	me.lastActionNs = time.Nanoseconds()
 	mc.availableJobs++
-	me.Cond.Broadcast()
 }
 
 // Tries to connect to one extra worker.  Must already hold mutex.

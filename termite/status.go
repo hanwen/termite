@@ -80,7 +80,7 @@ func (me *Mirror) Status(req *MirrorStatusRequest, rep *MirrorStatusResponse) os
 	defer me.fsMutex.Unlock()
 	rep.Root = me.writableRoot
 	rep.Granted = me.maxJobCount
-	rep.WaitingTasks = me.Waiting
+	rep.WaitingTasks = me.waiting
 	rep.ShuttingDown = me.shuttingDown
 
 	i := 0

@@ -20,11 +20,11 @@ type Mirror struct {
 	// key in WorkerDaemon's map.
 	key string
 
-	Waiting              int
 	maxJobCount          int
 
 	fsMutex            sync.Mutex
 	cond               *sync.Cond
+	waiting            int
 	nextId             int
 	activeFses         map[*workerFuseFs]bool
 	shuttingDown       bool
@@ -79,10 +79,24 @@ func (me *Mirror) Shutdown() {
 	go me.daemon.DropMirror(me)
 }
 
+func (me *Mirror) runningCount() int {
+	r := 0
+	for fs, _ := range me.activeFses {
+		r += len(fs.tasks)
+	}
+	return r
+}
+
 func (me *Mirror) newFs(t *WorkerTask) (fs *workerFuseFs, err os.Error) {
 	me.fsMutex.Lock()
 	defer me.fsMutex.Unlock()
 
+	me.waiting++
+	for !me.shuttingDown && me.runningCount() >= me.maxJobCount {
+		me.cond.Wait()
+	}
+	me.waiting--
+	
 	if me.shuttingDown {
 		return nil, os.NewError("shutting down")
 	}
@@ -113,6 +127,7 @@ func (me *Mirror) considerReap(fs *workerFuseFs, task *WorkerTask) bool {
 	if len(fs.tasks) == 0 {
 		fs.reaping = true
 	}
+	me.cond.Broadcast()
 	return fs.reaping
 }
 
