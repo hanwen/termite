@@ -162,6 +162,7 @@ func (me *ContentCache) DestructiveSavePath(path string) (md5 string) {
 	if err != nil {
 		return ""
 	}
+	before, _  := f.Stat()
 	defer f.Close()
 
 	h := crypto.MD5.New()
@@ -193,6 +194,10 @@ func (me *ContentCache) DestructiveSavePath(path string) (md5 string) {
 		return ""
 	}
 	f.Chmod(0444)
+	after, _ := f.Stat()
+	if after.Mtime_ns != before.Mtime_ns || after.Size != before.Size {
+		log.Fatal("File changed during save", before, after)
+	}
 	return s
 }
 
