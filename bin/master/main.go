@@ -39,6 +39,9 @@ func main() {
 		c, *coordinator, workerList, secret, excludeList, *jobs)
 	master.SetSrcRoot(*srcRoot)
 	master.SetKeepAlive(*keepAlive, *houseHoldPeriod)
+
+	log.Println(termite.Version())
+
 	go master.ServeHTTP(*port)
 	master.Start(*socket)
 }

@@ -41,6 +41,7 @@ func main() {
 	c.Mux.HandleFunc("/bin/worker", serveBin("worker"))
 	c.Mux.HandleFunc("/bin/shell-wrapper", serveBin("shell-wrapper"))
 
+	log.Println(termite.Version())
 	go c.PeriodicCheck()
 	c.ServeHTTP(*port)
 }

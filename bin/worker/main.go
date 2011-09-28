@@ -54,6 +54,7 @@ func main() {
 	}
 
 	daemon := termite.NewWorkerDaemon(&opts)
+	log.Println(termite.Version())
 	go handleStop(daemon)
 	daemon.RunWorkerServer(*port, *coordinator)
 }
