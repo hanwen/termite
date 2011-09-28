@@ -40,13 +40,12 @@ func (me *WorkerTask) clock(name string) {
 }
 
 func (me *WorkerTask) Run() os.Error {
-	me.resetClock()
 	fuseFs, err := me.mirror.newFs(me)
 	if err != nil {
 		return err
 	}
-	me.clock("worker.getWorkerFuseFs")
 
+	me.resetClock()
 	err = me.runInFuse(fuseFs)
 	if err != nil {
 		return err
