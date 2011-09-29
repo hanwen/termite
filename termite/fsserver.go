@@ -45,10 +45,10 @@ func (me *FsServer) verify() {
 
 	for k, v := range me.attrCache {
 		if v.Path != k {
-			panic(fmt.Sprintf("attrCache mismatch %q %#v", k, v))
+			log.Panicf("attrCache mismatch %q %#v", k, v)
 		}
 		if _, ok := me.attrCacheBusy[k]; ok {
-			panic(fmt.Sprintf("attrCacheBusy and attrCache entry for %q", k))
+			log.Panicf("attrCacheBusy and attrCache entry for %q", k)
 		}
 	}
 }

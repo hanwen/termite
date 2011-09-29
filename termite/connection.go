@@ -202,7 +202,7 @@ func (me *PendingConnections) Accept(conn net.Conn) bool {
 		me.connections[id] = p
 	}
 	if p.Conn != nil {
-		panic(fmt.Sprintf("accepted the same connection id twice: %s", id))
+		log.Panicf("accepted the same connection id twice: %s", id)
 	}
 	p.Conn = conn
 	p.Ready.Signal()

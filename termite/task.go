@@ -167,7 +167,7 @@ func (me *Mirror) fillReply(ufs *unionfs.MemUnionFs) *FileSet {
 					contentPath := filepath.Join(wrRoot, v.Original)
 					fa := me.rpcFs.getFileAttr(contentPath)
 					if fa.Hash == "" {
-						panic(fmt.Sprintf("Contents for %q disappeared.", contentPath))
+						log.Panicf("Contents for %q disappeared.", contentPath)
 					}
 					f.Hash = fa.Hash
 				} else {
