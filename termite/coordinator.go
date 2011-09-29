@@ -220,20 +220,26 @@ func (me *Coordinator) workerHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	fmt.Fprintf(w, "<p>Worker %s<p>Version %s<p>Jobs %d\n", addr, status.Version, status.MaxJobCount)
+	fmt.Fprintf(w, "<p>Worker %s<p>Version %s<p>Jobs %d\n",
+		addr, status.Version, status.MaxJobCount)
 	fmt.Fprintf(w, "<p><table><tr><th>self cpu (ms)</th><th>self sys (ms)</th>"+
 		"<th>child cpu (ms)</th><th>child sys (ms)</th><th>total</th></tr>")
-	for _, v := range status.CpuStats {
+	for _, v := range status.CpuStats[len(status.CpuStats)-5:] {
 		fmt.Fprintf(w, "<tr><td>%d</td><td>%d</td><td>%d</td><td>%d</td><td>%d</td></tr>",
 			v.SelfCpu/1e6, v.SelfSys/1e6, v.ChildCpu/1e6, v.ChildSys/1e6,
 			(v.SelfCpu+v.SelfSys+v.ChildCpu+v.ChildSys)/1e6)
 	}
 	fmt.Fprintf(w, "</table>")
 
-	t := status.TotalCpu.Total()
-	fmt.Fprintf(w, "<p>Total CPU: %d %% self cpu, %d %% self sys, %d %% child cpu, %d %% child sys",
-		(100*status.TotalCpu.SelfCpu)/t , (status.TotalCpu.SelfSys*100)/t,
-		(status.TotalCpu.ChildCpu*100)/t, (status.TotalCpu.ChildSys*100)/t)
+	minuteStat := CpuStat{}
+	for _, v := range status.CpuStats {
+		minuteStat = minuteStat.Add(v)
+	}
+
+	fmt.Fprintf(w, "<p>Last minute: %s (%.1f CPUs.)", minuteStat.Percent(),
+		float64(minuteStat.Total()) / 60.0e9)
+	
+	fmt.Fprintf(w, "<p>Total CPU: %s", status.TotalCpu.Percent())
 
 	for _, mirrorStatus := range status.MirrorStatus {
 		me.mirrorStatusHtml(w, mirrorStatus)

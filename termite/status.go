@@ -38,6 +38,15 @@ func TotalCpuStat() *CpuStat {
 	return &c
 }
 
+func (me *CpuStat) Add(x CpuStat) CpuStat {
+	return CpuStat{
+		SelfSys:  me.SelfSys + x.SelfSys,
+		SelfCpu:  me.SelfCpu + x.SelfCpu,
+		ChildSys: me.ChildSys + x.ChildSys,
+		ChildCpu: me.ChildCpu + x.ChildCpu,
+	}
+}
+
 func (me *CpuStat) Diff(x CpuStat) CpuStat {
 	return CpuStat{
 		SelfSys:  me.SelfSys - x.SelfSys,
@@ -45,6 +54,12 @@ func (me *CpuStat) Diff(x CpuStat) CpuStat {
 		ChildSys: me.ChildSys - x.ChildSys,
 		ChildCpu: me.ChildCpu - x.ChildCpu,
 	}
+}
+
+func (me *CpuStat) Percent() string {
+	t := me.Total()
+	return fmt.Sprintf("%d %% self cpu, %d %% self sys, %d %% child cpu, %d %% child sys",
+		(100*me.SelfCpu)/t , (me.SelfSys*100)/t, (me.ChildCpu*100)/t, (me.ChildSys*100)/t)
 }
 
 func (me *CpuStat) Total() int64 {
@@ -57,7 +72,7 @@ type workerStats struct {
 
 func newWorkerStats() *workerStats {
 	me := &workerStats{
-		cpuTimes: NewPeriodicSampler(1.0, 10, sampleTime),
+		cpuTimes: NewPeriodicSampler(1.0, 60, sampleTime),
 	}
 	return me
 }
