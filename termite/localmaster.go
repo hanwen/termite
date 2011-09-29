@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"rpc"
+	"time"
 )
 
 // Expose functionality for the local tool to use.
@@ -33,8 +34,10 @@ func (me *LocalMaster) Run(req *WorkRequest, rep *WorkResponse) os.Error {
 	return me.master.run(req, rep)
 }
 
-func (me *LocalMaster) Shutdown(input *int, output *int) os.Error {
+func (me *LocalMaster) Shutdown(req *int, rep *int) os.Error {
+	time.AfterFunc(1e8, func() {
 	me.listener.Close()
+	},)
 	return nil
 }
 
@@ -90,8 +93,11 @@ func (me *LocalMaster) start(sock string) {
 	log.Println("accepting connections on", absSock)
 	for {
 		conn, err := me.listener.Accept()
+		if err == os.EINVAL {
+			break
+		}
 		if err != nil {
-			log.Fatal("listener.accept", err)
+			log.Fatal("listener.accept: ", err)
 		}
 		if !me.master.pending.Accept(conn) {
 			go me.server.ServeConn(conn)
