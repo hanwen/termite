@@ -145,6 +145,9 @@ func (me sortableFiles) Swap(i, j int) {
 	me[i], me[j] = me[j], me[i]  
 }
 
+func (me sortableFiles) Sort() {
+	sort.Sort(me)
+}
 
 func (me *Mirror) fillReply(ufs *unionfs.MemUnionFs) *FileSet {
 	yield := ufs.Reap()

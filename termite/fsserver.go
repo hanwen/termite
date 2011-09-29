@@ -312,7 +312,7 @@ func (me *FsServer) refreshAttributeCache(prefix string) []*FileAttr {
 		panic("leading /")
 	}
 	
-	updated := []*FileAttr{}
+	updated := sortableFiles{}
 	for key, attr := range me.attrCache {
 		// TODO -should just do everything?
 		if !strings.HasPrefix(key, prefix) {
@@ -337,27 +337,29 @@ func (me *FsServer) refreshAttributeCache(prefix string) []*FileAttr {
 			me.dropHash(key)
 			
 			me.fillContent(&newEnt)
-			log.Printf("inside update %s %x", key, newEnt.Hash)
 			updated = append(updated, &newEnt)
 		}
 	}
 
+	updated.Sort()
 	for _, u := range updated {
 		copy := *u
 		me.attrCache[u.Path] = &copy
 	}
-	return updated
+	return []*FileAttr(updated)
 }
 
 func (me *FsServer) copyCache() []*FileAttr {
 	me.attrCacheMutex.RLock()
 	defer me.attrCacheMutex.RUnlock()
 
-	dump := []*FileAttr{}
+	dump := sortableFiles{}
 	for _, attr := range me.attrCache {
 		copy := *attr
 		dump = append(dump, &copy)
 	}
 
-	return dump
+	dump.Sort()
+	
+	return []*FileAttr(dump)
 }
