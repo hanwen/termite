@@ -1,7 +1,11 @@
 package termite
 
 import (
+	"exec"
 	"fmt"
+	"http"
+	"io"
+	"io/ioutil"
 	"log"
 	"net"
 	"os"
@@ -35,6 +39,7 @@ type WorkerDaemon struct {
 	cond           *sync.Cond
 	mirrorMap      map[string]*Mirror
 	shuttingDown   bool
+	mustRestart    bool
 }
 
 func (me *WorkerDaemon) getMirror(rpcConn, revConn net.Conn, reserveCount int) (*Mirror, os.Error) {
@@ -209,11 +214,17 @@ func (me *WorkerDaemon) RunWorkerServer(port int, coordinator string) {
 			go me.rpcServer.ServeConn(conn)
 		}
 	}
+
+	if me.mustRestart {
+		me.restart(coordinator)
+	}
 }
 
-func (me *WorkerDaemon) Shutdown(req *int, rep *int) os.Error {
+func (me *WorkerDaemon) Shutdown(req *ShutdownRequest, rep *ShutdownResponse) os.Error {
 	log.Println("Received Shutdown.")
-
+	if req.Restart {
+		me.mustRestart = true
+	}
 	me.mirrorMapMutex.Lock()
 	defer me.mirrorMapMutex.Unlock()
 
@@ -229,4 +240,29 @@ func (me *WorkerDaemon) Shutdown(req *int, rep *int) os.Error {
 	log.Println("All mirrors have shut down.")
 	me.listener.Close()
 	return nil
+}
+
+func (me *WorkerDaemon) restart(coord string) {
+	cl := http.Client{}
+	req, err := cl.Get(fmt.Sprintf("http://%s/bin/worker", coord))
+	if err != nil {
+		log.Fatal("http get error.")
+	}
+
+	// We download into a tempdir, so we maintain the binary name.
+	dir, err := ioutil.TempDir("", "worker-download")
+	if err != nil {
+		log.Fatal("TempDir:", err)
+	}
+
+	f, err := os.Create(dir + "/worker")
+	if err != nil {
+		log.Fatal("os.Create:", err)
+	}
+	io.Copy(f, req.Body)
+	f.Close()
+	os.Chmod(f.Name(), 0755)
+	log.Println("Starting downloaded worker.")
+	cmd := exec.Command(f.Name(), os.Args[1:]...)
+	cmd.Start()
 }

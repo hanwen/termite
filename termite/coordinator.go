@@ -164,8 +164,8 @@ func (me *Coordinator) killHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	killReq := 1
-	rep := 1
+	killReq := ShutdownRequest{Restart: true}
+	rep := ShutdownResponse{}
 	cl := rpc.NewClient(conn)
 	err = cl.Call("WorkerDaemon.Shutdown", &killReq, &rep)
 	cl.Close()
@@ -174,7 +174,7 @@ func (me *Coordinator) killHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	fmt.Fprintf(w, "<p>Shutdown of %s in progress", addr)
+	fmt.Fprintf(w, "<p>Restart of %s in progress", addr)
 	conn.Close()
 }
 
@@ -238,7 +238,7 @@ func (me *Coordinator) workerHandler(w http.ResponseWriter, req *http.Request) {
 	for _, mirrorStatus := range status.MirrorStatus {
 		me.mirrorStatusHtml(w, mirrorStatus)
 	}
-	fmt.Fprintf(w, "<p><a href=\"/workerkill?host=%s\">Kill worker %s</a>\n", addr, addr)
+	fmt.Fprintf(w, "<p><a href=\"/workerkill?host=%s\">Restart worker %s</a>\n", addr, addr)
 	conn.Close()
 }
 

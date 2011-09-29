@@ -136,3 +136,10 @@ type CreateMirrorRequest struct {
 type CreateMirrorResponse struct {
 	GrantedJobCount int
 }
+
+type ShutdownRequest struct {
+	Restart bool
+}
+
+type ShutdownResponse struct {
+}
