@@ -11,7 +11,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sort"
 	"syscall"
 	"time"
 )
@@ -123,38 +122,13 @@ func (me *WorkerTask) runInFuse(fuseFs *workerFuseFs) os.Error {
 }
 
 // Sorts FileAttr such deletions come reversed before additions.
-type sortableFiles []*FileAttr
-func (me sortableFiles) Len() int {
-	return len(me)
-}
-
-func (me sortableFiles) Less(i, j int) bool {
-	a := me[i]
-	b := me[j]
-	if a.Deletion() != b.Deletion() {
-		return a.Deletion()
-	}
-
-	if a.Deletion() {
-		return a.Path > b.Path
-	} 
-	return a.Path < b.Path
-}
-
-func (me sortableFiles) Swap(i, j int) {
-	me[i], me[j] = me[j], me[i]  
-}
-
-func (me sortableFiles) Sort() {
-	sort.Sort(me)
-}
 
 func (me *Mirror) fillReply(ufs *unionfs.MemUnionFs) *FileSet {
 	yield := ufs.Reap()
 	wrRoot := strings.TrimLeft(me.writableRoot, "/")
 	cache := me.daemon.contentCache
 
-	files := sortableFiles{}
+	files := []*FileAttr{}
 	for path, v := range yield {
 		f := &FileAttr{
 			Path: filepath.Join(wrRoot, path),
@@ -184,8 +158,9 @@ func (me *Mirror) fillReply(ufs *unionfs.MemUnionFs) *FileSet {
 
 		files = append(files, f)
 	}
+	fs := FileSet{files}
 	ufs.Clear()
-	sort.Sort(files)
+	fs.Sort()
 	
-	return &FileSet{([]*FileAttr)(files)}
+	return &fs
 }

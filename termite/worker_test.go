@@ -256,7 +256,8 @@ func TestEndToEndNegativeNotify(t *testing.T) {
 			Hash:     hash,
 		},
 	}
-	tc.master.mirrors.queueFiles(nil, updated)
+	fset := FileSet{updated}
+	tc.master.mirrors.queueFiles(nil, fset)
 
 	rep = tc.Run(WorkRequest{
 		Binary: tc.FindBin("cat"),

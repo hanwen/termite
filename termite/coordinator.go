@@ -143,7 +143,7 @@ func (me *Coordinator) shutdownSelf(w http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(w, "<body><h1>Shutdown in progress</h1><ul>")
 
 	// Async, so we can still return the reply here.
-	time.AfterFunc(100e6, func() { me.Shutdown() }())
+	time.AfterFunc(100e6, func() { me.Shutdown() })
 }
 	
 

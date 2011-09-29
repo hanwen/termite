@@ -13,6 +13,7 @@ MANUAL_GOFILES=\
 	devnullfs.go \
 	diskcache.go \
 	fileset.go \
+	filesetwaiter.go \
 	fsserver.go \
 	fuse.go \
 	lrucache.go \

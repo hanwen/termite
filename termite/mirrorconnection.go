@@ -31,10 +31,10 @@ type mirrorConnection struct {
 }
 
 
-func (me *mirrorConnection) queueFiles(files []*FileAttr) {
+func (me *mirrorConnection) queueFiles(fset FileSet) {
 	me.pendingChangesMutex.Lock()
 	defer me.pendingChangesMutex.Unlock()
-	for _, a := range files {
+	for _, a := range fset.Files {
 		me.pendingChanges = append(me.pendingChanges, a)
 	}
 }
@@ -203,10 +203,10 @@ func (me *mirrorConnections) dropConnections() {
 	me.stats = newMasterStats()
 }
 
-func (me *mirrorConnections) queueFiles(origin *mirrorConnection, infos []*FileAttr) {
+func (me *mirrorConnections) queueFiles(origin *mirrorConnection, fset FileSet) {
 	for _, w := range me.mirrors {
 		if origin != w {
-			w.queueFiles(infos)
+			w.queueFiles(fset)
 		}
 	}
 }

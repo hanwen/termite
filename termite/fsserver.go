@@ -304,7 +304,7 @@ func (me *FsServer) getHash(name string) (hash string) {
 	return hash
 }
 
-func (me *FsServer) refreshAttributeCache(prefix string) []*FileAttr {
+func (me *FsServer) refreshAttributeCache(prefix string) FileSet {
 	me.attrCacheMutex.Lock()
 	defer me.attrCacheMutex.Unlock()
 
@@ -312,7 +312,7 @@ func (me *FsServer) refreshAttributeCache(prefix string) []*FileAttr {
 		panic("leading /")
 	}
 	
-	updated := sortableFiles{}
+	updated := []*FileAttr{}
 	for key, attr := range me.attrCache {
 		// TODO -should just do everything?
 		if !strings.HasPrefix(key, prefix) {
@@ -341,25 +341,26 @@ func (me *FsServer) refreshAttributeCache(prefix string) []*FileAttr {
 		}
 	}
 
-	updated.Sort()
-	for _, u := range updated {
+	fs := FileSet{updated}
+	fs.Sort()
+	for _, u := range fs.Files {
 		copy := *u
 		me.attrCache[u.Path] = &copy
 	}
-	return []*FileAttr(updated)
+	return fs
 }
 
-func (me *FsServer) copyCache() []*FileAttr {
+func (me *FsServer) copyCache() FileSet {
 	me.attrCacheMutex.RLock()
 	defer me.attrCacheMutex.RUnlock()
 
-	dump := sortableFiles{}
+	dump := []*FileAttr{}
 	for _, attr := range me.attrCache {
 		copy := *attr
 		dump = append(dump, &copy)
 	}
 
-	dump.Sort()
-	
-	return []*FileAttr(dump)
+	fs := FileSet{dump}
+	fs.Sort()
+	return fs
 }
