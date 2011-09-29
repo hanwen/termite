@@ -139,8 +139,13 @@ func (me *Coordinator) rootHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func (me *Coordinator) shutdownSelf(w http.ResponseWriter, req *http.Request) {
-	me.Shutdown()
+	fmt.Fprintf(w, "<html><head><title>Termite coordinator</title></head>")
+	fmt.Fprintf(w, "<body><h1>Shutdown in progress</h1><ul>")
+
+	// Async, so we can still return the reply here.
+	time.AfterFunc(100e6, func() { me.Shutdown() }())
 }
+	
 
 func (me *Coordinator) killHandler(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
