@@ -13,7 +13,7 @@
     "Recurse": false,
     "SkipRefresh": true
 }, {
-    "Regexp": "^find [^ ;&]*$",
+    "Regexp": "^find [^;&]*$",
     "Local": true,
     "Recurse": false,
     "SkipRefresh": true
