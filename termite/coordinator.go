@@ -88,12 +88,7 @@ func (me *Coordinator) List(req *int, rep *Registered) os.Error {
 func (me *Coordinator) checkReachable() {
 	now := time.Seconds()
 
-	me.mutex.Lock()
-	var addrs []string
-	for k, _ := range me.workers {
-		addrs = append(addrs, k)
-	}
-	me.mutex.Unlock()
+	addrs := me.workerAddresses()
 
 	var toDelete []string
 	for _, a := range addrs {
@@ -131,12 +126,20 @@ func (me *Coordinator) rootHandler(w http.ResponseWriter, req *http.Request) {
 
 	fmt.Fprintf(w, "<html><head><title>Termite coordinator</title></head>")
 	fmt.Fprintf(w, "<body><h1>Termite coordinator</h1><ul>")
-	defer fmt.Fprintf(w, "</ul></body></html>")
+	defer fmt.Fprintf(w, "</body></html>")
 
 	for _, worker := range me.workers {
 		fmt.Fprintf(w, "<li><a href=\"worker?host=%s\">address <tt>%s</tt>, host <tt>%s</tt></a>",
 			worker.Address, worker.Address, worker.Name)
 	}
+	fmt.Fprintf(w, "</ul>")
+
+	fmt.Fprintf(w, "<hr><p><a href=\"workerkill?host=all\">kill all workers,</a>" +
+		"<a href=\"restart?host=all\">restart all workers</a>")
+}
+
+func (me *Coordinator) shutdownSelf(w http.ResponseWriter, req *http.Request) {
+	me.Shutdown()
 }
 
 func (me *Coordinator) killHandler(w http.ResponseWriter, req *http.Request) {
@@ -149,33 +152,69 @@ func (me *Coordinator) killHandler(w http.ResponseWriter, req *http.Request) {
 	}
 	addr := string(vs[0])
 
+	restart := req.URL.Path == "restart"
 	fmt.Fprintf(w, "<html><head><title>Termite worker status</title></head>")
 	fmt.Fprintf(w, "<body><h1>Status %s</h1>", addr)
 	defer fmt.Fprintf(w, "</body></html>")
 
-	if !me.haveWorker(addr) {
+	if addr != "all" && !me.haveWorker(addr) {
 		fmt.Fprintf(w, "<p><tt>worker %q unknown<tt>", addr)
 		return
 	}
 
-	conn, err := DialTypedConnection(addr, RPC_CHANNEL, me.secret)
+	var err os.Error
+	if addr == "all" {
+		errs := []os.Error{}
+		for _, w := range me.workerAddresses() {
+			err = me.shutdownWorker(w, restart)
+			if err != nil {
+				errs = append(errs, fmt.Errorf("%s: %v", w, err))
+			}
+		}
+		if len(errs) > 0 {
+			err = fmt.Errorf("%v", errs)
+		}
+	} else {
+		err = me.shutdownWorker(addr, restart)
+	}
+	
 	if err != nil {
-		fmt.Fprintf(w, "<p><tt>error dialing: %v<tt>", err)
+		fmt.Fprintf(w, "<p><tt>Error: %v<tt>", err)
 		return
 	}
+	
+	action := "kill"
+	if restart {
+		action = "restart"
+	}
+	fmt.Fprintf(w, "<p>%s of %s in progress", action, addr)
+	// Should have a redirect.
+	fmt.Fprintf(w, "<p><a href="/">back to index</a>")
+	go me.checkReachable()
+}
 
-	killReq := ShutdownRequest{Restart: true}
+func (me *Coordinator) shutdownWorker(addr string, restart bool) os.Error {
+	conn, err := DialTypedConnection(addr, RPC_CHANNEL, me.secret)
+	if err != nil {
+		return err
+	}
+
+	killReq := ShutdownRequest{Restart: restart}
 	rep := ShutdownResponse{}
 	cl := rpc.NewClient(conn)
 	err = cl.Call("WorkerDaemon.Shutdown", &killReq, &rep)
 	cl.Close()
-	if err != nil {
-		fmt.Fprintf(w, "<p><tt>RPC error: %v<tt>", err)
-		return
-	}
-
-	fmt.Fprintf(w, "<p>Restart of %s in progress", addr)
 	conn.Close()
+	return err
+}
+
+func (me *Coordinator) workerAddresses() (out []string) {
+	me.mutex.Lock()
+	defer me.mutex.Unlock()
+	for k, _ := range me.workers {
+		out = append(out, k)
+	}
+	return out
 }
 
 func (me *Coordinator) haveWorker(addr string) bool {
@@ -249,7 +288,8 @@ func (me *Coordinator) workerHandler(w http.ResponseWriter, req *http.Request) {
 	for _, mirrorStatus := range status.MirrorStatus {
 		me.mirrorStatusHtml(w, mirrorStatus)
 	}
-	fmt.Fprintf(w, "<p><a href=\"/workerkill?host=%s\">Restart worker %s</a>\n", addr, addr)
+	fmt.Fprintf(w, "<p><a href=\"/workerkill?host=%s\">Kill worker %s</a>\n", addr, addr)
+	fmt.Fprintf(w, "<p><a href=\"/restart?host=%s\">Restart worker %s</a>\n", addr, addr)
 	conn.Close()
 }
 
@@ -282,7 +322,15 @@ func (me *Coordinator) ServeHTTP(port int) {
 		func(w http.ResponseWriter, req *http.Request) {
 			me.workerHandler(w, req)
 		})
+	me.Mux.HandleFunc("/shutdown",
+		func(w http.ResponseWriter, req *http.Request) {
+			me.shutdownSelf(w, req)
+		})
 	me.Mux.HandleFunc("/workerkill",
+		func(w http.ResponseWriter, req *http.Request) {
+			me.killHandler(w, req)
+		})
+	me.Mux.HandleFunc("/restart",
 		func(w http.ResponseWriter, req *http.Request) {
 			me.killHandler(w, req)
 		})
