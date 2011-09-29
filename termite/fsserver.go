@@ -205,11 +205,14 @@ func updateAttributeMap(attributes map[string]*FileAttr, files []*FileAttr) {
 		
 		dir, basename := filepath.Split(r.Path)
 		dir = strings.TrimRight(dir, string(filepath.Separator))
-		if dir, ok := attributes[dir]; ok {
+		if dirAttr, ok := attributes[dir]; ok {
+			if dirAttr.NameModeMap == nil {
+				log.Panicf("parent dir has no NameModeMap: %q", dir) 
+			}
 			if r.Deletion() {
-				dir.NameModeMap[basename] = 0, false
+				dirAttr.NameModeMap[basename] = 0, false
 			} else {
-				dir.NameModeMap[basename] = r.Mode &^ 0777
+				dirAttr.NameModeMap[basename] = r.Mode &^ 0777
 			}
 		}
 
