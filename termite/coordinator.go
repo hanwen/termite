@@ -224,7 +224,12 @@ func (me *Coordinator) workerHandler(w http.ResponseWriter, req *http.Request) {
 		addr, status.Version, status.MaxJobCount)
 	fmt.Fprintf(w, "<p><table><tr><th>self cpu (ms)</th><th>self sys (ms)</th>"+
 		"<th>child cpu (ms)</th><th>child sys (ms)</th><th>total</th></tr>")
-	for _, v := range status.CpuStats[len(status.CpuStats)-5:] {
+	start := len(status.CpuStats)-5
+	if start < 0 {
+		start = 0
+	}
+	
+	for _, v := range status.CpuStats[start:] {
 		fmt.Fprintf(w, "<tr><td>%d</td><td>%d</td><td>%d</td><td>%d</td><td>%d</td></tr>",
 			v.SelfCpu/1e6, v.SelfSys/1e6, v.ChildCpu/1e6, v.ChildSys/1e6,
 			(v.SelfCpu+v.SelfSys+v.ChildCpu+v.ChildSys)/1e6)
