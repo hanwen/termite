@@ -4,7 +4,6 @@ import (
 	"io/ioutil"
 	"github.com/hanwen/go-fuse/fuse"
 	"log"
-	"net"
 	"os"
 	"path/filepath"
 	"rpc"
@@ -18,8 +17,6 @@ type Master struct {
 
 	retryCount     int
 	mirrors        *mirrorConnections
-	localRpcServer *rpc.Server
-	localServer    *LocalMaster
 	writableRoot   string
 	srcRoot        string
 	pending        *PendingConnections
@@ -33,13 +30,10 @@ func NewMaster(cache *ContentCache, coordinator string, workers []string, secret
 		retryCount: 3,
 	}
 	me.mirrors = newMirrorConnections(me, workers, coordinator, maxJobs)
-	me.localServer = &LocalMaster{me}
 	me.secret = secret
 	me.pending = NewPendingConnections()
 	me.fileServerRpc = rpc.NewServer()
 	me.fileServerRpc.Register(me.fileServer)
-	me.localRpcServer = rpc.NewServer()
-	me.localRpcServer.Register(me.localServer)
 
 	return me
 }
@@ -57,51 +51,7 @@ func (me *Master) SetKeepAlive(keepalive float64, household float64) {
 }
 
 func (me *Master) Start(sock string) {
-	absSock, err := filepath.Abs(sock)
-	if err != nil {
-		log.Fatal("abs", err)
-	}
-
-	fi, _ := os.Stat(absSock)
-	if fi != nil && fi.IsSocket() {
-		conn, _ := net.Dial("unix", absSock)
-		if conn != nil {
-			conn.Close()
-			log.Fatal("socket has someone listening: ", absSock)
-		}
-		// TODO - should check explicitly for the relevant error message.
-		log.Println("removing dead socket", absSock)
-		os.Remove(absSock)
-	}
-
-	listener, err := net.Listen("unix", absSock)
-	defer os.Remove(absSock)
-	if err != nil {
-		log.Fatal("startLocalServer: ", err)
-	}
-	err = os.Chmod(absSock, 0700)
-	if err != nil {
-		log.Fatal("sock chmod", err)
-	}
-
-	me.writableRoot, err = filepath.EvalSymlinks(absSock)
-	if err != nil {
-		log.Fatal("EvalSymlinks", err)
-	}
-	me.writableRoot = filepath.Clean(me.writableRoot)
-	me.writableRoot, _ = filepath.Split(me.writableRoot)
-	me.writableRoot = filepath.Clean(me.writableRoot)
-
-	log.Println("accepting connections on", absSock)
-	for {
-		conn, err := listener.Accept()
-		if err != nil {
-			log.Fatal("listener.accept", err)
-		}
-		if !me.pending.Accept(conn) {
-			go me.localRpcServer.ServeConn(conn)
-		}
-	}
+	localStart(me, sock)
 }
 
 func (me *Master) createMirror(addr string, jobs int) (*mirrorConnection, os.Error) {
@@ -334,29 +284,3 @@ func (me *Master) refreshAttributeCache() {
 	}
 }
 
-////////////////
-
-// Expose functionality for the local tool to use.
-type LocalMaster struct {
-	master *Master
-}
-
-func (me *LocalMaster) Run(req *WorkRequest, rep *WorkResponse) os.Error {
-	if req.RanLocally {
-		log.Println("Ran command locally:", req.Argv)
-		return nil
-	}
-
-	return me.master.run(req, rep)
-}
-
-func (me *LocalMaster) RefreshAttributeCache(input *int, output *int) os.Error {
-	log.Println("Refreshing attribute cache")
-	me.master.refreshAttributeCache()
-	log.Println("Refresh done")
-	return nil
-}
-
-func (me *LocalMaster) InspectFile(req *AttrRequest, rep *AttrResponse) os.Error {
-	return me.master.fileServer.GetAttr(req, rep)
-}

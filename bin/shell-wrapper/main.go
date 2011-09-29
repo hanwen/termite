@@ -13,6 +13,21 @@ import (
 
 // TODO - this file is a mess. Clean it up.
 const _TIMEOUT = 10e9
+var socketRpc  *rpc.Client
+var topDir     string
+func Rpc() *rpc.Client {
+	if socketRpc == nil {
+		socket := termite.FindSocket()
+		if socket == "" {
+			log.Fatal("Could not find .termite-socket")
+		}
+		topDir, _ = filepath.Split(socket)
+		topDir = filepath.Clean(topDir)
+		conn := termite.OpenSocketConnection(socket, termite.RPC_CHANNEL, _TIMEOUT)
+		socketRpc = rpc.NewClient(conn)
+	}
+	return socketRpc
+}
 
 func TryRunDirect(cmd string) {
 	if cmd == ":" {
@@ -39,19 +54,12 @@ func TryRunDirect(cmd string) {
 }
 
 func Refresh() {
-	socket := termite.FindSocket()
-	conn := termite.OpenSocketConnection(socket, termite.RPC_CHANNEL, _TIMEOUT)
-
-	client := rpc.NewClient(conn)
-
 	req := 1
 	rep := 1
-	err := client.Call("LocalMaster.RefreshAttributeCache", &req, &rep)
-	client.Close()
+	err := Rpc().Call("LocalMaster.RefreshAttributeCache", &req, &rep)
 	if err != nil {
 		log.Fatal("LocalMaster.RefreshAttributeCache: ", err)
 	}
-	conn.Close()
 }
 
 func cleanEnv(input []string) []string {
@@ -70,9 +78,6 @@ func cleanEnv(input []string) []string {
 }
 
 func Inspect(files []string) {
-	socket := termite.FindSocket()
-	conn := termite.OpenSocketConnection(socket, termite.RPC_CHANNEL, _TIMEOUT)
-	client := rpc.NewClient(conn)
 	wd, _ := os.Getwd()
 	for _, p := range files {
 		if p[0] != '/' {
@@ -81,7 +86,7 @@ func Inspect(files []string) {
 
 		req := termite.AttrRequest{Name: p}
 		rep := termite.AttrResponse{}
-		err := client.Call("LocalMaster.InspectFile", &req, &rep)
+		err := Rpc().Call("LocalMaster.InspectFile", &req, &rep)
 		if err != nil {
 			log.Fatal("LocalMaster.InspectFile: ", err)
 		}
@@ -133,6 +138,7 @@ func TryRunLocally(command string, topdir string) (exit *os.Waitmsg, rule termit
 func main() {
 	command := flag.String("c", "", "command to run.")
 	refresh := flag.Bool("refresh", false, "refresh master file cache.")
+	shutdown := flag.Bool("shutdown", false, "shutdown master.")
 	inspect := flag.Bool("inspect", false, "inspect files on master.")
 	exec := flag.Bool("exec", false, "run command args without shell.")
 	directory := flag.String("dir", "", "directory from where to run (default: cwd).")
@@ -140,6 +146,14 @@ func main() {
 	debug := flag.Bool("dbg", false, "set on debugging in request.")
 	flag.Parse()
 
+	if *shutdown {
+		req := 1
+		rep := 1
+		err := Rpc().Call("LocalMaster.Shutdown", &req, &rep)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
 	if *refresh {
 		Refresh()
 	}
@@ -162,22 +176,13 @@ func main() {
 		TryRunDirect(*command)
 	}
 
-	socket := termite.FindSocket()
-	if socket == "" {
-		log.Fatal("Could not find .termite-socket")
-	}
-	topDir, _ := filepath.Split(socket)
-
 	localWaitMsg, localRule := TryRunLocally(*command, topDir)
 	if localWaitMsg != nil && !localRule.SkipRefresh {
 		Refresh()
 	}
 
-	conn := termite.OpenSocketConnection(socket, termite.RPC_CHANNEL, _TIMEOUT)
-
 	// TODO - could skip the shell if we can deduce it is a
 	// no-frills command invocation.
-
 	req := termite.WorkRequest{
 		Binary:     Shell(),
 		Argv:       []string{Shell(), "-c", *command},
@@ -192,11 +197,8 @@ func main() {
 	}
 	
 	req.Debug = localRule.Debug || os.Getenv("TERMITE_DEBUG") != "" || *debug
-	client := rpc.NewClient(conn)
-
 	rep := termite.WorkResponse{}
-	err := client.Call("LocalMaster.Run", &req, &rep)
-	client.Close()
+	err := Rpc().Call("LocalMaster.Run", &req, &rep)
 	if err != nil {
 		log.Fatal("LocalMaster.Run: ", err)
 	}
@@ -212,6 +214,7 @@ func main() {
 		}
 	}
 
-	conn.Close()
+	// TODO - is this necessary?
+	Rpc().Close()
 	os.Exit(localWaitMsg.ExitStatus())
 }

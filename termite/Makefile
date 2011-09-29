@@ -16,6 +16,7 @@ MANUAL_GOFILES=\
 	fsserver.go \
 	fuse.go \
 	lrucache.go \
+	localmaster.go \
 	localrun.go \
 	master.go \
 	masterstats.go \
