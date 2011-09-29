@@ -240,6 +240,7 @@ func (me *mirrorConnections) pick() (*mirrorConnection, os.Error) {
 	for _, v := range me.mirrors {
 		if j <= 0 || v.availableJobs > 0 {
 			found = v
+			break
 		}
 		j--
 	}

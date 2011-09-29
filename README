@@ -158,7 +158,6 @@ TODO
 * Speed
   - Worker:
   - Master:
-    * readdir caching.
     * send known attrs together with readdir.
     * worker <-> worker file content fetching
   - Master/Worker:
