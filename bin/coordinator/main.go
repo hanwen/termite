@@ -31,6 +31,7 @@ func main() {
 	port := flag.Int("port", 1233, "Where to listen for work requests.")
 	secretFile := flag.String("secret", "secret.txt", "file containing password.")
 	flag.Parse()
+	log.SetPrefix("C")
 
 	secret, err := ioutil.ReadFile(*secretFile)
 	if err != nil {

@@ -145,6 +145,7 @@ func main() {
 	
 	debug := flag.Bool("dbg", false, "set on debugging in request.")
 	flag.Parse()
+	log.SetPrefix("S")
 
 	if *shutdown {
 		req := 1
@@ -153,6 +154,7 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
+		return
 	}
 	if *refresh {
 		Refresh()

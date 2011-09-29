@@ -38,6 +38,8 @@ func main() {
 	logfile := flag.String("logfile", "", "Output log file to use.")
 	flag.Parse()
 
+	log.SetPrefix("W")
+
 	if os.Geteuid() != 0 {
 		log.Fatal("This program must run as root")
 	}

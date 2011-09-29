@@ -27,6 +27,9 @@ func main() {
 	keepAlive := flag.Float64("time.keepalive", 60.0, "for how long to keep workers reserved.")
 
 	flag.Parse()
+
+	log.SetPrefix("M")
+
 	secret, err := ioutil.ReadFile(*secretFile)
 	if err != nil {
 		log.Fatal("ReadFile", err)
@@ -41,7 +44,7 @@ func main() {
 	master.SetKeepAlive(*keepAlive, *houseHoldPeriod)
 
 	log.Println(termite.Version())
-
+	
 	go master.ServeHTTP(*port)
 	master.Start(*socket)
 }
