@@ -28,7 +28,7 @@ func (me *fileSetWaiter) broadcast(id int, ignore chan int) {
 	defer me.Unlock()
 	for ch, _ := range me.channels {
 		if ch != ignore {
-			ch <- id
+			go func(ch chan int) { ch <- id }(ch)
 		}
 	}
 }
@@ -48,6 +48,12 @@ func (me *fileSetWaiter) flush() {
 	for ch, _ := range me.channels {
 		close(ch)
 	}
+}
+
+func (me *fileSetWaiter) drop(completion chan int) {
+	me.Lock()
+	defer me.Unlock()
+	me.channels[completion] = false, false
 }
 
 func (me *fileSetWaiter) wait(rep *WorkResponse, completion chan int) (err os.Error) {
@@ -72,9 +78,7 @@ func (me *fileSetWaiter) wait(rep *WorkResponse, completion chan int) (err os.Er
 			}
 		}
 	}
-	
-	me.Lock()
-	defer me.Unlock()
-	me.channels[completion] = false, false
+
+	me.drop(completion)
 	return err
 }
