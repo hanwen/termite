@@ -189,7 +189,7 @@ func (me *Coordinator) killHandler(w http.ResponseWriter, req *http.Request) {
 	}
 	fmt.Fprintf(w, "<p>%s of %s in progress", action, addr)
 	// Should have a redirect.
-	fmt.Fprintf(w, "<p><a href="/">back to index</a>")
+	fmt.Fprintf(w, "<p><a href=\"/\">back to index</a>")
 	go me.checkReachable()
 }
 
