@@ -197,6 +197,14 @@ func (me *Master) prefetchFiles(req *WorkRequest) {
 	}
 
 	for f, _ := range files {
+		if f == "" {
+			continue
+		}
+		if f[0] != '/' {
+			f = filepath.Join(req.Dir, f)
+		}
+
+		f = f[1:]
 		a := me.fileServer.oneGetAttr(f)
 		req.Prefetch = append(req.Prefetch, a)
 	}
@@ -322,7 +330,7 @@ func (me *Master) replayFileModifications(worker *rpc.Client, infos []*FileAttr)
 
 func (me *Master) refreshAttributeCache() {
 	for _, r := range []string{me.writableRoot, me.srcRoot} {
-		updated := me.fileServer.refreshAttributeCache(r)
+		updated := me.fileServer.refreshAttributeCache(r[1:])
 		me.mirrors.queueFiles(nil, updated)
 	}
 }

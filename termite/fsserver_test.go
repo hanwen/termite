@@ -41,7 +41,7 @@ func TestFsServerCache(t *testing.T) {
 	server := NewFsServer("/", cache, nil)
 	server.excludePrivate = false
 
-	server.refreshAttributeCache(orig)
+	server.refreshAttributeCache("")
 	if len(server.attrCache) > 0 {
 		t.Errorf("cache not empty? %#v", server.attrCache)
 	}
@@ -64,7 +64,7 @@ func TestFsServerCache(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	server.refreshAttributeCache(orig)
+	server.refreshAttributeCache("")
 	attr, ok = server.attrCache[name]
 	if !ok || attr.Status.Ok() {
 		t.Errorf("after rename: entry for %q unexpected: %v %#v", name, ok, attr)
@@ -165,14 +165,14 @@ func TestRpcFsReadDirCache(t *testing.T) {
 
 	newData := []*FileAttr{
 		&FileAttr{
-			Path: "/subdir/unstatted.txt",
+			Path: "subdir/unstatted.txt",
 			Hash: md5str("somethingelse"),
 			FileInfo: &os.FileInfo{
 				Mode: fuse.S_IFREG | 0644,
 			},
 		},
 		&FileAttr{
-			Path:   "/subdir/file.txt",
+			Path:   "subdir/file.txt",
 			Status: fuse.ENOENT,
 		},
 	}
@@ -222,20 +222,20 @@ func TestRpcFS(t *testing.T) {
 	}
 
 	// This test implementation detail - should be separate?
-	storedHash := me.server.hashCache["/file.txt"]
+	storedHash := me.server.hashCache["file.txt"]
 	if storedHash == "" || string(storedHash) != string(md5str(content)) {
 		t.Errorf("cache error %x (%v)", storedHash, storedHash)
 	}
 
 	newcontent := "somethingelse"
-	err = ioutil.WriteFile(me.orig + "/file.txt", []byte("somethingelse"), 0644)
+	err = ioutil.WriteFile(me.orig + "/file.txt", []byte(newcontent), 0644)
 	check(err)
 	err = ioutil.WriteFile(me.orig + "/foobar.txt", []byte("more content"), 0644)
 	check(err)
 	
-	me.server.refreshAttributeCache("/")
-	storedHash = me.server.hashCache["/file.txt"]
+	me.server.refreshAttributeCache("")
+	storedHash = me.server.hashCache["file.txt"]
 	if storedHash == "" || storedHash != md5str(newcontent) {
-		t.Errorf("cache error %x (%x)", storedHash, md5str(newcontent))
+		t.Errorf("refreshAttributeCache: cache error got %x, want %x", storedHash, md5str(newcontent))
 	}
 }

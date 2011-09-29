@@ -94,6 +94,8 @@ type WorkerStatusResponse struct {
 	Version      string
 	MaxJobCount  int
 	ShuttingDown bool
+
+	// In chronological order.
 	CpuStats     []CpuStat
 	TotalCpu     CpuStat
 }

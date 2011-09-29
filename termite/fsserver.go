@@ -258,6 +258,13 @@ func (me *FsServer) updateHashes(infos []*FileAttr) {
 	}
 }
 
+func (me *FsServer) dropHash(name string) {
+	me.hashCacheMutex.Lock()
+	defer me.hashCacheMutex.Unlock()
+	me.hashCache[name] = "", false
+	me.hashCacheCond.Broadcast()
+}
+
 func (me *FsServer) getHash(name string) (hash string) {
 	fullPath := me.path(name)
 
@@ -301,10 +308,14 @@ func (me *FsServer) refreshAttributeCache(prefix string) []*FileAttr {
 	me.attrCacheMutex.Lock()
 	defer me.attrCacheMutex.Unlock()
 
+	if prefix != "" &&  prefix[0] == '/' {
+		panic("leading /")
+	}
+	
 	updated := []*FileAttr{}
 	for key, attr := range me.attrCache {
 		// TODO -should just do everything?
-		if !HasDirPrefix(key, prefix) {
+		if !strings.HasPrefix(key, prefix) {
 			continue
 		}
 
@@ -323,7 +334,10 @@ func (me *FsServer) refreshAttributeCache(prefix string) []*FileAttr {
 				Status:   fuse.OK,
 				FileInfo: fi,
 			}
+			me.dropHash(key)
+			
 			me.fillContent(&newEnt)
+			log.Printf("inside update %s %x", key, newEnt.Hash)
 			updated = append(updated, &newEnt)
 		}
 	}
