@@ -13,7 +13,7 @@
     "Recurse": false,
     "SkipRefresh": true
 }, {
-    "Regexp": "^find [^ ;&]* -type f$",
+    "Regexp": "^find [^ ;&]*$",
     "Local": true,
     "Recurse": false,
     "SkipRefresh": true
@@ -31,4 +31,3 @@
     "Regexp": ".*",
     "Local": false
 }]
-
