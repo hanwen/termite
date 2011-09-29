@@ -12,6 +12,7 @@ import (
 )
 
 // TODO - this file is a mess. Clean it up.
+const _TIMEOUT = 10e9
 
 func TryRunDirect(cmd string) {
 	if cmd == ":" {
@@ -39,7 +40,7 @@ func TryRunDirect(cmd string) {
 
 func Refresh() {
 	socket := termite.FindSocket()
-	conn := termite.OpenSocketConnection(socket, termite.RPC_CHANNEL)
+	conn := termite.OpenSocketConnection(socket, termite.RPC_CHANNEL, _TIMEOUT)
 
 	client := rpc.NewClient(conn)
 
@@ -70,7 +71,7 @@ func cleanEnv(input []string) []string {
 
 func Inspect(files []string) {
 	socket := termite.FindSocket()
-	conn := termite.OpenSocketConnection(socket, termite.RPC_CHANNEL)
+	conn := termite.OpenSocketConnection(socket, termite.RPC_CHANNEL, _TIMEOUT)
 	client := rpc.NewClient(conn)
 	wd, _ := os.Getwd()
 	for _, p := range files {
@@ -172,7 +173,7 @@ func main() {
 		Refresh()
 	}
 
-	conn := termite.OpenSocketConnection(socket, termite.RPC_CHANNEL)
+	conn := termite.OpenSocketConnection(socket, termite.RPC_CHANNEL, _TIMEOUT)
 
 	// TODO - could skip the shell if we can deduce it is a
 	// no-frills command invocation.

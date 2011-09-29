@@ -137,7 +137,7 @@ func (me *testCase) Clean() {
 }
 
 func (me *testCase) Run(req WorkRequest) (rep WorkResponse) {
-	rpcConn := OpenSocketConnection(me.socket, RPC_CHANNEL)
+	rpcConn := OpenSocketConnection(me.socket, RPC_CHANNEL, 1e7)
 	client := rpc.NewClient(rpcConn)
 
 	err := client.Call("LocalMaster.Run", &req, &rep)
@@ -168,7 +168,7 @@ func TestEndToEndBasic(t *testing.T) {
 	}
 
 	// TODO - should separate dial/listen in the daemons?
-	stdinConn := OpenSocketConnection(tc.socket, req.StdinId)
+	stdinConn := OpenSocketConnection(tc.socket, req.StdinId, 10e6)
 	go func() {
 		stdinConn.Write([]byte("hello"))
 		stdinConn.Close()
@@ -452,7 +452,7 @@ func TestEndToEndShutdown(t *testing.T) {
 		t.Errorf("Shutdown insuccessful: %v", err)
 	}
 
-	rpcConn := OpenSocketConnection(tc.socket, RPC_CHANNEL)
+	rpcConn := OpenSocketConnection(tc.socket, RPC_CHANNEL, 10e6)
 	err = rpc.NewClient(rpcConn).Call("LocalMaster.Run", &req, &rep)
 	if err == nil {
 		t.Error("LocalMaster.Run should fail after shutdown")
