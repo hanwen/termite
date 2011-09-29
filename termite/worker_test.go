@@ -116,7 +116,9 @@ func (me *testCase) fdCount() int {
 
 func (me *testCase) Clean() {
 	me.master.mirrors.dropConnections()
-	me.worker.Shutdown(nil, nil)
+	req := ShutdownRequest{} 
+	rep := ShutdownResponse{} 
+	me.worker.Shutdown(&req, &rep)
 	me.coordinator.Shutdown()
 	// TODO - should have explicit worker shutdown routine.
 	time.Sleep(0.1e9)
@@ -187,7 +189,7 @@ func TestEndToEndBasic(t *testing.T) {
 		Env:    testEnv(),
 		Dir:    tc.wd,
 	})
-
+	
 	if fi, _ := os.Lstat(tc.wd + "/output.txt"); fi != nil {
 		t.Error("file should have been deleted", fi)
 	}
@@ -249,7 +251,7 @@ func TestEndToEndNegativeNotify(t *testing.T) {
 	ioutil.WriteFile(tc.wd + "/output.txt", newContent, 0644)
 	updated := []*FileAttr{
 		&FileAttr{
-			Path:     tc.wd + "/output.txt",
+			Path:     tc.wd[1:] + "/output.txt",
 			FileInfo: &os.FileInfo{Mode: fuse.S_IFREG | 0644, Size: int64(len(newContent))},
 			Hash:     hash,
 		},
@@ -443,8 +445,8 @@ func TestEndToEndShutdown(t *testing.T) {
 		t.Fatal("DialTypedConnection to shutdown worker: ", err)
 	}
 
-	stopReq := 1
-	stopRep := 1
+	stopReq := ShutdownRequest{}
+	stopRep := ShutdownResponse{}
 	err = rpc.NewClient(conn).Call("WorkerDaemon.Shutdown", &stopReq, &stopRep)
 	if err != nil {
 		t.Errorf("Shutdown insuccessful: %v", err)

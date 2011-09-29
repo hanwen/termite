@@ -29,19 +29,32 @@ type FileAttr struct {
 	fuse.Status
 	Hash string
 	Link string
+
+	// Only filled for directories.
+	NameModeMap map[string]uint32
+}
+
+func (me FileAttr) String() string {
+	id := ""
+	if me.Hash != "" {
+		id = fmt.Sprintf(" sz %d", me.FileInfo.Size)
+	}
+	if me.Link != "" {
+		id = fmt.Sprintf(" -> %s", me.Link)
+	}
+	if me.Deletion() {
+		id = " (del)"
+	} else if !me.Status.Ok() {
+		id = " " + me.Status.String()
+	}
+	if me.Status.Ok() {
+		id += fmt.Sprintf(" m=%o", me.FileInfo.Mode)
+	}
+	return fmt.Sprintf("%s%s", me.Path, id)
 }
 
 type AttrResponse struct {
 	Attrs []*FileAttr
-}
-
-type DirRequest struct {
-	Name string
-}
-
-type DirResponse struct {
-	NameModeMap map[string]uint32
-	fuse.Status
 }
 
 type UpdateRequest struct {

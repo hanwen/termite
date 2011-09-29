@@ -20,12 +20,6 @@ type RpcFs struct {
 	// Roots that we should try to fetch locally.
 	localRoots []string
 
-	// Should be acquired before attrMutex if applicable.
-	dirMutex     sync.RWMutex
-	dirFetchCond *sync.Cond
-	dirFetchMap  map[string]bool
-	directories  map[string]*DirResponse
-
 	fetchMutex sync.Mutex
 	fetchCond  *sync.Cond
 	fetchMap   map[string]bool
@@ -39,10 +33,6 @@ type RpcFs struct {
 func NewRpcFs(server *rpc.Client, cache *ContentCache) *RpcFs {
 	me := &RpcFs{}
 	me.client = server
-
-	me.directories = make(map[string]*DirResponse)
-	me.dirFetchMap = map[string]bool{}
-	me.dirFetchCond = sync.NewCond(&me.dirMutex)
 
 	me.attrResponse = make(map[string]*FileAttr)
 	me.attrFetchMap = map[string]bool{}
@@ -61,73 +51,10 @@ func (me *RpcFs) Update(req *UpdateRequest, resp *UpdateResponse) os.Error {
 }
 
 func (me *RpcFs) updateFiles(files []*FileAttr) {
-	me.dirMutex.Lock()
-	defer me.dirMutex.Unlock()
-
 	me.attrMutex.Lock()
 	defer me.attrMutex.Unlock()
-
-	for _, r := range files {
-		p := strings.TrimLeft(r.Path, string(filepath.Separator))
-		copy := *r
-		me.attrResponse[p] = &copy
-		if r.Deletion() {
-			me.directories[p] = nil, false
-		}
-
-		d, basename := filepath.Split(p)
-		d = strings.TrimRight(d, string(filepath.Separator))
-		if dir, ok := me.directories[d]; ok {
-			if r.Deletion() {
-				dir.NameModeMap[basename] = 0, false
-			} else {
-				dir.NameModeMap[basename] = r.Mode ^ 0777
-			}
-		}
-	}
+	updateAttributeMap(me.attrResponse, files)
 }
-
-func (me *RpcFs) GetDir(name string) *DirResponse {
-	me.dirMutex.RLock()
-	r, ok := me.directories[name]
-	me.dirMutex.RUnlock()
-	if ok {
-		return r
-	}
-
-	me.dirMutex.Lock()
-	defer me.dirMutex.Unlock()
-	for me.dirFetchMap[name] && me.directories[name] == nil {
-		me.dirFetchCond.Wait()
-	}
-
-	r, ok = me.directories[name]
-	if ok {
-		return r
-	}
-
-	me.dirFetchMap[name] = true
-	me.dirMutex.Unlock()
-
-	req := &DirRequest{Name: "/" + name}
-	rep := &DirResponse{}
-	err := me.client.Call("FsServer.ReadDir", req, rep)
-
-	me.dirMutex.Lock()
-	me.dirFetchMap[name] = false, false
-	me.dirFetchCond.Broadcast()
-	if err != nil {
-		log.Fatal("GetDir error:", err)
-	}
-
-	if rep.Status.Ok() {
-		// TODO - caching for negative responses too.
-		me.directories[name] = rep
-	}
-
-	return rep
-}
-
 
 func (me *RpcFs) FetchHash(size int64, key string) os.Error {
 	me.fetchMutex.Lock()
@@ -157,7 +84,6 @@ func (me *RpcFs) fetchOnce(hash string) os.Error {
 		me.cache)
 }
 
-
 func (me *RpcFs) getFileAttr(name string) *FileAttr {
 	me.attrMutex.RLock()
 	result, ok := me.attrResponse[name]
@@ -168,24 +94,26 @@ func (me *RpcFs) getFileAttr(name string) *FileAttr {
 
 	dir, base := filepath.Split(name)
 	dir = strings.TrimRight(dir, "/")
-	dirResp := me.GetDir(dir)
-	code := dirResp.Status
-	if code.Ok() {
-		if _, ok := dirResp.NameModeMap[base]; !ok {
-			code = fuse.ENOENT
+	if name != dir {
+		dirResp := me.getFileAttr(dir)
+		code := dirResp.Status
+		if code.Ok() {
+			if _, ok := dirResp.NameModeMap[base]; !ok {
+				code = fuse.ENOENT
+			}
 		}
-	}
-	if !code.Ok() {
-		me.attrMutex.Lock()
-		defer me.attrMutex.Unlock()
-		fa := &FileAttr{
+		if !code.Ok() {
+			me.attrMutex.Lock()
+			defer me.attrMutex.Unlock()
+			fa := &FileAttr{
 			Status: code,
 			Path:   name,
+			}
+			me.attrResponse[name] = fa
+			return fa
 		}
-		me.attrResponse[name] = fa
-		return fa
 	}
-
+	
 	me.attrMutex.Lock()
 	defer me.attrMutex.Unlock()
 	for me.attrFetchMap[name] && me.attrResponse[name] == nil {
@@ -198,7 +126,7 @@ func (me *RpcFs) getFileAttr(name string) *FileAttr {
 	me.attrFetchMap[name] = true
 	me.attrMutex.Unlock()
 
-	abs := "/" + name
+	abs := name
 	req := &AttrRequest{Name: abs}
 	rep := &AttrResponse{}
 	err := me.client.Call("FsServer.GetAttr", req, rep)
@@ -214,7 +142,7 @@ func (me *RpcFs) getFileAttr(name string) *FileAttr {
 	var wanted *FileAttr
 	for _, attr := range rep.Attrs {
 		me.considerSaveLocal(attr)
-		me.attrResponse[strings.TrimLeft(attr.Path, "/")] = attr
+		me.attrResponse[attr.Path] = attr
 		if attr.Path == abs {
 			wanted = attr
 		}
@@ -264,9 +192,12 @@ func (me *RpcFs) String() string {
 }
 
 func (me *RpcFs) OpenDir(name string, context *fuse.Context) (chan fuse.DirEntry, fuse.Status) {
-	r := me.GetDir(name)
+	r := me.getFileAttr(name)
 	if !r.Status.Ok() {
 		return nil, r.Status
+	}
+	if !r.FileInfo.IsDirectory()  {
+		return nil, fuse.EINVAL
 	}
 
 	c := make(chan fuse.DirEntry, len(r.NameModeMap))

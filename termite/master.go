@@ -1,14 +1,13 @@
 package termite
 
 import (
-	"github.com/hanwen/go-fuse/fuse"
 	"io/ioutil"
+	"github.com/hanwen/go-fuse/fuse"
 	"log"
 	"net"
 	"os"
 	"path/filepath"
 	"rpc"
-	"sort"
 )
 
 type Master struct {
@@ -247,6 +246,7 @@ func (me *Master) run(req *WorkRequest, rep *WorkResponse) (err os.Error) {
 func (me *Master) replayFileModifications(worker *rpc.Client, infos []*FileAttr) os.Error {
 	// Must get data before we modify the file-system, so we don't
 	// leave the FS in a half-finished state.
+	log.Println(infos)
 	for _, info := range infos {
 		if info.Hash != "" {
 			err := FetchBetweenContentServers(
@@ -259,26 +259,12 @@ func (me *Master) replayFileModifications(worker *rpc.Client, infos []*FileAttr)
 
 	// TODO - if we have all readdir results in memory, we could
 	// do the update of the FS asynchronous.
-	entries := make(map[string]*FileAttr)
-	names := []string{}
 	for _, info := range infos {
-		names = append(names, info.Path)
-		entries[info.Path] = info
-	}
-
-	deletes := []string{}
-	// Sort so we get parents before children.
-	sort.Strings(names)
-	for _, name := range names {
-		info := entries[name]
-		var err os.Error
-
 		logStr := ""
+		name := "/" + info.Path
+		var err os.Error
 		if info.FileInfo != nil && info.FileInfo.IsDirectory() {
-			if name == "" {
-				name = "/"
-			}
-			err = os.Mkdir(name, info.FileInfo.Mode&07777)
+			err := os.Mkdir(name, info.FileInfo.Mode&07777)
 			if err != nil {
 				// some other process may have created
 				// the dir.
@@ -292,48 +278,42 @@ func (me *Master) replayFileModifications(worker *rpc.Client, infos []*FileAttr)
 			content := me.cache.ContentsIfLoaded(info.Hash)
 
 			if content == nil {
-				err = CopyFile(info.Path, me.cache.Path(info.Hash), int(info.FileInfo.Mode))
+				err = CopyFile(name, me.cache.Path(info.Hash), int(info.FileInfo.Mode))
 				logStr += "CopyFile,"
 			} else {
 				me.cache.Save(content)
-				err = ioutil.WriteFile(info.Path, content, info.FileInfo.Mode&07777)
+				err = ioutil.WriteFile(name, content, info.FileInfo.Mode&07777)
 				logStr += "WriteFile,"
 			}
 		}
 		if info.Link != "" {
-			os.Remove(info.Path) // ignore error.
-			err = os.Symlink(info.Link, info.Path)
+			// Ignore errors.
+			os.Remove(name)
+			err = os.Symlink(info.Link, name)
 			logStr += "Symlink,"
 		}
 		if !info.Status.Ok() {
-			if info.Status == fuse.ENOENT {
-				deletes = append(deletes, info.Path)
-			} else {
+			if info.Status != fuse.ENOENT {
 				log.Fatal("Unknown status for replay", info.Status)
+			}
+			if err := os.Remove(name); err != nil {
+				log.Println("delete replay: ", err)
 			}
 		}
 
 		if info.FileInfo != nil && !info.FileInfo.IsSymlink() {
 			if err == nil {
-				err = os.Chtimes(info.Path, info.FileInfo.Atime_ns, info.FileInfo.Mtime_ns)
+				err = os.Chtimes(name, info.FileInfo.Atime_ns, info.FileInfo.Mtime_ns)
 				logStr += "Chtimes,"
 			}
 			if err == nil {
-				err = os.Chmod(info.Path, info.FileInfo.Mode&07777)
+				err = os.Chmod(name, info.FileInfo.Mode&07777)
 				logStr += "Chmod,"
 			}
 		}
 
 		if err != nil {
 			log.Fatal("Replay error ", info.Path, " ", err, infos, logStr)
-		}
-	}
-
-	// Must do deletes in reverse: children before parents.
-	for i, _ := range deletes {
-		d := deletes[len(deletes)-1-i]
-		if err := os.Remove(d); err != nil {
-			log.Println("delete replay: ", err)
 		}
 	}
 

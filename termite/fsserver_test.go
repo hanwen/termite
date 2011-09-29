@@ -7,7 +7,6 @@ import (
 	"github.com/hanwen/go-fuse/fuse"
 	"io"
 	"io/ioutil"
-	"log"
 	"os"
 	"rpc"
 	"testing"
@@ -21,7 +20,6 @@ func init() {
 
 func TestFsServerCache(t *testing.T) {
 	paranoia = true
-	log.Println("TestFsServerCache")
 	tmp, _ := ioutil.TempDir("", "term-fss")
 	defer os.RemoveAll(tmp)
 
@@ -184,7 +182,7 @@ func TestRpcFsReadDirCache(t *testing.T) {
 	_, err = ioutil.ReadDir(me.mnt + "/subdir")
 	check(err)
 
-	dir := me.rpcFs.directories["subdir"]
+	dir := me.rpcFs.attrResponse["subdir"]
 	if dir == nil {
 		t.Fatalf("Should have cache entry for /subdir")
 	}
@@ -229,19 +227,15 @@ func TestRpcFS(t *testing.T) {
 		t.Errorf("cache error %x (%v)", storedHash, storedHash)
 	}
 
-	newData := []*FileAttr{
-		&FileAttr{
-			Path: "/file.txt",
-			Hash: md5str("somethingelse"),
-		},
-		&FileAttr{
-			Path: "/foobar.txt",
-			Hash: md5str("contentsoffoobar"),
-		},
-	}
-	me.server.updateFiles(newData)
+	newcontent := "somethingelse"
+	err = ioutil.WriteFile(me.orig + "/file.txt", []byte("somethingelse"), 0644)
+	check(err)
+	err = ioutil.WriteFile(me.orig + "/foobar.txt", []byte("more content"), 0644)
+	check(err)
+	
+	me.server.refreshAttributeCache("/")
 	storedHash = me.server.hashCache["/file.txt"]
-	if storedHash == "" || storedHash != newData[0].Hash {
-		t.Errorf("cache error %x (%v)", storedHash, storedHash)
+	if storedHash == "" || storedHash != md5str(newcontent) {
+		t.Errorf("cache error %x (%x)", storedHash, md5str(newcontent))
 	}
 }

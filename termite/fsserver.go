@@ -75,26 +75,6 @@ func NewFsServer(root string, cache *ContentCache, excluded []string) *FsServer 
 	return fs
 }
 
-func (me FileAttr) String() string {
-	id := ""
-	if me.Hash != "" {
-		id = fmt.Sprintf(" sz %d", me.FileInfo.Size)
-	}
-	if me.Link != "" {
-		id = fmt.Sprintf(" -> %s", me.Link)
-	}
-	if me.Deletion() {
-		id = " (del)"
-	} else if !me.Status.Ok() {
-		id = " " + me.Status.String()
-	}
-	if me.Status.Ok() {
-		id += fmt.Sprintf(" m=%o", me.FileInfo.Mode)
-	}
-
-	return fmt.Sprintf("%s%s", me.Path, id)
-}
-
 func (me FileAttr) Deletion() bool {
 	return me.Status == fuse.ENOENT
 }
@@ -110,19 +90,12 @@ func (me *FsServer) FileContent(req *ContentRequest, rep *ContentResponse) os.Er
 	return me.contentServer.FileContent(req, rep)
 }
 
-func (me *FsServer) ReadDir(req *DirRequest, r *DirResponse) os.Error {
-	d, e := ioutil.ReadDir(me.path(req.Name))
-	log.Println("ReadDir", req)
-	r.NameModeMap = make(map[string]uint32)
-	for _, v := range d {
-		r.NameModeMap[v.Name] = v.Mode
-	}
-	r.Status = fuse.OsErrorToErrno(e)
-	return nil
-}
-
 func (me *FsServer) GetAttr(req *AttrRequest, rep *AttrResponse) os.Error {
 	log.Println("GetAttr req", req.Name)
+	if req.Name != "" && req.Name[0] == '/' {
+		panic("leading /")
+	}
+	
 	a := me.oneGetAttr(req.Name)
 	if a.Hash != "" {
 		log.Printf("GetAttr %v %x", a, a.Hash)
@@ -131,9 +104,7 @@ func (me *FsServer) GetAttr(req *AttrRequest, rep *AttrResponse) os.Error {
 	return nil
 }
 
-func (me *FsServer) oneGetAttr(name string) (rep *FileAttr) {
-	defer me.verify()
-
+func (me *FsServer) uncachedGetAttr(name string) (rep *FileAttr) {
 	if me.excluded[name] {
 		log.Printf("Denied access to excluded file %q", name)
 		return &FileAttr{
@@ -141,26 +112,6 @@ func (me *FsServer) oneGetAttr(name string) (rep *FileAttr) {
 			Status: fuse.ENOENT,
 		}
 	}
-
-	me.attrCacheMutex.RLock()
-	rep, ok := me.attrCache[name]
-	me.attrCacheMutex.RUnlock()
-	if ok {
-		return rep
-	}
-
-	me.attrCacheMutex.Lock()
-	defer me.attrCacheMutex.Unlock()
-	for me.attrCacheBusy[name] && me.attrCache[name] == nil {
-		me.attrCacheCond.Wait()
-	}
-	rep, ok = me.attrCache[name]
-	if ok {
-		return rep
-	}
-	me.attrCacheBusy[name] = true
-	me.attrCacheMutex.Unlock()
-
 	p := me.path(name)
 	fi, err := os.Lstat(p)
 	rep = &FileAttr{
@@ -181,6 +132,31 @@ func (me *FsServer) oneGetAttr(name string) (rep *FileAttr) {
 	if fi != nil {
 		me.fillContent(rep)
 	}
+	return rep
+}
+
+func (me *FsServer) oneGetAttr(name string) (rep *FileAttr) {
+	defer me.verify()
+	me.attrCacheMutex.RLock()
+	rep, ok := me.attrCache[name]
+	me.attrCacheMutex.RUnlock()
+	if ok {
+		return rep
+	}
+
+	me.attrCacheMutex.Lock()
+	defer me.attrCacheMutex.Unlock()
+	for me.attrCacheBusy[name] && me.attrCache[name] == nil {
+		me.attrCacheCond.Wait()
+	}
+	rep, ok = me.attrCache[name]
+	if ok {
+		return rep
+	}
+	me.attrCacheBusy[name] = true
+	me.attrCacheMutex.Unlock()
+
+	rep = me.uncachedGetAttr(name)
 
 	me.attrCacheMutex.Lock()
 	me.attrCache[name] = rep
@@ -191,7 +167,7 @@ func (me *FsServer) oneGetAttr(name string) (rep *FileAttr) {
 
 func (me *FsServer) fillContent(rep *FileAttr) {
 	if rep.FileInfo.IsSymlink() {
-		rep.Link, _ = os.Readlink(rep.Path)
+		rep.Link, _ = os.Readlink(me.path(rep.Path))
 	}
 	if rep.FileInfo.IsRegular() {
 		rep.Hash = me.getHash(rep.Path)
@@ -201,11 +177,57 @@ func (me *FsServer) fillContent(rep *FileAttr) {
 			rep.Status = fuse.EPERM
 		}
 	}
+	if rep.FileInfo.IsDirectory() {
+		p := me.path(rep.Path)
+		d, e := ioutil.ReadDir(p)
+		rep.NameModeMap = make(map[string]uint32)
+		for _, v := range d {
+			rep.NameModeMap[v.Name] = v.Mode
+		}
+		rep.Status = fuse.OsErrorToErrno(e)
+	}
 }
 
 func (me *FsServer) updateFiles(infos []*FileAttr) {
 	me.updateHashes(infos)
 	me.updateAttrs(infos)
+}
+
+
+func updateAttributeMap(attributes map[string]*FileAttr, files []*FileAttr) {
+	for _, r := range files {
+		if len(r.Path) > 0 && r.Path[0] == '/' {
+			panic("Leading slash.")
+		}
+		
+		dir, basename := filepath.Split(r.Path)
+		dir = strings.TrimRight(dir, string(filepath.Separator))
+		if dir, ok := attributes[dir]; ok {
+			if r.Deletion() {
+				dir.NameModeMap[basename] = 0, false
+			} else {
+				dir.NameModeMap[basename] = r.Mode &^ 0777
+			}
+		}
+
+		if r.FileInfo != nil && r.FileInfo.IsDirectory() && r.NameModeMap == nil {
+			dirResp := attributes[r.Path]
+			if dirResp == nil {
+				copy := *r
+				dirResp = &copy
+			}
+			
+			dirResp.FileInfo = r.FileInfo
+			dirResp.Status = r.Status
+			if dirResp.NameModeMap == nil {
+				dirResp.NameModeMap = map[string]uint32{}
+			}
+			continue
+		}
+		
+		copy := *r
+		attributes[r.Path] = &copy
+	}
 }
 
 func (me *FsServer) updateAttrs(infos []*FileAttr) {
@@ -214,9 +236,7 @@ func (me *FsServer) updateAttrs(infos []*FileAttr) {
 	me.attrCacheMutex.Lock()
 	defer me.attrCacheMutex.Unlock()
 
-	for _, r := range infos {
-		me.attrCache[r.Path] = r
-	}
+	updateAttributeMap(me.attrCache, infos)
 }
 
 func (me *FsServer) updateHashes(infos []*FileAttr) {
@@ -296,6 +316,7 @@ func (me *FsServer) refreshAttributeCache(prefix string) []*FileAttr {
 			}
 			updated = append(updated, &del)
 		}
+		// TODO - does this handle symlinks corrrectly?
 		if fi != nil && attr.FileInfo != nil && EncodeFileInfo(*attr.FileInfo) != EncodeFileInfo(*fi) {
 			newEnt := FileAttr{
 				Path:     key,
