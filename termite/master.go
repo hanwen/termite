@@ -254,7 +254,6 @@ func (me *Master) run(req *WorkRequest, rep *WorkResponse) (err os.Error) {
 func (me *Master) replayFileModifications(worker *rpc.Client, infos []*FileAttr) os.Error {
 	// Must get data before we modify the file-system, so we don't
 	// leave the FS in a half-finished state.
-	log.Println(infos)
 	for _, info := range infos {
 		if info.Hash != "" {
 			err := FetchBetweenContentServers(
