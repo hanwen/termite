@@ -58,6 +58,9 @@ func (me *CpuStat) Diff(x CpuStat) CpuStat {
 
 func (me *CpuStat) Percent() string {
 	t := me.Total()
+	if t == 0 {
+		return "(no data)"
+	}
 	return fmt.Sprintf("%d %% self cpu, %d %% self sys, %d %% child cpu, %d %% child sys",
 		(100*me.SelfCpu)/t , (me.SelfSys*100)/t, (me.ChildCpu*100)/t, (me.ChildSys*100)/t)
 }
