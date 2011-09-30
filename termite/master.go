@@ -50,6 +50,25 @@ func (me *Master) SetKeepAlive(keepalive float64, household float64) {
 	}
 }
 
+func (me *Master) CheckPrivate() {
+	if !me.fileServer.excludePrivate {
+		return
+	}
+	d := me.writableRoot
+	for d != "/" {
+		fi, err := os.Lstat(d)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if fi != nil && fi.Mode & 0077 == 0 {
+			log.Fatalf("Error: dir %q is mode %o.", d, fi.Mode & 07777)
+		}
+		d, _ = filepath.Split(d)
+		d = filepath.Clean(d)
+	}
+}
+
+
 func (me *Master) Start(sock string) {
 	localStart(me, sock)
 }

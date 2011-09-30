@@ -90,6 +90,7 @@ func (me *LocalMaster) start(sock string) {
 	writableRoot = filepath.Clean(writableRoot)
 
 	me.master.writableRoot = writableRoot
+	me.master.CheckPrivate()
 	log.Println("accepting connections on", absSock)
 	for {
 		conn, err := me.listener.Accept()
