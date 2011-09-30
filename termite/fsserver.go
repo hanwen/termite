@@ -70,6 +70,9 @@ func NewFsServer(root string, cache *ContentCache, excluded []string) *FsServer 
 	fs.attrCacheCond = sync.NewCond(&fs.attrCacheMutex)
 	fs.excluded = make(map[string]bool)
 	for _, e := range excluded {
+		if e[0] == '/' {
+			panic("leading slash")
+		}
 		fs.excluded[e] = true
 	}
 	return fs
