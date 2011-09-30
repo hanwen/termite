@@ -83,7 +83,7 @@ func Inspect(files []string) {
 		if p[0] != '/' {
 			p = filepath.Join(wd, p)
 		}
-
+		p = p[1:]
 		req := termite.AttrRequest{Name: p}
 		rep := termite.AttrResponse{}
 		err := Rpc().Call("LocalMaster.InspectFile", &req, &rep)

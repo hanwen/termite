@@ -27,7 +27,9 @@ do
   sudo -b ${TERMITE_DIR}/bin/worker/worker -coordinator ${coord} -port ${pprefix}$w -jobs 1 -logfile w$w.log &> w$w.stderr
 done
 sleep 1
-${TERMITE_DIR}/bin/master/master -jobs 50 -port ${pprefix}9 -coordinator ${coord} >& master.log & 
+${TERMITE_DIR}/bin/master/master -jobs 50 -port ${pprefix}9 -coordinator ${coord} >& master.log &
+
+shell-wrapper -inspect 'Makefile' -c 'true'
 make clean
 sleep 1
 ${TERMITE_DIR}/termite-make -j50
