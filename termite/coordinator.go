@@ -272,8 +272,10 @@ func (me *Coordinator) workerHandler(w http.ResponseWriter, req *http.Request) {
 	if start < 0 {
 		start = 0
 	}
-	
+
+	stat5s := CpuStat{}
 	for _, v := range status.CpuStats[start:] {
+		stat5s = stat5s.Add(v)
 		fmt.Fprintf(w, "<tr><td>%d</td><td>%d</td><td>%d</td><td>%d</td><td>%d</td></tr>",
 			v.SelfCpu/1e6, v.SelfSys/1e6, v.ChildCpu/1e6, v.ChildSys/1e6,
 			(v.SelfCpu+v.SelfSys+v.ChildCpu+v.ChildSys)/1e6)
@@ -285,6 +287,8 @@ func (me *Coordinator) workerHandler(w http.ResponseWriter, req *http.Request) {
 		minuteStat = minuteStat.Add(v)
 	}
 
+	fmt.Fprintf(w, "<p>Last 5s: %s (%.1f CPUs.)", stat5s.Percent(),
+		float64(stat5s.Total()) / 5.0e9)
 	fmt.Fprintf(w, "<p>Last minute: %s (%.1f CPUs.)", minuteStat.Percent(),
 		float64(minuteStat.Total()) / 60.0e9)
 	
