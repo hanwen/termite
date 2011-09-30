@@ -121,6 +121,7 @@ func (me *Master) createMirror(addr string, jobs int) (*mirrorConnection, os.Err
 	}
 	mc.fileSetWaiter = newFileSetWaiter(me, mc)
 
+	mc.queueFiles(me.fileServer.copyCache())
 	return mc, nil
 }
 
