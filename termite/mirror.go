@@ -139,6 +139,7 @@ func (me *Mirror) considerReap(fs *workerFuseFs, task *WorkerTask) bool {
 }
 
 func (me *Mirror) reapFuse(fs *workerFuseFs) (results *FileSet) {
+	log.Printf("Reaping fuse FS %d", fs.id)
 	results = me.fillReply(fs.unionFs)
 	
 	// Must do updateFiles before ReturnFuse, since the

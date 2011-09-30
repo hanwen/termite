@@ -93,13 +93,13 @@ func (me *WorkerTask) runInFuse(fuseFs *workerFuseFs) os.Error {
 		return err
 	}
 
-	// Must modify printCmd after starting the process.
-	printCmd := cmd
-	if !me.WorkRequest.Debug {
-		printCmd.Env = nil
+	printCmd := fmt.Sprintf("%v", cmd.Args)
+	if me.WorkRequest.Debug {
+		printCmd = fmt.Sprintf("%v", cmd)
 	}
-	log.Println("started cmd", printCmd, "in", fuseFs.mount)
-	me.taskInfo = fmt.Sprintf("Cmd %v, dir %v, proc %v", cmd.Args, cmd.Dir, cmd.Process)
+	me.taskInfo = fmt.Sprintf("%v, dir %v, fuse FS %d",
+		printCmd, cmd.Dir, fuseFs.id)
+	log.Println("started", me.taskInfo)
 	err := cmd.Wait()
 
 	waitMsg, ok := err.(*os.Waitmsg)
