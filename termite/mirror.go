@@ -102,7 +102,8 @@ func (me *Mirror) newFs(t *WorkerTask) (fs *workerFuseFs, err os.Error) {
 	}
 
 	for fs, _ := range me.activeFses {
-		if !fs.reaping {
+		if !fs.reaping && fs.reapCountdown > 0 {
+			fs.reapCountdown--
 			fs.tasks[t] = true
 			return fs, nil
 		}
@@ -112,13 +113,19 @@ func (me *Mirror) newFs(t *WorkerTask) (fs *workerFuseFs, err os.Error) {
 		return nil, err
 	}
 
-	fs.id = me.nextId
-	me.nextId++
-
+	me.prepareFs(fs)
 	fs.tasks[t] = true
 	me.activeFses[fs] = true
 	return fs, nil
 }
+
+// Must hold lock.
+func (me *Mirror) prepareFs(fs *workerFuseFs) {
+	fs.reaping = false
+	fs.id = me.nextId
+	me.nextId++
+	fs.reapCountdown = me.daemon.options.ReapCount
+}	
 
 func (me *Mirror) considerReap(fs *workerFuseFs, task *WorkerTask) bool {
 	me.fsMutex.Lock()
@@ -145,9 +152,7 @@ func (me *Mirror) returnFs(fs *workerFuseFs) {
 	defer me.fsMutex.Unlock()
 	
 	if fs.reaping {
-		fs.reaping = false
-		fs.id = me.nextId
-		me.nextId++
+		me.prepareFs(fs)
 	}
 
 	fs.SetDebug(false)

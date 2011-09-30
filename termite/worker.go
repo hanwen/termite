@@ -40,6 +40,7 @@ type WorkerDaemon struct {
 	mirrorMap      map[string]*Mirror
 	shuttingDown   bool
 	mustRestart    bool
+	options        *WorkerOptions
 }
 
 func (me *WorkerDaemon) getMirror(rpcConn, revConn net.Conn, reserveCount int) (*Mirror, os.Error) {
@@ -78,12 +79,19 @@ type WorkerOptions struct {
 	// If set, change user to this for running.
 	User             *string
 	FileContentCount int
+
+	// How often to reap filesystems. If 1, use 1 FS per task.
+	ReapCount        int
 }
 
 func NewWorkerDaemon(options *WorkerOptions) *WorkerDaemon {
 	if options.FileContentCount == 0 {
 		options.FileContentCount = 1024
 	}
+	if options.ReapCount == 0 {
+		options.ReapCount = 4
+	}
+	copied := *options
 
 	cache := NewContentCache(options.CacheDir)
 	cache.SetMemoryCacheSize(options.FileContentCount)
@@ -97,6 +105,7 @@ func NewWorkerDaemon(options *WorkerOptions) *WorkerDaemon {
 		tmpDir:        options.TempDir,
 		rpcServer:     rpc.NewServer(),
 		stats:         newWorkerStats(),
+		options:       &copied,
 	}
 	if os.Geteuid() == 0 && options.User != nil {
 		nobody, err := user.Lookup(*options.User)

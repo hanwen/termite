@@ -29,6 +29,9 @@ type workerFuseFs struct {
 	// Protected by Mirror.fsMutex
 	id          int
 	reaping     bool
+
+	// When this reaches zero, we reap the filesystem.
+	reapCountdown int
 	tasks       map[*WorkerTask]bool
 }
 
