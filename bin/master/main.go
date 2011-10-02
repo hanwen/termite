@@ -18,7 +18,8 @@ func main() {
 	coordinator := flag.String("coordinator", "localhost:1233",
 		"address of coordinator. Overrides -workers")
 	socket := flag.String("socket", ".termite-socket", "socket to listen for commands")
-	exclude := flag.String("exclude", "sys,proc,dev,selinux,cgroup", "prefixes to not export.")
+	exclude := flag.String("exclude",
+		"usr/lib/locale/locale-archive,sys,proc,dev,selinux,cgroup", "prefixes to not export.")
 	secretFile := flag.String("secret", "secret.txt", "file containing password.")
 	srcRoot := flag.String("sourcedir", "", "root of corresponding source directory")
 	jobs := flag.Int("jobs", 1, "number of jobs to run")
