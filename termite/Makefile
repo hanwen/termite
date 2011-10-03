@@ -10,6 +10,7 @@ MANUAL_GOFILES=\
 	contentserver.go \
 	coordinator.go \
 	copy.go \
+	cpustat.go \
 	counter.go \
 	devnullfs.go \
 	diskcache.go \

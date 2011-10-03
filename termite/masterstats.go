@@ -15,12 +15,14 @@ type masterStats struct {
 	running int32
 
 	workerPhaseStats map[string]float64
+	cpuStats         *cpuStatSampler
 }
 
 func newMasterStats() *masterStats {
 	return &masterStats{
 		received:         NewMultiResolutionCounter(1, time.Seconds(), []int{60, 10}),
 		workerPhaseStats: map[string]float64{},
+		cpuStats:         newCpuStatSampler(),
 	}
 }
 
@@ -41,6 +43,27 @@ func (me *masterStats) MarkReturn(resp *WorkResponse) {
 }
 
 func (me *masterStats) writeHttp(w http.ResponseWriter) {
+	minuteStat := CpuStat{}
+	fiveSecStat := CpuStat{}
+	stats := me.cpuStats.CpuStats()
+	if len(stats) > 0 {
+		s := 0
+		for i, c := range stats {
+			minuteStat = minuteStat.Add(c)
+			if i >= len(stats) - 5 {
+				s++ 
+				fiveSecStat = fiveSecStat.Add(c)
+			}
+		}
+		
+		fmt.Fprintf(w, "<p>CPU (last min): %.0f s self %.0f s sys, %.1f CPU",
+			float64(minuteStat.SelfCpu)*1e-9, float64(minuteStat.SelfSys)*1e-9,
+			float64(minuteStat.SelfCpu + minuteStat.SelfSys)/float64(len(stats))*1.0e9)
+		fmt.Fprintf(w, "<p>CPU (last 5s): %.2f self %.2f sys, %.1f CPU",
+			float64(fiveSecStat.SelfCpu)*1e-9, float64(fiveSecStat.SelfSys)*1e-9,
+			float64(fiveSecStat.SelfCpu + fiveSecStat.SelfSys)/float64(s*1e9))
+		
+	}
 	me.counterMutex.Lock()
 	defer me.counterMutex.Unlock()
 	me.received.Add(time.Seconds(), 0)

@@ -31,7 +31,7 @@ type WorkerDaemon struct {
 	pending       *PendingConnections
 	cacheDir      string
 	tmpDir        string
-	stats         *workerStats
+	stats         *cpuStatSampler
 
 	stopListener chan int
 
@@ -104,7 +104,7 @@ func NewWorkerDaemon(options *WorkerOptions) *WorkerDaemon {
 		maxJobCount:   options.Jobs,
 		tmpDir:        options.TempDir,
 		rpcServer:     rpc.NewServer(),
-		stats:         newWorkerStats(),
+		stats:         newCpuStatSampler(),
 		options:       &copied,
 	}
 	if os.Geteuid() == 0 && options.User != nil {
