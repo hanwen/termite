@@ -22,7 +22,6 @@ func init() {
 		return
 	}
 	fmt.Sscan(string(content), &pipeMaxSize)
-	log.Println("pipemax", pipeMaxSize)
 }
 
 // copy & paste from syscall.
