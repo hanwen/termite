@@ -20,11 +20,12 @@ sleep 1
 ${TERMITE_DIR}/bin/master/master -socket ${name}/.termite-socket -jobs 50 -port ${pprefix}9 -coordinator ${coord} -exclude usr/lib/locale/locale-archive >& master.log &
 sleep 1
 
-(cd ${name} ;sh -eux test.sh)
+( export PATH="${TERMITE_DIR}/bin/shell-wrapper:$PATH";
+  cd ${name} ;sh -eux test.sh)
 status="$?"
 echo "ran test"
 
-(cd ${name}; shell-wrapper -shutdown)
+(cd ${name}; ${TERMITE_DIR}/bin/shell-wrapper/shell-wrapper -shutdown)
 curl ${coord}/workerkill?host=all
 curl ${coord}/shutdown
 if test "$status" != "0"
