@@ -9,6 +9,7 @@ MANUAL_GOFILES=\
 	contentcache.go \
 	contentserver.go \
 	coordinator.go \
+	copy.go \
 	counter.go \
 	devnullfs.go \
 	diskcache.go \
