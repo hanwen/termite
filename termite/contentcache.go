@@ -43,6 +43,10 @@ func NewContentCache(d string) *ContentCache {
 // SetMemoryCacheSize readjusts the size of the in-memory content
 // cache.  Not thread safe.
 func (me *ContentCache) SetMemoryCacheSize(fileCount int) {
+	if fileCount == 0 {
+		me.inMemoryCache = nil
+		return
+	}
 	if me.inMemoryCache.Size() != fileCount {
 		me.inMemoryCache = NewLruCache(fileCount)
 	}
@@ -76,11 +80,13 @@ func (me *ContentCache) HasHash(hash string) bool {
 		return true
 	}
 
-	ok = me.inMemoryCache.Has(hash)
-	if ok {
-		return true
+	if me.inMemoryCache != nil {
+		ok = me.inMemoryCache.Has(hash)
+		if ok {
+			return true
+		}
 	}
-
+	
 	p := HashPath(me.dir, hash)
 	_, err := os.Lstat(p)
 	return err == nil
@@ -89,6 +95,9 @@ func (me *ContentCache) HasHash(hash string) bool {
 func (me *ContentCache) ContentsIfLoaded(hash string) []byte {
 	me.mutex.Lock()
 	defer me.mutex.Unlock()
+	if me.inMemoryCache == nil {
+		return nil
+	}
 	c := me.inMemoryCache.Get(hash)
 	if c != nil {
 		return c.([]byte)
@@ -177,7 +186,7 @@ func (me *ContentCache) DestructiveSavePath(path string) (md5 string, err os.Err
 		return s, nil
 	}
 
-	if content != nil {
+	if content != nil && me.inMemoryCache != nil {
 		me.mutex.Lock()
 		me.inMemoryCache.Add(s, content)
 		me.mutex.Unlock()
@@ -231,7 +240,7 @@ func (me *ContentCache) SaveImmutablePath(path string) (md5 string) {
 	me.mutex.Lock()
 	defer me.mutex.Unlock()
 	me.hashPathMap[md5] = path
-	if content != nil {
+	if content != nil && me.inMemoryCache != nil {
 		me.inMemoryCache.Add(md5, content)
 	}
 
@@ -259,7 +268,7 @@ func (me *ContentCache) SaveStream(input io.Reader) (md5 string) {
 	}
 	hash := string(dup.hasher.Sum())
 
-	if content != nil {
+	if content != nil && me.inMemoryCache != nil {
 		me.mutex.Lock()
 		defer me.mutex.Unlock()
 		me.inMemoryCache.Add(hash, content)
