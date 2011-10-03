@@ -151,11 +151,12 @@ func (me *Mirror) fillReply(ufs *unionfs.MemUnionFs) *FileSet {
 					f.Hash = fa.Hash
 				} else {
 					f.Hash = reapedHashes[v.Backing]
+					var err os.Error
 					if f.Hash == "" {
-						f.Hash = cache.DestructiveSavePath(v.Backing)
+						f.Hash, err = cache.DestructiveSavePath(v.Backing)
 					}
-					if f.Hash == "" {
-						log.Fatalf("DestructiveSavePath fail %q", v.Backing)
+					if err != nil {
+						log.Fatalf("DestructiveSavePath fail %q: %v", v.Backing, err)
 					} else {
 						reapedHashes[v.Backing] = f.Hash
 					}

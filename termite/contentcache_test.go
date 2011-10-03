@@ -67,7 +67,8 @@ func TestDiskCacheDestructiveSave(t *testing.T) {
 		t.Error(err)
 	}
 
-	saved := cache.DestructiveSavePath(fn)
+	saved, err := cache.DestructiveSavePath(fn)
+	check(err)
 	if string(saved) != string(md5(content)) {
 		t.Error("mismatch")
 	}
@@ -82,7 +83,8 @@ func TestDiskCacheDestructiveSave(t *testing.T) {
 		t.Error(err)
 	}
 
-	saved = cache.DestructiveSavePath(fn)
+	saved, err = cache.DestructiveSavePath(fn)
+	check(err)
 	if saved == "" || saved != md5(content) {
 		t.Error("mismatch")
 	}

@@ -157,10 +157,11 @@ func (me *HashWriter) Close() os.Error {
 
 const _BUFSIZE = 32 * 1024
 
-func (me *ContentCache) DestructiveSavePath(path string) (md5 string) {
-	f, err := os.Open(path)
+func (me *ContentCache) DestructiveSavePath(path string) (md5 string, err os.Error) {
+	var f *os.File
+	f, err = os.Open(path)
 	if err != nil {
-		return ""
+		return "", err
 	}
 	before, _  := f.Stat()
 	defer f.Close()
@@ -168,13 +169,12 @@ func (me *ContentCache) DestructiveSavePath(path string) (md5 string) {
 	h := crypto.MD5.New()
 	content, err := SavingCopy(h, f, _BUFSIZE)
 	if err != nil {
-		log.Println("DestructiveSavePath:", err)
-		return ""
+		return "", err
 	}
 	s := string(h.Sum())
 	if me.HasHash(s) {
 		os.Remove(path)
-		return s
+		return s, nil
 	}
 
 	if content != nil {
@@ -188,17 +188,16 @@ func (me *ContentCache) DestructiveSavePath(path string) (md5 string) {
 	if err != nil {
 		if fi, _ := os.Lstat(p); fi != nil {
 			os.Remove(p)
-			return s
+			return s, nil
 		}
-		log.Println("DestructiveSavePath:", err)
-		return ""
+		return "", err
 	}
 	f.Chmod(0444)
 	after, _ := f.Stat()
 	if after.Mtime_ns != before.Mtime_ns || after.Size != before.Size {
 		log.Fatal("File changed during save", before, after)
 	}
-	return s
+	return s, nil
 }
 
 func (me *ContentCache) SavePath(path string) (md5 string) {
