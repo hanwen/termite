@@ -316,7 +316,7 @@ func TestEndToEndStdout(t *testing.T) {
 	tc := NewTestCase(t)
 	defer tc.Clean()
 
-	err := os.Symlink("oldlink", tc.tmp+"/wd/symlink")
+	err := os.Symlink("oldlink", tc.wd+"/symlink")
 	if err != nil {
 		t.Fatal("oldlink symlink", err)
 	}
@@ -511,5 +511,31 @@ func TestEndToEndEnvironment(t *testing.T) {
 	out := strings.TrimRight(rep.Stdout, "\n")
 	if out != "777" {
 		t.Errorf("environment got lost. Got %q", out)
+	}
+}
+
+func TestEndToEndLinkReap(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Log("This test should not run as root")
+		return
+	}
+
+	tc := NewTestCase(t)
+	defer tc.Clean()
+
+	// TODO - drop this.
+	ioutil.WriteFile(tc.wd+"/file.txt", []byte{42}, 0644)
+	req := WorkRequest{
+		Binary: tc.FindBin("sh"),
+		Argv:   []string{"sh", "-c", "echo hello > file.txt ; ln file.txt foo.txt"},
+		Env:    testEnv(),
+		Dir:    tc.wd,
+	}
+	rep := tc.Run(req)
+	if rep.Exit.ExitStatus() != 0 {
+		t.Fatalf("should exit cleanly. Rep %v", rep)
+	}
+	if fi, err := os.Lstat(tc.wd + "/foo.txt"); err != nil || !fi.IsRegular() || fi.Size != 6 {
+		t.Fatalf("wd/foo.txt was not created. Err: %v, fi: %v", err, fi)
 	}
 }

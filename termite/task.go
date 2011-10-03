@@ -130,6 +130,7 @@ func (me *Mirror) fillReply(ufs *unionfs.MemUnionFs) *FileSet {
 	cache := me.daemon.contentCache
 
 	files := []*FileAttr{}
+	reapedHashes := map[string]string{}
 	for path, v := range yield {
 		f := &FileAttr{
 			Path: filepath.Join(wrRoot, path),
@@ -149,9 +150,14 @@ func (me *Mirror) fillReply(ufs *unionfs.MemUnionFs) *FileSet {
 					}
 					f.Hash = fa.Hash
 				} else {
-					f.Hash = cache.DestructiveSavePath(v.Backing)
+					f.Hash = reapedHashes[v.Backing]
+					if f.Hash == "" {
+						f.Hash = cache.DestructiveSavePath(v.Backing)
+					}
 					if f.Hash == "" {
 						log.Fatalf("DestructiveSavePath fail %q", v.Backing)
+					} else {
+						reapedHashes[v.Backing] = f.Hash
 					}
 				}
 			}
