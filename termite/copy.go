@@ -109,8 +109,8 @@ func returnSplice(p *splicePair) {
 	}
 }
 
-func SpliceCopy(dst *os.File, src *os.File, p *splicePair) (int, os.Error) {
-	total := 0 
+func SpliceCopy(dst *os.File, src *os.File, p *splicePair) (int64, os.Error) {
+	total := int64(0)
 	
 	for {
 		n, errNo := syscall.Splice(src.Fd(), nil, p.w.Fd(), nil, p.size, 0)
@@ -120,7 +120,7 @@ func SpliceCopy(dst *os.File, src *os.File, p *splicePair) (int, os.Error) {
 		if n == 0 {
 			break			
 		}
-		m, errNo := syscall.Splice(p.r.Fd(), nil, dst.Fd(), nil, n, 0)
+		m, errNo := syscall.Splice(p.r.Fd(), nil, dst.Fd(), nil, int(n), 0)
 		if errNo != 0 {
 			return total, os.NewSyscallError("Splice", errNo)
 		}
@@ -128,7 +128,7 @@ func SpliceCopy(dst *os.File, src *os.File, p *splicePair) (int, os.Error) {
 			panic("m<n")
 		}
 		total += m
-		if n < p.size {
+		if int(n) < p.size {
 			break
 		}
 	}
