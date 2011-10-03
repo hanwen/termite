@@ -42,11 +42,12 @@ func TestSpliceCopy(t *testing.T) {
 	dst, err := ioutil.TempFile("", "termite")
 	check(err)
 
-	p := getSplice()
-	if !p.Grow(512*1024) {
-		t.Errorf("Could not grow splice to %d", p.size)
+	if pipeMaxSize % 4096 != 0 || pipeMaxSize < 4096 {
+		t.Error("pipe size should be page size multiple", pipeMaxSize)
 	}
-
+	p := getSplice()
+	p.MaxGrow()
+	t.Logf("Splice size %d", p.size)
 	SpliceCopy(dst, src, p)
 	dst.Close()
 	src.Close()

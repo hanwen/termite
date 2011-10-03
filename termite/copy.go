@@ -2,12 +2,12 @@ package termite
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"os"
 	"syscall"
 )
 var _ = log.Println
-const _PIPE_SIZE = 4096
 type splicePair struct {
 	r, w *os.File
 	size int
@@ -17,12 +17,12 @@ var splicePairs chan *splicePair
 var pipeMaxSize = 1 << 20
 func init() {
 	splicePairs = make(chan *splicePair, 100)
-	f, err := os.Open("/proc/sys/fs/pipe-max-size")
+	content, err := ioutil.ReadFile("/proc/sys/fs/pipe-max-size")
 	if err != nil {
 		return
 	}
-	defer f.Close()
-	fmt.Fscan(f, &pipeMaxSize)
+	fmt.Sscan(string(content), &pipeMaxSize)
+	log.Println("pipemax", pipeMaxSize)
 }
 
 // copy & paste from syscall.
@@ -35,7 +35,12 @@ func fcntl(fd int, cmd int, arg int) (val int, errno int) {
 
 
 const F_SETPIPE_SZ = 1031
+const F_GETPIPE_SZ = 1032
 
+func (me *splicePair) MaxGrow() {
+	for me.Grow(2*me.size) {
+	}
+}
 
 func (me *splicePair) Grow(n int) bool {
 	if n > pipeMaxSize {
@@ -48,9 +53,10 @@ func (me *splicePair) Grow(n int) bool {
 	for newsize < n {
 		newsize *= 2
 	}
-	
+
 	newsize, errNo := fcntl(me.r.Fd(), F_SETPIPE_SZ, newsize)
 	if errNo != 0 {
+		log.Println(os.NewSyscallError("fnct", errNo))
 		return false
 	}
 	me.size = newsize
@@ -73,8 +79,11 @@ func newSplicePair() *splicePair {
 	if err != nil {
 		return nil
 	}
-	me.size = 16 * 4096
-
+	errNo := 0
+	me.size, errNo = fcntl(me.r.Fd(), F_GETPIPE_SZ, 0)
+	if errNo != 0 {
+		return nil
+	}
 	_, errR := fcntl(me.r.Fd(), syscall.F_SETFL, os.O_NONBLOCK)
 	_, errW := fcntl(me.w.Fd(), syscall.F_SETFL, os.O_NONBLOCK)
 	if errR != 0 || errW != 0 {
