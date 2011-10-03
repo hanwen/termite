@@ -149,12 +149,10 @@ TODO
 
 * Features
   - Collect worker log information and expose on HTTP.
-  - Restart workers from coordinator. 
   
 * Data collection:
-  - compute average parallelism.
-  - number of jobs scheduled
-
+  - RPC delays.
+  
 * Speed
   - Worker:
   - Master:
@@ -167,6 +165,8 @@ SUCCESSFUL COMPILES
 
 Termite timings by running master and single worker on the same
 machine.
+
+* coreutils 8.12 (2.0x slower, Lenovo T60, 2-core, make -j2)
 
 * Make 3.82. (1.6x slower, Lenovo T60, 2-core, make -j2)
 
