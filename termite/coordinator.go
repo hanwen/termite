@@ -126,6 +126,7 @@ func (me *Coordinator) rootHandler(w http.ResponseWriter, req *http.Request) {
 
 	fmt.Fprintf(w, "<html><head><title>Termite coordinator</title></head>")
 	fmt.Fprintf(w, "<body><h1>Termite coordinator</h1><ul>")
+	fmt.Fprintf(w, "<p>version %s", Version())
 	defer fmt.Fprintf(w, "</body></html>")
 
 	for _, worker := range me.workers {
