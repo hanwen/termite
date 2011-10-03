@@ -14,14 +14,25 @@ type splicePair struct {
 }
 var splicePairs chan *splicePair
 
-var pipeMaxSize = 1 << 20
+var pipeMaxSize *int
+
+
 func init() {
 	splicePairs = make(chan *splicePair, 100)
+}
+
+func getPipeMaxSize() int {
+	if pipeMaxSize != nil {
+		return *pipeMaxSize
+	}
 	content, err := ioutil.ReadFile("/proc/sys/fs/pipe-max-size")
 	if err != nil {
-		return
+		return 16 * 4096
 	}
-	fmt.Sscan(string(content), &pipeMaxSize)
+	i := 0
+	pipeMaxSize = &i
+	fmt.Sscan(string(content), pipeMaxSize)
+	return *pipeMaxSize
 }
 
 // copy & paste from syscall.
@@ -42,7 +53,7 @@ func (me *splicePair) MaxGrow() {
 }
 
 func (me *splicePair) Grow(n int) bool {
-	if n > pipeMaxSize {
+	if n > getPipeMaxSize() {
 		return false
 	}
 	if n <= me.size {
