@@ -112,7 +112,7 @@ func (me *RpcFs) String() string {
 }
 
 func (me *RpcFs) OpenDir(name string, context *fuse.Context) (chan fuse.DirEntry, fuse.Status) {
-	r := me.attr.Get(name)
+	r := me.attr.GetDir(name)
 	if r.Deletion() {
 		return nil, fuse.ENOENT
 	}

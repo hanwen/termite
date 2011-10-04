@@ -54,7 +54,7 @@ func TestAttrCache(t *testing.T) {
 	if !ac.Have("") {
 		t.Fatalf("Must have parent too")
 	}
-	d := ac.Get("")
+	d := ac.GetDir("")
 	if d.NameModeMap == nil || d.NameModeMap["file"] == 0 {
 		t.Fatalf("root NameModeMap wrong %v", d.NameModeMap)
 	}
@@ -79,7 +79,7 @@ func TestAttrCache(t *testing.T) {
 
 	ac.Refresh("")
 
-	d = ac.Get("")
+	d = ac.GetDir("")
 	if d.NameModeMap["other"] == 0 {
 		t.Fatalf("Should have 'other' in root %v", d)
 	}

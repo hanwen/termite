@@ -60,7 +60,7 @@ func (me *FsServer) GetAttr(req *AttrRequest, rep *AttrResponse) os.Error {
 		panic("leading /")
 	}
 
-	a := me.attr.Get(req.Name)
+	a := me.attr.GetDir(req.Name)
 	if a.Hash != "" {
 		log.Printf("GetAttr %v %x", a, a.Hash)
 	}

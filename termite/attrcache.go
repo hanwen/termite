@@ -10,8 +10,6 @@ import (
 // A in-memory cache of attributes.
 //
 // Invariants: for all entries, we have their parent directories too
-//
-// Users should run GetCopy() to inspect any NameModeMap members.
 type AttributeCache struct {
 	mutex sync.RWMutex
 	attributes      map[string]*FileAttr
@@ -79,17 +77,18 @@ func (me *AttributeCache) Have(name string) bool {
 	return ok
 }
 
-func (me *AttributeCache) GetCopy(name string) (rep *FileAttr) {
-	a := me.Get(name)
-	if a == nil {
-		return nil
-	}
-	me.mutex.RLock()
-	defer me.mutex.RUnlock()
+func (me *AttributeCache) Get(name string) (rep *FileAttr) {
+	c := *me.get(name)
+	c.NameModeMap = nil
+	return &c
+}
+
+func (me *AttributeCache) GetDir(name string) (rep *FileAttr) {
+	a := me.get(name)
 	return a.Copy()
 }
 
-func (me *AttributeCache) Get(name string) (rep *FileAttr) {
+func (me *AttributeCache) get(name string) (rep *FileAttr) {
 	me.mutex.RLock()
 	rep, ok := me.attributes[name]
 	dir, base := SplitPath(name)
@@ -97,24 +96,24 @@ func (me *AttributeCache) Get(name string) (rep *FileAttr) {
 	parentNegate := false
 	if !ok && name != "" {
 		dirAttr = me.attributes[dir]
-		parentNegate = dirAttr != nil && dirAttr.NameModeMap[base] == 0
+		parentNegate = dirAttr != nil && dirAttr.NameModeMap != nil && dirAttr.NameModeMap[base] == 0
 	}
 	me.mutex.RUnlock()
 	if ok {
 		return rep
 	}
 	if parentNegate {
-		return nil
+		return &FileAttr{Path: name}
 	}
 
 	if dirAttr == nil && name != "" {
-		dirAttr = me.Get(dir)
+		dirAttr = me.get(dir)
 		me.mutex.RLock()
-		parentNegate = dirAttr != nil && dirAttr.NameModeMap[base] == 0
+		parentNegate = dirAttr.NameModeMap != nil && dirAttr.NameModeMap[base] == 0
 		me.mutex.RUnlock()
 
 		if parentNegate {
-			return nil
+			return &FileAttr{Path: name}
 		}
 	}
 	
@@ -132,8 +131,9 @@ func (me *AttributeCache) Get(name string) (rep *FileAttr) {
 	me.mutex.Unlock()
 
 	rep = me.getter(name)
-	me.mutex.Lock()
 	rep.Path = name
+
+	me.mutex.Lock()
 	if !rep.Deletion() {
 		me.attributes[name] = rep
 	}
