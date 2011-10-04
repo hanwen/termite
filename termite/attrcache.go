@@ -3,7 +3,6 @@ package termite
 import (
 	"log"
 	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 )
@@ -57,8 +56,7 @@ func (me *AttributeCache) verify() {
 			log.Panicf("dir has no NameModeMap %q", k)
 		}
 		
-		dir, base := filepath.Split(k)
-		dir = strings.TrimRight(dir, string(filepath.Separator))
+		dir, base := SplitPath(k)
 		if base != k {
 			parent := me.attributes[dir]
 			if v.Deletion() && parent != nil && parent.NameModeMap[base] != 0 {

@@ -62,8 +62,7 @@ func (me *Master) CheckPrivate() {
 		if fi != nil && fi.Mode&0077 == 0 {
 			log.Fatalf("Error: dir %q is mode %o.", d, fi.Mode&07777)
 		}
-		d, _ = filepath.Split(d)
-		d = filepath.Clean(d)
+		d, _ = SplitPath(d)
 	}
 }
 

@@ -86,8 +86,7 @@ func (me *LocalMaster) start(sock string) {
 		log.Fatal("EvalSymlinks", err)
 	}
 	writableRoot = filepath.Clean(writableRoot)
-	writableRoot, _ = filepath.Split(writableRoot)
-	writableRoot = filepath.Clean(writableRoot)
+	writableRoot, _ = SplitPath(writableRoot)
 
 	me.master.writableRoot = writableRoot
 	me.master.CheckPrivate()
