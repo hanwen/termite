@@ -104,6 +104,10 @@ type FileSet struct {
 	Files []*FileAttr
 }
 
+func (me *FileSet) String() string {
+	return fmt.Sprintf("%v", me.Files)
+}
+
 type WorkResponse struct {
 	Exit   os.Waitmsg
 	Stderr string
@@ -116,6 +120,7 @@ type WorkResponse struct {
 	*FileSet
 	FileSetId int
 }
+
 
 type WorkRequest struct {
 	// Id of connection streaming stdin.

@@ -257,3 +257,12 @@ func SavingCopy(w io.Writer, r io.Reader, bufSize int) ([]byte, os.Error) {
 	}
 	return nil, nil
 }
+
+func (me *WorkResponse) String() string {
+	return fmt.Sprintf("WorkResponse{exit %d, fileset %d %v. Err: %s, Out: %s}",
+		me.Exit.ExitStatus(),
+		me.FileSetId,
+		me.FileSet,
+		HumanTrim(me.Stderr, 1024),
+		HumanTrim(me.Stdout, 1024))
+}
