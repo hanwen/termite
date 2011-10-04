@@ -69,7 +69,8 @@ func (me *RpcFs) fetchAttr(n string) *FileAttr {
 			wanted = attr
 		}
 	}
-	
+
+	// TODO - if we got a deletion, we should refetch the parent.
 	return wanted
 }
 
