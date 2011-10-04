@@ -5,6 +5,7 @@ TARG=github.com/hanwen/termite/termite
 DEPS=../../go-fuse/fuse ../../go-fuse/unionfs
 
 MANUAL_GOFILES=\
+	attrcache.go \
 	connection.go \
 	contentcache.go \
 	contentserver.go \

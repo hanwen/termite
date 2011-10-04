@@ -19,55 +19,42 @@ func init() {
 }
 
 func TestFsServerCache(t *testing.T) {
-	paranoia = true
-	tmp, _ := ioutil.TempDir("", "term-fss")
-	defer os.RemoveAll(tmp)
-
-	orig := tmp + "/orig"
-	srvCache := tmp + "/server-cache"
-
-	err := os.Mkdir(orig, 0700)
-	if err != nil {
-		t.Fatal(err)
-	}
+	me := newRpcFsTestCase(t)
+	defer me.Clean()
 
 	content := "hello"
-	err = ioutil.WriteFile(orig+"/file.txt", []byte(content), 0644)
+	err := ioutil.WriteFile(me.orig+"/file.txt", []byte(content), 0644)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	cache := NewContentCache(srvCache)
-	server := NewFsServer("/", cache, nil)
-	server.excludePrivate = false
-
-	server.refreshAttributeCache("")
-	if len(server.attrCache) > 0 {
-		t.Errorf("cache not empty? %#v", server.attrCache)
+	me.server.refreshAttributeCache("")
+	c := me.server.copyCache().Files
+	if len(c) > 0 {
+		t.Errorf("cache not empty? %#v", c)
 	}
 
-	server.oneGetAttr(orig)
-	server.oneGetAttr(orig + "/file.txt")
-
-	if len(server.attrCache) != 2 {
-		t.Errorf("cache should have 2 entries, got %#v", server.attrCache)
+	os.Lstat(me.mnt + "/file.txt")
+	c = me.server.copyCache().Files
+	if len(c) != 2 {
+		t.Errorf("cache should have 2 entries, got %#v", c)
 	}
-	name := orig + "/file.txt"
-	attr, ok := server.attrCache[name]
-	if !ok || !attr.FileInfo.IsRegular() || attr.FileInfo.Size != int64(len(content)) {
-		t.Errorf("entry for %q unexpected: %v %#v", name, ok, attr)
+	name := "file.txt"
+	ok := me.server.attr.Have(name)
+	if !ok {
+		t.Errorf("no entry for %q", name)
 	}
 
-	newName := orig + "/new.txt"
-	err = os.Rename(name, newName)
+	newName := me.orig + "/new.txt"
+	err = os.Rename(me.orig + "/file.txt", newName)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	server.refreshAttributeCache("")
-	attr, ok = server.attrCache[name]
-	if !ok || !attr.Deletion() {
-		t.Errorf("after rename: entry for %q unexpected: %v %#v", name, ok, attr)
+	me.server.refreshAttributeCache("")
+	ok = me.server.attr.Have(name)
+	if ok {
+		t.Errorf("after rename: entry for %q unexpected", name)
 	}
 }
 
@@ -163,34 +150,27 @@ func TestRpcFsReadDirCache(t *testing.T) {
 		t.Fatalf("Missing entry %q %v", "file.txt", entries)
 	}
 
-	newData := []*FileAttr{
-		&FileAttr{
-			Path: "subdir/unstatted.txt",
-			Hash: md5str("somethingelse"),
-			FileInfo: &os.FileInfo{
-				Mode: fuse.S_IFREG | 0644,
-			},
-		},
-		&FileAttr{
-			Path: "subdir/file.txt",
-		},
-	}
+	err = ioutil.WriteFile(me.orig + "/subdir/unstatted.txt", []byte("somethingelse"), 0644)
+	check(err)
+	err = os.Remove(me.orig + "/subdir/file.txt")
+	check(err)
 
-	me.server.updateFiles(newData)
-	me.rpcFs.updateFiles(newData)
+	fset := me.server.refreshAttributeCache("")
+	me.rpcFs.updateFiles(fset.Files)
+	
 	_, err = ioutil.ReadDir(me.mnt + "/subdir")
 	check(err)
 
-	dir := me.rpcFs.attrResponse["subdir"]
+	dir := me.rpcFs.attr.Get("subdir")
 	if dir == nil {
 		t.Fatalf("Should have cache entry for /subdir")
 	}
 
 	if _, ok := dir.NameModeMap["file.txt"]; ok {
-		t.Errorf("file.txt should have disappeared.")
+		t.Errorf("file.txt should have disappeared: %v", dir.NameModeMap)
 	}
 	if _, ok := dir.NameModeMap["unstatted.txt"]; !ok {
-		t.Errorf("unstatted.txt should have appeared.")
+		t.Errorf("unstatted.txt should have appeared: %v", dir.NameModeMap)
 	}
 }
 
@@ -221,9 +201,9 @@ func TestRpcFS(t *testing.T) {
 	}
 
 	// This test implementation detail - should be separate?
-	storedHash := me.server.hashCache["file.txt"]
-	if storedHash == "" || string(storedHash) != string(md5str(content)) {
-		t.Errorf("cache error %x (%v)", storedHash, storedHash)
+	a := me.server.attr.Get("file.txt")
+	if a == nil || a.Hash == "" || string(a.Hash) != string(md5str(content)) {
+		t.Errorf("cache error %v (%x)", a)
 	}
 
 	newcontent := "somethingelse"
@@ -233,8 +213,8 @@ func TestRpcFS(t *testing.T) {
 	check(err)
 
 	me.server.refreshAttributeCache("")
-	storedHash = me.server.hashCache["file.txt"]
-	if storedHash == "" || storedHash != md5str(newcontent) {
-		t.Errorf("refreshAttributeCache: cache error got %x, want %x", storedHash, md5str(newcontent))
+	a = me.server.attr.Get("file.txt")
+	if a == nil || a.Hash == "" || a.Hash != md5str(newcontent) {
+		t.Errorf("refreshAttributeCache: cache error got %v, want %x", a, md5str(newcontent))
 	}
 }

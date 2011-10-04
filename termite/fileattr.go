@@ -21,22 +21,22 @@ func (me *FileAttr) Merge(r FileAttr) {
 	}
 
 	if r.Deletion() {
-		*me = r
-	} else {
-		mine := me.NameModeMap
-		other := r.NameModeMap
+		panic("should not merge deletions")
+	}
+	
+	mine := me.NameModeMap
+	other := r.NameModeMap
 
-		*me = r
-		me.NameModeMap = nil
+	*me = r
+	me.NameModeMap = nil
 
-		if me.FileInfo.IsDirectory() {
-			me.NameModeMap = mine
-			if me.NameModeMap == nil {
-				me.NameModeMap = make(map[string]uint32)
-			}
-			for k, v := range other {
-				me.NameModeMap[k] = v
-			}
+	if me.FileInfo.IsDirectory() {
+		me.NameModeMap = mine
+		if me.NameModeMap == nil {
+			me.NameModeMap = make(map[string]uint32)
+		}
+		for k, v := range other {
+			me.NameModeMap[k] = v
 		}
 	}
 }

@@ -146,6 +146,11 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string, 
 			me.MountState.Unmount()
 			return nil, os.NewError(fmt.Sprintf("Mkdir of %q in /tmp fail: %v", parent, err))
 		}
+		// This is hackish, but we don't want rpcfs/fsserver
+		// getting confused by asking for tmp/foo/bar
+		// directly.
+		rpcFs.GetAttr("tmp", nil)
+		rpcFs.GetAttr(me.writableRoot, nil)
 	}
 	code := me.nodeFs.Mount(me.writableRoot, me.unionFs, &mOpts)
 	if !code.Ok() {

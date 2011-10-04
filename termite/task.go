@@ -140,7 +140,7 @@ func (me *Mirror) fillReply(ufs *unionfs.MemUnionFs) *FileSet {
 		if f.FileInfo != nil && f.FileInfo.IsRegular() {
 			if v.Original != "" {
 				contentPath := filepath.Join(wrRoot, v.Original)
-				fa := me.rpcFs.getFileAttr(contentPath)
+				fa := me.rpcFs.attr.Get(contentPath)
 				if fa.Hash == "" {
 					log.Panicf("Contents for %q disappeared.", contentPath)
 				}

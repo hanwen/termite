@@ -180,19 +180,9 @@ func (me *Mirror) updateFiles(attrs []*FileAttr, origin *workerFuseFs) {
 	}
 }
 
-func (me *Mirror) fetchFiles(files []*FileAttr) {
-	for _, f := range files {
-		if f.Hash != "" {
-			me.rpcFs.FetchHash(f.FileInfo.Size, f.Hash)
-		}
-	}
-}
-
 func (me *Mirror) Run(req *WorkRequest, rep *WorkResponse) os.Error {
 	// Don't run me.updateFiles() as we don't want to issue
 	// unneeded cache invalidations.
-	me.rpcFs.updateFiles(req.Prefetch)
-	go me.fetchFiles(req.Prefetch)
 	task, err := me.newWorkerTask(req, rep)
 	if err != nil {
 		return err

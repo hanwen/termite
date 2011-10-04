@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"log"
-	"sync"
 	"rpc"
 	"github.com/hanwen/go-fuse/fuse"
 	"strings"
@@ -20,29 +19,29 @@ type RpcFs struct {
 	// Roots that we should try to fetch locally.
 	localRoots []string
 
-	fetchMutex sync.Mutex
-	fetchCond  *sync.Cond
-	fetchMap   map[string]bool
-
-	attrMutex    sync.RWMutex
-	attrCond     *sync.Cond
-	attrFetchMap map[string]bool
-	attrResponse map[string]*FileAttr
+	attr *AttributeCache
 }
 
 func NewRpcFs(server *rpc.Client, cache *ContentCache) *RpcFs {
 	me := &RpcFs{}
 	me.client = server
 
-	me.attrResponse = make(map[string]*FileAttr)
-	me.attrFetchMap = map[string]bool{}
-	me.attrCond = sync.NewCond(&me.attrMutex)
+	me.attr = NewAttributeCache(
+		func(n string) *FileAttr {
+			return me.fetchAttr(n)
+		}, nil)
 
 	me.cache = cache
-	me.fetchMap = make(map[string]bool)
-	me.fetchCond = sync.NewCond(&me.fetchMutex)
-
 	return me
+}
+
+func (me *RpcFs) FetchHash(h string) {
+	err := FetchBetweenContentServers(me.client, "FsServer.FileContent", h,
+		me.cache)
+	if err != nil {
+		// TODO - drop master connection instead.
+		log.Fatal("Error fetching contents: ", err)
+	}
 }
 
 func (me *RpcFs) Update(req *UpdateRequest, resp *UpdateResponse) os.Error {
@@ -51,83 +50,13 @@ func (me *RpcFs) Update(req *UpdateRequest, resp *UpdateResponse) os.Error {
 }
 
 func (me *RpcFs) updateFiles(files []*FileAttr) {
-	me.attrMutex.Lock()
-	defer me.attrMutex.Unlock()
-	updateAttributeMap(me.attrResponse, files)
+	me.attr.Update(files)
 }
-
-func (me *RpcFs) FetchHash(size int64, key string) os.Error {
-	me.fetchMutex.Lock()
-	defer me.fetchMutex.Unlock()
-	for me.fetchMap[key] && !me.cache.HasHash(key) {
-		me.fetchCond.Wait()
-	}
-
-	if me.cache.HasHash(key) {
-		return nil
-	}
-	me.fetchMap[key] = true
-	me.fetchMutex.Unlock()
-
-	err := me.fetchOnce(key)
-
-	me.fetchMutex.Lock()
-	me.fetchMap[key] = false, false
-	me.fetchCond.Broadcast()
-
-	return err
-}
-
-func (me *RpcFs) fetchOnce(hash string) os.Error {
-	// TODO - should save in smaller chunks.
-	return FetchBetweenContentServers(me.client, "FsServer.FileContent", hash,
-		me.cache)
-}
-
-func (me *RpcFs) getFileAttr(name string) *FileAttr {
-	me.attrMutex.RLock()
-	result, ok := me.attrResponse[name]
-	me.attrMutex.RUnlock()
-	if ok {
-		return result
-	}
-
-	dir, base := filepath.Split(name)
-	dir = strings.TrimRight(dir, "/")
-	if name != dir {
-		dirResp := me.getFileAttr(dir)
-		found := dirResp != nil && dirResp.NameModeMap != nil &&
-			dirResp.NameModeMap[base] != 0
-		if !found {
-			me.attrMutex.Lock()
-			defer me.attrMutex.Unlock()
-			fa := &FileAttr{
-				Path: name,
-			}
-			me.attrResponse[name] = fa
-			return fa
-		}
-	}
-
-	me.attrMutex.Lock()
-	defer me.attrMutex.Unlock()
-	for me.attrFetchMap[name] && me.attrResponse[name] == nil {
-		me.attrCond.Wait()
-	}
-	result, ok = me.attrResponse[name]
-	if ok {
-		return result
-	}
-	me.attrFetchMap[name] = true
-	me.attrMutex.Unlock()
-
-	abs := name
-	req := &AttrRequest{Name: abs}
+	
+func (me *RpcFs) fetchAttr(n string) *FileAttr {
+	req := &AttrRequest{Name: n}
 	rep := &AttrResponse{}
 	err := me.client.Call("FsServer.GetAttr", req, rep)
-
-	me.attrMutex.Lock()
-	me.attrFetchMap[name] = false, false
 	if err != nil {
 		// fatal?
 		log.Println("GetAttr error:", err)
@@ -136,14 +65,11 @@ func (me *RpcFs) getFileAttr(name string) *FileAttr {
 
 	var wanted *FileAttr
 	for _, attr := range rep.Attrs {
-		me.considerSaveLocal(attr)
-		me.attrResponse[attr.Path] = attr
-		if attr.Path == abs {
+		if attr.Path == n {
 			wanted = attr
 		}
 	}
-	me.attrCond.Broadcast()
-
+	
 	return wanted
 }
 
@@ -187,7 +113,7 @@ func (me *RpcFs) String() string {
 }
 
 func (me *RpcFs) OpenDir(name string, context *fuse.Context) (chan fuse.DirEntry, fuse.Status) {
-	r := me.getFileAttr(name)
+	r := me.attr.Get(name)
 	if r.Deletion() {
 		return nil, fuse.ENOENT
 	}
@@ -223,7 +149,7 @@ func (me *RpcFs) Open(name string, flags uint32, context *fuse.Context) (fuse.Fi
 	if flags&fuse.O_ANYWRITE != 0 {
 		return nil, fuse.EPERM
 	}
-	a := me.getFileAttr(name)
+	a := me.attr.Get(name)
 	if a == nil {
 		return nil, fuse.ENOENT
 	}
@@ -244,10 +170,7 @@ func (me *RpcFs) Open(name string, flags uint32, context *fuse.Context) (fuse.Fi
 	p := me.cache.Path(a.Hash)
 	if _, err := os.Lstat(p); fuse.OsErrorToErrno(err) == fuse.ENOENT {
 		log.Printf("Fetching contents for file %s: %x", name, a.Hash)
-		err = me.FetchHash(a.FileInfo.Size, a.Hash)
-		if err != nil {
-			log.Fatal("Error fetching contents: ", err)
-		}
+		me.FetchHash(a.Hash)
 	}
 
 	f, err := os.Open(p)
@@ -265,7 +188,7 @@ func (me *RpcFs) Open(name string, flags uint32, context *fuse.Context) (fuse.Fi
 }
 
 func (me *RpcFs) Readlink(name string, context *fuse.Context) (string, fuse.Status) {
-	a := me.getFileAttr(name)
+	a := me.attr.Get(name)
 	if a == nil {
 		return "", fuse.ENOENT
 	}
@@ -287,11 +210,24 @@ func (me *RpcFs) GetAttr(name string, context *fuse.Context) (*os.FileInfo, fuse
 		}, fuse.OK
 	}
 
-	r := me.getFileAttr(name)
+	dir, base := filepath.Split(name)
+	dir = strings.TrimRight(dir, "/")
+	if name != dir {
+		dirResp := me.attr.Get(dir)
+		found := dirResp != nil && dirResp.NameModeMap != nil &&
+			dirResp.NameModeMap[base] != 0
+		if !found {
+			return nil, fuse.ENOENT
+		}
+	}
+	
+	r := me.attr.Get(name)
 	if r == nil {
 		return nil, fuse.ENOENT
 	}
-
+	if r.Hash != "" {
+		me.FetchHash(r.Hash)
+	}
 	return r.FileInfo, r.Status()
 }
 
