@@ -4,6 +4,7 @@ import (
 	"exec"
 	"fmt"
 	"github.com/hanwen/go-fuse/fuse"
+	"http"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -16,7 +17,9 @@ import (
 )
 
 type testCase struct {
-	worker          *WorkerDaemon
+	workers         []*WorkerDaemon
+	workerOpts      *WorkerOptions
+	
 	master          *Master
 	coordinator     *Coordinator
 	secret          []byte
@@ -24,7 +27,6 @@ type testCase struct {
 	wd              string
 	socket          string
 	coordinatorPort int
-	workerPort      int
 	tester          *testing.T
 	startFdCount    int
 }
@@ -49,6 +51,14 @@ func testEnv() []string {
 	}
 }
 
+func (me *testCase) StartWorker(coordinator string) {
+	workerPort := int(rand.Int31n(60000) + 1024)
+	worker := NewWorkerDaemon(me.workerOpts)
+	// TODO -racey. 
+	me.workers = append(me.workers, worker) 
+	worker.RunWorkerServer(workerPort, coordinator)
+}
+
 func NewTestCase(t *testing.T) *testCase {
 	me := new(testCase)
 	me.tester = t
@@ -58,22 +68,19 @@ func NewTestCase(t *testing.T) *testCase {
 	me.startFdCount = me.fdCount()
 	workerTmp := me.tmp + "/worker-tmp"
 	os.Mkdir(workerTmp, 0700)
-	opts := WorkerOptions{
+	me.workerOpts = &WorkerOptions{
 		Secret:   me.secret,
 		TempDir:  workerTmp,
 		CacheDir: me.tmp + "/worker-cache",
 		Jobs:     1,
+		ReportInterval: 0.1, 
 	}
 
 	me.wd = me.tmp + "/wd"
 	os.MkdirAll(me.wd, 0755)
 
-	me.worker = NewWorkerDaemon(&opts)
-
 	// TODO - pick unused port
 	me.coordinatorPort = int(rand.Int31n(60000) + 1024)
-	me.workerPort = int(rand.Int31n(60000) + 1024)
-
 	coordinatorAddr := fmt.Sprintf(":%d", me.coordinatorPort)
 	var wg sync.WaitGroup
 
@@ -96,11 +103,11 @@ func NewTestCase(t *testing.T) *testCase {
 		go me.master.Start(me.socket)
 		wg.Done()
 	}()
-	go me.worker.RunWorkerServer(me.workerPort, coordinatorAddr)
-
+	go me.StartWorker(coordinatorAddr)
 	wg.Wait()
-	for me.coordinator.WorkerCount() == 0 {
-		me.worker.report(coordinatorAddr, me.workerPort)
+
+	for i := 0; me.coordinator.WorkerCount() == 0  && i < 10; i++ {
+		time.Sleep(50e6)
 	}
 
 	return me
@@ -116,9 +123,12 @@ func (me *testCase) fdCount() int {
 
 func (me *testCase) Clean() {
 	me.master.mirrors.dropConnections()
-	req := ShutdownRequest{}
-	rep := ShutdownResponse{}
-	me.worker.Shutdown(&req, &rep)
+	for _, w := range me.workers {
+		req := ShutdownRequest{}
+		rep := ShutdownResponse{}
+		w.Shutdown(&req, &rep)
+	}
+	
 	me.coordinator.Shutdown()
 	// TODO - should have explicit worker shutdown routine.
 	time.Sleep(0.1e9)
@@ -199,9 +209,11 @@ func TestEndToEndBasic(t *testing.T) {
 
 	statusReq := &WorkerStatusRequest{}
 	statusRep := &WorkerStatusResponse{}
-	tc.worker.Status(statusReq, statusRep)
-	if len(statusRep.MirrorStatus) > 0 {
-		t.Fatal("Processes still alive.")
+	for _, w := range tc.workers {
+		w.Status(statusReq, statusRep)
+		if len(statusRep.MirrorStatus) > 0 {
+			t.Fatal("Processes still alive.")
+		}
 	}
 }
 
@@ -434,32 +446,17 @@ func TestEndToEndShutdown(t *testing.T) {
 		Env:    testEnv(),
 		Dir:    tc.wd,
 	}
-	rep := tc.Run(req)
+	tc.Run(req)
 
-	hostname, err := os.Hostname()
-	if err != nil {
-		t.Fatalf("hostname error %v", err)
+	addresses := []string{}
+	for addr := range tc.coordinator.workers {
+		addresses = append(addresses, addr)
 	}
-	conn, err := DialTypedConnection(
-		fmt.Sprintf("%s:%d", hostname, tc.workerPort), RPC_CHANNEL, tc.secret)
-	if conn == nil {
-		t.Fatal("DialTypedConnection to shutdown worker: ", err)
+	for _, a := range addresses {
+		cl := http.Client{}
+		_, err := cl.Get(fmt.Sprintf("http://localhost:%d/killworker?host=%s", tc.coordinatorPort, a))
+		check(err)
 	}
-
-	stopReq := ShutdownRequest{}
-	stopRep := ShutdownResponse{}
-	err = rpc.NewClient(conn).Call("WorkerDaemon.Shutdown", &stopReq, &stopRep)
-	if err != nil {
-		t.Errorf("Shutdown insuccessful: %v", err)
-	}
-
-	rpcConn := OpenSocketConnection(tc.socket, RPC_CHANNEL, 10e6)
-	err = rpc.NewClient(rpcConn).Call("LocalMaster.Run", &req, &rep)
-	if err == nil {
-		t.Error("LocalMaster.Run should fail after shutdown")
-	}
-
-	// TODO - check that DialTypedConnection to worker stops working?
 }
 
 func TestEndToEndSpecialEntries(t *testing.T) {

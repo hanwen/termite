@@ -43,6 +43,23 @@ type WorkerDaemon struct {
 	options        *WorkerOptions
 }
 
+type WorkerOptions struct {
+	Secret   []byte
+	TempDir  string
+	CacheDir string
+	Jobs     int
+
+	// If set, change user to this for running.
+	User             *string
+	FileContentCount int
+
+	// How often to reap filesystems. If 1, use 1 FS per task.
+	ReapCount int
+
+	// Delay between contacting the coordinator for making reports.
+	ReportInterval float64
+}
+
 func (me *WorkerDaemon) getMirror(rpcConn, revConn net.Conn, reserveCount int) (*Mirror, os.Error) {
 	if reserveCount <= 0 {
 		return nil, os.NewError("must ask positive jobcount")
@@ -68,20 +85,6 @@ func (me *WorkerDaemon) getMirror(rpcConn, revConn net.Conn, reserveCount int) (
 	me.mirrorMap[key] = mirror
 	mirror.key = key
 	return mirror, nil
-}
-
-type WorkerOptions struct {
-	Secret   []byte
-	TempDir  string
-	CacheDir string
-	Jobs     int
-
-	// If set, change user to this for running.
-	User             *string
-	FileContentCount int
-
-	// How often to reap filesystems. If 1, use 1 FS per task.
-	ReapCount int
 }
 
 func NewWorkerDaemon(options *WorkerOptions) *WorkerDaemon {
@@ -120,8 +123,6 @@ func NewWorkerDaemon(options *WorkerOptions) *WorkerDaemon {
 	return me
 }
 
-const _REPORT_DELAY = 60.0
-
 func (me *WorkerDaemon) PeriodicReport(coordinator string, port int) {
 	if coordinator == "" {
 		log.Println("No coordinator - not doing period reports.")
@@ -129,7 +130,7 @@ func (me *WorkerDaemon) PeriodicReport(coordinator string, port int) {
 	}
 	me.report(coordinator, port)
 	for {
-		c := time.After(_REPORT_DELAY * 1e9)
+		c := time.After(int64(me.options.ReportInterval * 1e9))
 		<-c
 		me.report(coordinator, port)
 	}
