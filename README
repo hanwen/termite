@@ -96,12 +96,7 @@ RUNNING
 
 PERFORMANCE
 
-Lenovo T60, local build, local worker, LLVM+CLANG Cmake lib/Support with
-separate build dir -j1: 2.0-2.3x slower
-
-The worker can typically run 2 jobs per available core.
-
-TODO - stats on how many workers saturate a master-core/master-harddisk.
+See below.  The overhead of running in FUSE is 50 to 100%
 
 
 SECURITY
