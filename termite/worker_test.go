@@ -60,6 +60,10 @@ func (me *testCase) StartWorker(coordinator string) {
 }
 
 func NewTestCase(t *testing.T) *testCase {
+	if os.Geteuid() == 0 {
+		t.Fatal("This test should not run as root")
+	}
+
 	me := new(testCase)
 	me.tester = t
 	me.secret = RandomBytes(20)
@@ -161,11 +165,6 @@ func (me *testCase) Run(req WorkRequest) (rep WorkResponse) {
 // Simple end-to-end test.  It skips the chroot, but should give a
 // basic assurance that things work as expected.
 func TestEndToEndBasic(t *testing.T) {
-	if os.Geteuid() == 0 {
-		t.Log("This test should not run as root")
-		return
-	}
-
 	tc := NewTestCase(t)
 	defer tc.Clean()
 
@@ -218,11 +217,6 @@ func TestEndToEndBasic(t *testing.T) {
 }
 
 func TestEndToEndExec(t *testing.T) {
-	if os.Geteuid() == 0 {
-		t.Log("This test should not run as root")
-		return
-	}
-
 	tc := NewTestCase(t)
 	defer tc.Clean()
 
@@ -239,11 +233,6 @@ func TestEndToEndExec(t *testing.T) {
 }
 
 func TestEndToEndNegativeNotify(t *testing.T) {
-	if os.Geteuid() == 0 {
-		t.Log("This test should not run as root")
-		return
-	}
-
 	tc := NewTestCase(t)
 	defer tc.Clean()
 
@@ -287,11 +276,6 @@ func TestEndToEndNegativeNotify(t *testing.T) {
 }
 
 func TestEndToEndMove(t *testing.T) {
-	if os.Geteuid() == 0 {
-		t.Log("This test should not run as root")
-		return
-	}
-
 	tc := NewTestCase(t)
 	defer tc.Clean()
 
@@ -320,11 +304,6 @@ func TestEndToEndMove(t *testing.T) {
 }
 
 func TestEndToEndStdout(t *testing.T) {
-	if os.Geteuid() == 0 {
-		t.Log("This test should not run as root")
-		return
-	}
-
 	tc := NewTestCase(t)
 	defer tc.Clean()
 
@@ -355,11 +334,6 @@ func TestEndToEndStdout(t *testing.T) {
 }
 
 func TestEndToEndModeChange(t *testing.T) {
-	if os.Geteuid() == 0 {
-		t.Log("This test should not run as root")
-		return
-	}
-
 	tc := NewTestCase(t)
 	defer tc.Clean()
 
@@ -385,11 +359,6 @@ func TestEndToEndModeChange(t *testing.T) {
 }
 
 func TestEndToEndSymlink(t *testing.T) {
-	if os.Geteuid() == 0 {
-		t.Log("This test should not run as root")
-		return
-	}
-
 	tc := NewTestCase(t)
 	defer tc.Clean()
 
@@ -427,11 +396,6 @@ func TestEndToEndSymlink(t *testing.T) {
 }
 
 func TestEndToEndShutdown(t *testing.T) {
-	if os.Geteuid() == 0 {
-		t.Log("This test should not run as root")
-		return
-	}
-
 	tc := NewTestCase(t)
 	defer tc.Clean()
 
@@ -517,11 +481,6 @@ func TestEndToEndEnvironment(t *testing.T) {
 }
 
 func TestEndToEndLinkReap(t *testing.T) {
-	if os.Geteuid() == 0 {
-		t.Log("This test should not run as root")
-		return
-	}
-
 	tc := NewTestCase(t)
 	defer tc.Clean()
 
