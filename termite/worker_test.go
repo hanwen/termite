@@ -67,7 +67,7 @@ func NewTestCase(t *testing.T) *testCase {
 
 	me.wd = me.tmp + "/wd"
 	os.MkdirAll(me.wd, 0755)
-	
+
 	me.worker = NewWorkerDaemon(&opts)
 
 	// TODO - pick unused port
@@ -116,8 +116,8 @@ func (me *testCase) fdCount() int {
 
 func (me *testCase) Clean() {
 	me.master.mirrors.dropConnections()
-	req := ShutdownRequest{} 
-	rep := ShutdownResponse{} 
+	req := ShutdownRequest{}
+	rep := ShutdownResponse{}
 	me.worker.Shutdown(&req, &rep)
 	me.coordinator.Shutdown()
 	// TODO - should have explicit worker shutdown routine.
@@ -189,7 +189,7 @@ func TestEndToEndBasic(t *testing.T) {
 		Env:    testEnv(),
 		Dir:    tc.wd,
 	})
-	
+
 	if fi, _ := os.Lstat(tc.wd + "/output.txt"); fi != nil {
 		t.Error("file should have been deleted", fi)
 	}
@@ -223,7 +223,7 @@ func TestEndToEndExec(t *testing.T) {
 
 	if rep.Exit.ExitStatus() != 0 {
 		t.Fatal("expect exit status == 0", rep.Exit.ExitStatus())
-	}	
+	}
 }
 
 func TestEndToEndNegativeNotify(t *testing.T) {
@@ -248,7 +248,7 @@ func TestEndToEndNegativeNotify(t *testing.T) {
 
 	newContent := []byte("new content")
 	hash := tc.master.cache.Save(newContent)
-	ioutil.WriteFile(tc.wd + "/output.txt", newContent, 0644)
+	ioutil.WriteFile(tc.wd+"/output.txt", newContent, 0644)
 	updated := []*FileAttr{
 		&FileAttr{
 			Path:     tc.wd[1:] + "/output.txt",

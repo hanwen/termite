@@ -86,7 +86,7 @@ func (me *ContentCache) HasHash(hash string) bool {
 			return true
 		}
 	}
-	
+
 	p := HashPath(me.dir, hash)
 	_, err := os.Lstat(p)
 	return err == nil
@@ -172,7 +172,7 @@ func (me *ContentCache) DestructiveSavePath(path string) (md5 string, err os.Err
 	if err != nil {
 		return "", err
 	}
-	before, _  := f.Stat()
+	before, _ := f.Stat()
 	defer f.Close()
 
 	h := crypto.MD5.New()

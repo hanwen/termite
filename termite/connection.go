@@ -232,7 +232,7 @@ func DialTypedConnection(addr string, id string, secret []byte) (net.Conn, os.Er
 func OpenSocketConnection(socket string, channel string, timeout int64) net.Conn {
 	delay := int64(0)
 	conn, err := net.Dial("unix", socket)
-	for try := 0; err != nil && delay  < timeout; try++ {
+	for try := 0; err != nil && delay < timeout; try++ {
 		delay = int64(1.5+0.5*rand.Float64()*float64(delay)) + 0.02e9
 		time.Sleep(int64(delay))
 		conn, err = net.Dial("unix", socket)

@@ -91,8 +91,8 @@ type WorkerStatusResponse struct {
 	ShuttingDown bool
 
 	// In chronological order.
-	CpuStats     []CpuStat
-	TotalCpu     CpuStat
+	CpuStats []CpuStat
+	TotalCpu CpuStat
 }
 
 type Timing struct {
@@ -101,7 +101,7 @@ type Timing struct {
 }
 
 type FileSet struct {
-	Files  []*FileAttr
+	Files []*FileAttr
 }
 
 type WorkResponse struct {
@@ -152,4 +152,5 @@ type ShutdownRequest struct {
 }
 
 type ShutdownResponse struct {
+
 }

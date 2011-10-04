@@ -1,4 +1,5 @@
 package termite
+
 import (
 	"os"
 	"io/ioutil"
@@ -29,9 +30,9 @@ func TestCopyFile(t *testing.T) {
 func TestSpliceCopy(t *testing.T) {
 	src, err := ioutil.TempFile("", "termite")
 	check(err)
-	bs := make([]byte,2*1024*1024)
+	bs := make([]byte, 2*1024*1024)
 	for i, _ := range bs {
-		bs[i] = byte(i%256)
+		bs[i] = byte(i % 256)
 	}
 	_, err = src.Write(bs)
 	check(err)
@@ -42,7 +43,7 @@ func TestSpliceCopy(t *testing.T) {
 	dst, err := ioutil.TempFile("", "termite")
 	check(err)
 
-	if getPipeMaxSize() % 4096 != 0 || getPipeMaxSize() < 4096 {
+	if getPipeMaxSize()%4096 != 0 || getPipeMaxSize() < 4096 {
 		t.Error("pipe size should be page size multiple", pipeMaxSize)
 	}
 	p := getSplice()

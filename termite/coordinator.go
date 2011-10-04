@@ -135,7 +135,7 @@ func (me *Coordinator) rootHandler(w http.ResponseWriter, req *http.Request) {
 	}
 	fmt.Fprintf(w, "</ul>")
 
-	fmt.Fprintf(w, "<hr><p><a href=\"workerkill?host=all\">kill all workers,</a>" +
+	fmt.Fprintf(w, "<hr><p><a href=\"workerkill?host=all\">kill all workers,</a>"+
 		"<a href=\"restart?host=all\">restart all workers</a>")
 }
 
@@ -146,7 +146,6 @@ func (me *Coordinator) shutdownSelf(w http.ResponseWriter, req *http.Request) {
 	// Async, so we can still return the reply here.
 	time.AfterFunc(100e6, func() { me.Shutdown() })
 }
-	
 
 func (me *Coordinator) killHandler(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
@@ -183,12 +182,12 @@ func (me *Coordinator) killHandler(w http.ResponseWriter, req *http.Request) {
 	} else {
 		err = me.shutdownWorker(addr, restart)
 	}
-	
+
 	if err != nil {
 		fmt.Fprintf(w, "<p><tt>Error: %v<tt>", err)
 		return
 	}
-	
+
 	action := "kill"
 	if restart {
 		action = "restart"
@@ -269,7 +268,7 @@ func (me *Coordinator) workerHandler(w http.ResponseWriter, req *http.Request) {
 		addr, status.Version, status.MaxJobCount)
 	fmt.Fprintf(w, "<p><table><tr><th>self cpu (ms)</th><th>self sys (ms)</th>"+
 		"<th>child cpu (ms)</th><th>child sys (ms)</th><th>total</th></tr>")
-	start := len(status.CpuStats)-5
+	start := len(status.CpuStats) - 5
 	if start < 0 {
 		start = 0
 	}
@@ -289,10 +288,10 @@ func (me *Coordinator) workerHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	fmt.Fprintf(w, "<p>Last 5s: %s (%.1f CPUs.)", stat5s.Percent(),
-		float64(stat5s.Total()) / 5.0e9)
+		float64(stat5s.Total())/5.0e9)
 	fmt.Fprintf(w, "<p>Last minute: %s (%.1f CPUs.)", minuteStat.Percent(),
-		float64(minuteStat.Total()) / 60.0e9)
-	
+		float64(minuteStat.Total())/60.0e9)
+
 	fmt.Fprintf(w, "<p>Total CPU: %s", status.TotalCpu.Percent())
 
 	for _, mirrorStatus := range status.MirrorStatus {

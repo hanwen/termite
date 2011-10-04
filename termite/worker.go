@@ -81,7 +81,7 @@ type WorkerOptions struct {
 	FileContentCount int
 
 	// How often to reap filesystems. If 1, use 1 FS per task.
-	ReapCount        int
+	ReapCount int
 }
 
 func NewWorkerDaemon(options *WorkerOptions) *WorkerDaemon {

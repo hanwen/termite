@@ -22,12 +22,12 @@ func (me *FileSet) Less(i, j int) bool {
 
 	if a.Deletion() {
 		return a.Path > b.Path
-	} 
+	}
 	return a.Path < b.Path
 }
 
 func (me *FileSet) Swap(i, j int) {
-	me.Files[i], me.Files[j] = me.Files[j], me.Files[i]  
+	me.Files[i], me.Files[j] = me.Files[j], me.Files[i]
 }
 
 func (me *FileSet) Sort() {

@@ -97,18 +97,18 @@ func (me *RpcFs) getFileAttr(name string) *FileAttr {
 	if name != dir {
 		dirResp := me.getFileAttr(dir)
 		found := dirResp != nil && dirResp.NameModeMap != nil &&
-			dirResp.NameModeMap[base] != 0 
+			dirResp.NameModeMap[base] != 0
 		if !found {
 			me.attrMutex.Lock()
 			defer me.attrMutex.Unlock()
 			fa := &FileAttr{
-			Path:   name,
+				Path: name,
 			}
 			me.attrResponse[name] = fa
 			return fa
 		}
 	}
-	
+
 	me.attrMutex.Lock()
 	defer me.attrMutex.Unlock()
 	for me.attrFetchMap[name] && me.attrResponse[name] == nil {
@@ -191,7 +191,7 @@ func (me *RpcFs) OpenDir(name string, context *fuse.Context) (chan fuse.DirEntry
 	if r.Deletion() {
 		return nil, fuse.ENOENT
 	}
-	if !r.FileInfo.IsDirectory()  {
+	if !r.FileInfo.IsDirectory() {
 		return nil, fuse.EINVAL
 	}
 
@@ -300,12 +300,8 @@ func (me *RpcFs) Access(name string, mode uint32, context *fuse.Context) (code f
 		_, code := me.GetAttr(name, context)
 		return code
 	}
-	if mode & fuse.W_OK != 0 {
+	if mode&fuse.W_OK != 0 {
 		return fuse.EACCES
 	}
 	return fuse.OK
 }
-
-
-
-

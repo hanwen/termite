@@ -1,4 +1,5 @@
 package termite
+
 import (
 	"fmt"
 	"io"
@@ -7,15 +8,17 @@ import (
 	"os"
 	"syscall"
 )
+
 var _ = log.Println
+
 type splicePair struct {
 	r, w *os.File
 	size int
 }
+
 var splicePairs chan *splicePair
 
 var pipeMaxSize *int
-
 
 func init() {
 	splicePairs = make(chan *splicePair, 100)
@@ -37,18 +40,17 @@ func getPipeMaxSize() int {
 
 // copy & paste from syscall.
 func fcntl(fd int, cmd int, arg int) (val int, errno int) {
-        r0, _, e1 := syscall.Syscall(syscall.SYS_FCNTL, uintptr(fd), uintptr(cmd), uintptr(arg))
-        val = int(r0)
-        errno = int(e1)
-        return
+	r0, _, e1 := syscall.Syscall(syscall.SYS_FCNTL, uintptr(fd), uintptr(cmd), uintptr(arg))
+	val = int(r0)
+	errno = int(e1)
+	return
 }
-
 
 const F_SETPIPE_SZ = 1031
 const F_GETPIPE_SZ = 1032
 
 func (me *splicePair) MaxGrow() {
-	for me.Grow(2*me.size) {
+	for me.Grow(2 * me.size) {
 	}
 }
 
@@ -107,9 +109,9 @@ func getSplice() (p *splicePair) {
 	select {
 	case p = <-splicePairs:
 		// already done.
-        default:
+	default:
 		p = newSplicePair()
-        }
+	}
 	return newSplicePair()
 }
 
@@ -121,14 +123,14 @@ func returnSplice(p *splicePair) {
 
 func SpliceCopy(dst *os.File, src *os.File, p *splicePair) (int64, os.Error) {
 	total := int64(0)
-	
+
 	for {
 		n, errNo := syscall.Splice(src.Fd(), nil, p.w.Fd(), nil, p.size, 0)
 		if errNo != 0 {
 			return total, os.NewSyscallError("Splice", errNo)
 		}
 		if n == 0 {
-			break			
+			break
 		}
 		m, errNo := syscall.Splice(p.r.Fd(), nil, dst.Fd(), nil, int(n), 0)
 		if errNo != 0 {
@@ -161,7 +163,7 @@ func CopyFile(dstName string, srcName string, mode int) os.Error {
 	defer dst.Close()
 	p := getSplice()
 	if p != nil {
-		p.Grow(256*1024)
+		p.Grow(256 * 1024)
 		_, err := SpliceCopy(dst, src, p)
 		returnSplice(p)
 		return err

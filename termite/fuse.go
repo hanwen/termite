@@ -27,12 +27,12 @@ type workerFuseFs struct {
 	unionNodeFs *fuse.PathNodeFs
 
 	// Protected by Mirror.fsMutex
-	id          int
-	reaping     bool
+	id      int
+	reaping bool
 
 	// When this reaches zero, we reap the filesystem.
 	reapCountdown int
-	tasks       map[*WorkerTask]bool
+	tasks         map[*WorkerTask]bool
 }
 
 func (me *workerFuseFs) Stop() {
@@ -59,9 +59,9 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string, 
 		return nil, err
 	}
 	me := &workerFuseFs{
-		tmpDir: tmpDir,
+		tmpDir:       tmpDir,
 		writableRoot: strings.TrimLeft(writableRoot, "/"),
-		tasks: map[*WorkerTask]bool{},
+		tasks:        map[*WorkerTask]bool{},
 	}
 
 	type dirInit struct {
@@ -72,7 +72,7 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string, 
 	tmpBacking := ""
 	for _, v := range []dirInit{
 		dirInit{&me.rwDir, "rw"},
-		dirInit{&me.mount, "mnt"},	
+		dirInit{&me.mount, "mnt"},
 		dirInit{&tmpBacking, "tmp-backing"},
 	} {
 		*v.dst = filepath.Join(me.tmpDir, v.val)
@@ -86,7 +86,7 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string, 
 	if os.Geteuid() == 0 {
 		fuseOpts.AllowOther = true
 	}
-	
+
 	me.nodeFs = fuse.NewPathNodeFs(rpcFs, nil)
 	ttl := 30.0
 	mOpts := fuse.FileSystemOptions{
@@ -98,7 +98,7 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string, 
 		// numbers.
 		PortableInodes: true,
 	}
-		
+
 	me.fsConnector = fuse.NewFileSystemConnector(me.nodeFs, &mOpts)
 	me.MountState = fuse.NewMountState(me.fsConnector)
 	err = me.MountState.Mount(me.mount, &fuseOpts)
@@ -106,7 +106,7 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string, 
 		return nil, err
 	}
 	go me.MountState.Loop()
-	
+
 	me.unionFs = unionfs.NewMemUnionFs(
 		me.rwDir, &fuse.PrefixFileSystem{rpcFs, me.writableRoot})
 
@@ -119,7 +119,7 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string, 
 		mountpoint string
 		fs         fuse.NodeFileSystem
 	}
-	
+
 	mounts := []submount{
 		{"proc", fuse.NewPathNodeFs(me.procFs, nil)},
 		{"sys", fuse.NewPathNodeFs(&fuse.ReadonlyFileSystem{fuse.NewLoopbackFileSystem("/sys")}, nil)},
@@ -132,7 +132,7 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string, 
 		if s.mountpoint == "proc" {
 			subOpts = nil
 		}
-		
+
 		code := me.nodeFs.Mount(s.mountpoint, s.fs, subOpts)
 		if !code.Ok() {
 			me.MountState.Unmount()
@@ -152,7 +152,7 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string, 
 		me.MountState.Unmount()
 		return nil, os.NewError(fmt.Sprintf("submount error for %s: %v", me.writableRoot, code))
 	}
-	
+
 	return me, nil
 }
 
@@ -177,8 +177,8 @@ func (me *workerFuseFs) update(attrs []*FileAttr, origin *workerFuseFs) {
 			updates[path] = &unionfs.Result{
 				FileInfo: attr.FileInfo,
 				Original: "",
-				Backing: "",
-				Link: attr.Link,
+				Backing:  "",
+				Link:     attr.Link,
 			}
 		}
 	}

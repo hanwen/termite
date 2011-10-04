@@ -93,7 +93,7 @@ func (me *FsServer) GetAttr(req *AttrRequest, rep *AttrResponse) os.Error {
 	if req.Name != "" && req.Name[0] == '/' {
 		panic("leading /")
 	}
-	
+
 	a := me.oneGetAttr(req.Name)
 	if a.Hash != "" {
 		log.Printf("GetAttr %v %x", a, a.Hash)
@@ -106,7 +106,7 @@ func (me *FsServer) uncachedGetAttr(name string) (rep *FileAttr) {
 	if me.excluded[name] {
 		log.Printf("Denied access to excluded file %q", name)
 		return &FileAttr{
-			Path:   name,
+			Path: name,
 		}
 	}
 	p := me.path(name)
@@ -191,7 +191,6 @@ func (me *FsServer) updateFiles(infos []*FileAttr) {
 	me.updateAttrs(infos)
 }
 
-
 func updateAttributeMap(attributes map[string]*FileAttr, files []*FileAttr) {
 	log.Println(files)
 	for _, inF := range files {
@@ -199,12 +198,12 @@ func updateAttributeMap(attributes map[string]*FileAttr, files []*FileAttr) {
 		if len(r.Path) > 0 && r.Path[0] == '/' {
 			panic("Leading slash.")
 		}
-		
+
 		dir, basename := filepath.Split(r.Path)
 		dir = strings.TrimRight(dir, string(filepath.Separator))
 		if dirAttr, ok := attributes[dir]; ok {
 			if dirAttr.NameModeMap == nil {
-				log.Panicf("parent dir has no NameModeMap: %q", dir) 
+				log.Panicf("parent dir has no NameModeMap: %q", dir)
 			}
 			if r.Deletion() {
 				dirAttr.NameModeMap[basename] = 0, false
@@ -212,7 +211,7 @@ func updateAttributeMap(attributes map[string]*FileAttr, files []*FileAttr) {
 				dirAttr.NameModeMap[basename] = r.Mode &^ 0777
 			}
 		}
-		
+
 		old := attributes[r.Path]
 		if old == nil {
 			old = &r
@@ -300,10 +299,10 @@ func (me *FsServer) refreshAttributeCache(prefix string) FileSet {
 	me.attrCacheMutex.Lock()
 	defer me.attrCacheMutex.Unlock()
 
-	if prefix != "" &&  prefix[0] == '/' {
+	if prefix != "" && prefix[0] == '/' {
 		panic("leading /")
 	}
-	
+
 	updated := []*FileAttr{}
 	for key, attr := range me.attrCache {
 		// TODO -should just do everything?
@@ -314,7 +313,7 @@ func (me *FsServer) refreshAttributeCache(prefix string) FileSet {
 		fi, _ := os.Lstat(me.path(key))
 		if fi == nil && !attr.Deletion() {
 			del := FileAttr{
-				Path:   key,
+				Path: key,
 			}
 			updated = append(updated, &del)
 		}
@@ -325,7 +324,7 @@ func (me *FsServer) refreshAttributeCache(prefix string) FileSet {
 				FileInfo: fi,
 			}
 			me.dropHash(key)
-			
+
 			me.fillContent(&newEnt)
 			updated = append(updated, &newEnt)
 		}

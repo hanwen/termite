@@ -14,11 +14,11 @@ type Master struct {
 	fileServerRpc *rpc.Server
 	secret        []byte
 
-	retryCount     int
-	mirrors        *mirrorConnections
-	writableRoot   string
-	srcRoot        string
-	pending        *PendingConnections
+	retryCount   int
+	mirrors      *mirrorConnections
+	writableRoot string
+	srcRoot      string
+	pending      *PendingConnections
 }
 
 func NewMaster(cache *ContentCache, coordinator string, workers []string, secret []byte, excluded []string, maxJobs int) *Master {
@@ -59,14 +59,13 @@ func (me *Master) CheckPrivate() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		if fi != nil && fi.Mode & 0077 == 0 {
-			log.Fatalf("Error: dir %q is mode %o.", d, fi.Mode & 07777)
+		if fi != nil && fi.Mode&0077 == 0 {
+			log.Fatalf("Error: dir %q is mode %o.", d, fi.Mode&07777)
 		}
 		d, _ = filepath.Split(d)
 		d = filepath.Clean(d)
 	}
 }
-
 
 func (me *Master) Start(sock string) {
 	localStart(me, sock)
@@ -299,4 +298,3 @@ func (me *Master) refreshAttributeCache() {
 		me.mirrors.queueFiles(nil, updated)
 	}
 }
-

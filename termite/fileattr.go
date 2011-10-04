@@ -25,7 +25,7 @@ func (me *FileAttr) Merge(r FileAttr) {
 	} else {
 		mine := me.NameModeMap
 		other := r.NameModeMap
-		
+
 		*me = r
 		me.NameModeMap = nil
 

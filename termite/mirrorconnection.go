@@ -23,13 +23,12 @@ type mirrorConnection struct {
 	availableJobs int
 
 	*fileSetWaiter
-	
+
 	// Any file updates that we should ship to the worker before
 	// running any jobs.
 	pendingChangesMutex sync.Mutex
 	pendingChanges      []*FileAttr
 }
-
 
 func (me *mirrorConnection) queueFiles(fset FileSet) {
 	me.pendingChangesMutex.Lock()
@@ -56,7 +55,6 @@ func (me *mirrorConnection) sendFiles() os.Error {
 	me.pendingChanges = me.pendingChanges[:0]
 	return nil
 }
-
 
 // mirrorConnection manages connections from the master to the mirrors
 // on the workers.
@@ -221,7 +219,7 @@ func (me *mirrorConnections) pick() (*mirrorConnection, os.Error) {
 			me.workers = me.fetchWorkers()
 		}
 		me.tryConnect()
-	
+
 		if me.maxJobs() == 0 {
 			// Didn't connect to anything.  Should
 			// probably direct the wrapper to compile
@@ -231,7 +229,7 @@ func (me *mirrorConnections) pick() (*mirrorConnection, os.Error) {
 	}
 
 	j := len(me.mirrors)
-	if me.availableJobs() ==  0 {
+	if me.availableJobs() == 0 {
 		// All workers full: schedule on a random one.
 		j = rand.Intn(j)
 	}

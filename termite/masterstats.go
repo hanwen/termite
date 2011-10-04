@@ -50,19 +50,19 @@ func (me *masterStats) writeHttp(w http.ResponseWriter) {
 		s := 0
 		for i, c := range stats {
 			minuteStat = minuteStat.Add(c)
-			if i >= len(stats) - 5 {
-				s++ 
+			if i >= len(stats)-5 {
+				s++
 				fiveSecStat = fiveSecStat.Add(c)
 			}
 		}
-		
+
 		fmt.Fprintf(w, "<p>CPU (last min): %.0f s self %.0f s sys, %.1f CPU",
 			float64(minuteStat.SelfCpu)*1e-9, float64(minuteStat.SelfSys)*1e-9,
-			float64(minuteStat.SelfCpu + minuteStat.SelfSys)/float64(len(stats))*1.0e9)
+			float64(minuteStat.SelfCpu+minuteStat.SelfSys)/float64(len(stats))*1.0e9)
 		fmt.Fprintf(w, "<p>CPU (last 5s): %.2f self %.2f sys, %.1f CPU",
 			float64(fiveSecStat.SelfCpu)*1e-9, float64(fiveSecStat.SelfSys)*1e-9,
-			float64(fiveSecStat.SelfCpu + fiveSecStat.SelfSys)/float64(s*1e9))
-		
+			float64(fiveSecStat.SelfCpu+fiveSecStat.SelfSys)/float64(s*1e9))
+
 	}
 	me.counterMutex.Lock()
 	defer me.counterMutex.Unlock()
@@ -75,7 +75,7 @@ func (me *masterStats) writeHttp(w http.ResponseWriter) {
 
 	fmt.Fprintf(w, "<p>Request phases:<ul>")
 	for k, v := range me.workerPhaseStats {
-		fmt.Fprintf(w, "<li>%s: %.03f s\n", k, float64(v) * 1e-3)
+		fmt.Fprintf(w, "<li>%s: %.03f s\n", k, float64(v)*1e-3)
 	}
 	fmt.Fprintf(w, "</ul>")
 }

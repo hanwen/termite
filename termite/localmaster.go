@@ -11,14 +11,14 @@ import (
 
 // Expose functionality for the local tool to use.
 type LocalMaster struct {
-	master *Master
+	master   *Master
 	listener net.Listener
 	server   *rpc.Server
 }
 
 func localStart(m *Master, sock string) {
 	me := LocalMaster{
-	master: m,
+		master: m,
 	}
 	me.server = rpc.NewServer()
 	me.server.Register(&me)
@@ -36,8 +36,8 @@ func (me *LocalMaster) Run(req *WorkRequest, rep *WorkResponse) os.Error {
 
 func (me *LocalMaster) Shutdown(req *int, rep *int) os.Error {
 	time.AfterFunc(1e8, func() {
-	me.listener.Close()
-	},)
+		me.listener.Close()
+	})
 	return nil
 }
 

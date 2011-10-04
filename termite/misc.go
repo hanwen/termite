@@ -18,7 +18,6 @@ func init() {
 	rand.Seed(time.Nanoseconds() ^ (int64(os.Getpid()) << 32))
 }
 
-
 func RandomBytes(n int) []byte {
 	c := make([]byte, 0)
 	for i := 0; i < n; i++ {
@@ -196,8 +195,6 @@ func HumanTrim(s string, l int) string {
 	return s[:l-len(trail)] + trail
 }
 
-
-
 func PrintStdinSliceLen(s []byte) {
 	log.Printf("Copied %d bytes of stdin", len(s))
 }
@@ -227,7 +224,6 @@ func HookedCopy(w io.Writer, r io.Reader, proc func([]byte)) os.Error {
 	}
 	return nil
 }
-
 
 // Like io.Copy, but returns the buffer if it was small enough to hold
 // of the copied bytes.

@@ -61,7 +61,7 @@ func (me *CpuStat) Percent() string {
 		return "(no data)"
 	}
 	return fmt.Sprintf("%d %% self cpu, %d %% self sys, %d %% child cpu, %d %% child sys",
-		(100*me.SelfCpu)/t , (me.SelfSys*100)/t, (me.ChildCpu*100)/t, (me.ChildSys*100)/t)
+		(100*me.SelfCpu)/t, (me.SelfSys*100)/t, (me.ChildCpu*100)/t, (me.ChildSys*100)/t)
 }
 
 func (me *CpuStat) Total() int64 {

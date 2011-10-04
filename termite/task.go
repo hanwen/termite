@@ -164,6 +164,6 @@ func (me *Mirror) fillReply(ufs *unionfs.MemUnionFs) *FileSet {
 	fs := FileSet{files}
 	ufs.Clear()
 	fs.Sort()
-	
+
 	return &fs
 }

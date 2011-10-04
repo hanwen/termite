@@ -17,8 +17,8 @@ type fileSetWaiter struct {
 
 func newFileSetWaiter(master *Master, mc *mirrorConnection) *fileSetWaiter {
 	return &fileSetWaiter{
-		mirror: mc,
-		master: master,
+		mirror:   mc,
+		master:   master,
 		channels: make(map[chan int]bool),
 	}
 }
@@ -37,7 +37,7 @@ func (me *fileSetWaiter) getChannel() chan int {
 	me.Lock()
 	defer me.Unlock()
 
-	c := make(chan int, 10)	// TODO - what is a good size?
+	c := make(chan int, 10) // TODO - what is a good size?
 	me.channels[c] = true
 	return c
 }

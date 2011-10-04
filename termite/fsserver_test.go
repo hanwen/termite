@@ -172,7 +172,7 @@ func TestRpcFsReadDirCache(t *testing.T) {
 			},
 		},
 		&FileAttr{
-			Path:   "subdir/file.txt",
+			Path: "subdir/file.txt",
 		},
 	}
 
@@ -227,11 +227,11 @@ func TestRpcFS(t *testing.T) {
 	}
 
 	newcontent := "somethingelse"
-	err = ioutil.WriteFile(me.orig + "/file.txt", []byte(newcontent), 0644)
+	err = ioutil.WriteFile(me.orig+"/file.txt", []byte(newcontent), 0644)
 	check(err)
-	err = ioutil.WriteFile(me.orig + "/foobar.txt", []byte("more content"), 0644)
+	err = ioutil.WriteFile(me.orig+"/foobar.txt", []byte("more content"), 0644)
 	check(err)
-	
+
 	me.server.refreshAttributeCache("")
 	storedHash = me.server.hashCache["file.txt"]
 	if storedHash == "" || storedHash != md5str(newcontent) {
