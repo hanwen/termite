@@ -94,6 +94,9 @@ func NewWorkerDaemon(options *WorkerOptions) *WorkerDaemon {
 	if options.ReapCount == 0 {
 		options.ReapCount = 4
 	}
+	if options.ReportInterval == 0 {
+		options.ReportInterval = 60.0
+	}
 	copied := *options
 
 	cache := NewContentCache(options.CacheDir)
