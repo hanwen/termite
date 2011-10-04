@@ -8,6 +8,11 @@ import (
 	"sync"
 )
 
+// A in-memory cache of attributes.
+//
+// Invariants: for all entries, we have their parent directories too
+//
+// Users should run GetCopy() to inspect any NameModeMap members.
 type AttributeCache struct {
 	mutex sync.RWMutex
 	attributes      map[string]*FileAttr
@@ -48,7 +53,10 @@ func (me *AttributeCache) verify() {
 		if v.Deletion() {
 			log.Panicf("Attribute cache may not contain deletions %q", k)
 		}
-
+		if v.IsDirectory() && v.NameModeMap == nil {
+			log.Panicf("dir has no NameModeMap %q", k)
+		}
+		
 		dir, base := filepath.Split(k)
 		dir = strings.TrimRight(dir, string(filepath.Separator))
 		if base != k {
@@ -72,15 +80,46 @@ func (me *AttributeCache) Have(name string) bool {
 	_, ok := me.attributes[name]
 	return ok
 }
-	
+
+func (me *AttributeCache) GetCopy(name string) (rep *FileAttr) {
+	a := me.Get(name)
+	if a == nil {
+		return nil
+	}
+	me.mutex.RLock()
+	defer me.mutex.RUnlock()
+	return a.Copy()
+}
+
 func (me *AttributeCache) Get(name string) (rep *FileAttr) {
 	me.mutex.RLock()
 	rep, ok := me.attributes[name]
+	dir, base := SplitPath(name)
+	var dirAttr *FileAttr
+	parentNegate := false
+	if !ok && name != "" {
+		dirAttr = me.attributes[dir]
+		parentNegate = dirAttr != nil && dirAttr.NameModeMap[base] == 0
+	}
 	me.mutex.RUnlock()
 	if ok {
 		return rep
 	}
+	if parentNegate {
+		return nil
+	}
 
+	if dirAttr == nil && name != "" {
+		dirAttr = me.Get(dir)
+		me.mutex.RLock()
+		parentNegate = dirAttr != nil && dirAttr.NameModeMap[base] == 0
+		me.mutex.RUnlock()
+
+		if parentNegate {
+			return nil
+		}
+	}
+	
 	defer me.verify()
 	me.mutex.Lock()
 	defer me.mutex.Unlock()
@@ -96,6 +135,7 @@ func (me *AttributeCache) Get(name string) (rep *FileAttr) {
 
 	rep = me.getter(name)
 	me.mutex.Lock()
+	rep.Path = name
 	if !rep.Deletion() {
 		me.attributes[name] = rep
 	}
@@ -119,11 +159,10 @@ func (me *AttributeCache) update(files []*FileAttr) {
 			panic("Leading slash.")
 		}
 
-		dir, basename := filepath.Split(r.Path)
-		dir = strings.TrimRight(dir, string(filepath.Separator))
+		dir, basename := SplitPath(r.Path)
 		dirAttr := attributes[dir]
 		if dirAttr == nil {
-			log.Panicf("missing parent dir: %q", dir)
+			continue
 		}
 		if dirAttr.NameModeMap == nil {
 			log.Panicf("parent dir has no NameModeMap: %q", dir)
@@ -174,12 +213,13 @@ func (me *AttributeCache) Refresh(prefix string) FileSet {
 		// TODO - does this handle symlinks corrrectly?
 		if fi != nil && attr.FileInfo != nil && EncodeFileInfo(*attr.FileInfo) != EncodeFileInfo(*fi) {
 			newEnt := me.getter(key)
+			newEnt.Path = key
 			updated = append(updated, newEnt)
 		}
 	}
-
 	fs := FileSet{updated}
 	fs.Sort()
+
 	me.update(fs.Files)
 	return fs
 }
@@ -190,8 +230,7 @@ func (me *AttributeCache) Copy() FileSet {
 
 	dump := []*FileAttr{}
 	for _, attr := range me.attributes {
-		copy := *attr
-		dump = append(dump, &copy)
+		dump = append(dump, attr.Copy())
 	}
 
 	fs := FileSet{dump}

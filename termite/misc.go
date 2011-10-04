@@ -18,6 +18,12 @@ func init() {
 	rand.Seed(time.Nanoseconds() ^ (int64(os.Getpid()) << 32))
 }
 
+func SplitPath(name string) (dir, base string) {
+	dir, base = filepath.Split(name)
+	dir = strings.TrimRight(dir, "/")
+	return dir, base
+}
+
 func RandomBytes(n int) []byte {
 	c := make([]byte, 0)
 	for i := 0; i < n; i++ {

@@ -6,8 +6,6 @@ import (
 	"log"
 	"rpc"
 	"github.com/hanwen/go-fuse/fuse"
-	"strings"
-	"path/filepath"
 )
 
 type RpcFs struct {
@@ -211,17 +209,6 @@ func (me *RpcFs) GetAttr(name string, context *fuse.Context) (*os.FileInfo, fuse
 		}, fuse.OK
 	}
 
-	dir, base := filepath.Split(name)
-	dir = strings.TrimRight(dir, "/")
-	if name != dir {
-		dirResp := me.attr.Get(dir)
-		found := dirResp != nil && dirResp.NameModeMap != nil &&
-			dirResp.NameModeMap[base] != 0
-		if !found {
-			return nil, fuse.ENOENT
-		}
-	}
-	
 	r := me.attr.Get(name)
 	if r == nil {
 		return nil, fuse.ENOENT

@@ -2,7 +2,6 @@ package termite
 
 import (
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -70,19 +69,8 @@ func (me *FsServer) GetAttr(req *AttrRequest, rep *AttrResponse) os.Error {
 }
 
 func (me *FsServer) uncachedGetAttr(name string) (rep *FileAttr) {
-	if me.excluded[name] {
-		log.Printf("Denied access to excluded file %q", name)
-		return &FileAttr{
-			Path: name,
-		}
-	}
 	p := me.path(name)
 	fi, _ := os.Lstat(p)
-	rep = &FileAttr{
-		FileInfo: fi,
-		Path:     name,
-	}
-
 	// We don't want to expose the master's private files to the
 	// world.
 	if me.excludePrivate && fi != nil && fi.Mode&0077 == 0 {
@@ -90,7 +78,17 @@ func (me *FsServer) uncachedGetAttr(name string) (rep *FileAttr) {
 		rep.FileInfo = nil
 		fi = nil
 	}
-
+	
+	if me.excluded[name] {
+		log.Printf("Denied access to excluded file %q", name)
+		return &FileAttr{
+			Path: name,
+		}
+	}
+	rep = &FileAttr{
+		FileInfo: fi,
+		Path:     name,
+	}
 	if fi != nil {
 		me.fillContent(rep)
 	}
@@ -98,10 +96,10 @@ func (me *FsServer) uncachedGetAttr(name string) (rep *FileAttr) {
 }
 
 func (me *FsServer) fillContent(rep *FileAttr) {
-	if rep.FileInfo.IsSymlink() {
-		rep.Link, _ = os.Readlink(me.path(rep.Path))
+	if rep.IsSymlink() || rep.IsDirectory() {
+		rep.ReadFromFs(me.path(rep.Path))
 	}
-	if rep.FileInfo.IsRegular() {
+	if rep.IsRegular() {
 		// TODO - /usr should be configurable.
 		fullPath := me.path(rep.Path)
 		if HasDirPrefix(fullPath, "/usr") && !HasDirPrefix(fullPath, "/usr/local") {
@@ -112,18 +110,6 @@ func (me *FsServer) fillContent(rep *FileAttr) {
 		if rep.Hash == "" {
 			// Typically happens if we want to open /etc/shadow as normal user.
 			log.Println("fillContent returning EPERM for", rep.Path)
-			rep.FileInfo = nil
-		}
-	}
-	if rep.FileInfo.IsDirectory() {
-		p := me.path(rep.Path)
-		d, e := ioutil.ReadDir(p)
-		if e == nil {
-			rep.NameModeMap = make(map[string]uint32)
-			for _, v := range d {
-				rep.NameModeMap[v.Name] = v.Mode
-			}
-		} else {
 			rep.FileInfo = nil
 		}
 	}
