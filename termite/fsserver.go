@@ -2,7 +2,6 @@ package termite
 
 import (
 	"fmt"
-	"github.com/hanwen/go-fuse/fuse"
 	"io/ioutil"
 	"log"
 	"os"
@@ -78,10 +77,6 @@ func NewFsServer(root string, cache *ContentCache, excluded []string) *FsServer 
 	return fs
 }
 
-func (me FileAttr) Deletion() bool {
-	return me.Status == fuse.ENOENT
-}
-
 func (me *FsServer) path(n string) string {
 	if me.Root == "" {
 		return n
@@ -94,7 +89,7 @@ func (me *FsServer) FileContent(req *ContentRequest, rep *ContentResponse) os.Er
 }
 
 func (me *FsServer) GetAttr(req *AttrRequest, rep *AttrResponse) os.Error {
-	log.Println("GetAttr req", req.Name)
+	log.Printf("GetAttr req %q", req.Name)
 	if req.Name != "" && req.Name[0] == '/' {
 		panic("leading /")
 	}
@@ -112,14 +107,12 @@ func (me *FsServer) uncachedGetAttr(name string) (rep *FileAttr) {
 		log.Printf("Denied access to excluded file %q", name)
 		return &FileAttr{
 			Path:   name,
-			Status: fuse.ENOENT,
 		}
 	}
 	p := me.path(name)
-	fi, err := os.Lstat(p)
+	fi, _ := os.Lstat(p)
 	rep = &FileAttr{
 		FileInfo: fi,
-		Status:   fuse.OsErrorToErrno(err),
 		Path:     name,
 	}
 
@@ -128,7 +121,6 @@ func (me *FsServer) uncachedGetAttr(name string) (rep *FileAttr) {
 	if me.excludePrivate && fi != nil && fi.Mode&0077 == 0 {
 		log.Printf("Denied access to private file %q", name)
 		rep.FileInfo = nil
-		rep.Status = fuse.EPERM
 		fi = nil
 	}
 
@@ -177,17 +169,20 @@ func (me *FsServer) fillContent(rep *FileAttr) {
 		if rep.Hash == "" {
 			// Typically happens if we want to open /etc/shadow as normal user.
 			log.Println("fillContent returning EPERM for", rep.Path)
-			rep.Status = fuse.EPERM
+			rep.FileInfo = nil
 		}
 	}
 	if rep.FileInfo.IsDirectory() {
 		p := me.path(rep.Path)
 		d, e := ioutil.ReadDir(p)
-		rep.NameModeMap = make(map[string]uint32)
-		for _, v := range d {
-			rep.NameModeMap[v.Name] = v.Mode
+		if e == nil {
+			rep.NameModeMap = make(map[string]uint32)
+			for _, v := range d {
+				rep.NameModeMap[v.Name] = v.Mode
+			}
+		} else {
+			rep.FileInfo = nil
 		}
-		rep.Status = fuse.OsErrorToErrno(e)
 	}
 }
 
@@ -198,7 +193,9 @@ func (me *FsServer) updateFiles(infos []*FileAttr) {
 
 
 func updateAttributeMap(attributes map[string]*FileAttr, files []*FileAttr) {
-	for _, r := range files {
+	log.Println(files)
+	for _, inF := range files {
+		r := *inF
 		if len(r.Path) > 0 && r.Path[0] == '/' {
 			panic("Leading slash.")
 		}
@@ -215,24 +212,13 @@ func updateAttributeMap(attributes map[string]*FileAttr, files []*FileAttr) {
 				dirAttr.NameModeMap[basename] = r.Mode &^ 0777
 			}
 		}
-
-		if r.FileInfo != nil && r.FileInfo.IsDirectory() && r.NameModeMap == nil {
-			dirResp := attributes[r.Path]
-			if dirResp == nil {
-				copy := *r
-				dirResp = &copy
-			}
-			
-			dirResp.FileInfo = r.FileInfo
-			dirResp.Status = r.Status
-			if dirResp.NameModeMap == nil {
-				dirResp.NameModeMap = map[string]uint32{}
-			}
-			continue
-		}
 		
-		copy := *r
-		attributes[r.Path] = &copy
+		old := attributes[r.Path]
+		if old == nil {
+			old = &r
+			attributes[r.Path] = old
+		}
+		old.Merge(r)
 	}
 }
 
@@ -253,7 +239,7 @@ func (me *FsServer) updateHashes(infos []*FileAttr) {
 
 	for _, r := range infos {
 		name := r.Path
-		if !r.Status.Ok() || r.Link != "" {
+		if r.Deletion() || r.Link != "" {
 			me.hashCache[name] = "", false
 			me.hashBusyMap[name] = false, false
 		}
@@ -326,10 +312,9 @@ func (me *FsServer) refreshAttributeCache(prefix string) FileSet {
 		}
 
 		fi, _ := os.Lstat(me.path(key))
-		if fi == nil && attr.Status.Ok() {
+		if fi == nil && !attr.Deletion() {
 			del := FileAttr{
 				Path:   key,
-				Status: fuse.ENOENT,
 			}
 			updated = append(updated, &del)
 		}
@@ -337,7 +322,6 @@ func (me *FsServer) refreshAttributeCache(prefix string) FileSet {
 		if fi != nil && attr.FileInfo != nil && EncodeFileInfo(*attr.FileInfo) != EncodeFileInfo(*fi) {
 			newEnt := FileAttr{
 				Path:     key,
-				Status:   fuse.OK,
 				FileInfo: fi,
 			}
 			me.dropHash(key)

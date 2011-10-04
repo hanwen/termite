@@ -66,7 +66,7 @@ func TestFsServerCache(t *testing.T) {
 
 	server.refreshAttributeCache("")
 	attr, ok = server.attrCache[name]
-	if !ok || attr.Status.Ok() {
+	if !ok || !attr.Deletion() {
 		t.Errorf("after rename: entry for %q unexpected: %v %#v", name, ok, attr)
 	}
 }
@@ -173,7 +173,6 @@ func TestRpcFsReadDirCache(t *testing.T) {
 		},
 		&FileAttr{
 			Path:   "subdir/file.txt",
-			Status: fuse.ENOENT,
 		},
 	}
 

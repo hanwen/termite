@@ -2,7 +2,6 @@ package termite
 
 import (
 	"io/ioutil"
-	"github.com/hanwen/go-fuse/fuse"
 	"log"
 	"os"
 	"path/filepath"
@@ -269,10 +268,7 @@ func (me *Master) replayFileModifications(worker *rpc.Client, infos []*FileAttr)
 			err = os.Symlink(info.Link, name)
 			logStr += "Symlink,"
 		}
-		if !info.Status.Ok() {
-			if info.Status != fuse.ENOENT {
-				log.Fatal("Unknown status for replay", info.Status)
-			}
+		if info.Deletion() {
 			if err := os.Remove(name); err != nil {
 				log.Println("delete replay: ", err)
 			}

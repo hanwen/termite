@@ -2,7 +2,6 @@ package termite
 
 import (
 	"fmt"
-	"github.com/hanwen/go-fuse/fuse"
 	"os"
 )
 
@@ -26,7 +25,6 @@ type AttrRequest struct {
 type FileAttr struct {
 	Path string
 	*os.FileInfo
-	fuse.Status
 	Hash string
 	Link string
 
@@ -35,22 +33,19 @@ type FileAttr struct {
 }
 
 func (me FileAttr) String() string {
-	id := ""
+	id := me.Path
 	if me.Hash != "" {
-		id = fmt.Sprintf(" sz %d", me.FileInfo.Size)
+		id += fmt.Sprintf(" sz %d", me.FileInfo.Size)
 	}
 	if me.Link != "" {
-		id = fmt.Sprintf(" -> %s", me.Link)
+		id += fmt.Sprintf(" -> %s", me.Link)
 	}
-	if me.Deletion() {
-		id = " (del)"
-	} else if !me.Status.Ok() {
-		id = " " + me.Status.String()
-	}
-	if me.Status.Ok() {
+	if me.FileInfo != nil {
 		id += fmt.Sprintf(" m=%o", me.FileInfo.Mode)
+	} else {
+		id += " (del)"
 	}
-	return fmt.Sprintf("%s%s", me.Path, id)
+	return id
 }
 
 type AttrResponse struct {

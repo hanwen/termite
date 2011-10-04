@@ -137,7 +137,7 @@ func SpliceCopy(dst *os.File, src *os.File, p *splicePair) (int64, os.Error) {
 		if m < n {
 			panic("m<n")
 		}
-		total += m
+		total += int64(m)
 		if int(n) < p.size {
 			break
 		}

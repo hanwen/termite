@@ -96,17 +96,12 @@ func (me *RpcFs) getFileAttr(name string) *FileAttr {
 	dir = strings.TrimRight(dir, "/")
 	if name != dir {
 		dirResp := me.getFileAttr(dir)
-		code := dirResp.Status
-		if code.Ok() {
-			if _, ok := dirResp.NameModeMap[base]; !ok {
-				code = fuse.ENOENT
-			}
-		}
-		if !code.Ok() {
+		found := dirResp != nil && dirResp.NameModeMap != nil &&
+			dirResp.NameModeMap[base] != 0 
+		if !found {
 			me.attrMutex.Lock()
 			defer me.attrMutex.Unlock()
 			fa := &FileAttr{
-			Status: code,
 			Path:   name,
 			}
 			me.attrResponse[name] = fa
@@ -154,7 +149,7 @@ func (me *RpcFs) getFileAttr(name string) *FileAttr {
 
 func (me *RpcFs) considerSaveLocal(attr *FileAttr) {
 	absPath := attr.Path
-	if !attr.Status.Ok() || !attr.FileInfo.IsRegular() {
+	if attr.Deletion() || !attr.FileInfo.IsRegular() {
 		return
 	}
 	found := false
@@ -193,8 +188,8 @@ func (me *RpcFs) String() string {
 
 func (me *RpcFs) OpenDir(name string, context *fuse.Context) (chan fuse.DirEntry, fuse.Status) {
 	r := me.getFileAttr(name)
-	if !r.Status.Ok() {
-		return nil, r.Status
+	if r.Deletion() {
+		return nil, fuse.ENOENT
 	}
 	if !r.FileInfo.IsDirectory()  {
 		return nil, fuse.EINVAL
@@ -232,8 +227,8 @@ func (me *RpcFs) Open(name string, flags uint32, context *fuse.Context) (fuse.Fi
 	if a == nil {
 		return nil, fuse.ENOENT
 	}
-	if !a.Status.Ok() {
-		return nil, a.Status
+	if a.Deletion() {
+		return nil, fuse.ENOENT
 	}
 
 	if contents := me.cache.ContentsIfLoaded(a.Hash); contents != nil {
@@ -275,8 +270,8 @@ func (me *RpcFs) Readlink(name string, context *fuse.Context) (string, fuse.Stat
 		return "", fuse.ENOENT
 	}
 
-	if !a.Status.Ok() {
-		return "", a.Status
+	if a.Deletion() {
+		return "", fuse.ENOENT
 	}
 	if !a.FileInfo.IsSymlink() {
 		return "", fuse.EINVAL
@@ -297,7 +292,7 @@ func (me *RpcFs) GetAttr(name string, context *fuse.Context) (*os.FileInfo, fuse
 		return nil, fuse.ENOENT
 	}
 
-	return r.FileInfo, r.Status
+	return r.FileInfo, r.Status()
 }
 
 func (me *RpcFs) Access(name string, mode uint32, context *fuse.Context) (code fuse.Status) {

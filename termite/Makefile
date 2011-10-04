@@ -14,6 +14,7 @@ MANUAL_GOFILES=\
 	counter.go \
 	devnullfs.go \
 	diskcache.go \
+	fileattr.go \
 	fileset.go \
 	filesetwaiter.go \
 	fsserver.go \

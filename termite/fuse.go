@@ -171,7 +171,7 @@ func (me *workerFuseFs) update(attrs []*FileAttr, origin *workerFuseFs) {
 		}
 		path = strings.TrimLeft(path[len(me.writableRoot):], "/")
 
-		if !attr.Status.Ok() {
+		if attr.Deletion() {
 			updates[path] = &unionfs.Result{}
 		} else {
 			updates[path] = &unionfs.Result{

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"exec"
 	"fmt"
-	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/go-fuse/unionfs"
 	"log"
 	"net"
@@ -136,30 +135,26 @@ func (me *Mirror) fillReply(ufs *unionfs.MemUnionFs) *FileSet {
 			Path: filepath.Join(wrRoot, path),
 		}
 
-		if v.FileInfo == nil  {
-			f.Status = fuse.ENOENT
-		} else {
-			f.FileInfo = v.FileInfo
-			f.Link = v.Link
-			if f.FileInfo.IsRegular() {
-				if v.Original != "" {
-					contentPath := filepath.Join(wrRoot, v.Original)
-					fa := me.rpcFs.getFileAttr(contentPath)
-					if fa.Hash == "" {
-						log.Panicf("Contents for %q disappeared.", contentPath)
-					}
-					f.Hash = fa.Hash
+		f.FileInfo = v.FileInfo
+		f.Link = v.Link
+		if f.FileInfo != nil && f.FileInfo.IsRegular() {
+			if v.Original != "" {
+				contentPath := filepath.Join(wrRoot, v.Original)
+				fa := me.rpcFs.getFileAttr(contentPath)
+				if fa.Hash == "" {
+					log.Panicf("Contents for %q disappeared.", contentPath)
+				}
+				f.Hash = fa.Hash
+			} else {
+				f.Hash = reapedHashes[v.Backing]
+				var err os.Error
+				if f.Hash == "" {
+					f.Hash, err = cache.DestructiveSavePath(v.Backing)
+				}
+				if err != nil {
+					log.Fatalf("DestructiveSavePath fail %q: %v", v.Backing, err)
 				} else {
-					f.Hash = reapedHashes[v.Backing]
-					var err os.Error
-					if f.Hash == "" {
-						f.Hash, err = cache.DestructiveSavePath(v.Backing)
-					}
-					if err != nil {
-						log.Fatalf("DestructiveSavePath fail %q: %v", v.Backing, err)
-					} else {
-						reapedHashes[v.Backing] = f.Hash
-					}
+					reapedHashes[v.Backing] = f.Hash
 				}
 			}
 		}
