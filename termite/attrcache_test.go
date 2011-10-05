@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -33,6 +34,7 @@ func getattr(t *testing.T, n string) *FileAttr {
 func TestAttrCache(t *testing.T) {
 	dir, err := ioutil.TempDir("", "termite")
 	check(err)
+	syscall.Umask(0)
 	
 	ac := NewAttributeCache(
 		func (n string) *FileAttr {
