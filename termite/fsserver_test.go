@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"os"
 	"rpc"
+	"time"
 	"testing"
 )
 
@@ -150,6 +151,7 @@ func TestRpcFsReadDirCache(t *testing.T) {
 		t.Fatalf("Missing entry %q %v", "file.txt", entries)
 	}
 
+	time.Sleep(5e6)
 	err = ioutil.WriteFile(me.orig + "/subdir/unstatted.txt", []byte("somethingelse"), 0644)
 	check(err)
 	err = os.Remove(me.orig + "/subdir/file.txt")
@@ -161,7 +163,7 @@ func TestRpcFsReadDirCache(t *testing.T) {
 	_, err = ioutil.ReadDir(me.mnt + "/subdir")
 	check(err)
 
-	dir := me.rpcFs.attr.Get("subdir")
+	dir := me.rpcFs.attr.GetDir("subdir")
 	if dir == nil {
 		t.Fatalf("Should have cache entry for /subdir")
 	}
