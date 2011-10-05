@@ -33,6 +33,7 @@ func main() {
 	port := flag.Int("port", 1235, "Where to listen for work requests.")
 	coordinator := flag.String("coordinator", "", "Where to register the worker.")
 	jobs := flag.Int("jobs", 1, "Max number of jobs to run.")
+	reapcount := flag.Int("reap-count", 1, "Number of jobs per filesystem.")
 	user := flag.String("user", "nobody", "Run as this user.")
 	memcache := flag.Int("filecache", 1024, "number of <32k files to cache in memory")
 	logfile := flag.String("logfile", "", "Output log file to use.")
@@ -55,6 +56,7 @@ func main() {
 		Jobs:             *jobs,
 		User:             user,
 		FileContentCount: *memcache,
+		ReapCount: *reapcount,
 	}
 	if *logfile != "" {
 		f, err := os.OpenFile(*logfile, os.O_APPEND | os.O_WRONLY | os.O_CREATE, 0644)
