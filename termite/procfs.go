@@ -50,7 +50,7 @@ func isNum(n string) bool {
 
 func (me *ProcFs) GetAttr(name string, context *fuse.Context) (*os.FileInfo, fuse.Status) {
 	dir, base := SplitPath(name)
-	if name != "" && dir == "." && !isNum(name) && me.AllowedRootFiles != nil {
+	if name != "" && dir == "" && !isNum(name) && me.AllowedRootFiles != nil {
 		if _, ok := me.AllowedRootFiles[base]; !ok {
 			return nil, fuse.ENOENT
 		}

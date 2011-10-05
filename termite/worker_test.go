@@ -483,16 +483,21 @@ func TestEndToEndSpecialEntries(t *testing.T) {
 	if out != readlink {
 		t.Errorf("proc/self/exe point to wrong location: got %q, expect %q", out, readlink)
 	}
+}
 
-	req = WorkRequest{
+func TestEndToEndProcDeny(t *testing.T) {
+	tc := NewTestCase(t)
+	defer tc.Clean()
+
+	req := WorkRequest{
 		Binary: tc.FindBin("ls"),
 		Argv:   []string{"ls", "proc/misc"},
 		Env:    testEnv(),
 		Dir:    "/",
 	}
-	rep = tc.Run(req)
+	rep := tc.Run(req)
 	if rep.Exit.ExitStatus() == 0 {
-		t.Fatalf("ls should have failed", rep)
+		t.Fatalf("ls should have failed %v", rep)
 	}
 }
 
