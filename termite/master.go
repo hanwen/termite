@@ -54,10 +54,10 @@ func (me *Master) CheckPrivate() {
 		return
 	}
 	d := me.writableRoot
-	for d != "/" {
+	for d != "" {
 		fi, err := os.Lstat(d)
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal("CheckPrivate:", err)
 		}
 		if fi != nil && fi.Mode&0077 == 0 {
 			log.Fatalf("Error: dir %q is mode %o.", d, fi.Mode&07777)
