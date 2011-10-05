@@ -56,7 +56,7 @@ func Version() string {
 
 func EscapeRegexp(s string) string {
 	special := "[]()\\+*"
-	for i, _ := range special {
+	for i := range special {
 		c := special[i : i+1]
 		s = strings.Replace(s, c, "\\"+c, -1)
 	}

@@ -14,9 +14,9 @@ func (me *Mirror) Status(req *MirrorStatusRequest, rep *MirrorStatusResponse) os
 	rep.ShuttingDown = me.shuttingDown
 
 	i := 0
-	for fs, _ := range me.activeFses {
+	for fs := range me.activeFses {
 		i++
-		for t, _ := range fs.tasks {
+		for t := range fs.tasks {
 			rep.Running = append(rep.Running, fmt.Sprintf("fs %d: %s", i, t.taskInfo))
 		}
 	}

@@ -216,7 +216,7 @@ func (me *Coordinator) shutdownWorker(addr string, restart bool) os.Error {
 func (me *Coordinator) workerAddresses() (out []string) {
 	me.mutex.Lock()
 	defer me.mutex.Unlock()
-	for k, _ := range me.workers {
+	for k := range me.workers {
 		out = append(out, k)
 	}
 	return out
@@ -346,7 +346,7 @@ func (me *Coordinator) ServeHTTP(port int) {
 
 	rpcServer := rpc.NewServer()
 	if err := rpcServer.Register(me); err != nil {
-		log.Fatal(err)
+		log.Fatal("rpcServer.Register:", err)
 	}
 	me.Mux.HandleFunc(rpc.DefaultRPCPath,
 		func(w http.ResponseWriter, req *http.Request) {

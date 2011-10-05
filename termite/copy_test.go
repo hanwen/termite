@@ -31,7 +31,7 @@ func TestSpliceCopy(t *testing.T) {
 	src, err := ioutil.TempFile("", "termite")
 	check(err)
 	bs := make([]byte, 2*1024*1024)
-	for i, _ := range bs {
+	for i := range bs {
 		bs[i] = byte(i % 256)
 	}
 	_, err = src.Write(bs)

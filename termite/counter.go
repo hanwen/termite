@@ -32,7 +32,7 @@ func NewMultiResolutionCounter(interval int64, now int64, resolutions []int) *Mu
 func (me *MultiResolutionCounter) move(bucketIdx int, count int) int {
 	acc := 0
 	bucket := me.buckets[bucketIdx]
-	for i, _ := range bucket {
+	for i := range bucket {
 		j := len(bucket) - i - 1
 		v := bucket[j]
 		bucket[j] = 0

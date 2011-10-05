@@ -26,7 +26,7 @@ func newFileSetWaiter(master *Master, mc *mirrorConnection) *fileSetWaiter {
 func (me *fileSetWaiter) broadcast(id int, ignore chan int) {
 	me.Lock()
 	defer me.Unlock()
-	for ch, _ := range me.channels {
+	for ch := range me.channels {
 		if ch != ignore {
 			go func(ch chan int) { ch <- id }(ch)
 		}
@@ -45,7 +45,7 @@ func (me *fileSetWaiter) getChannel() chan int {
 func (me *fileSetWaiter) flush() {
 	me.Lock()
 	defer me.Unlock()
-	for ch, _ := range me.channels {
+	for ch := range me.channels {
 		close(ch)
 	}
 }

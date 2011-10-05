@@ -73,7 +73,7 @@ func TestParseCommand(t *testing.T) {
 		if len(r) != len(entry.res) {
 			t.Error("len mismatch", r, entry)
 		} else {
-			for i, _ := range r {
+			for i := range r {
 				if r[i] != entry.res[i] {
 					t.Errorf("component mismatch for %v comp %d got %v want %v",
 						entry.cmd, i, r[i], entry.res[i])
@@ -85,7 +85,7 @@ func TestParseCommand(t *testing.T) {
 
 func TestSavingCopy(t *testing.T) {
 	content := make([]byte, _BUFSIZE+1)
-	for i, _ := range content {
+	for i := range content {
 		content[i] = 'y'
 	}
 

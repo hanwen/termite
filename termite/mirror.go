@@ -64,7 +64,7 @@ func (me *Mirror) Shutdown() {
 	me.shuttingDown = true
 	me.fileServer.Close()
 	me.fileServerConn.Close()
-	for fs, _ := range me.activeFses {
+	for fs := range me.activeFses {
 		if len(fs.tasks) == 0 {
 			fs.Stop()
 			me.activeFses[fs] = false, false
@@ -81,7 +81,7 @@ func (me *Mirror) Shutdown() {
 
 func (me *Mirror) runningCount() int {
 	r := 0
-	for fs, _ := range me.activeFses {
+	for fs := range me.activeFses {
 		r += len(fs.tasks)
 	}
 	return r
@@ -101,7 +101,7 @@ func (me *Mirror) newFs(t *WorkerTask) (fs *workerFuseFs, err os.Error) {
 		return nil, os.NewError("shutting down")
 	}
 
-	for fs, _ := range me.activeFses {
+	for fs := range me.activeFses {
 		if !fs.reaping && fs.reapCountdown > 0 {
 			fs.reapCountdown--
 			fs.tasks[t] = true
@@ -175,7 +175,7 @@ func (me *Mirror) updateFiles(attrs []*FileAttr, origin *workerFuseFs) {
 	me.fsMutex.Lock()
 	defer me.fsMutex.Unlock()
 
-	for fs, _ := range me.activeFses {
+	for fs := range me.activeFses {
 		fs.update(attrs, origin)
 	}
 }

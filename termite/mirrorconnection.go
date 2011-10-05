@@ -275,7 +275,7 @@ func (me *mirrorConnections) tryConnect() {
 	}
 
 	blacklist := []string{}
-	for addr, _ := range me.workers {
+	for addr := range me.workers {
 		_, ok := me.mirrors[addr]
 		if ok {
 			continue

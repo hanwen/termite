@@ -125,7 +125,7 @@ func TestDiskCacheStream(t *testing.T) {
 
 func TestDiskCacheStreamReturnContent(t *testing.T) {
 	content := make([]byte, _BUFSIZE-1)
-	for i, _ := range content {
+	for i:= range content {
 		content[i] = 'x'
 	}
 
@@ -141,7 +141,7 @@ func TestDiskCacheStreamReturnContent(t *testing.T) {
 	}
 
 	content = make([]byte, _BUFSIZE+1)
-	for i, _ := range content {
+	for i:= range content {
 		content[i] = 'y'
 	}
 
