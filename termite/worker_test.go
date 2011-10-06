@@ -17,9 +17,9 @@ import (
 )
 
 type testCase struct {
-	workers         []*WorkerDaemon
-	workerOpts      *WorkerOptions
-	
+	workers    []*WorkerDaemon
+	workerOpts *WorkerOptions
+
 	master          *Master
 	coordinator     *Coordinator
 	secret          []byte
@@ -55,7 +55,7 @@ func (me *testCase) StartWorker(coordinator string) {
 	workerPort := int(rand.Int31n(60000) + 1024)
 	worker := NewWorkerDaemon(me.workerOpts)
 	// TODO -racey. 
-	me.workers = append(me.workers, worker) 
+	me.workers = append(me.workers, worker)
 	worker.RunWorkerServer(workerPort, coordinator)
 }
 
@@ -73,11 +73,11 @@ func NewTestCase(t *testing.T) *testCase {
 	workerTmp := me.tmp + "/worker-tmp"
 	os.Mkdir(workerTmp, 0700)
 	me.workerOpts = &WorkerOptions{
-		Secret:   me.secret,
-		TempDir:  workerTmp,
-		CacheDir: me.tmp + "/worker-cache",
-		Jobs:     1,
-		ReportInterval: 0.1, 
+		Secret:         me.secret,
+		TempDir:        workerTmp,
+		CacheDir:       me.tmp + "/worker-cache",
+		Jobs:           1,
+		ReportInterval: 0.1,
 	}
 
 	me.wd = me.tmp + "/wd"
@@ -110,7 +110,7 @@ func NewTestCase(t *testing.T) *testCase {
 	go me.StartWorker(coordinatorAddr)
 	wg.Wait()
 
-	for i := 0; me.coordinator.WorkerCount() == 0  && i < 10; i++ {
+	for i := 0; me.coordinator.WorkerCount() == 0 && i < 10; i++ {
 		time.Sleep(50e6)
 	}
 
@@ -132,7 +132,7 @@ func (me *testCase) Clean() {
 		rep := ShutdownResponse{}
 		w.Shutdown(&req, &rep)
 	}
-	
+
 	me.coordinator.Shutdown()
 	// TODO - should have explicit worker shutdown routine.
 	time.Sleep(0.1e9)

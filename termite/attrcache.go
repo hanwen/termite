@@ -11,19 +11,19 @@ import (
 //
 // Invariants: for all entries, we have their parent directories too
 type AttributeCache struct {
-	mutex sync.RWMutex
-	attributes      map[string]*FileAttr
-	cond  *sync.Cond
-	busy  map[string]bool
-	getter         func(name string)*FileAttr
-	statter        func(name string)*os.FileInfo
+	mutex      sync.RWMutex
+	attributes map[string]*FileAttr
+	cond       *sync.Cond
+	busy       map[string]bool
+	getter     func(name string) *FileAttr
+	statter    func(name string) *os.FileInfo
 }
 
-func NewAttributeCache(getter func(n string)*FileAttr,
-	statter func(n string)*os.FileInfo) *AttributeCache {
+func NewAttributeCache(getter func(n string) *FileAttr,
+	statter func(n string) *os.FileInfo) *AttributeCache {
 	me := &AttributeCache{
 		attributes: make(map[string]*FileAttr),
-		busy:  map[string]bool{},
+		busy:       map[string]bool{},
 	}
 	me.cond = sync.NewCond(&me.mutex)
 	me.getter = getter
@@ -53,7 +53,7 @@ func (me *AttributeCache) verify() {
 		if v.IsDirectory() && v.NameModeMap == nil {
 			log.Panicf("dir has no NameModeMap %q", k)
 		}
-		
+
 		dir, base := SplitPath(k)
 		if base != k {
 			parent := me.attributes[dir]
@@ -110,7 +110,7 @@ func (me *AttributeCache) get(name string, withdir bool) (rep *FileAttr) {
 			return &FileAttr{Path: name}
 		}
 	}
-	
+
 	defer me.verify()
 	me.mutex.Lock()
 	defer me.mutex.Unlock()

@@ -56,10 +56,10 @@ func main() {
 		Jobs:             *jobs,
 		User:             user,
 		FileContentCount: *memcache,
-		ReapCount: *reapcount,
+		ReapCount:        *reapcount,
 	}
 	if *logfile != "" {
-		f, err := os.OpenFile(*logfile, os.O_APPEND | os.O_WRONLY | os.O_CREATE, 0644)
+		f, err := os.OpenFile(*logfile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 		if err != nil {
 			log.Fatal("Could not open log file.", err)
 		}
@@ -72,4 +72,3 @@ func main() {
 	go handleStop(daemon)
 	daemon.RunWorkerServer(*port, *coordinator)
 }
-

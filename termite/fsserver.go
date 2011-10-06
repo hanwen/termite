@@ -21,15 +21,15 @@ type FsServer struct {
 
 func NewFsServer(root string, cache *ContentCache, excluded []string) *FsServer {
 	me := &FsServer{
-		contentCache:  cache,
-		contentServer: &ContentServer{Cache: cache},
-		Root:          root,
+		contentCache:   cache,
+		contentServer:  &ContentServer{Cache: cache},
+		Root:           root,
 		excludePrivate: true,
 	}
-	me.attr = NewAttributeCache(func(n string)*FileAttr {
+	me.attr = NewAttributeCache(func(n string) *FileAttr {
 		return me.uncachedGetAttr(n)
-		},
-		func (n string) *os.FileInfo {
+	},
+		func(n string) *os.FileInfo {
 			fi, _ := os.Lstat(me.path(n))
 			return fi
 		})
@@ -78,7 +78,7 @@ func (me *FsServer) uncachedGetAttr(name string) (rep *FileAttr) {
 		rep.FileInfo = nil
 		fi = nil
 	}
-	
+
 	if me.excluded[name] {
 		log.Printf("Denied access to excluded file %q", name)
 		return &FileAttr{
@@ -126,4 +126,3 @@ func (me *FsServer) refreshAttributeCache(prefix string) FileSet {
 func (me *FsServer) copyCache() FileSet {
 	return me.attr.Copy()
 }
-

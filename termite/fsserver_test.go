@@ -47,7 +47,7 @@ func TestFsServerCache(t *testing.T) {
 	}
 
 	newName := me.orig + "/new.txt"
-	err = os.Rename(me.orig + "/file.txt", newName)
+	err = os.Rename(me.orig+"/file.txt", newName)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -152,14 +152,14 @@ func TestRpcFsReadDirCache(t *testing.T) {
 	}
 
 	time.Sleep(5e6)
-	err = ioutil.WriteFile(me.orig + "/subdir/unstatted.txt", []byte("somethingelse"), 0644)
+	err = ioutil.WriteFile(me.orig+"/subdir/unstatted.txt", []byte("somethingelse"), 0644)
 	check(err)
 	err = os.Remove(me.orig + "/subdir/file.txt")
 	check(err)
 
 	fset := me.server.refreshAttributeCache("")
 	me.rpcFs.updateFiles(fset.Files)
-	
+
 	_, err = ioutil.ReadDir(me.mnt + "/subdir")
 	check(err)
 

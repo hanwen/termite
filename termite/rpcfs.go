@@ -50,7 +50,7 @@ func (me *RpcFs) Update(req *UpdateRequest, resp *UpdateResponse) os.Error {
 func (me *RpcFs) updateFiles(files []*FileAttr) {
 	me.attr.Update(files)
 }
-	
+
 func (me *RpcFs) fetchAttr(n string) *FileAttr {
 	req := &AttrRequest{Name: n}
 	rep := &AttrResponse{}

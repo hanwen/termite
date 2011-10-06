@@ -35,23 +35,23 @@ func TestAttrCache(t *testing.T) {
 	dir, err := ioutil.TempDir("", "termite")
 	check(err)
 	syscall.Umask(0)
-	
+
 	ac := NewAttributeCache(
-		func (n string) *FileAttr {
+		func(n string) *FileAttr {
 			return getattr(t, filepath.Join(dir, n))
 		},
-		func (n string) *os.FileInfo {
+		func(n string) *os.FileInfo {
 			return testStat(t, filepath.Join(dir, n))
-	})
-	err = ioutil.WriteFile(dir + "/file", []byte{42}, 0604)
+		})
+	err = ioutil.WriteFile(dir+"/file", []byte{42}, 0604)
 	check(err)
-	
+
 	f := ac.Get("file")
 	if f.Deletion() {
 		t.Fatalf("Got deletion %v", f)
 	}
-	if f.Mode & 0777 != 0604 {
-		t.Fatalf("Got %o want %o", f.Mode & 0777, 0604)
+	if f.Mode&0777 != 0604 {
+		t.Fatalf("Got %o want %o", f.Mode&0777, 0604)
 	}
 	if !ac.Have("") {
 		t.Fatalf("Must have parent too")
@@ -62,9 +62,9 @@ func TestAttrCache(t *testing.T) {
 	}
 
 	upd := FileAttr{
-		Path: "unknown/file",
+		Path:     "unknown/file",
 		FileInfo: &os.FileInfo{Mode: fuse.S_IFLNK | 0666},
-		Link: "target",
+		Link:     "target",
 	}
 
 	ac.Update([]*FileAttr{&upd})
@@ -74,9 +74,9 @@ func TestAttrCache(t *testing.T) {
 
 	// Make sure timestamps change.
 	time.Sleep(15e6)
-	err = ioutil.WriteFile(dir + "/other", []byte{43}, 0666)
+	err = ioutil.WriteFile(dir+"/other", []byte{43}, 0666)
 	check(err)
-	err = os.Chmod(dir + "/file", 0666)
+	err = os.Chmod(dir+"/file", 0666)
 	check(err)
 
 	ac.Refresh("")
@@ -86,8 +86,8 @@ func TestAttrCache(t *testing.T) {
 		t.Fatalf("Should have 'other' in root %v", d)
 	}
 	f = ac.Get("file")
-	if f.Mode & 0777 != 0666 {
+	if f.Mode&0777 != 0666 {
 		t.Fatalf("Got %o , want 0666", f.Mode)
 	}
-		
+
 }

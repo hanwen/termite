@@ -70,7 +70,7 @@ func (me *FileAttr) Merge(r FileAttr) {
 	if r.Deletion() {
 		panic("should not merge deletions")
 	}
-	
+
 	mine := me.NameModeMap
 	other := r.NameModeMap
 

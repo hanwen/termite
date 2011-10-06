@@ -27,7 +27,6 @@ func main() {
 	houseHoldPeriod := flag.Float64("time.household", 60.0, "how often to do house hold tasks.")
 	keepAlive := flag.Float64("time.keepalive", 60.0, "for how long to keep workers reserved.")
 	memcache := flag.Int("filecache", 1024, "number of <32k files to cache in memory")
-	
 
 	flag.Parse()
 
@@ -42,14 +41,14 @@ func main() {
 	excludeList := strings.Split(*exclude, ",")
 	c := termite.NewContentCache(*cachedir)
 	c.SetMemoryCacheSize(*memcache)
-	
+
 	master := termite.NewMaster(
 		c, *coordinator, workerList, secret, excludeList, *jobs)
 	master.SetSrcRoot(*srcRoot)
 	master.SetKeepAlive(*keepAlive, *houseHoldPeriod)
-		
+
 	log.Println(termite.Version())
-	
+
 	go master.ServeHTTP(*port)
 	master.Start(*socket)
 }

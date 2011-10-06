@@ -121,7 +121,6 @@ type WorkResponse struct {
 	FileSetId int
 }
 
-
 type WorkRequest struct {
 	// Id of connection streaming stdin.
 	StdinId      string
