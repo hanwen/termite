@@ -23,6 +23,10 @@ type WorkerTask struct {
 	taskInfo string
 }
 
+func (me *WorkerTask) String() string {
+	return me.taskInfo
+}
+
 func (me *WorkResponse) resetClock() {
 	me.LastTime = time.Nanoseconds()
 }
@@ -49,10 +53,9 @@ func (me *WorkerTask) Run() os.Error {
 	if err != nil {
 		return err
 	}
-	me.WorkResponse.FileSetId = fuseFs.id
 	if me.mirror.considerReap(fuseFs, me) {
-		me.WorkResponse.FileSet = me.mirror.reapFuse(fuseFs)
-	}
+		me.WorkResponse.FileSet, me.WorkResponse.TaskIds = me.mirror.reapFuse(fuseFs)
+	} 
 
 	me.mirror.returnFs(fuseFs)
 	me.clock("worker.returnFuse")

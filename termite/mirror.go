@@ -1,6 +1,7 @@
 package termite
 
 import (
+	"fmt"
 	"net"
 	"os"
 	"log"
@@ -102,9 +103,8 @@ func (me *Mirror) newFs(t *WorkerTask) (fs *workerFuseFs, err os.Error) {
 	}
 
 	for fs := range me.activeFses {
-		if !fs.reaping && fs.reapCountdown > 0 {
-			fs.reapCountdown--
-			fs.tasks[t] = true
+		if !fs.reaping && len(fs.taskIds) < me.daemon.options.ReapCount {
+			fs.addTask(t)
 			return fs, nil
 		}
 	}
@@ -114,7 +114,7 @@ func (me *Mirror) newFs(t *WorkerTask) (fs *workerFuseFs, err os.Error) {
 	}
 
 	me.prepareFs(fs)
-	fs.tasks[t] = true
+	fs.addTask(t)
 	me.activeFses[fs] = true
 	return fs, nil
 }
@@ -124,7 +124,7 @@ func (me *Mirror) prepareFs(fs *workerFuseFs) {
 	fs.reaping = false
 	fs.id = me.nextId
 	me.nextId++
-	fs.reapCountdown = me.daemon.options.ReapCount
+	fs.taskIds = make([]int, 0, me.daemon.options.ReapCount)
 }
 
 func (me *Mirror) considerReap(fs *workerFuseFs, task *WorkerTask) bool {
@@ -138,14 +138,15 @@ func (me *Mirror) considerReap(fs *workerFuseFs, task *WorkerTask) bool {
 	return fs.reaping
 }
 
-func (me *Mirror) reapFuse(fs *workerFuseFs) (results *FileSet) {
+func (me *Mirror) reapFuse(fs *workerFuseFs) (results *FileSet, taskIds []int) {
 	log.Printf("Reaping fuse FS %d", fs.id)
 	results = me.fillReply(fs.unionFs)
 
 	// Must do updateFiles before ReturnFuse, since the
 	// next job should not see out-of-date files.
 	me.updateFiles(results.Files, fs)
-	return results
+	
+	return results, fs.taskIds[:]
 }
 
 func (me *Mirror) returnFs(fs *workerFuseFs) {
@@ -181,6 +182,7 @@ func (me *Mirror) updateFiles(attrs []*FileAttr, origin *workerFuseFs) {
 }
 
 func (me *Mirror) Run(req *WorkRequest, rep *WorkResponse) os.Error {
+	log.Print("Received request", req)
 	// Don't run me.updateFiles() as we don't want to issue
 	// unneeded cache invalidations.
 	task, err := me.newWorkerTask(req, rep)
@@ -215,6 +217,7 @@ func (me *Mirror) newWorkerTask(req *WorkRequest, rep *WorkResponse) (*WorkerTas
 		WorkResponse: rep,
 		stdinConn:    stdin,
 		mirror:       me,
+		taskInfo: fmt.Sprintf("%v, dir %v", req.Argv, req.Dir),
 	}
 	return task, nil
 }

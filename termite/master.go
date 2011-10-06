@@ -19,6 +19,7 @@ type Master struct {
 	writableRoot string
 	srcRoot      string
 	pending      *PendingConnections
+	taskIds      chan int
 }
 
 func NewMaster(cache *ContentCache, coordinator string, workers []string, secret []byte, excluded []string, maxJobs int) *Master {
@@ -27,6 +28,7 @@ func NewMaster(cache *ContentCache, coordinator string, workers []string, secret
 		fileServer: NewFsServer("/", cache, excluded),
 		secret:     secret,
 		retryCount: 3,
+		taskIds:    make(chan int, 100),
 	}
 	me.mirrors = newMirrorConnections(me, workers, coordinator, maxJobs)
 	me.secret = secret
@@ -34,6 +36,14 @@ func NewMaster(cache *ContentCache, coordinator string, workers []string, secret
 	me.fileServerRpc = rpc.NewServer()
 	me.fileServerRpc.Register(me.fileServer)
 
+	go func() {
+		i := 0
+		for {
+			me.taskIds <-i
+			i++
+		}
+	}()
+	
 	return me
 }
 
@@ -145,10 +155,10 @@ func (me *Master) runOnMirror(mirror *mirrorConnection, req *WorkRequest, rep *W
 		log.Println("with environment", req.Env)
 	}
 
-	ch := mirror.getChannel()
+	mirror.fileSetWaiter.newChannel(req.TaskId)
 	err := mirror.rpcClient.Call("Mirror.Run", req, rep)
 	if err == nil {
-		err = mirror.fileSetWaiter.wait(rep, ch)
+		err = mirror.fileSetWaiter.wait(rep, req.TaskId)
 	}
 	return err
 }
@@ -179,6 +189,7 @@ func (me *Master) runOnce(req *WorkRequest, rep *WorkResponse) os.Error {
 
 func (me *Master) run(req *WorkRequest, rep *WorkResponse) (err os.Error) {
 	me.mirrors.stats.MarkReceive()
+	req.TaskId = <-me.taskIds
 
 	err = me.runOnce(req, rep)
 	for i := 0; i < me.retryCount && err != nil; i++ {

@@ -118,11 +118,12 @@ type WorkResponse struct {
 	LastTime int64
 
 	*FileSet
-	FileSetId int
+	TaskIds   []int
 }
 
 type WorkRequest struct {
 	// Id of connection streaming stdin.
+	TaskId       int
 	StdinId      string
 	Debug        bool
 	WritableRoot string
@@ -134,7 +135,7 @@ type WorkRequest struct {
 }
 
 func (me *WorkRequest) Summary() string {
-	return fmt.Sprintf("stdin %s cmd %s", me.StdinId, me.Argv)
+	return fmt.Sprintf("Stdin %s Cmd %s Id %d", me.StdinId, me.Argv, me.TaskId)
 }
 
 type CreateMirrorRequest struct {

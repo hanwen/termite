@@ -31,8 +31,15 @@ type workerFuseFs struct {
 	reaping bool
 
 	// When this reaches zero, we reap the filesystem.
-	reapCountdown int
 	tasks         map[*WorkerTask]bool
+
+	// Task ids that have results pending in this FS.
+	taskIds       []int
+}
+
+func (me *workerFuseFs) addTask(task *WorkerTask) {
+	me.taskIds = append(me.taskIds, task.WorkRequest.TaskId)
+	me.tasks[task] = true
 }
 
 func (me *workerFuseFs) Stop() {

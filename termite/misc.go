@@ -265,9 +265,9 @@ func SavingCopy(w io.Writer, r io.Reader, bufSize int) ([]byte, os.Error) {
 }
 
 func (me *WorkResponse) String() string {
-	return fmt.Sprintf("WorkResponse{exit %d, fileset %d %v. Err: %s, Out: %s}",
+	return fmt.Sprintf("WorkResponse{exit %d, taskids %v: %v. Err: %s, Out: %s}",
 		me.Exit.ExitStatus(),
-		me.FileSetId,
+		me.TaskIds,
 		me.FileSet,
 		HumanTrim(me.Stderr, 1024),
 		HumanTrim(me.Stdout, 1024))
