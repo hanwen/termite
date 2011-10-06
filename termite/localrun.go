@@ -47,7 +47,7 @@ func newLocalDecider(input io.Reader) *localDecider {
 	return &decider
 }
 
-func (me *localDecider) ShouldRunLocally(command string) LocalRule {
+func (me *localDecider) ShouldRunLocally(command string) *LocalRule {
 	for _, r := range me.rules {
 		m, err := regexp.MatchString(r.Regexp, command)
 		if err != nil {
@@ -55,11 +55,11 @@ func (me *localDecider) ShouldRunLocally(command string) LocalRule {
 			continue
 		}
 		if m {
-			return r
+			return &r
 		}
 	}
 
-	return LocalRule{}
+	return nil
 }
 
 func NewLocalDecider(dir string) *localDecider {
@@ -82,7 +82,6 @@ func NewLocalDecider(dir string) *localDecider {
 			Recurse:     true,
 			SkipRefresh: true,
 		},
-		LocalRule{Regexp: ".*", Local: false},
 	}
 	return &localDecider{rules}
 }
