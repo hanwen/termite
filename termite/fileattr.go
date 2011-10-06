@@ -20,13 +20,15 @@ func (me FileAttr) Status() fuse.Status {
 	return fuse.OK
 }
 
-func (me FileAttr) Copy() *FileAttr {
+func (me FileAttr) Copy(withdir bool) *FileAttr {
 	a := me
-	if me.NameModeMap != nil {
+	if me.NameModeMap != nil && withdir {
 		a.NameModeMap = map[string]uint32{}
 		for k, v := range me.NameModeMap {
 			a.NameModeMap[k] = v
 		}
+	} else {
+		a.NameModeMap = nil
 	}
 	return &a
 }

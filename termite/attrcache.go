@@ -78,17 +78,14 @@ func (me *AttributeCache) Have(name string) bool {
 }
 
 func (me *AttributeCache) Get(name string) (rep *FileAttr) {
-	c := *me.get(name)
-	c.NameModeMap = nil
-	return &c
+	return me.get(name, false)
 }
 
 func (me *AttributeCache) GetDir(name string) (rep *FileAttr) {
-	a := me.get(name)
-	return a.Copy()
+	return me.get(name, true)
 }
 
-func (me *AttributeCache) get(name string) (rep *FileAttr) {
+func (me *AttributeCache) get(name string, withdir bool) (rep *FileAttr) {
 	me.mutex.RLock()
 	rep, ok := me.attributes[name]
 	dir, base := SplitPath(name)
@@ -100,18 +97,15 @@ func (me *AttributeCache) get(name string) (rep *FileAttr) {
 	}
 	me.mutex.RUnlock()
 	if ok {
-		return rep
+		return rep.Copy(withdir)
 	}
 	if parentNegate {
 		return &FileAttr{Path: name}
 	}
 
 	if dirAttr == nil && name != "" {
-		dirAttr = me.get(dir)
-		me.mutex.RLock()
+		dirAttr = me.get(dir, true)
 		parentNegate = dirAttr.NameModeMap != nil && dirAttr.NameModeMap[base] == 0
-		me.mutex.RUnlock()
-
 		if parentNegate {
 			return &FileAttr{Path: name}
 		}
@@ -139,7 +133,7 @@ func (me *AttributeCache) get(name string) (rep *FileAttr) {
 	}
 	me.cond.Broadcast()
 	me.busy[name] = false, false
-	return rep
+	return rep.Copy(withdir)
 }
 
 func (me *AttributeCache) Update(files []*FileAttr) {
@@ -228,7 +222,7 @@ func (me *AttributeCache) Copy() FileSet {
 
 	dump := []*FileAttr{}
 	for _, attr := range me.attributes {
-		dump = append(dump, attr.Copy())
+		dump = append(dump, attr.Copy(true))
 	}
 
 	fs := FileSet{dump}
