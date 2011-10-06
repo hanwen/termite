@@ -172,7 +172,7 @@ func ParseCommand(cmd string) []string {
 		}
 	}
 
-	if !IsSpace(cmd[len(cmd)-1]) {
+	if len(cmd) > 0 && !IsSpace(cmd[len(cmd)-1]) {
 		result = append(result, string(word))
 	}
 	return result
