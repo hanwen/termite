@@ -85,28 +85,36 @@ func (me *AttributeCache) GetDir(name string) (rep *FileAttr) {
 	return me.get(name, true)
 }
 
-func (me *AttributeCache) get(name string, withdir bool) (rep *FileAttr) {
+func (me *AttributeCache) localGet(name string, withdir bool) (rep *FileAttr) {
 	me.mutex.RLock()
+	defer me.mutex.RUnlock()
+	
 	rep, ok := me.attributes[name]
-	dir, base := SplitPath(name)
-	var dirAttr *FileAttr
-	parentNegate := false
-	if !ok && name != "" {
-		dirAttr = me.attributes[dir]
-		parentNegate = dirAttr != nil && dirAttr.NameModeMap != nil && dirAttr.NameModeMap[base] == 0
-	}
-	me.mutex.RUnlock()
 	if ok {
 		return rep.Copy(withdir)
 	}
-	if parentNegate {
-		return &FileAttr{Path: name}
+	
+	if name != "" {
+		dir, base := SplitPath(name)
+		dirAttr := me.attributes[dir]
+		if dirAttr != nil && dirAttr.NameModeMap != nil && dirAttr.NameModeMap[base] == 0 {
+			return &FileAttr{Path: name}
+		}
 	}
+	return nil
+}
 
-	if dirAttr == nil && name != "" {
-		dirAttr = me.get(dir, true)
-		parentNegate = dirAttr.NameModeMap != nil && dirAttr.NameModeMap[base] == 0
-		if parentNegate {
+
+func (me *AttributeCache) get(name string, withdir bool) (rep *FileAttr) {
+	rep = me.localGet(name, withdir)
+	if rep != nil {
+		return rep
+	}
+	
+	if name != "" {
+		dir, base := SplitPath(name)
+		dirAttr := me.get(dir, true)
+		if dirAttr.NameModeMap != nil && dirAttr.NameModeMap[base] == 0 {
 			return &FileAttr{Path: name}
 		}
 	}
@@ -117,7 +125,7 @@ func (me *AttributeCache) get(name string, withdir bool) (rep *FileAttr) {
 	for me.busy[name] && me.attributes[name] == nil {
 		me.cond.Wait()
 	}
-	rep, ok = me.attributes[name]
+	rep, ok := me.attributes[name]
 	if ok {
 		return rep
 	}
