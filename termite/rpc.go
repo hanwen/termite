@@ -32,22 +32,6 @@ type FileAttr struct {
 	NameModeMap map[string]uint32
 }
 
-func (me FileAttr) String() string {
-	id := me.Path
-	if me.Hash != "" {
-		id += fmt.Sprintf(" sz %d", me.FileInfo.Size)
-	}
-	if me.Link != "" {
-		id += fmt.Sprintf(" -> %s", me.Link)
-	}
-	if me.FileInfo != nil {
-		id += fmt.Sprintf(" m=%o", me.FileInfo.Mode)
-	} else {
-		id += " (del)"
-	}
-	return id
-}
-
 type AttrResponse struct {
 	Attrs []*FileAttr
 }

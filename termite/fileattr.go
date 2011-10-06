@@ -1,6 +1,7 @@
 package termite
 
 import (
+	"fmt"
 	"github.com/hanwen/go-fuse/fuse"
 	"io/ioutil"
 	"log"
@@ -8,6 +9,22 @@ import (
 )
 
 var _ = log.Printf
+
+func (me FileAttr) String() string {
+	id := me.Path
+	if me.Hash != "" {
+		id += fmt.Sprintf(" sz %d md5 %x..", me.FileInfo.Size, me.Hash[:4])
+	}
+	if me.Link != "" {
+		id += fmt.Sprintf(" -> %s", me.Link)
+	}
+	if me.FileInfo != nil {
+		id += fmt.Sprintf(" m=%o", me.FileInfo.Mode)
+	} else {
+		id += " (del)"
+	}
+	return id
+}
 
 func (me FileAttr) Deletion() bool {
 	return me.FileInfo == nil
