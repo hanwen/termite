@@ -33,13 +33,9 @@ func NewRpcFs(server *rpc.Client, cache *ContentCache) *RpcFs {
 	return me
 }
 
-func (me *RpcFs) FetchHash(h string) {
-	err := FetchBetweenContentServers(me.client, "FsServer.FileContent", h,
+func (me *RpcFs) FetchHash(h string) os.Error {
+	return FetchBetweenContentServers(me.client, "FsServer.FileContent", h,
 		me.cache)
-	if err != nil {
-		// TODO - drop master connection instead.
-		log.Fatal("Error fetching contents: ", err)
-	}
 }
 
 func (me *RpcFs) Update(req *UpdateRequest, resp *UpdateResponse) os.Error {
@@ -169,7 +165,11 @@ func (me *RpcFs) Open(name string, flags uint32, context *fuse.Context) (fuse.Fi
 	p := me.cache.Path(a.Hash)
 	if _, err := os.Lstat(p); fuse.OsErrorToErrno(err) == fuse.ENOENT {
 		log.Printf("Fetching contents for file %s: %x", name, a.Hash)
-		me.FetchHash(a.Hash)
+		err := me.FetchHash(a.Hash)
+		if err != nil {
+			log.Printf("Error fetching contents %v", err)
+			return nil, fuse.EIO
+		}
 	}
 
 	f, err := os.Open(p)
