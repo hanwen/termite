@@ -223,8 +223,6 @@ func (me *Master) run(req *WorkRequest, rep *WorkResponse) (err os.Error) {
 }
 
 func (me *Master) replayFileModifications(infos []*FileAttr) {
-	// TODO - if we have all readdir results in memory, we could
-	// do the update of the FS asynchronous.
 	for _, info := range infos {
 		logStr := ""
 		name := "/" + info.Path
@@ -247,7 +245,6 @@ func (me *Master) replayFileModifications(infos []*FileAttr) {
 				err = CopyFile(name, me.cache.Path(info.Hash), int(info.FileInfo.Mode))
 				logStr += "CopyFile,"
 			} else {
-				me.cache.Save(content)
 				err = ioutil.WriteFile(name, content, info.FileInfo.Mode&07777)
 				logStr += "WriteFile,"
 			}
