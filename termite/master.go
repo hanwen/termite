@@ -237,7 +237,7 @@ func (me *Master) replayFileModifications(infos []*FileAttr) {
 				}
 			}
 		}
-		if info.Hash != "" {
+		if info.Hash != "" && info.Hash != me.fileServer.attr.Get(info.Path).Hash {
 			log.Printf("Replay file content %s %x", name, info.Hash)
 			content := me.cache.ContentsIfLoaded(info.Hash)
 
