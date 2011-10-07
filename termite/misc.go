@@ -69,11 +69,7 @@ func DetectFiles(root string, cmd string) []string {
 		log.Println("regexp error", err)
 	}
 
-	names := []string{}
-	matches := regexp.FindAllString(cmd, -1)
-	for _, m := range matches {
-		names = append(names, m)
-	}
+	names := regexp.FindAllString(cmd, -1)
 	return names
 }
 

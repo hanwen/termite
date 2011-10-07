@@ -51,9 +51,7 @@ func (me *mirrorConnection) replay(fset FileSet) os.Error {
 func (me *mirrorConnection) queueFiles(fset FileSet) {
 	me.pendingChangesMutex.Lock()
 	defer me.pendingChangesMutex.Unlock()
-	for _, a := range fset.Files {
-		me.pendingChanges = append(me.pendingChanges, a)
-	}
+	me.pendingChanges = append(me.pendingChanges, fset.Files...)
 }
 
 func (me *mirrorConnection) sendFiles() os.Error {
