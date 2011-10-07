@@ -275,6 +275,29 @@ func TestEndToEndNegativeNotify(t *testing.T) {
 	}
 }
 
+func TestEndToEndMoveFile(t *testing.T) {
+	tc := NewTestCase(t)
+	defer tc.Clean()
+
+	err := ioutil.WriteFile(tc.wd+"/e2e-move.txt", []byte{42}, 0644)
+	check(err)
+	rep := tc.Run(WorkRequest{
+		Binary: tc.FindBin("mv"),
+		Argv:   []string{"mv", "e2e-move.txt", "e2e-new.txt"},
+		Env:    testEnv(),
+		Dir:    tc.wd,
+	})
+	if rep.Exit.ExitStatus() != 0 {
+		t.Fatalf("mkdir should exit cleanly. Rep %v", rep)
+	}
+	
+	c, err := ioutil.ReadFile(tc.wd+"/e2e-new.txt")
+	check(err)
+	if len(c) != 1 {
+		t.Fatalf("Moved file missing content: %s", c)
+	}
+}
+
 func TestEndToEndMove(t *testing.T) {
 	tc := NewTestCase(t)
 	defer tc.Clean()
@@ -500,3 +523,4 @@ func TestEndToEndLinkReap(t *testing.T) {
 		t.Fatalf("wd/foo.txt was not created. Err: %v, fi: %v", err, fi)
 	}
 }
+

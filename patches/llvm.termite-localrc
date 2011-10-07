@@ -13,7 +13,4 @@
     "Regexp": ".*/cmake",
     "Local": true,
     "SkipRefresh": true
-}, {
-    "Regexp": ".*",
-    "Local": false
 }]

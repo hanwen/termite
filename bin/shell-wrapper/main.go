@@ -1,6 +1,7 @@
 package main
 
 import (
+	"exec"
 	"flag"
 	"fmt"
 	"github.com/hanwen/termite/termite"
@@ -29,16 +30,7 @@ func Rpc() *rpc.Client {
 	return socketRpc
 }
 
-func TryRunDirect(cmd string) {
-	if cmd == ":" {
-		os.Exit(0)
-	}
-
-	parsed := termite.ParseCommand(cmd)
-	if len(parsed) == 0 {
-		return
-	}
-
+func TryRunDirect(parsed []string) {
 	if parsed[0] == "echo" {
 		fmt.Println(strings.Join(parsed[1:], " "))
 		os.Exit(0)
@@ -49,8 +41,61 @@ func TryRunDirect(cmd string) {
 	if parsed[0] == "false" {
 		os.Exit(1)
 	}
+}
 
-	// TODO mkdir, rm, expr, others?
+var bashInternals = []string{
+	"alias", "bg", "bind", "break", "builtin", "caller", "case", "cd",
+	"command", "compgen", "complete", "compopt", "continue", "coproc",
+	"declare", "dirs", "disown", "echo", "enable", "eval", "exec", "exit",
+	"export", "false", "fc", "fg", "for", "for", "function", "getopts",
+	"hash", "help", "history", "if", "jobs", "kill", "let", "local",
+	"logout", "mapfile", "popd", "printf", "pushd", "pwd", "read",
+	"readarray", "readonly", "return", "select", "set", "shift", "shopt",
+	"source", "suspend", "test", "time", "times", "trap", "true", "type",
+	"typeset", "ulimit", "umask", "unalias", "unset", "until",
+	"variables", "wait", "while",
+}
+
+func NewWorkRequest(cmd string, dir string, topdir string) (*termite.WorkRequest, *termite.LocalRule) {
+	if cmd == ":" || strings.TrimRight(cmd, " ") == "" {
+		os.Exit(0)
+	}
+
+	req := &termite.WorkRequest{
+		Binary:     Shell(),
+		Argv:       []string{Shell(), "-c", cmd},
+		Env:        cleanEnv(os.Environ()),
+		Dir:        dir,
+	}
+	
+	parsed := termite.ParseCommand(cmd)
+	if len(parsed) == 0 {
+		return req, nil
+	}
+	TryRunDirect(parsed)
+
+	decider := termite.NewLocalDecider(topdir)
+	rule := decider.ShouldRunLocally(cmd)
+	if rule != nil {
+		req.Debug = rule.Debug
+		return req, rule
+	}
+
+	// Is this really necessary?
+	for _, c := range bashInternals {
+		if parsed[0] == c {
+			return req, nil
+		}
+	}
+
+	// A no-frills command invocation: do it directly.
+	var err os.Error
+	req.Binary, err = exec.LookPath(parsed[0])
+	if err != nil {
+		log.Fatal("LookPath", err)
+	}
+	req.Argv = parsed
+	return req, nil
 }
 
 func Refresh() {
@@ -105,34 +150,24 @@ func Shell() string {
 	return shell
 }
 
-func TryRunLocally(command string, topdir string) (exit *os.Waitmsg, rule termite.LocalRule) {
-	decider := termite.NewLocalDecider(topdir)
-	if !(len(os.Args) == 3 && os.Args[0] == Shell() && os.Args[1] == "-c") {
-		return
-	}
-
-	rule = decider.ShouldRunLocally(command)
-	if rule.Local {
+func RunLocally(req *termite.WorkRequest, rule *termite.LocalRule) *os.Waitmsg {
 		env := os.Environ()
 		if !rule.Recurse {
 			env = cleanEnv(env)
 		}
 
-		proc, err := os.StartProcess(Shell(), os.Args, &os.ProcAttr{
+		proc, err := os.StartProcess(req.Binary, req.Argv, &os.ProcAttr{
 			Env:   env,
 			Files: []*os.File{os.Stdin, os.Stdout, os.Stderr},
 		})
 		if err != nil {
-			log.Fatalf("os.StartProcess() for %s: %v", command, err)
+			log.Fatalf("os.StartProcess() for %v: %v", req, err)
 		}
 		msg, err := proc.Wait(0)
 		if err != nil {
-			log.Fatalf("proc.Wait() for %s: %v", command, err)
+			log.Fatalf("proc.Wait() for %v: %v", req, err)
 		}
-		return msg, rule
-	}
-
-	return
+		return msg
 }
 
 func main() {
@@ -172,51 +207,45 @@ func main() {
 
 		directory = &wd
 	}
-	
-	os.Args[0] = Shell()
-	if *command != "" {
-		TryRunDirect(*command)
-	}
 
-	localWaitMsg, localRule := TryRunLocally(*command, topDir)
-	if localWaitMsg != nil && !localRule.SkipRefresh {
-		Refresh()
-	}
-
-	// TODO - could skip the shell if we can deduce it is a
-	// no-frills command invocation.
-	req := termite.WorkRequest{
-		Binary:     Shell(),
-		Argv:       []string{Shell(), "-c", *command},
-		Env:        cleanEnv(os.Environ()),
-		Dir:        *directory,
-		RanLocally: localWaitMsg != nil,
-	}
+	var req *termite.WorkRequest
+	var rule *termite.LocalRule
 	if *exec {
-		req.Binary = flag.Args()[0]
-		req.Argv = flag.Args()
-		log.Println(req)
-	}
-	
-	req.Debug = localRule.Debug || os.Getenv("TERMITE_DEBUG") != "" || *debug
-	rep := termite.WorkResponse{}
-	err := Rpc().Call("LocalMaster.Run", &req, &rep)
-	if err != nil {
-		log.Fatal("LocalMaster.Run: ", err)
-	}
-
-	os.Stdout.Write([]byte(rep.Stdout))
-	os.Stderr.Write([]byte(rep.Stderr))
-
-	// TODO -something with signals.
-	if localWaitMsg == nil {
-		localWaitMsg = &rep.Exit
-		if localWaitMsg.ExitStatus() != 0 {
-			log.Printf("Failed: %q", *command)
+		req = &termite.WorkRequest{
+			Binary: flag.Args()[0],
+			Argv: flag.Args(),
+			Dir: *directory,
+			Env: os.Environ(),
 		}
+	} else {
+		req, rule = NewWorkRequest(*command, *directory, topDir)
+	}
+
+	var waitMsg *os.Waitmsg
+	if rule != nil && rule.Local {
+		waitMsg = RunLocally(req, rule)
+		if !rule.SkipRefresh {
+			Refresh()
+		}
+	} else {
+		req.Debug = req.Debug || os.Getenv("TERMITE_DEBUG") != "" || *debug
+		rep := termite.WorkResponse{}
+		err := Rpc().Call("LocalMaster.Run", &req, &rep)
+		if err != nil {
+			log.Fatal("LocalMaster.Run: ", err)
+		}
+
+		os.Stdout.Write([]byte(rep.Stdout))
+		os.Stderr.Write([]byte(rep.Stderr))
+
+		waitMsg = &rep.Exit
+	}
+
+	if waitMsg.ExitStatus() != 0 {
+		log.Printf("Failed: '%s'", *command)
 	}
 
 	// TODO - is this necessary?
 	Rpc().Close()
-	os.Exit(localWaitMsg.ExitStatus())
+	os.Exit(waitMsg.ExitStatus())
 }

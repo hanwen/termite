@@ -141,7 +141,15 @@ func (me *Mirror) fillReply(ufs *unionfs.MemUnionFs) *FileSet {
 		f.FileInfo = v.FileInfo
 		f.Link = v.Link
 		if f.FileInfo != nil && f.FileInfo.IsRegular() {
-			if v.Original == "" {
+			contentPath := filepath.Join(wrRoot, v.Original)
+			if v.Original != "" && v.Original != contentPath {
+                               fa := me.rpcFs.attr.Get(contentPath)
+                               if fa.Hash == "" {
+                                       log.Panicf("Contents for %q disappeared.", contentPath)
+                               }
+                               f.Hash = fa.Hash
+			}
+			if v.Backing != "" {
 				f.Hash = reapedHashes[v.Backing]
 				var err os.Error
 				if f.Hash == "" {

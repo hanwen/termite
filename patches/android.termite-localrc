@@ -27,7 +27,4 @@
     "Local": true,
     "Recurse": false,
     "SkipRefresh": true
-}, {
-    "Regexp": ".*",
-    "Local": false
 }]
