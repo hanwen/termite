@@ -31,6 +31,21 @@ func getattr(t *testing.T, n string) *FileAttr {
 	return &a
 }
 
+func TestAttrCacheNil(t *testing.T) {
+	ac := NewAttributeCache(
+		func(n string) *FileAttr {
+		return nil
+	},
+		func(n string) *os.FileInfo {
+		return nil
+	})
+
+	r := ac.Get("")
+	if r == nil || !r.Deletion() {
+		t.Errorf("should return deletion for error, got: %v", r)
+	}
+}
+
 func TestAttrCache(t *testing.T) {
 	dir, err := ioutil.TempDir("", "termite")
 	check(err)

@@ -88,12 +88,12 @@ func (me *AttributeCache) GetDir(name string) (rep *FileAttr) {
 func (me *AttributeCache) localGet(name string, withdir bool) (rep *FileAttr) {
 	me.mutex.RLock()
 	defer me.mutex.RUnlock()
-	
+
 	rep, ok := me.attributes[name]
 	if ok {
 		return rep.Copy(withdir)
 	}
-	
+
 	if name != "" {
 		dir, base := SplitPath(name)
 		dirAttr := me.attributes[dir]
@@ -110,7 +110,7 @@ func (me *AttributeCache) get(name string, withdir bool) (rep *FileAttr) {
 	if rep != nil {
 		return rep
 	}
-	
+
 	if name != "" {
 		dir, base := SplitPath(name)
 		dirAttr := me.get(dir, true)
@@ -133,9 +133,14 @@ func (me *AttributeCache) get(name string, withdir bool) (rep *FileAttr) {
 	me.mutex.Unlock()
 
 	rep = me.getter(name)
-	rep.Path = name
 
 	me.mutex.Lock()
+	if rep == nil {
+		// This is an error, but what can we do?
+		return &FileAttr{Path: name}
+	}
+	rep.Path = name
+
 	if !rep.Deletion() {
 		me.attributes[name] = rep
 	}
