@@ -69,26 +69,21 @@ func (me *FsServer) GetAttr(req *AttrRequest, rep *AttrResponse) os.Error {
 }
 
 func (me *FsServer) uncachedGetAttr(name string) (rep *FileAttr) {
+	rep = &FileAttr{Path:name}
 	p := me.path(name)
 	fi, _ := os.Lstat(p)
 	// We don't want to expose the master's private files to the
 	// world.
 	if me.excludePrivate && fi != nil && fi.Mode&0077 == 0 {
 		log.Printf("Denied access to private file %q", name)
-		rep.FileInfo = nil
-		fi = nil
+		return rep
 	}
 
 	if me.excluded[name] {
 		log.Printf("Denied access to excluded file %q", name)
-		return &FileAttr{
-			Path: name,
-		}
+		return rep
 	}
-	rep = &FileAttr{
-		FileInfo: fi,
-		Path:     name,
-	}
+	rep.FileInfo = fi
 	if fi != nil {
 		me.fillContent(rep)
 	}

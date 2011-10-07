@@ -176,6 +176,31 @@ func TestRpcFsReadDirCache(t *testing.T) {
 	}
 }
 
+func TestRpcFSDenyPrivate(t *testing.T) {
+	me := newRpcFsTestCase(t)
+	defer me.Clean()
+
+	p := me.orig
+	for p != "" {
+		os.Chmod(p, 0755)
+		p, _ = SplitPath(p)
+	}
+	me.server.excludePrivate = true
+
+	err := ioutil.WriteFile(me.orig+"/file.txt", []byte{42}, 0644)
+	check(err)
+	err = ioutil.WriteFile(me.orig+"/forbidden", []byte{42}, 0600)
+	check(err)
+
+	_, err = os.Lstat(me.mnt + "/file.txt")
+	check(err)
+	fi, _ := os.Lstat(me.mnt + "/forbidden")
+	if fi != nil {
+		t.Errorf("Should not have forbidden file: %v", fi)
+	}
+	t.Log("the end")
+}
+
 func TestRpcFS(t *testing.T) {
 	me := newRpcFsTestCase(t)
 	defer me.Clean()
