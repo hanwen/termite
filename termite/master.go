@@ -25,6 +25,7 @@ type Master struct {
 }
 
 type replayRequest struct {
+	NewFiles map[string]string 
 	Files  []*FileAttr
 	Done   chan int 
 }
@@ -57,7 +58,7 @@ func NewMaster(cache *ContentCache, coordinator string, workers []string, secret
 	go func() {
 		for {
 			r := <-me.replayChannel
-			me.replayFileModifications(r.Files)
+			me.replayFileModifications(r.Files, r.NewFiles)
 			r.Done <- 1 
 		}
 	}()
@@ -222,7 +223,7 @@ func (me *Master) run(req *WorkRequest, rep *WorkResponse) (err os.Error) {
 	return err
 }
 
-func (me *Master) replayFileModifications(infos []*FileAttr) {
+func (me *Master) replayFileModifications(infos []*FileAttr, newFiles map[string]string) {
 	for _, info := range infos {
 		logStr := ""
 		name := "/" + info.Path
@@ -237,17 +238,9 @@ func (me *Master) replayFileModifications(infos []*FileAttr) {
 				}
 			}
 		}
-		if info.Hash != "" && info.Hash != me.fileServer.attr.Get(info.Path).Hash {
-			log.Printf("Replay file content %s %x", name, info.Hash)
-			content := me.cache.ContentsIfLoaded(info.Hash)
-
-			if content == nil {
-				err = CopyFile(name, me.cache.Path(info.Hash), int(info.FileInfo.Mode))
-				logStr += "CopyFile,"
-			} else {
-				err = ioutil.WriteFile(name, content, info.FileInfo.Mode&07777)
-				logStr += "WriteFile,"
-			}
+		if info.Hash != "" {
+			src := newFiles[info.Path]
+			err = os.Rename(src, name)
 		}
 		if info.Link != "" {
 			// Ignore errors.
@@ -261,7 +254,7 @@ func (me *Master) replayFileModifications(infos []*FileAttr) {
 			}
 		}
 
-		if info.FileInfo != nil && !info.FileInfo.IsSymlink() {
+		if info.Hash == "" && info.FileInfo != nil && !info.FileInfo.IsSymlink() {
 			if err == nil {
 				err = os.Chtimes(name, info.FileInfo.Atime_ns, info.FileInfo.Mtime_ns)
 				logStr += "Chtimes,"
@@ -282,9 +275,56 @@ func (me *Master) replayFileModifications(infos []*FileAttr) {
 
 func (me *Master) replay(fset FileSet) {
 	req := replayRequest{
+		make(map[string]string),
 		fset.Files,
 		make(chan int),
 	}
+
+	// We prepare the files before we call
+	// replayFileModifications(), to limit contention.
+	for _, info := range fset.Files {
+		if info.Hash == "" {
+			continue
+		}
+
+		log.Printf("Prepare %x: %s", info.Hash, info.Path)
+		f, err := ioutil.TempFile(me.writableRoot, ".tmp-termite")
+		if err != nil {
+			log.Fatal("TempFile", err)
+		}
+			
+		req.NewFiles[info.Path] = f.Name()
+		
+		content := me.cache.ContentsIfLoaded(info.Hash)
+
+		if content == nil {
+			var src *os.File
+			src, err = os.Open(me.cache.Path(info.Hash))
+			if err != nil {
+				log.Panicf("cache path missing %x", info.Hash)
+			}
+			err = CopyFds(f, src)
+		} else {
+			_, err = f.Write(content)
+		}
+		if err != nil {
+			log.Fatal("f.Write", err)
+		}
+		
+		err = f.Chmod(info.FileInfo.Mode&07777)
+		if err != nil {
+			log.Fatal("f.Chmod", err)
+		}
+		err = f.Close()
+		if err != nil {
+			log.Fatal("f.Close", err)
+		}
+		err = os.Chtimes(f.Name(), info.FileInfo.Atime_ns, info.FileInfo.Mtime_ns)
+		if err != nil {
+			log.Fatal("Chtimes", err)
+		}
+	}
+
 	me.replayChannel <- &req
 	<-req.Done
 }

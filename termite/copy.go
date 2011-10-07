@@ -161,6 +161,11 @@ func CopyFile(dstName string, srcName string, mode int) os.Error {
 		return err
 	}
 	defer dst.Close()
+
+	return CopyFds(dst, src)
+}
+
+func CopyFds(dst *os.File, src *os.File) (err os.Error) {
 	p := getSplice()
 	if p != nil {
 		p.Grow(256 * 1024)
