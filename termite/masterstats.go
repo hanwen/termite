@@ -3,10 +3,13 @@ package termite
 import (
 	"fmt"
 	"http"
+	"log"
 	"sync"
 	"sync/atomic"
 	"time"
 )
+
+var _ = log.Println
 
 type masterStats struct {
 	counterMutex sync.Mutex
@@ -55,10 +58,10 @@ func (me *masterStats) writeHttp(w http.ResponseWriter) {
 				fiveSecStat = fiveSecStat.Add(c)
 			}
 		}
-
-		fmt.Fprintf(w, "<p>CPU (last min): %.0f s self %.0f s sys, %.1f CPU",
-			float64(minuteStat.SelfCpu)*1e-9, float64(minuteStat.SelfSys)*1e-9,
-			float64(minuteStat.SelfCpu+minuteStat.SelfSys)/float64(len(stats))*1.0e9)
+		
+		totalm := float64(minuteStat.SelfCpu+minuteStat.SelfSys)/1.0e9
+		fmt.Fprintf(w, "<p>CPU (last min): %d s self %d s sys, %.2f CPU",
+			minuteStat.SelfCpu/1e9, minuteStat.SelfSys/1e9, totalm / float64(len(stats)))
 		fmt.Fprintf(w, "<p>CPU (last 5s): %.2f self %.2f sys, %.1f CPU",
 			float64(fiveSecStat.SelfCpu)*1e-9, float64(fiveSecStat.SelfSys)*1e-9,
 			float64(fiveSecStat.SelfCpu+fiveSecStat.SelfSys)/float64(s*1e9))
