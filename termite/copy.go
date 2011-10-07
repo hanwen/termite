@@ -84,35 +84,39 @@ func (me *splicePair) Close() os.Error {
 	return err2
 }
 
-func newSplicePair() *splicePair {
-	me := &splicePair{}
-	var err os.Error
+func newSplicePair() (me *splicePair, err os.Error) {
+	me = &splicePair{}
 	me.r, me.w, err = os.Pipe()
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	errNo := 0
 	me.size, errNo = fcntl(me.r.Fd(), F_GETPIPE_SZ, 0)
 	if errNo != 0 {
-		return nil
-	}
-	_, errR := fcntl(me.r.Fd(), syscall.F_SETFL, os.O_NONBLOCK)
-	_, errW := fcntl(me.w.Fd(), syscall.F_SETFL, os.O_NONBLOCK)
-	if errR != 0 || errW != 0 {
 		me.Close()
-		return nil
+		return nil, os.NewSyscallError("fcntl getsize", errNo)
 	}
-	return me
+	_, errNo = fcntl(me.r.Fd(), syscall.F_SETFL, os.O_NONBLOCK)
+	if errNo != 0 {
+		me.Close()
+		return nil, os.NewSyscallError("fcntl setfl r", errNo)
+	}
+	_, errNo = fcntl(me.w.Fd(), syscall.F_SETFL, os.O_NONBLOCK)
+	if errNo != 0 {
+		me.Close()
+		return nil, os.NewSyscallError("fcntl setfl w", errNo)
+	}
+	return me, nil
 }
 
-func getSplice() (p *splicePair) {
+func getSplice() (p *splicePair, err os.Error) {
 	select {
 	case p = <-splicePairs:
 		// already done.
 	default:
-		p = newSplicePair()
+		p, err = newSplicePair()
 	}
-	return newSplicePair()
+	return p, err
 }
 
 func returnSplice(p *splicePair) {
@@ -166,7 +170,7 @@ func CopyFile(dstName string, srcName string, mode int) os.Error {
 }
 
 func CopyFds(dst *os.File, src *os.File) (err os.Error) {
-	p := getSplice()
+	p, err := getSplice()
 	if p != nil {
 		p.Grow(256 * 1024)
 		_, err := SpliceCopy(dst, src, p)
