@@ -20,6 +20,13 @@ type Master struct {
 	srcRoot      string
 	pending      *PendingConnections
 	taskIds      chan int
+
+	replayChannel chan *replayRequest
+}
+
+type replayRequest struct {
+	Files  []*FileAttr
+	Done   chan int 
 }
 
 func NewMaster(cache *ContentCache, coordinator string, workers []string, secret []byte, excluded []string, maxJobs int) *Master {
@@ -29,6 +36,7 @@ func NewMaster(cache *ContentCache, coordinator string, workers []string, secret
 		secret:     secret,
 		retryCount: 3,
 		taskIds:    make(chan int, 100),
+		replayChannel: make(chan *replayRequest, 1),
 	}
 	me.mirrors = newMirrorConnections(me, workers, coordinator, maxJobs)
 	me.secret = secret
@@ -36,6 +44,7 @@ func NewMaster(cache *ContentCache, coordinator string, workers []string, secret
 	me.fileServerRpc = rpc.NewServer()
 	me.fileServerRpc.Register(me.fileServer)
 
+	// Generate taskids.
 	go func() {
 		i := 0
 		for {
@@ -44,6 +53,15 @@ func NewMaster(cache *ContentCache, coordinator string, workers []string, secret
 		}
 	}()
 	
+	// Make sure we update the filesystem and attributes together.
+	go func() {
+		for {
+			r := <-me.replayChannel
+			me.replayFileModifications(r.Files)
+			r.Done <- 1 
+		}
+	}()
+
 	return me
 }
 
@@ -120,13 +138,16 @@ func (me *Master) createMirror(addr string, jobs int) (*mirrorConnection, os.Err
 	go me.fileServerRpc.ServeConn(revConn)
 
 	mc := &mirrorConnection{
+		master:            me,
 		rpcClient:         rpc.NewClient(rpcConn),
 		reverseConnection: revConn,
 		connection:        rpcConn,
 		maxJobs:           rep.GrantedJobCount,
 		availableJobs:     rep.GrantedJobCount,
 	}
-	mc.fileSetWaiter = newFileSetWaiter(me, mc)
+	mc.fileSetWaiter = newFileSetWaiter(func(fset FileSet) os.Error {
+		return mc.replay(fset)
+	})
 
 	mc.queueFiles(me.fileServer.copyCache())
 	return mc, nil
@@ -201,19 +222,7 @@ func (me *Master) run(req *WorkRequest, rep *WorkResponse) (err os.Error) {
 	return err
 }
 
-func (me *Master) replayFileModifications(worker *rpc.Client, infos []*FileAttr) os.Error {
-	// Must get data before we modify the file-system, so we don't
-	// leave the FS in a half-finished state.
-	for _, info := range infos {
-		if info.Hash != "" {
-			err := FetchBetweenContentServers(
-				worker, "Mirror.FileContent", info.Hash, me.cache)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
+func (me *Master) replayFileModifications(infos []*FileAttr) {
 	// TODO - if we have all readdir results in memory, we could
 	// do the update of the FS asynchronous.
 	for _, info := range infos {
@@ -271,7 +280,16 @@ func (me *Master) replayFileModifications(worker *rpc.Client, infos []*FileAttr)
 		}
 	}
 
-	return nil
+	me.fileServer.updateFiles(infos)
+}
+
+func (me *Master) replay(fset FileSet) {
+	req := replayRequest{
+		fset.Files,
+		make(chan int),
+	}
+	me.replayChannel <- &req
+	<-req.Done
 }
 
 func (me *Master) refreshAttributeCache() {

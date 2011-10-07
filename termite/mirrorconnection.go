@@ -22,12 +22,30 @@ type mirrorConnection struct {
 	maxJobs       int
 	availableJobs int
 
+	master *Master
 	*fileSetWaiter
 
 	// Any file updates that we should ship to the worker before
 	// running any jobs.
 	pendingChangesMutex sync.Mutex
 	pendingChanges      []*FileAttr
+}
+
+func (me *mirrorConnection) replay(fset FileSet) os.Error {
+	// Must get data before we modify the file-system, so we don't
+	// leave the FS in a half-finished state.
+	for _, info := range fset.Files {
+		if info.Hash != "" {
+			err := FetchBetweenContentServers(
+				me.rpcClient, "Mirror.FileContent", info.Hash, me.master.cache)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	me.master.replay(fset)
+	me.master.mirrors.queueFiles(me, fset)
+	return nil
 }
 
 func (me *mirrorConnection) queueFiles(fset FileSet) {

@@ -9,16 +9,16 @@ import (
 var _ = log.Println
 
 type fileSetWaiter struct {
+	process func(fset FileSet) os.Error
 	master *Master
 	mirror *mirrorConnection
 	sync.Mutex
 	channels map[int]chan int
 }
 
-func newFileSetWaiter(master *Master, mc *mirrorConnection) *fileSetWaiter {
+func newFileSetWaiter(proc func(FileSet) os.Error) *fileSetWaiter {
 	return &fileSetWaiter{
-		mirror:   mc,
-		master:   master,
+		process:  proc,
 		channels: make(map[int]chan int),
 	}
 }
@@ -39,7 +39,7 @@ func (me *fileSetWaiter) findChannel(id int) chan int {
 	return me.channels[id]
 }
 
-func (me *fileSetWaiter) broadcast(id int) {
+func (me *fileSetWaiter) signal(id int) {
 	me.Lock()
 	defer me.Unlock()
 	ch := me.channels[id]
@@ -68,20 +68,15 @@ func (me *fileSetWaiter) wait(rep *WorkResponse, waitId int) (err os.Error) {
 	log.Println("Got data for tasks: ", rep.TaskIds)
 	
 	if rep.FileSet != nil {
-		err = me.master.replayFileModifications(me.mirror.rpcClient, rep.FileSet.Files)
-		if err == nil {
-			me.master.fileServer.updateFiles(rep.FileSet.Files)
-			me.master.mirrors.queueFiles(me.mirror, *rep.FileSet)
-			for _, id := range rep.TaskIds {
-				if id != waitId {
-					me.broadcast(id)
-				}
+		err = me.process(*rep.FileSet)
+		for _, id := range rep.TaskIds {
+			if id == waitId {
+				continue
 			}
-		} else {
-			for _, id := range rep.TaskIds {
-				if id != waitId {
-					me.flush(waitId)
-				}
+			if err == nil {
+				me.signal(id)
+			} else {
+				me.flush(id)
 			}
 		}
 	} else {
