@@ -20,6 +20,7 @@ MANUAL_GOFILES=\
 	filesetwaiter.go \
 	fsserver.go \
 	fuse.go \
+	getopt.go \
 	lrucache.go \
 	localmaster.go \
 	localrun.go \
