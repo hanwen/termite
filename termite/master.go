@@ -213,7 +213,7 @@ func (me *Master) run(req *WorkRequest, rep *WorkResponse) (err os.Error) {
 	me.mirrors.stats.MarkReceive()
 	req.TaskId = <-me.taskIds
 	if me.MaybeRunInMaster(req, rep) {
-		log.Println("Ran in master:", req)
+		log.Println("Ran in master:", req.Summary())
 		return nil
 	}
 	
