@@ -153,7 +153,15 @@ func (me *testCase) Clean() {
 func (me *testCase) Run(req WorkRequest) (rep WorkResponse) {
 	rpcConn := OpenSocketConnection(me.socket, RPC_CHANNEL, 1e7)
 	client := rpc.NewClient(rpcConn)
-
+	if req.Env == nil {
+		req.Env = testEnv()
+	}
+	if req.Dir == "" {
+		req.Dir = me.wd
+	}
+	if req.Binary == "" {
+		req.Binary = me.FindBin(req.Argv[0])
+	}
 	err := client.Call("LocalMaster.Run", &req, &rep)
 	if err != nil {
 		me.tester.Fatal("LocalMaster.Run: ", err)
@@ -170,10 +178,7 @@ func TestEndToEndBasic(t *testing.T) {
 
 	req := WorkRequest{
 		StdinId: ConnectionId(),
-		Binary:  tc.FindBin("tee"),
 		Argv:    []string{"tee", "output.txt"},
-		Env:     testEnv(),
-		Dir:     tc.wd,
 	}
 
 	// TODO - should separate dial/listen in the daemons?
@@ -193,10 +198,7 @@ func TestEndToEndBasic(t *testing.T) {
 	}
 
 	tc.Run(WorkRequest{
-		Binary: tc.FindBin("rm"),
-		Argv:   []string{"rm", "output.txt"},
-		Env:    testEnv(),
-		Dir:    tc.wd,
+		Argv: []string{"rm", "output.txt"},
 	})
 
 	if fi, _ := os.Lstat(tc.wd + "/output.txt"); fi != nil {
@@ -221,10 +223,7 @@ func TestEndToEndExec(t *testing.T) {
 	defer tc.Clean()
 
 	rep := tc.Run(WorkRequest{
-		Binary: tc.FindBin("true"),
-		Argv:   []string{"true"},
-		Env:    testEnv(),
-		Dir:    tc.wd,
+		Argv: []string{"true"},
 	})
 
 	if rep.Exit.ExitStatus() != 0 {
@@ -237,10 +236,7 @@ func TestEndToEndNegativeNotify(t *testing.T) {
 	defer tc.Clean()
 
 	rep := tc.Run(WorkRequest{
-		Binary: tc.FindBin("cat"),
-		Argv:   []string{"cat", "output.txt"},
-		Env:    testEnv(),
-		Dir:    tc.wd,
+		Argv: []string{"cat", "output.txt"},
 	})
 
 	if rep.Exit.ExitStatus() == 0 {
@@ -261,10 +257,7 @@ func TestEndToEndNegativeNotify(t *testing.T) {
 	tc.master.mirrors.queueFiles(nil, fset)
 
 	rep = tc.Run(WorkRequest{
-		Binary: tc.FindBin("cat"),
-		Argv:   []string{"cat", "output.txt"},
-		Env:    testEnv(),
-		Dir:    tc.wd,
+		Argv: []string{"cat", "output.txt"},
 	})
 
 	if rep.Exit.ExitStatus() != 0 {
@@ -282,16 +275,13 @@ func TestEndToEndMoveFile(t *testing.T) {
 	err := ioutil.WriteFile(tc.wd+"/e2e-move.txt", []byte{42}, 0644)
 	check(err)
 	rep := tc.Run(WorkRequest{
-		Binary: tc.FindBin("mv"),
-		Argv:   []string{"mv", "e2e-move.txt", "e2e-new.txt"},
-		Env:    testEnv(),
-		Dir:    tc.wd,
+		Argv: []string{"mv", "e2e-move.txt", "e2e-new.txt"},
 	})
 	if rep.Exit.ExitStatus() != 0 {
 		t.Fatalf("mkdir should exit cleanly. Rep %v", rep)
 	}
-	
-	c, err := ioutil.ReadFile(tc.wd+"/e2e-new.txt")
+
+	c, err := ioutil.ReadFile(tc.wd + "/e2e-new.txt")
 	check(err)
 	if len(c) != 1 {
 		t.Fatalf("Moved file missing content: %s", c)
@@ -303,19 +293,13 @@ func TestEndToEndMove(t *testing.T) {
 	defer tc.Clean()
 
 	rep := tc.Run(WorkRequest{
-		Binary: tc.FindBin("mkdir"),
-		Argv:   []string{"mkdir", "-p", "a/b/c"},
-		Env:    testEnv(),
-		Dir:    tc.wd,
+		Argv: []string{"mkdir", "-p", "a/b/c"},
 	})
 	if rep.Exit.ExitStatus() != 0 {
 		t.Fatalf("mkdir should exit cleanly. Rep %v", rep)
 	}
 	rep = tc.Run(WorkRequest{
-		Binary: tc.FindBin("mv"),
-		Argv:   []string{"mv", "a", "q"},
-		Env:    testEnv(),
-		Dir:    tc.wd,
+		Argv: []string{"mv", "a", "q"},
 	})
 	if rep.Exit.ExitStatus() != 0 {
 		t.Fatalf("mv should exit cleanly. Rep %v", rep)
@@ -326,7 +310,6 @@ func TestEndToEndMove(t *testing.T) {
 	}
 }
 
-
 func TestEndToEndMkdir(t *testing.T) {
 	tc := NewTestCase(t)
 	defer tc.Clean()
@@ -334,40 +317,28 @@ func TestEndToEndMkdir(t *testing.T) {
 	err := ioutil.WriteFile(tc.tmp+"/wd/file.txt", []byte{42}, 0644)
 	check(err)
 	rep := tc.Run(WorkRequest{
-		Binary: tc.FindBin("mkdir"),
-		Argv:   []string{"mkdir", "q/r"},
-		Env:    testEnv(),
-		Dir:    tc.wd,
+		Argv: []string{"mkdir", "q/r"},
 	})
 	if rep.Exit.ExitStatus() == 0 {
 		t.Fatalf("mkdir should not exit cleanly. Rep %v", rep)
 	}
 	rep = tc.Run(WorkRequest{
-		Binary: tc.FindBin("mkdir"),
-		Argv:   []string{"mkdir", "file.txt/foo"},
-		Env:    testEnv(),
-		Dir:    tc.wd,
+		Argv: []string{"mkdir", "file.txt/foo"},
 	})
 	if rep.Exit.ExitStatus() == 0 {
 		t.Fatalf("mkdir file.txt/foo should not exit cleanly. Rep %v", rep)
 	}
 	rep = tc.Run(WorkRequest{
-		Binary: tc.FindBin("mkdir"),
-		Argv:   []string{"mkdir", "dir"},
-		Env:    testEnv(),
-		Dir:    tc.wd,
+		Argv: []string{"mkdir", "dir"},
 	})
-	
+
 	if rep.Exit.ExitStatus() != 0 {
 		t.Fatalf("mkdir dir should exit cleanly. Rep %v", rep)
 	}
 	rep = tc.Run(WorkRequest{
-		Binary: tc.FindBin("mkdir"),
-		Argv:   []string{"mkdir", "-p", "a/b"},
-		Env:    testEnv(),
-		Dir:    tc.wd,
+		Argv: []string{"mkdir", "-p", "a/b"},
 	})
-	
+
 	if rep.Exit.ExitStatus() != 0 {
 		t.Fatalf("mkdir -p should exit cleanly. Rep %v", rep)
 	}
@@ -384,52 +355,37 @@ func TestEndToEndRm(t *testing.T) {
 	check(err)
 	err = os.Mkdir(tc.wd+"/dir", 0755)
 	check(err)
-	
+
 	rep := tc.Run(WorkRequest{
-		Binary: tc.FindBin("rm"),
-		Argv:   []string{"rm", "noexist"},
-		Env:    testEnv(),
-		Dir:    tc.wd,
+		Argv: []string{"rm", "noexist"},
 	})
 	if rep.Exit.ExitStatus() == 0 {
 		t.Fatalf("rm noexist should not exit cleanly. Rep %v", rep)
 	}
 
 	rep = tc.Run(WorkRequest{
-		Binary: tc.FindBin("rm"),
-		Argv:   []string{"rm", "-f", "noexist"},
-		Env:    testEnv(),
-		Dir:    tc.wd,
+		Argv: []string{"rm", "-f", "noexist"},
 	})
 	if rep.Exit.ExitStatus() != 0 {
 		t.Fatalf("rm -f noexist must exit cleanly. Rep %v", rep)
 	}
-	
+
 	rep = tc.Run(WorkRequest{
-		Binary: tc.FindBin("rm"),
-		Argv:   []string{"rm", "dir"},
-		Env:    testEnv(),
-		Dir:    tc.wd,
+		Argv: []string{"rm", "dir"},
 	})
 	if rep.Exit.ExitStatus() == 0 {
 		t.Fatalf("rm dir should not exit cleanly. Rep %v", rep)
 	}
-	
+
 	rep = tc.Run(WorkRequest{
-		Binary: tc.FindBin("rm"),
-		Argv:   []string{"rm", "-f", "dir"},
-		Env:    testEnv(),
-		Dir:    tc.wd,
+		Argv: []string{"rm", "-f", "dir"},
 	})
 	if rep.Exit.ExitStatus() == 0 {
 		t.Fatalf("rm -f dir should not exit cleanly. Rep %v", rep)
 	}
-	
+
 	rep = tc.Run(WorkRequest{
-		Binary: tc.FindBin("rm"),
-		Argv:   []string{"rm", "file.txt"},
-		Env:    testEnv(),
-		Dir:    tc.wd,
+		Argv: []string{"rm", "file.txt"},
 	})
 	if rep.Exit.ExitStatus() != 0 {
 		t.Fatalf("rm file.txt should exit cleanly. Rep %v", rep)
@@ -458,10 +414,7 @@ func TestEndToEndStdout(t *testing.T) {
 	}
 
 	rep := tc.Run(WorkRequest{
-		Binary: tc.FindBin("cat"),
-		Argv:   []string{"cat", "file.txt"},
-		Env:    testEnv(),
-		Dir:    tc.wd,
+		Argv: []string{"cat", "file.txt"},
 	})
 
 	if string(rep.Stdout) != string(shcmd) {
@@ -477,10 +430,7 @@ func TestEndToEndModeChange(t *testing.T) {
 	check(err)
 
 	rep := tc.Run(WorkRequest{
-		Binary: tc.FindBin("chmod"),
-		Argv:   []string{"chmod", "a+x", "file.txt"},
-		Env:    testEnv(),
-		Dir:    tc.wd,
+		Argv: []string{"chmod", "a+x", "file.txt"},
 	})
 
 	fi, err := os.Lstat(tc.wd + "/file.txt")
@@ -504,10 +454,7 @@ func TestEndToEndSymlink(t *testing.T) {
 	}
 
 	rep := tc.Run(WorkRequest{
-		Binary: tc.FindBin("touch"),
-		Argv:   []string{"touch", "file.txt"},
-		Env:    testEnv(),
-		Dir:    tc.wd,
+		Argv: []string{"touch", "file.txt"},
 	})
 
 	if fi, err := os.Lstat(tc.wd + "/file.txt"); err != nil || !fi.IsRegular() || fi.Size != 0 {
@@ -517,10 +464,7 @@ func TestEndToEndSymlink(t *testing.T) {
 		t.Fatalf("touch should exit cleanly. Rep %v", rep)
 	}
 	rep = tc.Run(WorkRequest{
-		Binary: tc.FindBin("ln"),
-		Argv:   []string{"ln", "-sf", "foo", "symlink"},
-		Env:    testEnv(),
-		Dir:    tc.wd,
+		Argv: []string{"ln", "-sf", "foo", "symlink"},
 	})
 	if rep.Exit.ExitStatus() != 0 {
 		t.Fatalf("ln -s should exit cleanly. Rep %v", rep)
@@ -541,10 +485,7 @@ func TestEndToEndShutdown(t *testing.T) {
 	tc.master.retryCount = 0
 
 	req := WorkRequest{
-		Binary: tc.FindBin("touch"),
-		Argv:   []string{"touch", "file.txt"},
-		Env:    testEnv(),
-		Dir:    tc.wd,
+		Argv: []string{"touch", "file.txt"},
 	}
 	tc.Run(req)
 
@@ -565,10 +506,8 @@ func TestEndToEndSpecialEntries(t *testing.T) {
 
 	readlink, _ := filepath.EvalSymlinks(tc.FindBin("readlink"))
 	req := WorkRequest{
-		Binary: readlink,
-		Argv:   []string{"readlink", "proc/self/exe"},
-		Env:    testEnv(),
-		Dir:    "/",
+		Argv: []string{"readlink", "proc/self/exe"},
+		Dir:  "/",
 	}
 	rep := tc.Run(req)
 
@@ -587,10 +526,8 @@ func TestEndToEndProcDeny(t *testing.T) {
 	defer tc.Clean()
 
 	req := WorkRequest{
-		Binary: tc.FindBin("ls"),
-		Argv:   []string{"ls", "proc/misc"},
-		Env:    testEnv(),
-		Dir:    "/",
+		Argv: []string{"ls", "proc/misc"},
+		Dir:  "/",
 	}
 	rep := tc.Run(req)
 	if rep.Exit.ExitStatus() == 0 {
@@ -603,10 +540,8 @@ func TestEndToEndEnvironment(t *testing.T) {
 	defer tc.Clean()
 
 	req := WorkRequest{
-		Binary: tc.FindBin("sh"),
-		Argv:   []string{"sh", "-c", "echo $MAGIC"},
-		Env:    testEnv(),
-		Dir:    "/",
+		Argv: []string{"sh", "-c", "echo $MAGIC"},
+		Dir:  "/",
 	}
 	req.Env = append(req.Env, "MAGIC=777")
 	rep := tc.Run(req)
@@ -623,10 +558,7 @@ func TestEndToEndLinkReap(t *testing.T) {
 	// TODO - drop this.
 	ioutil.WriteFile(tc.wd+"/file.txt", []byte{42}, 0644)
 	req := WorkRequest{
-		Binary: tc.FindBin("sh"),
-		Argv:   []string{"sh", "-c", "echo hello > file.txt ; ln file.txt foo.txt"},
-		Env:    testEnv(),
-		Dir:    tc.wd,
+		Argv: []string{"sh", "-c", "echo hello > file.txt ; ln file.txt foo.txt"},
 	}
 	rep := tc.Run(req)
 	if rep.Exit.ExitStatus() != 0 {
@@ -636,5 +568,3 @@ func TestEndToEndLinkReap(t *testing.T) {
 		t.Fatalf("wd/foo.txt was not created. Err: %v, fi: %v", err, fi)
 	}
 }
-
-
