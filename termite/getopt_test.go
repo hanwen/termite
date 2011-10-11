@@ -39,8 +39,16 @@ func checkGetopt(t *testing.T, got GetoptResult, want GetoptResult) {
 }
 
 func TestGetopt(t *testing.T) {
-	g := Getopt([]string{"a", "b"}, nil, nil, false)
+	t.Log("Case: single arg")
+	g := Getopt([]string{"q"}, nil, nil, true)
 	w := GetoptResult{
+		Args: []string{"q"},
+	}
+	checkGetopt(t, g, w)
+	
+	t.Log("Case: no options")
+	g = Getopt([]string{"a", "b"}, nil, nil, false)
+	w = GetoptResult{
 		Args: []string{"a", "b"},
 	}
 	checkGetopt(t, g, w)

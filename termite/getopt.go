@@ -4,10 +4,26 @@ import (
 	"strings"
 )
 
+var _ = log.Println
+
 type GetoptResult struct {
 	Long  map[string]string 
 	Short map[byte]string
 	Args  []string
+}
+
+func (me *GetoptResult) HasLong(name string) bool {
+	_, ok := me.Long[name]
+	return ok
+}
+
+func (me *GetoptResult) HasShort(name byte) bool {
+	_, ok := me.Short[name]
+	return ok
+}
+
+func (me *GetoptResult) HasOptions() bool {
+	return len(me.Short) > 0 || len(me.Long) > 0
 }
 
 func Getopt(args []string, longTakeArg []string, shortTakeArg []byte, reorder bool) (r GetoptResult) {
@@ -70,9 +86,8 @@ func Getopt(args []string, longTakeArg []string, shortTakeArg []byte, reorder bo
 				}
 			}
 		default:
-			
 			if reorder {
-				r.Args = append(r.Args)
+				r.Args = append(r.Args, a)
 			} else {
 				r.Args = args[i:]
 				return r
