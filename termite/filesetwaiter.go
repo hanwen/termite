@@ -10,8 +10,6 @@ var _ = log.Println
 
 type fileSetWaiter struct {
 	process func(fset FileSet) os.Error
-	master *Master
-	mirror *mirrorConnection
 	sync.Mutex
 	channels map[int]chan int
 }
