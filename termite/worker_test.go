@@ -326,6 +326,119 @@ func TestEndToEndMove(t *testing.T) {
 	}
 }
 
+
+func TestEndToEndMkdir(t *testing.T) {
+	tc := NewTestCase(t)
+	defer tc.Clean()
+
+	err := ioutil.WriteFile(tc.tmp+"/wd/file.txt", []byte{42}, 0644)
+	check(err)
+	rep := tc.Run(WorkRequest{
+		Binary: tc.FindBin("mkdir"),
+		Argv:   []string{"mkdir", "q/r"},
+		Env:    testEnv(),
+		Dir:    tc.wd,
+	})
+	if rep.Exit.ExitStatus() == 0 {
+		t.Fatalf("mkdir should not exit cleanly. Rep %v", rep)
+	}
+	rep = tc.Run(WorkRequest{
+		Binary: tc.FindBin("mkdir"),
+		Argv:   []string{"mkdir", "file.txt/foo"},
+		Env:    testEnv(),
+		Dir:    tc.wd,
+	})
+	if rep.Exit.ExitStatus() == 0 {
+		t.Fatalf("mkdir file.txt/foo should not exit cleanly. Rep %v", rep)
+	}
+	rep = tc.Run(WorkRequest{
+		Binary: tc.FindBin("mkdir"),
+		Argv:   []string{"mkdir", "dir"},
+		Env:    testEnv(),
+		Dir:    tc.wd,
+	})
+	
+	if rep.Exit.ExitStatus() != 0 {
+		t.Fatalf("mkdir dir should exit cleanly. Rep %v", rep)
+	}
+	rep = tc.Run(WorkRequest{
+		Binary: tc.FindBin("mkdir"),
+		Argv:   []string{"mkdir", "-p", "a/b"},
+		Env:    testEnv(),
+		Dir:    tc.wd,
+	})
+	
+	if rep.Exit.ExitStatus() != 0 {
+		t.Fatalf("mkdir -p should exit cleanly. Rep %v", rep)
+	}
+	if fi, err := os.Lstat(tc.wd + "/a/b"); err != nil || !fi.IsDirectory() {
+		t.Errorf("a/b should be a directory: Err %v, fi %v", err, fi)
+	}
+}
+
+func TestEndToEndRm(t *testing.T) {
+	tc := NewTestCase(t)
+	defer tc.Clean()
+
+	err := ioutil.WriteFile(tc.wd+"/file.txt", []byte{42}, 0644)
+	check(err)
+	err = os.Mkdir(tc.wd+"/dir", 0755)
+	check(err)
+	
+	rep := tc.Run(WorkRequest{
+		Binary: tc.FindBin("rm"),
+		Argv:   []string{"rm", "noexist"},
+		Env:    testEnv(),
+		Dir:    tc.wd,
+	})
+	if rep.Exit.ExitStatus() == 0 {
+		t.Fatalf("rm noexist should not exit cleanly. Rep %v", rep)
+	}
+
+	rep = tc.Run(WorkRequest{
+		Binary: tc.FindBin("rm"),
+		Argv:   []string{"rm", "-f", "noexist"},
+		Env:    testEnv(),
+		Dir:    tc.wd,
+	})
+	if rep.Exit.ExitStatus() != 0 {
+		t.Fatalf("rm -f noexist must exit cleanly. Rep %v", rep)
+	}
+	
+	rep = tc.Run(WorkRequest{
+		Binary: tc.FindBin("rm"),
+		Argv:   []string{"rm", "dir"},
+		Env:    testEnv(),
+		Dir:    tc.wd,
+	})
+	if rep.Exit.ExitStatus() == 0 {
+		t.Fatalf("rm dir should not exit cleanly. Rep %v", rep)
+	}
+	
+	rep = tc.Run(WorkRequest{
+		Binary: tc.FindBin("rm"),
+		Argv:   []string{"rm", "-f", "dir"},
+		Env:    testEnv(),
+		Dir:    tc.wd,
+	})
+	if rep.Exit.ExitStatus() == 0 {
+		t.Fatalf("rm -f dir should not exit cleanly. Rep %v", rep)
+	}
+	
+	rep = tc.Run(WorkRequest{
+		Binary: tc.FindBin("rm"),
+		Argv:   []string{"rm", "file.txt"},
+		Env:    testEnv(),
+		Dir:    tc.wd,
+	})
+	if rep.Exit.ExitStatus() != 0 {
+		t.Fatalf("rm file.txt should exit cleanly. Rep %v", rep)
+	}
+	if fi, err := os.Lstat(tc.wd + "/file.txt"); err == nil || fi != nil {
+		t.Errorf("should have been removed. Err %v, fi %v", err, fi)
+	}
+}
+
 func TestEndToEndStdout(t *testing.T) {
 	tc := NewTestCase(t)
 	defer tc.Clean()
@@ -523,4 +636,5 @@ func TestEndToEndLinkReap(t *testing.T) {
 		t.Fatalf("wd/foo.txt was not created. Err: %v, fi: %v", err, fi)
 	}
 }
+
 

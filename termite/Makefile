@@ -25,6 +25,7 @@ MANUAL_GOFILES=\
 	localmaster.go \
 	localrun.go \
 	master.go \
+	masterrun.go \
 	masterstats.go \
 	masterstatus.go \
 	mirror.go \

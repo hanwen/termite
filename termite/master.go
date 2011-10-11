@@ -212,7 +212,11 @@ func (me *Master) runOnce(req *WorkRequest, rep *WorkResponse) os.Error {
 func (me *Master) run(req *WorkRequest, rep *WorkResponse) (err os.Error) {
 	me.mirrors.stats.MarkReceive()
 	req.TaskId = <-me.taskIds
-
+	if me.MaybeRunInMaster(req, rep) {
+		log.Println("Ran in master:", req)
+		return nil
+	}
+	
 	err = me.runOnce(req, rep)
 	for i := 0; i < me.retryCount && err != nil; i++ {
 		log.Println("Retrying; last error:", err)
