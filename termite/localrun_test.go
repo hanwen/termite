@@ -2,6 +2,7 @@ package termite
 
 import (
 	"bytes"
+	"io/ioutil"
 	"testing"
 )
 
@@ -21,5 +22,14 @@ func TestLocalDecider(t *testing.T) {
 	r = l.ShouldRunLocally("bar")
 	if r.Local != true {
 		t.Error("bar: expect true")
+	}
+}
+
+func TestLocalDeciderDefault(t *testing.T) {
+	d, _ := ioutil.TempDir("", "termite")
+	l := NewLocalDecider(d)
+	r := l.ShouldRunLocally("foo \n bar \n  termite-make ; \ndone")
+	if r == nil || r.Local != true {
+		t.Error("termite-make should run locally. Rule:", r)
 	}
 }
