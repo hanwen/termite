@@ -30,15 +30,15 @@ func Rpc() *rpc.Client {
 	return socketRpc
 }
 
-func TryRunDirect(parsed []string) {
-	if parsed[0] == "echo" {
-		fmt.Println(strings.Join(parsed[1:], " "))
+func TryRunDirect(req *termite.WorkRequest) {
+	if req.Argv[0] == "echo" {
+		fmt.Println(strings.Join(req.Argv[1:], " "))
 		os.Exit(0)
 	}
-	if parsed[0] == "true" {
+	if req.Argv[0] == "true" {
 		os.Exit(0)
 	}
-	if parsed[0] == "false" {
+	if req.Argv[0] == "false" {
 		os.Exit(1)
 	}
 }
@@ -46,7 +46,7 @@ func TryRunDirect(parsed []string) {
 var bashInternals = []string{
 	"alias", "bg", "bind", "break", "builtin", "caller", "case", "cd",
 	"command", "compgen", "complete", "compopt", "continue", "coproc",
-	"declare", "dirs", "disown", "echo", "enable", "eval", "exec", "exit",
+	"declare", "dirs", "disown", /* echo, */ "enable", "eval", "exec", "exit",
 	"export", "false", "fc", "fg", "for", "for", "function", "getopts",
 	"hash", "help", "history", "if", "jobs", "kill", "let", "local",
 	"logout", "mapfile", "popd", "printf", "pushd", "pwd", "read",
@@ -55,24 +55,42 @@ var bashInternals = []string{
 	"typeset", "ulimit", "umask", "unalias", "unset", "until",
 	"variables", "wait", "while",
 }
-
-func NewWorkRequest(cmd string, dir string, topdir string) (*termite.WorkRequest, *termite.LocalRule) {
-	if cmd == ":" || strings.TrimRight(cmd, " ") == "" {
-		os.Exit(0)
-	}
-
+func NewWorkRequest(cmd string, dir string, topdir string) (*termite.WorkRequest) {
 	req := &termite.WorkRequest{
 		Binary:     Shell(),
 		Argv:       []string{Shell(), "-c", cmd},
 		Env:        cleanEnv(os.Environ()),
 		Dir:        dir,
 	}
-	
+
 	parsed := termite.ParseCommand(cmd)
-	if len(parsed) == 0 {
-		return req, nil
+	if len(parsed) > 0 {
+		// Is this really necessary?
+		for _, c := range bashInternals {
+			if parsed[0] == c {
+				return req
+			}
+		}
+
+		// A no-frills command invocation: do it directly.
+		var err os.Error
+		req.Binary, err = exec.LookPath(parsed[0])
+		if err != nil {
+			log.Fatal("LookPath", err)
+		}
+		req.Argv = parsed
 	}
-	TryRunDirect(parsed)
+
+	return req
+}
+
+func PrepareRun(cmd string, dir string, topdir string) (*termite.WorkRequest, *termite.LocalRule) {
+	if cmd == ":" || strings.TrimRight(cmd, " ") == "" {
+		os.Exit(0)
+	}
+
+	req := NewWorkRequest(cmd, dir, topdir)
+	TryRunDirect(req)
 
 	decider := termite.NewLocalDecider(topdir)
 	rule := decider.ShouldRunLocally(cmd)
@@ -81,20 +99,6 @@ func NewWorkRequest(cmd string, dir string, topdir string) (*termite.WorkRequest
 		return req, rule
 	}
 
-	// Is this really necessary?
-	for _, c := range bashInternals {
-		if parsed[0] == c {
-			return req, nil
-		}
-	}
-
-	// A no-frills command invocation: do it directly.
-	var err os.Error
-	req.Binary, err = exec.LookPath(parsed[0])
-	if err != nil {
-		log.Fatal("LookPath", err)
-	}
-	req.Argv = parsed
 	return req, nil
 }
 
@@ -218,9 +222,8 @@ func main() {
 			Env: os.Environ(),
 		}
 	} else {
-		req, rule = NewWorkRequest(*command, *directory, topDir)
+		req, rule = PrepareRun(*command, *directory, topDir)
 	}
-
 	var waitMsg *os.Waitmsg
 	if rule != nil && rule.Local {
 		waitMsg = RunLocally(req, rule)
