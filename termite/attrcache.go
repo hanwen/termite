@@ -175,7 +175,7 @@ func (me *AttributeCache) update(files []*FileAttr) {
 		if r.Deletion() {
 			dirAttr.NameModeMap[basename] = 0, false
 		} else {
-			dirAttr.NameModeMap[basename] = r.Mode &^ 0777
+			dirAttr.NameModeMap[basename] = FileMode(r.Mode &^ 07777)
 		}
 
 		if r.Deletion() {

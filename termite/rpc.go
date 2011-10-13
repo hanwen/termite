@@ -22,6 +22,7 @@ type AttrRequest struct {
 	Name string
 }
 
+type FileMode uint32
 type FileAttr struct {
 	Path string
 	*os.FileInfo
@@ -29,7 +30,7 @@ type FileAttr struct {
 	Link string
 
 	// Only filled for directories.
-	NameModeMap map[string]uint32
+	NameModeMap map[string]FileMode
 }
 
 type AttrResponse struct {

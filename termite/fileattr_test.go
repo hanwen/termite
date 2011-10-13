@@ -17,7 +17,7 @@ func TestFileAttrReadFrom(t *testing.T) {
 		t.Fatalf("should have NameModeMap: %v", attr)
 	}
 
-	if attr.NameModeMap["file.txt"] != syscall.S_IFREG {
+	if attr.NameModeMap["file.txt"].IsRegular() {
 		t.Fatalf("unexpected mode: %v",  attr.NameModeMap["file.txt"])
 	}
 }

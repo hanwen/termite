@@ -120,7 +120,7 @@ func (me *RpcFs) OpenDir(name string, context *fuse.Context) (chan fuse.DirEntry
 	for k, mode := range r.NameModeMap {
 		c <- fuse.DirEntry{
 			Name: k,
-			Mode: mode,
+			Mode: uint32(mode),
 		}
 	}
 	close(c)

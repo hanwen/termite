@@ -29,7 +29,7 @@ func recurseNames(master *Master, name string) (names []string) {
 	a := master.fileServer.attr.GetDir(name)
 	
 	for n, m := range a.NameModeMap {
-		if m == syscall.S_IFDIR {
+		if m.IsDirectory() {
 			names = append(names, recurseNames(master, filepath.Join(name, n))...)
 		} else {
 			names = append(names, filepath.Join(name, n))

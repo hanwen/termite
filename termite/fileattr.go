@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"syscall"
 )
 
 var _ = log.Printf
@@ -40,7 +41,7 @@ func (me FileAttr) Status() fuse.Status {
 func (me FileAttr) Copy(withdir bool) *FileAttr {
 	a := me
 	if me.NameModeMap != nil && withdir {
-		a.NameModeMap = map[string]uint32{}
+		a.NameModeMap = map[string]FileMode{}
 		for k, v := range me.NameModeMap {
 			a.NameModeMap[k] = v
 		}
@@ -62,9 +63,9 @@ func (me *FileAttr) ReadFromFs(p string) {
 	case me.IsDirectory():
 		d, e := ioutil.ReadDir(p)
 		if e == nil {
-			me.NameModeMap = make(map[string]uint32, len(d))
+			me.NameModeMap = make(map[string]FileMode, len(d))
 			for _, v := range d {
-				me.NameModeMap[v.Name] = v.Mode &^ 07777
+				me.NameModeMap[v.Name] = FileMode(v.Mode &^ 07777)
 			}
 		} else {
 			me.FileInfo = nil
@@ -97,10 +98,22 @@ func (me *FileAttr) Merge(r FileAttr) {
 	if me.FileInfo.IsDirectory() {
 		me.NameModeMap = mine
 		if me.NameModeMap == nil {
-			me.NameModeMap = make(map[string]uint32)
+			me.NameModeMap = make(map[string]FileMode)
 		}
 		for k, v := range other {
 			me.NameModeMap[k] = v
 		}
 	}
+}
+
+func (me FileMode) IsDirectory() bool {
+	return uint32(me) & syscall.S_IFDIR != 0
+}
+
+func (me FileMode) IsRegular() bool {
+	return uint32(me) & syscall.S_IFREG != 0
+}
+
+func (me FileMode) IsSymlink() bool {
+	return uint32(me) & syscall.S_IFLNK != 0
 }
