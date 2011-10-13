@@ -88,7 +88,7 @@ func TestAttrCache(t *testing.T) {
 	}
 
 	// Make sure timestamps change.
-	time.Sleep(15e6)
+	time.Sleep(150e6)
 	err = ioutil.WriteFile(dir+"/other", []byte{43}, 0666)
 	check(err)
 	err = os.Chmod(dir+"/file", 0666)
