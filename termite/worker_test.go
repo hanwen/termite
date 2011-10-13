@@ -52,11 +52,10 @@ func testEnv() []string {
 }
 
 func (me *testCase) StartWorker(coordinator string) {
-	workerPort := int(rand.Int31n(60000) + 1024)
 	worker := NewWorkerDaemon(me.workerOpts)
-	// TODO -racey. 
+	// TODO -racy. 
 	me.workers = append(me.workers, worker)
-	worker.RunWorkerServer(workerPort, coordinator)
+	worker.RunWorkerServer(0, coordinator)
 }
 
 func NewTestCase(t *testing.T) *testCase {

@@ -104,7 +104,7 @@ func AuthenticatedListener(port int, secret []byte) net.Listener {
 	if err != nil {
 		log.Fatal("net.Listen", err)
 	}
-	log.Println("Listening to", port)
+	log.Println("Listening to", listener.Addr())
 	return &Listener{listener, secret}
 }
 

@@ -214,6 +214,9 @@ func (me *WorkerDaemon) serveConn(conn net.Conn) {
 
 func (me *WorkerDaemon) RunWorkerServer(port int, coordinator string) {
 	me.listener = AuthenticatedListener(port, me.secret)
+	_, portString, _ := net.SplitHostPort(me.listener.Addr().String())
+
+	fmt.Sscanf(portString, "%d", &port)
 	go me.PeriodicReport(coordinator, port)
 
 	for {
