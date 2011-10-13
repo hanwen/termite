@@ -64,7 +64,7 @@ func (me *FileAttr) ReadFromFs(p string) {
 		if e == nil {
 			me.NameModeMap = make(map[string]uint32, len(d))
 			for _, v := range d {
-				me.NameModeMap[v.Name] = v.Mode
+				me.NameModeMap[v.Name] = v.Mode &^ 07777
 			}
 		} else {
 			me.FileInfo = nil
