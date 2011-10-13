@@ -395,6 +395,26 @@ func TestEndToEndRm(t *testing.T) {
 	}
 }
 
+func TestEndToEndRmR(t *testing.T) {
+	tc := NewTestCase(t)
+	defer tc.Clean()
+
+	os.Mkdir(tc.wd+"/dir", 0755)
+	ioutil.WriteFile(tc.wd+"/dir/file.txt", []byte{42}, 0644)
+	os.Mkdir(tc.wd+"/dir/subdir", 0755)
+	ioutil.WriteFile(tc.wd+"/dir/subdir/file.txt", []byte{42}, 0644)
+ 
+	rep := tc.Run(WorkRequest{
+		Argv: []string{"rm", "-r", "dir"},
+	})
+	if rep.Exit.ExitStatus() != 0 {
+		t.Fatalf("rm should exit cleanly. Rep %v", rep)
+	}
+	if fi, _ := os.Lstat(tc.wd + "/dir"); fi != nil {
+		t.Fatalf("rm -r should remove everything: %v", fi)
+	}
+}
+
 func TestEndToEndStdout(t *testing.T) {
 	tc := NewTestCase(t)
 	defer tc.Clean()

@@ -25,12 +25,32 @@ func (me *Master) MaybeRunInMaster(req *WorkRequest, rep *WorkResponse) bool {
 	return false
 }
 
+func recurseNames(master *Master, name string) (names []string) {
+	a := master.fileServer.attr.GetDir(name)
+	
+	for n, m := range a.NameModeMap {
+		if m == syscall.S_IFDIR {
+			names = append(names, recurseNames(master, filepath.Join(name, n))...)
+		} else {
+			names = append(names, filepath.Join(name, n))
+		}
+	}
+	names = append(names, name)
+	return 
+}
+
 func rmMaybeMasterRun(master *Master, req *WorkRequest, rep *WorkResponse) bool {
 	g := Getopt(req.Argv[1:], nil, nil, true)
 	
 	force := g.HasLong("force") || g.HasShort('f')
 	g.Long["force"] = "", false
 	g.Short['f'] = "", false
+
+	recursive := g.HasLong("recursive") || g.HasShort('r') || g.HasShort('R')
+	g.Long["recursive"] = "", false
+	g.Short['R'] = "", false
+	g.Short['r'] = "", false
+	
 	if g.HasOptions() {
 		return false
 	}
@@ -47,26 +67,32 @@ func rmMaybeMasterRun(master *Master, req *WorkRequest, rep *WorkResponse) bool 
 	fs := FileSet{}
 	msgs := []string{}
 	status := 0
-	for len(todo) > 0 {
-		l := len(todo) - 1
-		p := todo[l]
-		todo = todo[:l]
-		
-		attr := master.fileServer.attr.GetDir(p)
-		switch {
-		case attr.Deletion():
-			msgs = append(msgs, fmt.Sprintf("rm: no such file or directory: %s", p))
-			if !force {
-				status = 1
+	if recursive {
+		for _, t := range todo {
+			for _, n := range recurseNames(master, t) {
+				fs.Files = append(fs.Files, &FileAttr{
+					Path: n,
+				})
 			}
-		case attr.IsDirectory():
-			msgs = append(msgs, fmt.Sprintf("rm: is a directory: %s", p))
-			status = 1
-		default:
-			fs.Files = append(fs.Files, &FileAttr{Path: p})
+		}
+	} else {
+		for _, p := range todo {
+			attr := master.fileServer.attr.GetDir(p)
+			switch {
+			case attr.Deletion():
+				msgs = append(msgs, fmt.Sprintf("rm: no such file or directory: %s", p))
+				if !force {
+					status = 1
+				}
+			case attr.IsDirectory() && !recursive:
+				msgs = append(msgs, fmt.Sprintf("rm: is a directory: %s", p))
+				status = 1
+			default:
+				fs.Files = append(fs.Files, &FileAttr{Path: p})
+			}
 		}
 	}
-
+	fs.Sort()
 	master.replay(fs)
 	master.mirrors.queueFiles(nil, fs)
 
