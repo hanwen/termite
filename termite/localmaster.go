@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"rpc"
+	"strings"
 	"time"
 )
 
@@ -90,6 +91,9 @@ func (me *LocalMaster) start(sock string) {
 
 	me.master.writableRoot = writableRoot
 	me.master.CheckPrivate()
+
+	go me.master.fileServer.FetchDirs(strings.TrimLeft(writableRoot, "/"))
+
 	log.Println("accepting connections on", absSock)
 	for {
 		conn, err := me.listener.Accept()

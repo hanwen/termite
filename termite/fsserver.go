@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 )
 
 var _ = fmt.Println
@@ -120,4 +121,13 @@ func (me *FsServer) refreshAttributeCache(prefix string) FileSet {
 
 func (me *FsServer) copyCache() FileSet {
 	return me.attr.Copy()
+}
+
+func (me *FsServer) FetchDirs(root string) {
+	a := me.attr.GetDir(root)
+	for n, m := range a.NameModeMap {
+		if m == syscall.S_IFDIR {
+			me.FetchDirs(filepath.Join(root, n))
+		}
+	}
 }
