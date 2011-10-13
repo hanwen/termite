@@ -150,6 +150,22 @@ func (me *testCase) Clean() {
 	}
 }
 
+func (me *testCase) RunFail(req WorkRequest) (rep WorkResponse) {
+	rep = me.Run(req)
+	if rep.Exit.ExitStatus() == 0 {
+		me.tester.Fatalf("expect exit status != 0 for %v", req)
+	}
+	return rep
+}
+
+func (me *testCase) RunSuccess(req WorkRequest) (rep WorkResponse) {
+	rep = me.Run(req)
+	if rep.Exit.ExitStatus() != 0 {
+		me.tester.Fatalf("Got exit status %d for %v", rep.Exit.ExitStatus(), req)
+	}
+	return rep
+}
+
 func (me *testCase) Run(req WorkRequest) (rep WorkResponse) {
 	rpcConn := OpenSocketConnection(me.socket, RPC_CHANNEL, 1e7)
 	client := rpc.NewClient(rpcConn)
@@ -188,7 +204,7 @@ func TestEndToEndBasic(t *testing.T) {
 		stdinConn.Close()
 	}()
 
-	tc.Run(req)
+	tc.RunSuccess(req)
 	content, err := ioutil.ReadFile(tc.wd + "/output.txt")
 	if err != nil {
 		t.Error(err)
@@ -197,7 +213,7 @@ func TestEndToEndBasic(t *testing.T) {
 		t.Error("content:", content)
 	}
 
-	tc.Run(WorkRequest{
+	tc.RunSuccess(WorkRequest{
 		Argv: []string{"rm", "output.txt"},
 	})
 
@@ -222,26 +238,18 @@ func TestEndToEndExec(t *testing.T) {
 	tc := NewTestCase(t)
 	defer tc.Clean()
 
-	rep := tc.Run(WorkRequest{
+	tc.RunSuccess(WorkRequest{
 		Argv: []string{"true"},
 	})
-
-	if rep.Exit.ExitStatus() != 0 {
-		t.Fatal("expect exit status == 0", rep.Exit.ExitStatus())
-	}
 }
 
 func TestEndToEndNegativeNotify(t *testing.T) {
 	tc := NewTestCase(t)
 	defer tc.Clean()
 
-	rep := tc.Run(WorkRequest{
+	rep := tc.RunFail(WorkRequest{
 		Argv: []string{"cat", "output.txt"},
 	})
-
-	if rep.Exit.ExitStatus() == 0 {
-		t.Fatal("expect exit status != 0")
-	}
 
 	newContent := []byte("new content")
 	hash := tc.master.cache.Save(newContent)
@@ -256,13 +264,9 @@ func TestEndToEndNegativeNotify(t *testing.T) {
 	fset := FileSet{updated}
 	tc.master.mirrors.queueFiles(nil, fset)
 
-	rep = tc.Run(WorkRequest{
+	rep = tc.RunSuccess(WorkRequest{
 		Argv: []string{"cat", "output.txt"},
 	})
-
-	if rep.Exit.ExitStatus() != 0 {
-		t.Fatal("expect exit status == 0", rep.Exit.ExitStatus())
-	}
 	if string(rep.Stdout) != string(newContent) {
 		t.Error("Mismatch", string(rep.Stdout), string(newContent))
 	}
@@ -274,12 +278,9 @@ func TestEndToEndMoveFile(t *testing.T) {
 
 	err := ioutil.WriteFile(tc.wd+"/e2e-move.txt", []byte{42}, 0644)
 	check(err)
-	rep := tc.Run(WorkRequest{
+	tc.RunSuccess(WorkRequest{
 		Argv: []string{"mv", "e2e-move.txt", "e2e-new.txt"},
 	})
-	if rep.Exit.ExitStatus() != 0 {
-		t.Fatalf("mkdir should exit cleanly. Rep %v", rep)
-	}
 
 	c, err := ioutil.ReadFile(tc.wd + "/e2e-new.txt")
 	check(err)
@@ -292,18 +293,12 @@ func TestEndToEndMove(t *testing.T) {
 	tc := NewTestCase(t)
 	defer tc.Clean()
 
-	rep := tc.Run(WorkRequest{
+	tc.RunSuccess(WorkRequest{
 		Argv: []string{"mkdir", "-p", "a/b/c"},
 	})
-	if rep.Exit.ExitStatus() != 0 {
-		t.Fatalf("mkdir should exit cleanly. Rep %v", rep)
-	}
-	rep = tc.Run(WorkRequest{
+	tc.RunSuccess(WorkRequest{
 		Argv: []string{"mv", "a", "q"},
 	})
-	if rep.Exit.ExitStatus() != 0 {
-		t.Fatalf("mv should exit cleanly. Rep %v", rep)
-	}
 
 	if fi, err := os.Lstat(tc.wd + "/q/b/c"); err != nil || !fi.IsDirectory() {
 		t.Errorf("dir should have been moved. Err %v, fi %v", err, fi)
@@ -316,32 +311,18 @@ func TestEndToEndMkdir(t *testing.T) {
 
 	err := ioutil.WriteFile(tc.tmp+"/wd/file.txt", []byte{42}, 0644)
 	check(err)
-	rep := tc.Run(WorkRequest{
+	tc.RunFail(WorkRequest{
 		Argv: []string{"mkdir", "q/r"},
 	})
-	if rep.Exit.ExitStatus() == 0 {
-		t.Fatalf("mkdir should not exit cleanly. Rep %v", rep)
-	}
-	rep = tc.Run(WorkRequest{
+	tc.RunFail(WorkRequest{
 		Argv: []string{"mkdir", "file.txt/foo"},
 	})
-	if rep.Exit.ExitStatus() == 0 {
-		t.Fatalf("mkdir file.txt/foo should not exit cleanly. Rep %v", rep)
-	}
-	rep = tc.Run(WorkRequest{
+	tc.RunSuccess(WorkRequest{
 		Argv: []string{"mkdir", "dir"},
 	})
-
-	if rep.Exit.ExitStatus() != 0 {
-		t.Fatalf("mkdir dir should exit cleanly. Rep %v", rep)
-	}
-	rep = tc.Run(WorkRequest{
+	tc.RunSuccess(WorkRequest{
 		Argv: []string{"mkdir", "-p", "a/b"},
 	})
-
-	if rep.Exit.ExitStatus() != 0 {
-		t.Fatalf("mkdir -p should exit cleanly. Rep %v", rep)
-	}
 	if fi, err := os.Lstat(tc.wd + "/a/b"); err != nil || !fi.IsDirectory() {
 		t.Errorf("a/b should be a directory: Err %v, fi %v", err, fi)
 	}
@@ -356,40 +337,25 @@ func TestEndToEndRm(t *testing.T) {
 	err = os.Mkdir(tc.wd+"/dir", 0755)
 	check(err)
 
-	rep := tc.Run(WorkRequest{
+	 tc.RunFail(WorkRequest{
 		Argv: []string{"rm", "noexist"},
 	})
-	if rep.Exit.ExitStatus() == 0 {
-		t.Fatalf("rm noexist should not exit cleanly. Rep %v", rep)
-	}
 
-	rep = tc.Run(WorkRequest{
+	tc.RunSuccess(WorkRequest{
 		Argv: []string{"rm", "-f", "noexist"},
 	})
-	if rep.Exit.ExitStatus() != 0 {
-		t.Fatalf("rm -f noexist must exit cleanly. Rep %v", rep)
-	}
 
-	rep = tc.Run(WorkRequest{
+	 tc.RunFail(WorkRequest{
 		Argv: []string{"rm", "dir"},
 	})
-	if rep.Exit.ExitStatus() == 0 {
-		t.Fatalf("rm dir should not exit cleanly. Rep %v", rep)
-	}
 
-	rep = tc.Run(WorkRequest{
+	 tc.RunFail(WorkRequest{
 		Argv: []string{"rm", "-f", "dir"},
 	})
-	if rep.Exit.ExitStatus() == 0 {
-		t.Fatalf("rm -f dir should not exit cleanly. Rep %v", rep)
-	}
 
-	rep = tc.Run(WorkRequest{
+	 tc.RunSuccess(WorkRequest{
 		Argv: []string{"rm", "file.txt"},
 	})
-	if rep.Exit.ExitStatus() != 0 {
-		t.Fatalf("rm file.txt should exit cleanly. Rep %v", rep)
-	}
 	if fi, err := os.Lstat(tc.wd + "/file.txt"); err == nil || fi != nil {
 		t.Errorf("should have been removed. Err %v, fi %v", err, fi)
 	}
@@ -404,12 +370,9 @@ func TestEndToEndRmR(t *testing.T) {
 	os.Mkdir(tc.wd+"/dir/subdir", 0755)
 	ioutil.WriteFile(tc.wd+"/dir/subdir/file.txt", []byte{42}, 0644)
  
-	rep := tc.Run(WorkRequest{
+	tc.RunSuccess(WorkRequest{
 		Argv: []string{"rm", "-r", "dir"},
 	})
-	if rep.Exit.ExitStatus() != 0 {
-		t.Fatalf("rm should exit cleanly. Rep %v", rep)
-	}
 	if fi, _ := os.Lstat(tc.wd + "/dir"); fi != nil {
 		t.Fatalf("rm -r should remove everything: %v", fi)
 	}
@@ -433,7 +396,7 @@ func TestEndToEndStdout(t *testing.T) {
 		t.Fatalf("WriteFile %#v", err)
 	}
 
-	rep := tc.Run(WorkRequest{
+	rep := tc.RunSuccess(WorkRequest{
 		Argv: []string{"cat", "file.txt"},
 	})
 
@@ -449,7 +412,7 @@ func TestEndToEndModeChange(t *testing.T) {
 	err := ioutil.WriteFile(tc.tmp+"/wd/file.txt", []byte{42}, 0644)
 	check(err)
 
-	rep := tc.Run(WorkRequest{
+	tc.RunSuccess(WorkRequest{
 		Argv: []string{"chmod", "a+x", "file.txt"},
 	})
 
@@ -458,9 +421,6 @@ func TestEndToEndModeChange(t *testing.T) {
 
 	if !fi.IsRegular() || fi.Mode&0111 == 0 {
 		t.Fatalf("wd/file.txt did not change mode: %o", fi.Mode)
-	}
-	if rep.Exit.ExitStatus() != 0 {
-		t.Fatalf("chmod should exit cleanly. Rep %v", rep)
 	}
 }
 
@@ -473,22 +433,16 @@ func TestEndToEndSymlink(t *testing.T) {
 		t.Fatal("oldlink symlink", err)
 	}
 
-	rep := tc.Run(WorkRequest{
+	tc.RunSuccess(WorkRequest{
 		Argv: []string{"touch", "file.txt"},
 	})
 
 	if fi, err := os.Lstat(tc.wd + "/file.txt"); err != nil || !fi.IsRegular() || fi.Size != 0 {
 		t.Fatalf("wd/file.txt was not created. Err: %v, fi: %v", err, fi)
 	}
-	if rep.Exit.ExitStatus() != 0 {
-		t.Fatalf("touch should exit cleanly. Rep %v", rep)
-	}
-	rep = tc.Run(WorkRequest{
+	tc.RunSuccess(WorkRequest{
 		Argv: []string{"ln", "-sf", "foo", "symlink"},
 	})
-	if rep.Exit.ExitStatus() != 0 {
-		t.Fatalf("ln -s should exit cleanly. Rep %v", rep)
-	}
 
 	if fi, err := os.Lstat(tc.wd + "/symlink"); err != nil || !fi.IsSymlink() {
 		t.Errorf("should have symlink. Err %v, fi %v", err, fi)
@@ -507,7 +461,7 @@ func TestEndToEndShutdown(t *testing.T) {
 	req := WorkRequest{
 		Argv: []string{"touch", "file.txt"},
 	}
-	tc.Run(req)
+	tc.RunSuccess(req)
 
 	addresses := []string{}
 	for addr := range tc.coordinator.workers {
@@ -529,11 +483,7 @@ func TestEndToEndSpecialEntries(t *testing.T) {
 		Argv: []string{"readlink", "proc/self/exe"},
 		Dir:  "/",
 	}
-	rep := tc.Run(req)
-
-	if rep.Exit.ExitStatus() != 0 {
-		t.Fatalf("readlink should exit cleanly. Rep %v", rep)
-	}
+	rep := tc.RunSuccess(req)
 
 	out, _ := filepath.EvalSymlinks(strings.TrimRight(rep.Stdout, "\n"))
 	if out != readlink {
@@ -549,10 +499,7 @@ func TestEndToEndProcDeny(t *testing.T) {
 		Argv: []string{"ls", "proc/misc"},
 		Dir:  "/",
 	}
-	rep := tc.Run(req)
-	if rep.Exit.ExitStatus() == 0 {
-		t.Fatalf("ls should have failed %v", rep)
-	}
+	tc.RunFail(req)
 }
 
 func TestEndToEndEnvironment(t *testing.T) {
@@ -564,7 +511,7 @@ func TestEndToEndEnvironment(t *testing.T) {
 		Dir:  "/",
 	}
 	req.Env = append(req.Env, "MAGIC=777")
-	rep := tc.Run(req)
+	rep := tc.RunSuccess(req)
 	out := strings.TrimRight(rep.Stdout, "\n")
 	if out != "777" {
 		t.Errorf("environment got lost. Got %q", out)
@@ -580,10 +527,7 @@ func TestEndToEndLinkReap(t *testing.T) {
 	req := WorkRequest{
 		Argv: []string{"sh", "-c", "echo hello > file.txt ; ln file.txt foo.txt"},
 	}
-	rep := tc.Run(req)
-	if rep.Exit.ExitStatus() != 0 {
-		t.Fatalf("should exit cleanly. Rep %v", rep)
-	}
+	tc.RunSuccess(req)
 	if fi, err := os.Lstat(tc.wd + "/foo.txt"); err != nil || !fi.IsRegular() || fi.Size != 6 {
 		t.Fatalf("wd/foo.txt was not created. Err: %v, fi: %v", err, fi)
 	}
