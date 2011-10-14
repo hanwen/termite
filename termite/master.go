@@ -25,18 +25,18 @@ type Master struct {
 }
 
 type replayRequest struct {
-	NewFiles map[string]string 
-	Files  []*FileAttr
-	Done   chan int 
+	NewFiles map[string]string
+	Files    []*FileAttr
+	Done     chan int
 }
 
 func NewMaster(cache *ContentCache, coordinator string, workers []string, secret []byte, excluded []string, maxJobs int) *Master {
 	me := &Master{
-		cache:      cache,
-		fileServer: NewFsServer("/", cache, excluded),
-		secret:     secret,
-		retryCount: 3,
-		taskIds:    make(chan int, 100),
+		cache:         cache,
+		fileServer:    NewFsServer("/", cache, excluded),
+		secret:        secret,
+		retryCount:    3,
+		taskIds:       make(chan int, 100),
 		replayChannel: make(chan *replayRequest, 1),
 	}
 	me.mirrors = newMirrorConnections(me, workers, coordinator, maxJobs)
@@ -49,17 +49,17 @@ func NewMaster(cache *ContentCache, coordinator string, workers []string, secret
 	go func() {
 		i := 0
 		for {
-			me.taskIds <-i
+			me.taskIds <- i
 			i++
 		}
 	}()
-	
+
 	// Make sure we update the filesystem and attributes together.
 	go func() {
 		for {
 			r := <-me.replayChannel
 			me.replayFileModifications(r.Files, r.NewFiles)
-			r.Done <- 1 
+			r.Done <- 1
 		}
 	}()
 
@@ -216,7 +216,7 @@ func (me *Master) run(req *WorkRequest, rep *WorkResponse) (err os.Error) {
 		log.Println("Ran in master:", req.Summary())
 		return nil
 	}
-	
+
 	err = me.runOnce(req, rep)
 	for i := 0; i < me.retryCount && err != nil; i++ {
 		log.Println("Retrying; last error:", err)
@@ -296,9 +296,9 @@ func (me *Master) replay(fset FileSet) {
 		if err != nil {
 			log.Fatal("TempFile", err)
 		}
-			
+
 		req.NewFiles[info.Path] = f.Name()
-		
+
 		content := me.cache.ContentsIfLoaded(info.Hash)
 
 		if content == nil {
@@ -314,8 +314,8 @@ func (me *Master) replay(fset FileSet) {
 		if err != nil {
 			log.Fatal("f.Write", err)
 		}
-		
-		err = f.Chmod(info.FileInfo.Mode&07777)
+
+		err = f.Chmod(info.FileInfo.Mode & 07777)
 		if err != nil {
 			log.Fatal("f.Chmod", err)
 		}

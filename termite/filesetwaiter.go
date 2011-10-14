@@ -21,7 +21,6 @@ func newFileSetWaiter(proc func(FileSet) os.Error) *fileSetWaiter {
 	}
 }
 
-
 func (me *fileSetWaiter) newChannel(id int) chan int {
 	me.Lock()
 	defer me.Unlock()
@@ -42,7 +41,7 @@ func (me *fileSetWaiter) signal(id int) {
 	defer me.Unlock()
 	ch := me.channels[id]
 	if ch != nil {
-		ch <- 1 
+		ch <- 1
 		close(ch)
 		me.channels[id] = nil, false
 	}
@@ -51,7 +50,7 @@ func (me *fileSetWaiter) signal(id int) {
 func (me *fileSetWaiter) flush(id int) {
 	me.Lock()
 	defer me.Unlock()
-	ch := me.channels[id] 
+	ch := me.channels[id]
 	close(ch)
 	me.channels[id] = nil, false
 }
@@ -64,7 +63,7 @@ func (me *fileSetWaiter) drop(id int) {
 
 func (me *fileSetWaiter) wait(rep *WorkResponse, waitId int) (err os.Error) {
 	log.Println("Got data for tasks: ", rep.TaskIds)
-	
+
 	if rep.FileSet != nil {
 		err = me.process(*rep.FileSet)
 		for _, id := range rep.TaskIds {

@@ -336,7 +336,7 @@ func TestEndToEndRm(t *testing.T) {
 	err = os.Mkdir(tc.wd+"/dir", 0755)
 	check(err)
 
-	 tc.RunFail(WorkRequest{
+	tc.RunFail(WorkRequest{
 		Argv: []string{"rm", "noexist"},
 	})
 
@@ -344,15 +344,15 @@ func TestEndToEndRm(t *testing.T) {
 		Argv: []string{"rm", "-f", "noexist"},
 	})
 
-	 tc.RunFail(WorkRequest{
+	tc.RunFail(WorkRequest{
 		Argv: []string{"rm", "dir"},
 	})
 
-	 tc.RunFail(WorkRequest{
+	tc.RunFail(WorkRequest{
 		Argv: []string{"rm", "-f", "dir"},
 	})
 
-	 tc.RunSuccess(WorkRequest{
+	tc.RunSuccess(WorkRequest{
 		Argv: []string{"rm", "file.txt"},
 	})
 	if fi, err := os.Lstat(tc.wd + "/file.txt"); err == nil || fi != nil {
@@ -368,7 +368,7 @@ func TestEndToEndRmR(t *testing.T) {
 	ioutil.WriteFile(tc.wd+"/dir/file.txt", []byte{42}, 0644)
 	os.Mkdir(tc.wd+"/dir/subdir", 0755)
 	ioutil.WriteFile(tc.wd+"/dir/subdir/file.txt", []byte{42}, 0644)
- 
+
 	tc.RunSuccess(WorkRequest{
 		Argv: []string{"rm", "-r", "dir"},
 	})

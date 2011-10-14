@@ -103,7 +103,7 @@ type WorkResponse struct {
 	LastTime int64
 
 	*FileSet
-	TaskIds   []int
+	TaskIds []int
 }
 
 type WorkRequest struct {

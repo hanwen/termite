@@ -69,7 +69,7 @@ func (me *FsServer) GetAttr(req *AttrRequest, rep *AttrResponse) os.Error {
 }
 
 func (me *FsServer) uncachedGetAttr(name string) (rep *FileAttr) {
-	rep = &FileAttr{Path:name}
+	rep = &FileAttr{Path: name}
 	p := me.path(name)
 	fi, _ := os.Lstat(p)
 	// We don't want to expose the master's private files to the

@@ -55,7 +55,7 @@ func (me *WorkerTask) Run() os.Error {
 	}
 	if me.mirror.considerReap(fuseFs, me) {
 		me.WorkResponse.FileSet, me.WorkResponse.TaskIds = me.mirror.reapFuse(fuseFs)
-	} 
+	}
 
 	me.mirror.returnFs(fuseFs)
 	me.clock("worker.returnFuse")
@@ -143,11 +143,11 @@ func (me *Mirror) fillReply(ufs *unionfs.MemUnionFs) *FileSet {
 		if f.FileInfo != nil && f.FileInfo.IsRegular() {
 			contentPath := filepath.Join(wrRoot, v.Original)
 			if v.Original != "" && v.Original != contentPath {
-                               fa := me.rpcFs.attr.Get(contentPath)
-                               if fa.Hash == "" {
-                                       log.Panicf("Contents for %q disappeared.", contentPath)
-                               }
-                               f.Hash = fa.Hash
+				fa := me.rpcFs.attr.Get(contentPath)
+				if fa.Hash == "" {
+					log.Panicf("Contents for %q disappeared.", contentPath)
+				}
+				f.Hash = fa.Hash
 			}
 			if v.Backing != "" {
 				f.Hash = reapedHashes[v.Backing]

@@ -34,11 +34,11 @@ func getattr(t *testing.T, n string) *FileAttr {
 func TestAttrCacheNil(t *testing.T) {
 	ac := NewAttributeCache(
 		func(n string) *FileAttr {
-		return nil
-	},
+			return nil
+		},
 		func(n string) *os.FileInfo {
-		return nil
-	})
+			return nil
+		})
 
 	r := ac.Get("")
 	if r == nil || !r.Deletion() {

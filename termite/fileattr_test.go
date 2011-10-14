@@ -9,7 +9,7 @@ import (
 
 func TestFileAttrReadFrom(t *testing.T) {
 	dir, _ := ioutil.TempDir("", "termite")
-	ioutil.WriteFile(dir + "/file.txt", []byte{42}, 0644)
+	ioutil.WriteFile(dir+"/file.txt", []byte{42}, 0644)
 
 	attr := FileAttr{FileInfo: &os.FileInfo{Mode: syscall.S_IFDIR}}
 	attr.ReadFromFs(dir)
@@ -18,6 +18,6 @@ func TestFileAttrReadFrom(t *testing.T) {
 	}
 
 	if attr.NameModeMap["file.txt"].IsRegular() {
-		t.Fatalf("unexpected mode: %v",  attr.NameModeMap["file.txt"])
+		t.Fatalf("unexpected mode: %v", attr.NameModeMap["file.txt"])
 	}
 }

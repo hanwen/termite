@@ -104,7 +104,6 @@ func (me *AttributeCache) localGet(name string, withdir bool) (rep *FileAttr) {
 	return nil
 }
 
-
 func (me *AttributeCache) get(name string, withdir bool) (rep *FileAttr) {
 	rep = me.localGet(name, withdir)
 	if rep != nil {

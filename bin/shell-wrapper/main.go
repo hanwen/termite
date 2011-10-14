@@ -14,8 +14,10 @@ import (
 
 // TODO - this file is a mess. Clean it up.
 const _TIMEOUT = 10e9
-var socketRpc  *rpc.Client
-var topDir     string
+
+var socketRpc *rpc.Client
+var topDir string
+
 func Rpc() *rpc.Client {
 	if socketRpc == nil {
 		socket := termite.FindSocket()
@@ -55,12 +57,13 @@ var bashInternals = []string{
 	"typeset", "ulimit", "umask", "unalias", "unset", "until",
 	"variables", "wait", "while",
 }
-func NewWorkRequest(cmd string, dir string, topdir string) (*termite.WorkRequest) {
+
+func NewWorkRequest(cmd string, dir string, topdir string) *termite.WorkRequest {
 	req := &termite.WorkRequest{
-		Binary:     Shell(),
-		Argv:       []string{Shell(), "-c", cmd},
-		Env:        cleanEnv(os.Environ()),
-		Dir:        dir,
+		Binary: Shell(),
+		Argv:   []string{Shell(), "-c", cmd},
+		Env:    cleanEnv(os.Environ()),
+		Dir:    dir,
 	}
 
 	parsed := termite.ParseCommand(cmd)
@@ -155,23 +158,23 @@ func Shell() string {
 }
 
 func RunLocally(req *termite.WorkRequest, rule *termite.LocalRule) *os.Waitmsg {
-		env := os.Environ()
-		if !rule.Recurse {
-			env = cleanEnv(env)
-		}
+	env := os.Environ()
+	if !rule.Recurse {
+		env = cleanEnv(env)
+	}
 
-		proc, err := os.StartProcess(req.Binary, req.Argv, &os.ProcAttr{
-			Env:   env,
-			Files: []*os.File{os.Stdin, os.Stdout, os.Stderr},
-		})
-		if err != nil {
-			log.Fatalf("os.StartProcess() for %v: %v", req, err)
-		}
-		msg, err := proc.Wait(0)
-		if err != nil {
-			log.Fatalf("proc.Wait() for %v: %v", req, err)
-		}
-		return msg
+	proc, err := os.StartProcess(req.Binary, req.Argv, &os.ProcAttr{
+		Env:   env,
+		Files: []*os.File{os.Stdin, os.Stdout, os.Stderr},
+	})
+	if err != nil {
+		log.Fatalf("os.StartProcess() for %v: %v", req, err)
+	}
+	msg, err := proc.Wait(0)
+	if err != nil {
+		log.Fatalf("proc.Wait() for %v: %v", req, err)
+	}
+	return msg
 }
 
 func main() {
@@ -181,7 +184,7 @@ func main() {
 	inspect := flag.Bool("inspect", false, "inspect files on master.")
 	exec := flag.Bool("exec", false, "run command args without shell.")
 	directory := flag.String("dir", "", "directory from where to run (default: cwd).")
-	
+
 	debug := flag.Bool("dbg", false, "set on debugging in request.")
 	flag.Parse()
 	log.SetPrefix("S")
@@ -217,9 +220,9 @@ func main() {
 	if *exec {
 		req = &termite.WorkRequest{
 			Binary: flag.Args()[0],
-			Argv: flag.Args(),
-			Dir: *directory,
-			Env: os.Environ(),
+			Argv:   flag.Args(),
+			Dir:    *directory,
+			Env:    os.Environ(),
 		}
 	} else {
 		req, rule = PrepareRun(*command, *directory, topDir)

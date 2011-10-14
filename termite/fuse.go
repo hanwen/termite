@@ -31,10 +31,10 @@ type workerFuseFs struct {
 	reaping bool
 
 	// When this reaches zero, we reap the filesystem.
-	tasks         map[*WorkerTask]bool
+	tasks map[*WorkerTask]bool
 
 	// Task ids that have results pending in this FS.
-	taskIds       []int
+	taskIds []int
 }
 
 func (me *workerFuseFs) addTask(task *WorkerTask) {

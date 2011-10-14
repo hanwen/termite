@@ -1,4 +1,5 @@
 package termite
+
 import (
 	"log"
 	"strings"
@@ -7,7 +8,7 @@ import (
 var _ = log.Println
 
 type GetoptResult struct {
-	Long  map[string]string 
+	Long  map[string]string
 	Short map[byte]string
 	Args  []string
 }
@@ -31,14 +32,14 @@ func Getopt(args []string, longTakeArg []string, shortTakeArg []byte, reorder bo
 	for _, v := range longTakeArg {
 		longOpts[v] = 1
 	}
-	
+
 	shOpts := map[byte]int{}
 	for _, v := range shortTakeArg {
 		shOpts[v] = 1
 	}
-	
+
 	r = GetoptResult{
-		Long: map[string]string{},
+		Long:  map[string]string{},
 		Short: map[byte]string{},
 	}
 
@@ -75,7 +76,7 @@ func Getopt(args []string, longTakeArg []string, shortTakeArg []byte, reorder bo
 			for j, oInt := range a[1:] {
 				o := byte(oInt)
 				if _, ok := shOpts[o]; ok {
-					if j == len(a) - 2 {
+					if j == len(a)-2 {
 						nextShortArg = o
 					} else {
 						r.Short[o] = a[j+2:]

@@ -145,7 +145,7 @@ func (me *Mirror) reapFuse(fs *workerFuseFs) (results *FileSet, taskIds []int) {
 	// Must do updateFiles before ReturnFuse, since the
 	// next job should not see out-of-date files.
 	me.updateFiles(results.Files, fs)
-	
+
 	return results, fs.taskIds[:]
 }
 
@@ -217,7 +217,7 @@ func (me *Mirror) newWorkerTask(req *WorkRequest, rep *WorkResponse) (*WorkerTas
 		WorkResponse: rep,
 		stdinConn:    stdin,
 		mirror:       me,
-		taskInfo: fmt.Sprintf("%v, dir %v", req.Argv, req.Dir),
+		taskInfo:     fmt.Sprintf("%v, dir %v", req.Argv, req.Dir),
 	}
 	return task, nil
 }

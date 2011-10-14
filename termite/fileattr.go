@@ -107,13 +107,13 @@ func (me *FileAttr) Merge(r FileAttr) {
 }
 
 func (me FileMode) IsDirectory() bool {
-	return uint32(me) & syscall.S_IFDIR != 0
+	return uint32(me)&syscall.S_IFDIR != 0
 }
 
 func (me FileMode) IsRegular() bool {
-	return uint32(me) & syscall.S_IFREG != 0
+	return uint32(me)&syscall.S_IFREG != 0
 }
 
 func (me FileMode) IsSymlink() bool {
-	return uint32(me) & syscall.S_IFLNK != 0
+	return uint32(me)&syscall.S_IFLNK != 0
 }

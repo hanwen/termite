@@ -1,4 +1,5 @@
 package termite
+
 import (
 	"testing"
 )
@@ -45,7 +46,7 @@ func TestGetopt(t *testing.T) {
 		Args: []string{"q"},
 	}
 	checkGetopt(t, g, w)
-	
+
 	t.Log("Case: no options")
 	g = Getopt([]string{"a", "b"}, nil, nil, false)
 	w = GetoptResult{
@@ -57,11 +58,11 @@ func TestGetopt(t *testing.T) {
 	a := []string{"-o", "b"}
 	g = Getopt(a, nil, nil, false)
 	w = GetoptResult{
-		Args: []string{"b"},
+		Args:  []string{"b"},
 		Short: map[byte]string{'o': ""},
 	}
 	checkGetopt(t, g, w)
-	
+
 	t.Log("Case: short option with arg")
 	g = Getopt(a, nil, []byte{'o'}, false)
 	w = GetoptResult{
@@ -77,7 +78,7 @@ func TestGetopt(t *testing.T) {
 		Long: map[string]string{"long": ""},
 	}
 	checkGetopt(t, g, w)
-		
+
 	t.Log("Case: long option, with =")
 	a = []string{"--long=val", "b"}
 	g = Getopt(a, []string{"long"}, nil, false)
@@ -95,7 +96,7 @@ func TestGetopt(t *testing.T) {
 		Long: map[string]string{"long": ""},
 	}
 	checkGetopt(t, g, w)
-	
+
 	t.Log("Case: long option, without =")
 	a = []string{"--long", "b"}
 	g = Getopt(a, []string{"long"}, nil, false)

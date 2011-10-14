@@ -27,7 +27,7 @@ func (me *Master) MaybeRunInMaster(req *WorkRequest, rep *WorkResponse) bool {
 
 func recurseNames(master *Master, name string) (names []string) {
 	a := master.fileServer.attr.GetDir(name)
-	
+
 	for n, m := range a.NameModeMap {
 		if m.IsDirectory() {
 			names = append(names, recurseNames(master, filepath.Join(name, n))...)
@@ -36,12 +36,12 @@ func recurseNames(master *Master, name string) (names []string) {
 		}
 	}
 	names = append(names, name)
-	return 
+	return
 }
 
 func rmMaybeMasterRun(master *Master, req *WorkRequest, rep *WorkResponse) bool {
 	g := Getopt(req.Argv[1:], nil, nil, true)
-	
+
 	force := g.HasLong("force") || g.HasShort('f')
 	g.Long["force"] = "", false
 	g.Short['f'] = "", false
@@ -50,7 +50,7 @@ func rmMaybeMasterRun(master *Master, req *WorkRequest, rep *WorkResponse) bool 
 	g.Long["recursive"] = "", false
 	g.Short['R'] = "", false
 	g.Short['r'] = "", false
-	
+
 	if g.HasOptions() {
 		return false
 	}
@@ -103,9 +103,9 @@ func rmMaybeMasterRun(master *Master, req *WorkRequest, rep *WorkResponse) bool 
 
 func mkdirMaybeMasterRun(master *Master, req *WorkRequest, rep *WorkResponse) bool {
 	g := Getopt(req.Argv[1:], nil, nil, true)
-	
+
 	hasParent := g.HasLong("parent") || g.HasShort('p')
-	
+
 	g.Long["parent"] = "", false
 	g.Short['p'] = "", false
 
@@ -133,17 +133,17 @@ func mkdirParentMasterRun(master *Master, arg string, rep *WorkResponse) {
 	msgs := []string{}
 	for i := range components {
 		p := strings.Join(components[:i+1], "/")
-		
+
 		dirAttr := master.fileServer.attr.Get(p)
 		if dirAttr.Deletion() {
 			fs.Files = append(fs.Files, mkdirEntry(p))
 		} else if dirAttr.IsDirectory() {
 			// ok.
 		} else {
-			msgs  = append(msgs, fmt.Sprintf("Not a directory: /%s", p))
+			msgs = append(msgs, fmt.Sprintf("Not a directory: /%s", p))
 		}
 	}
-	
+
 	master.replay(fs)
 	master.mirrors.queueFiles(nil, fs)
 
@@ -151,7 +151,7 @@ func mkdirParentMasterRun(master *Master, arg string, rep *WorkResponse) {
 		rep.Stderr = strings.Join(msgs, "\n")
 		rep.Exit.WaitStatus = 1 << 8
 	}
-	
+
 }
 
 func mkdirEntry(rootless string) *FileAttr {
@@ -159,16 +159,16 @@ func mkdirEntry(rootless string) *FileAttr {
 	// TODO - could do without these.
 	uid := os.Getuid()
 	gid := os.Getgid()
-	
+
 	return &FileAttr{
 		Path: rootless,
 		FileInfo: &os.FileInfo{
-			Mode: syscall.S_IFDIR | 0755,
+			Mode:     syscall.S_IFDIR | 0755,
 			Atime_ns: now,
 			Ctime_ns: now,
 			Mtime_ns: now,
-			Uid: uid,
-			Gid: gid,
+			Uid:      uid,
+			Gid:      gid,
 		},
 	}
 }
@@ -191,7 +191,7 @@ func mkdirNormalMasterRun(master *Master, arg string, rep *WorkResponse) {
 		}
 		return
 	}
-	
+
 	chAttr := mkdirEntry(rootless)
 
 	fs := FileSet{}
