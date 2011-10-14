@@ -80,8 +80,8 @@ func rmMaybeMasterRun(master *Master, req *WorkRequest, rep *WorkResponse) bool 
 			attr := master.fileServer.attr.GetDir(p)
 			switch {
 			case attr.Deletion():
-				msgs = append(msgs, fmt.Sprintf("rm: no such file or directory: %s", p))
 				if !force {
+					msgs = append(msgs, fmt.Sprintf("rm: no such file or directory: %s", p))
 					status = 1
 				}
 			case attr.IsDirectory() && !recursive:
