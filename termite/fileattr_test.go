@@ -21,3 +21,10 @@ func TestFileAttrReadFrom(t *testing.T) {
 		t.Fatalf("unexpected mode: %v", attr.NameModeMap["file.txt"])
 	}
 }
+
+func TestFileMode(t *testing.T) {
+	sock := FileMode(syscall.S_IFSOCK)
+	if sock.IsDirectory() {
+		t.Error("Socket should not be directory")
+	}
+}

@@ -106,14 +106,24 @@ func (me *FileAttr) Merge(r FileAttr) {
 	}
 }
 
-func (me FileMode) IsDirectory() bool {
-	return uint32(me)&syscall.S_IFDIR != 0
-}
+// cut & paste from os/types.go
 
-func (me FileMode) IsRegular() bool {
-	return uint32(me)&syscall.S_IFREG != 0
-}
+func (me FileMode) IsFifo() bool { return (uint32(me) & syscall.S_IFMT) == syscall.S_IFIFO }
 
-func (me FileMode) IsSymlink() bool {
-	return uint32(me)&syscall.S_IFLNK != 0
-}
+// IsChar reports whether the FileInfo describes a character special file.
+func (me FileMode) IsChar() bool { return (uint32(me) & syscall.S_IFMT) == syscall.S_IFCHR }
+
+// IsDirectory reports whether the FileInfo describes a directory.
+func (me FileMode) IsDirectory() bool { return (uint32(me) & syscall.S_IFMT) == syscall.S_IFDIR }
+
+// IsBlock reports whether the FileInfo describes a block special file.
+func (me FileMode) IsBlock() bool { return (uint32(me) & syscall.S_IFMT) == syscall.S_IFBLK }
+
+// IsRegular reports whether the FileInfo describes a regular file.
+func (me FileMode) IsRegular() bool { return (uint32(me) & syscall.S_IFMT) == syscall.S_IFREG }
+
+// IsSymlink reports whether the FileInfo describes a symbolic link.
+func (me FileMode) IsSymlink() bool { return (uint32(me) & syscall.S_IFMT) == syscall.S_IFLNK }
+
+// IsSocket reports whether the FileInfo describes a socket.
+func (me FileMode) IsSocket() bool { return (uint32(me) & syscall.S_IFMT) == syscall.S_IFSOCK }
