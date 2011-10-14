@@ -19,8 +19,17 @@ type WorkerTask struct {
 	*WorkResponse
 	stdinConn net.Conn
 	mirror    *Mirror
-
+	cmd       *exec.Cmd 
 	taskInfo string
+}
+
+func (me *WorkerTask) Kill() {
+	// TODO - racy.
+	if me.cmd.Process != nil {
+		pid := me.cmd.Process.Pid
+		errNo := syscall.Kill(pid, syscall.SIGQUIT)
+		log.Printf("Killed pid %d, result %d", pid, errNo)
+	}
 }
 
 func (me *WorkerTask) String() string {
@@ -67,8 +76,10 @@ func (me *WorkerTask) runInFuse(fuseFs *workerFuseFs) os.Error {
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
 
-	cmd := exec.Command(me.WorkRequest.Binary,
+	me.cmd = exec.Command(me.WorkRequest.Binary,
 		me.WorkRequest.Argv[1:]...)
+	cmd := me.cmd
+	
 	cmd.Args[0] = me.WorkRequest.Argv[0]
 	if os.Geteuid() == 0 {
 		attr := &syscall.SysProcAttr{}

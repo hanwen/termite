@@ -66,6 +66,9 @@ func (me *Mirror) Shutdown() {
 	me.fileServer.Close()
 	me.fileServerConn.Close()
 	for fs := range me.activeFses {
+		for t := range fs.tasks {
+			t.Kill()
+		}
 		if len(fs.tasks) == 0 {
 			fs.Stop()
 			me.activeFses[fs] = false, false

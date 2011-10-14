@@ -150,7 +150,7 @@ func (me *testCase) Clean() {
 }
 
 func (me *testCase) RunFail(req WorkRequest) (rep WorkResponse) {
-	rep = me.Run(req)
+	rep = me.Run(req, true)
 	if rep.Exit.ExitStatus() == 0 {
 		me.tester.Fatalf("expect exit status != 0 for %v", req)
 	}
@@ -158,14 +158,14 @@ func (me *testCase) RunFail(req WorkRequest) (rep WorkResponse) {
 }
 
 func (me *testCase) RunSuccess(req WorkRequest) (rep WorkResponse) {
-	rep = me.Run(req)
+	rep = me.Run(req, true)
 	if rep.Exit.ExitStatus() != 0 {
 		me.tester.Fatalf("Got exit status %d for %v", rep.Exit.ExitStatus(), req)
 	}
 	return rep
 }
 
-func (me *testCase) Run(req WorkRequest) (rep WorkResponse) {
+func (me *testCase) Run(req WorkRequest, mustExit bool) (rep WorkResponse) {
 	rpcConn := OpenSocketConnection(me.socket, RPC_CHANNEL, 1e7)
 	client := rpc.NewClient(rpcConn)
 	if req.Env == nil {
@@ -178,7 +178,7 @@ func (me *testCase) Run(req WorkRequest) (rep WorkResponse) {
 		req.Binary = me.FindBin(req.Argv[0])
 	}
 	err := client.Call("LocalMaster.Run", &req, &rep)
-	if err != nil {
+	if mustExit && err != nil {
 		me.tester.Fatal("LocalMaster.Run: ", err)
 	}
 	client.Close()
@@ -531,3 +531,26 @@ func TestEndToEndLinkReap(t *testing.T) {
 		t.Fatalf("wd/foo.txt was not created. Err: %v, fi: %v", err, fi)
 	}
 }
+
+
+func TestEndToEndKillChild(t *testing.T) {
+	tc := NewTestCase(t)
+	defer tc.Clean()
+
+	req := WorkRequest{
+		Argv: []string{"sh", "-c", "sleep 1s ; touch file.txt"},
+	}
+	complete := make(chan int)
+	go func() {
+		tc.Run(req, false)
+		complete  <- 1
+	}()
+
+	time.Sleep(0.5e9)
+	// force shutdown.
+	tc.master.mirrors.dropConnections()
+	time.Sleep(0.5e9)
+	<-complete
+}
+
+
