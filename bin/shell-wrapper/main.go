@@ -82,6 +82,9 @@ func NewWorkRequest(cmd string, dir string, topdir string) *termite.WorkRequest 
 			log.Fatal("LookPath", err)
 		}
 		req.Argv = parsed
+		if len(req.Binary) > 0 && req.Binary[0] != '/' {
+			req.Binary = filepath.Join(req.Dir, req.Binary)
+		}
 	}
 
 	return req

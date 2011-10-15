@@ -185,6 +185,7 @@ func (me *testCase) Run(req WorkRequest, mustExit bool) (rep WorkResponse) {
 	return rep
 }
 
+
 // Simple end-to-end test.  It skips the chroot, but should give a
 // basic assurance that things work as expected.
 func TestEndToEndBasic(t *testing.T) {
@@ -232,6 +233,32 @@ func TestEndToEndBasic(t *testing.T) {
 		}
 	}
 }
+
+func TestEndToEndFullPath(t *testing.T) {
+	tc := NewTestCase(t)
+	defer tc.Clean()
+
+	rpcConn := OpenSocketConnection(tc.socket, RPC_CHANNEL, 1e7)
+	client := rpc.NewClient(rpcConn)
+	req := WorkRequest{
+		Binary: "true",
+		Argv: []string{"true"},
+		Env: testEnv(),
+		Dir: tc.wd,
+	}
+	rep := &WorkResponse{}
+	err := client.Call("LocalMaster.Run", &req, &rep)
+	msg := "nil"
+	if err != nil {
+		msg = err.String()
+	}
+	t.Log("Call error:", msg)
+	if !strings.Contains(msg, "absolute") {
+		t.Fatalf("master should demand absolute path: %v", msg)
+	}
+	client.Close()
+}
+
 
 func TestEndToEndExec(t *testing.T) {
 	tc := NewTestCase(t)

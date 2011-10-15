@@ -1,6 +1,7 @@
 package termite
 
 import (
+	"fmt"
 	"log"
 	"net"
 	"os"
@@ -29,6 +30,9 @@ func (me *LocalMaster) Run(req *WorkRequest, rep *WorkResponse) os.Error {
 	if req.RanLocally {
 		log.Println("Ran command locally:", req.Argv)
 		return nil
+	}
+	if len(req.Binary) == 0 || req.Binary[0] != '/' {
+		return fmt.Errorf("Path to binary is not absolute: %q", req.Binary)
 	}
 
 	return me.master.run(req, rep)
