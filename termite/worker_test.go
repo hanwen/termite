@@ -260,6 +260,27 @@ func TestEndToEndFullPath(t *testing.T) {
 }
 
 
+func TestEndToEndFormatError(t *testing.T) {
+	tc := NewTestCase(t)
+	defer tc.Clean()
+
+	ioutil.WriteFile(tc.wd + "/ls.sh", []byte("ls"), 0755)
+
+	rpcConn := OpenSocketConnection(tc.socket, RPC_CHANNEL, 1e7)
+	client := rpc.NewClient(rpcConn)
+	req := WorkRequest{
+		Binary: tc.wd + "/ls.sh",
+		Argv: []string{"ls.sh"},
+		Env: testEnv(),
+		Dir: tc.wd,
+	}
+	rep := &WorkResponse{}
+	err := client.Call("LocalMaster.Run", &req, &rep)
+	t.Log(err)
+	client.Close()
+}
+
+
 func TestEndToEndExec(t *testing.T) {
 	tc := NewTestCase(t)
 	defer tc.Clean()

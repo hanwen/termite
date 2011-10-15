@@ -59,16 +59,11 @@ func (me *WorkerTask) Run() os.Error {
 
 	me.resetClock()
 	err = me.runInFuse(fuseFs)
-	if err != nil {
-		return err
-	}
 	if me.mirror.considerReap(fuseFs, me) {
 		me.WorkResponse.FileSet, me.WorkResponse.TaskIds = me.mirror.reapFuse(fuseFs)
 	}
 
-	me.mirror.returnFs(fuseFs)
-	me.clock("worker.returnFuse")
-	return nil
+	return err
 }
 
 func (me *WorkerTask) runInFuse(fuseFs *workerFuseFs) os.Error {
@@ -113,7 +108,6 @@ func (me *WorkerTask) runInFuse(fuseFs *workerFuseFs) os.Error {
 	}
 	me.taskInfo = fmt.Sprintf("%v, dir %v, fuse FS %d",
 		printCmd, cmd.Dir, fuseFs.id)
-	log.Println("started", me.taskInfo)
 	err := cmd.Wait()
 
 	waitMsg, ok := err.(*os.Waitmsg)
