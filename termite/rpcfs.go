@@ -203,12 +203,6 @@ func (me *RpcFs) Readlink(name string, context *fuse.Context) (string, fuse.Stat
 }
 
 func (me *RpcFs) GetAttr(name string, context *fuse.Context) (*os.FileInfo, fuse.Status) {
-	if name == "" {
-		return &os.FileInfo{
-			Mode: fuse.S_IFDIR | 0755,
-		}, fuse.OK
-	}
-
 	r := me.attr.Get(name)
 	if r == nil {
 		return nil, fuse.ENOENT
