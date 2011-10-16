@@ -65,7 +65,11 @@ func (me *FileAttr) ReadFromFs(p string) {
 		if e == nil {
 			me.NameModeMap = make(map[string]FileMode, len(d))
 			for _, v := range d {
-				me.NameModeMap[v.Name] = FileMode(v.Mode &^ 07777)
+				m := FileMode(v.Mode &^ 07777)
+				if m != 0 {
+					// m == 0 may happen for fuse mounts that have died.
+					me.NameModeMap[v.Name] = m
+				}
 			}
 		} else {
 			me.FileInfo = nil
