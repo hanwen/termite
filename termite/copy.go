@@ -19,7 +19,7 @@ type splicePair struct {
 var splicePairs chan *splicePair
 
 var pipeMaxSize *int
-
+const defaultPipeSize = 16*4096
 func init() {
 	splicePairs = make(chan *splicePair, 100)
 }
@@ -30,7 +30,9 @@ func getPipeMaxSize() int {
 	}
 	content, err := ioutil.ReadFile("/proc/sys/fs/pipe-max-size")
 	if err != nil {
-		return 16 * 4096
+		m := defaultPipeSize
+		pipeMaxSize = &m
+		return m
 	}
 	i := 0
 	pipeMaxSize = &i
@@ -90,12 +92,8 @@ func newSplicePair() (me *splicePair, err os.Error) {
 	if err != nil {
 		return nil, err
 	}
+	
 	errNo := 0
-	me.size, errNo = fcntl(me.r.Fd(), F_GETPIPE_SZ, 0)
-	if errNo != 0 {
-		me.Close()
-		return nil, os.NewSyscallError("fcntl getsize", errNo)
-	}
 	_, errNo = fcntl(me.r.Fd(), syscall.F_SETFL, os.O_NONBLOCK)
 	if errNo != 0 {
 		me.Close()
@@ -105,6 +103,19 @@ func newSplicePair() (me *splicePair, err os.Error) {
 	if errNo != 0 {
 		me.Close()
 		return nil, os.NewSyscallError("fcntl setfl w", errNo)
+	}
+	
+	me.size, errNo = fcntl(me.r.Fd(), F_GETPIPE_SZ, 0)
+	if errNo == syscall.EINVAL {
+		// From manpage on ubuntu Lucid:
+		//
+		// Since Linux 2.6.11, the pipe capacity is 65536 bytes.
+		me.size = defaultPipeSize
+		return me, nil
+	}
+	if errNo != 0 {
+		me.Close()
+		return nil, os.NewSyscallError("fcntl getsize", errNo)
 	}
 	return me, nil
 }
