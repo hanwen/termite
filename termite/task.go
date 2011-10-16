@@ -59,6 +59,7 @@ func (me *WorkerTask) Run() os.Error {
 
 	me.resetClock()
 	err = me.runInFuse(fuseFs)
+	defer me.mirror.returnFs(fuseFs)
 	if me.mirror.considerReap(fuseFs, me) {
 		me.WorkResponse.FileSet, me.WorkResponse.TaskIds = me.mirror.reapFuse(fuseFs)
 	}
