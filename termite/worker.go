@@ -131,11 +131,10 @@ func (me *WorkerDaemon) PeriodicReport(coordinator string, port int) {
 		log.Println("No coordinator - not doing period reports.")
 		return
 	}
-	me.report(coordinator, port)
-	for {
+	for !me.shuttingDown {
+		me.report(coordinator, port)
 		c := time.After(int64(me.options.ReportInterval * 1e9))
 		<-c
-		me.report(coordinator, port)
 	}
 }
 
