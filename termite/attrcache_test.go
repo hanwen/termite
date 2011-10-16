@@ -87,11 +87,20 @@ func TestAttrCache(t *testing.T) {
 		t.Fatalf("Should have ignored unknown directory")
 	}
 
+	fi, _ := os.Lstat(dir + "/file")
+
 	// Make sure timestamps change.
-	time.Sleep(150e6)
+	for {
+		newFi, _ := os.Lstat(dir + "/file")
+		if newFi.Ctime_ns != fi.Ctime_ns {
+			break
+		}
+		time.Sleep(15e6)
+		err = os.Chmod(dir+"/file", 0666)
+		check(err)
+	}
+	
 	err = ioutil.WriteFile(dir+"/other", []byte{43}, 0666)
-	check(err)
-	err = os.Chmod(dir+"/file", 0666)
 	check(err)
 
 	ac.Refresh("")
