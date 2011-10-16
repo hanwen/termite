@@ -79,7 +79,7 @@ func NewWorkRequest(cmd string, dir string, topdir string) *termite.WorkRequest 
 		var err os.Error
 		req.Binary, err = exec.LookPath(parsed[0])
 		if err != nil {
-			log.Fatal("LookPath", err)
+			log.Fatalf("LookPath fail for %v: %v", parsed, err)
 		}
 		req.Argv = parsed
 		if len(req.Binary) > 0 && req.Binary[0] != '/' {
