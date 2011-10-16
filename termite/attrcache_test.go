@@ -19,7 +19,7 @@ func testStat(t *testing.T, n string) *os.FileInfo {
 	return f
 }
 
-func getattr(t *testing.T, n string) *FileAttr {
+func testGetattr(t *testing.T, n string) *FileAttr {
 	t.Logf("getattr %q", n)
 	fi, _ := os.Lstat(n)
 	a := FileAttr{
@@ -53,7 +53,7 @@ func TestAttrCache(t *testing.T) {
 
 	ac := NewAttributeCache(
 		func(n string) *FileAttr {
-			return getattr(t, filepath.Join(dir, n))
+			return testGetattr(t, filepath.Join(dir, n))
 		},
 		func(n string) *os.FileInfo {
 			return testStat(t, filepath.Join(dir, n))

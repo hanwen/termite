@@ -60,7 +60,7 @@ func rmMaybeMasterRun(master *Master, req *WorkRequest, rep *WorkResponse) bool 
 		if a[0] != '/' {
 			a = filepath.Join(req.Dir, a)
 		}
-		a = strings.TrimLeft(a, "/")
+		a = strings.TrimLeft(filepath.Clean(a), "/")
 		todo = append(todo, a)
 	}
 
@@ -116,6 +116,7 @@ func mkdirMaybeMasterRun(master *Master, req *WorkRequest, rep *WorkResponse) bo
 		if a[0] != '/' {
 			a = filepath.Join(req.Dir, a)
 		}
+		a = filepath.Clean(a)
 		if hasParent {
 			mkdirParentMasterRun(master, a, rep)
 		} else {
@@ -128,7 +129,6 @@ func mkdirMaybeMasterRun(master *Master, req *WorkRequest, rep *WorkResponse) bo
 func mkdirParentMasterRun(master *Master, arg string, rep *WorkResponse) {
 	rootless := strings.TrimLeft(arg, "/")
 	components := strings.Split(rootless, "/")
-
 	fs := FileSet{}
 	msgs := []string{}
 	for i := range components {
@@ -146,12 +146,10 @@ func mkdirParentMasterRun(master *Master, arg string, rep *WorkResponse) {
 
 	master.replay(fs)
 	master.mirrors.queueFiles(nil, fs)
-
 	if len(msgs) > 0 {
 		rep.Stderr = strings.Join(msgs, "\n")
 		rep.Exit.WaitStatus = 1 << 8
 	}
-
 }
 
 func mkdirEntry(rootless string) *FileAttr {

@@ -135,8 +135,8 @@ func (me *testCase) Clean() {
 		}
 	}
 
-	me.coordinator.Shutdown()
 	// TODO - should have explicit worker shutdown routine.
+	me.coordinator.Shutdown()
 	time.Sleep(0.1e9)
 	os.RemoveAll(me.tmp)
 
@@ -375,6 +375,18 @@ func TestEndToEndMkdir(t *testing.T) {
 	if fi, err := os.Lstat(tc.wd + "/a/b"); err != nil || !fi.IsDirectory() {
 		t.Errorf("a/b should be a directory: Err %v, fi %v", err, fi)
 	}
+}
+
+func TestEndToEndMkdirCleanPath(t *testing.T) {
+	tc := NewTestCase(t)
+	defer tc.Clean()
+
+	tc.RunSuccess(WorkRequest{
+		Argv: []string{"mkdir", "-p", tc.wd + "/a//b//c"},
+	})
+	tc.RunSuccess(WorkRequest{
+		Argv: []string{"touch", "a//b//c/file.txt"},
+	})
 }
 
 func TestEndToEndRm(t *testing.T) {

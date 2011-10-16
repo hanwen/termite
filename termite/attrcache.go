@@ -3,6 +3,7 @@ package termite
 import (
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 )
@@ -33,14 +34,23 @@ func NewAttributeCache(getter func(n string) *FileAttr,
 
 var paranoia = false
 
-func (me *AttributeCache) verify() {
+func (me *AttributeCache) Verify() {
 	if !paranoia {
 		return
 	}
 	me.mutex.RLock()
 	defer me.mutex.RUnlock()
+	me.verify()
+}
 
+func (me *AttributeCache) verify() {
+	if !paranoia {
+		return
+	}
 	for k, v := range me.attributes {
+		if k != "" && filepath.Clean(k) != k {
+			log.Panicf("Unclean path %q", k)
+		}
 		if v.Path != k {
 			log.Panicf("attributes mismatch %q %#v", k, v)
 		}
@@ -53,7 +63,14 @@ func (me *AttributeCache) verify() {
 		if v.IsDirectory() && v.NameModeMap == nil {
 			log.Panicf("dir has no NameModeMap %q", k)
 		}
-
+		for childName, mode := range v.NameModeMap {
+			if strings.Contains(childName, "\000") || strings.Contains(childName, "/") || len(childName) == 0 {
+				log.Panicf("%q has illegal child name %q: %o", k, childName, mode)  
+			}
+			if mode == 0 {
+				log.Panicf("child has 0 mode: %q.%q", k, childName)
+			}
+		}
 		dir, base := SplitPath(k)
 		if base != k {
 			parent := me.attributes[dir]
@@ -118,7 +135,7 @@ func (me *AttributeCache) get(name string, withdir bool) (rep *FileAttr) {
 		}
 	}
 
-	defer me.verify()
+	defer me.Verify()
 	me.mutex.Lock()
 	defer me.mutex.Unlock()
 	for me.busy[name] && me.attributes[name] == nil {
@@ -149,13 +166,13 @@ func (me *AttributeCache) get(name string, withdir bool) (rep *FileAttr) {
 }
 
 func (me *AttributeCache) Update(files []*FileAttr) {
-	defer me.verify()
 	me.mutex.Lock()
 	defer me.mutex.Unlock()
 	me.update(files)
 }
 
 func (me *AttributeCache) update(files []*FileAttr) {
+	defer me.verify()
 	attributes := me.attributes
 	for _, inF := range files {
 		r := *inF
@@ -164,19 +181,21 @@ func (me *AttributeCache) update(files []*FileAttr) {
 		}
 
 		dir, basename := SplitPath(r.Path)
-		dirAttr := attributes[dir]
-		if dirAttr == nil {
-			continue
+		if basename != "" {
+			dirAttr := attributes[dir]
+			if dirAttr == nil {
+				continue
+			}
+			if dirAttr.NameModeMap == nil {
+				log.Panicf("parent dir has no NameModeMap: %q", dir)
+			}
+			if r.Deletion() {
+				dirAttr.NameModeMap[basename] = 0, false
+			} else {
+				dirAttr.NameModeMap[basename] = FileMode(r.Mode &^ 07777)
+			}
 		}
-		if dirAttr.NameModeMap == nil {
-			log.Panicf("parent dir has no NameModeMap: %q", dir)
-		}
-		if r.Deletion() {
-			dirAttr.NameModeMap[basename] = 0, false
-		} else {
-			dirAttr.NameModeMap[basename] = FileMode(r.Mode &^ 07777)
-		}
-
+		
 		if r.Deletion() {
 			attributes[r.Path] = nil, false
 			continue
@@ -192,7 +211,6 @@ func (me *AttributeCache) update(files []*FileAttr) {
 }
 
 func (me *AttributeCache) Refresh(prefix string) FileSet {
-	defer me.verify()
 	me.mutex.Lock()
 	defer me.mutex.Unlock()
 
