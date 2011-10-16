@@ -129,7 +129,10 @@ func (me *testCase) Clean() {
 	for _, w := range me.workers {
 		req := ShutdownRequest{}
 		rep := ShutdownResponse{}
-		w.Shutdown(&req, &rep)
+		err := w.Shutdown(&req, &rep)
+		if err != nil {
+			me.tester.Fatal("Worker shutdown error:", err) 
+		}
 	}
 
 	me.coordinator.Shutdown()
@@ -223,7 +226,6 @@ func TestEndToEndBasic(t *testing.T) {
 
 	// Test keepalive.
 	time.Sleep(2e9)
-
 	statusReq := &WorkerStatusRequest{}
 	statusRep := &WorkerStatusResponse{}
 	for _, w := range tc.workers {
