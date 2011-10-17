@@ -112,6 +112,21 @@ func (me *FileAttr) Merge(r FileAttr) {
 
 // cut & paste from os/types.go
 
+func (me FileMode) String() string {
+	switch uint32(me) & syscall.S_IFMT {
+	case syscall.S_IFIFO: return "p"
+	case syscall.S_IFCHR: return "c"
+	case syscall.S_IFDIR: return "d"
+	case syscall.S_IFBLK: return "b"
+	case syscall.S_IFREG: return "f"
+	case syscall.S_IFLNK: return "l"
+	case syscall.S_IFSOCK: return "s"
+	default:
+		log.Panic("Unknown mode: %o", me)
+	}
+	return "0"
+}
+	
 func (me FileMode) IsFifo() bool { return (uint32(me) & syscall.S_IFMT) == syscall.S_IFIFO }
 
 // IsChar reports whether the FileInfo describes a character special file.
