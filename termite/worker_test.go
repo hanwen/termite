@@ -375,6 +375,15 @@ func TestEndToEndMkdir(t *testing.T) {
 	if fi, err := os.Lstat(tc.wd + "/a/b"); err != nil || !fi.IsDirectory() {
 		t.Errorf("a/b should be a directory: Err %v, fi %v", err, fi)
 	}
+	tc.RunSuccess(WorkRequest{
+		Argv: []string{"mkdir", "-p", "x/../y"},
+	})
+
+	fx, _ := os.Lstat(tc.wd + "/x")
+	fy, _ := os.Lstat(tc.wd + "/y")
+	if fx == nil || fy == nil {
+		t.Errorf("mkdir x/../y should create both x and y: x=%v y=%v", fx, fy)
+	}
 }
 
 func TestEndToEndMkdirCleanPath(t *testing.T) {

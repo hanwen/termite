@@ -113,6 +113,12 @@ func mkdirMaybeMasterRun(master *Master, req *WorkRequest, rep *WorkResponse) bo
 		return false
 	}
 	for _, a := range g.Args {
+		// mkdir -p a/../b should create both a and b.
+		if strings.Contains(a, "..") {
+			return false
+		}
+	}	
+	for _, a := range g.Args {
 		if a[0] != '/' {
 			a = filepath.Join(req.Dir, a)
 		}
