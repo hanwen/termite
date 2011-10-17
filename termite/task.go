@@ -74,13 +74,11 @@ func (me *WorkerTask) runInFuse(fuseFs *workerFuseFs) os.Error {
 
 	// See /bin/true for the background of
 	// /bin/true. http://code.google.com/p/go/issues/detail?id=2373
-	me.cmd = exec.Command("/bin/true",
-		me.WorkRequest.Argv[1:]...)
-
+	me.cmd = &exec.Cmd{
+		Path: me.WorkRequest.Binary,
+		Args: me.WorkRequest.Argv,
+	}
 	cmd := me.cmd
-	cmd.Path = me.WorkRequest.Binary
-	cmd.Args[0] = me.WorkRequest.Argv[0]
-	
 	if os.Geteuid() == 0 {
 		attr := &syscall.SysProcAttr{}
 		attr.Credential = &syscall.Credential{
