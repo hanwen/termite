@@ -11,6 +11,7 @@ func (me *Master) statusHandler(w http.ResponseWriter, req *http.Request) {
 
 	fmt.Fprintf(w, "<html><head><title>Master status</title></head>")
 	fmt.Fprintf(w, "<body><h1>Master for %s</h1>", me.writableRoot)
+	fmt.Fprintf(w, "<p>%s", Version())
 	defer fmt.Fprintf(w, "</body></html>")
 
 	me.mirrors.stats.writeHttp(w)
