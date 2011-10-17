@@ -211,6 +211,7 @@ func (me *Master) runOnce(req *WorkRequest, rep *WorkResponse) os.Error {
 
 func (me *Master) run(req *WorkRequest, rep *WorkResponse) (err os.Error) {
 	me.mirrors.stats.MarkReceive()
+	defer me.mirrors.stats.MarkReturn(rep)
 	req.TaskId = <-me.taskIds
 	if me.MaybeRunInMaster(req, rep) {
 		log.Println("Ran in master:", req.Summary())
@@ -223,7 +224,6 @@ func (me *Master) run(req *WorkRequest, rep *WorkResponse) (err os.Error) {
 		err = me.runOnce(req, rep)
 	}
 
-	me.mirrors.stats.MarkReturn(rep)
 	return err
 }
 
