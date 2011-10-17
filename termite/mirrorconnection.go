@@ -284,6 +284,22 @@ func (me *mirrorConnections) jobDone(mc *mirrorConnection) {
 	mc.availableJobs++
 }
 
+func (me *mirrorConnections) idleWorkerAddress() string {
+	cands := []string{}
+	for addr := range me.workers {
+		_, ok := me.mirrors[addr]
+		if ok {
+			continue
+		}
+		cands = append(cands, addr)
+	}
+
+	if len(cands) == 0 {
+		return ""
+	}
+	return cands[rand.Intn(len(cands))]
+}
+
 // Tries to connect to one extra worker.  Must already hold mutex.
 func (me *mirrorConnections) tryConnect() {
 	// We want to max out capacity of each worker, as that helps
@@ -293,25 +309,27 @@ func (me *mirrorConnections) tryConnect() {
 		return
 	}
 
-	blacklist := []string{}
-	for addr := range me.workers {
-		_, ok := me.mirrors[addr]
-		if ok {
-			continue
+	for {
+		addr := me.idleWorkerAddress()
+		if addr == "" {
+			break
 		}
+		me.Mutex.Unlock()
 		log.Printf("Creating mirror on %v, requesting %d jobs", addr, wanted)
 		mc, err := me.master.createMirror(addr, wanted)
+		me.Mutex.Lock()
 		if err != nil {
+			me.workers[addr] = false, false
 			log.Println("nonfatal error creating mirror:", err)
-			blacklist = append(blacklist, addr)
-			continue
+		} else {
+			// This could happen in the unlikely event of
+			// the workers having more capacity than our
+			// parallelism.
+			if _, ok := me.mirrors[addr]; ok {
+				log.Panicf("already have this mirror: %v", addr)
+			}
+			mc.workerAddr = addr
+			me.mirrors[addr] = mc
 		}
-		mc.workerAddr = addr
-		me.mirrors[addr] = mc
-		break
-	}
-
-	for _, a := range blacklist {
-		me.workers[a] = false, false
 	}
 }
