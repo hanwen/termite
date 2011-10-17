@@ -57,7 +57,10 @@ func (me *mirrorConnection) queueFiles(fset FileSet) {
 func (me *mirrorConnection) sendFiles() os.Error {
 	me.pendingChangesMutex.Lock()
 	defer me.pendingChangesMutex.Unlock()
-
+	if len(me.pendingChanges) == 0 {
+		return nil
+	}
+	
 	req := UpdateRequest{
 		Files: me.pendingChanges,
 	}
@@ -67,7 +70,7 @@ func (me *mirrorConnection) sendFiles() os.Error {
 		log.Println("Mirror.Update failure", err)
 		return err
 	}
-
+	log.Printf("Sent pending changes to %s: %v", me.workerAddr, me.pendingChanges)
 	me.pendingChanges = me.pendingChanges[:0]
 	return nil
 }

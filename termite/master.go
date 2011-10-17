@@ -172,7 +172,7 @@ func (me *Master) runOnMirror(mirror *mirrorConnection, req *WorkRequest, rep *W
 		}()
 	}
 
-	log.Println("Running command", req.Argv)
+	log.Printf("Running command on %s: %v", mirror.workerAddr, req.Argv)
 	if req.Debug {
 		log.Println("with environment", req.Env)
 	}
