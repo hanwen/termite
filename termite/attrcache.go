@@ -184,6 +184,7 @@ func (me *AttributeCache) update(files []*FileAttr) {
 		if basename != "" {
 			dirAttr := attributes[dir]
 			if dirAttr == nil {
+				log.Println("Discarding update: ", r)
 				continue
 			}
 			if dirAttr.NameModeMap == nil {
