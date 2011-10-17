@@ -132,21 +132,30 @@ func mkdirMaybeMasterRun(master *Master, req *WorkRequest, rep *WorkResponse) bo
 	return true
 }
 
+// Should receive full path.
 func mkdirParentMasterRun(master *Master, arg string, rep *WorkResponse) {
 	rootless := strings.TrimLeft(arg, "/")
 	components := strings.Split(rootless, "/")
 	fs := FileSet{}
 	msgs := []string{}
+	parent := master.fileServer.attr.Get("")
 	for i := range components {
 		p := strings.Join(components[:i+1], "/")
 
 		dirAttr := master.fileServer.attr.Get(p)
 		if dirAttr.Deletion() {
-			fs.Files = append(fs.Files, mkdirEntry(p))
+			entry := mkdirEntry(p)
+			parent.Ctime_ns = entry.Ctime_ns
+			parent.Mtime_ns = entry.Mtime_ns
+			fs.Files = append(fs.Files, parent)
+			fs.Files = append(fs.Files, entry)
+			
+			parent = entry
 		} else if dirAttr.IsDirectory() {
-			// ok.
+			parent = dirAttr
 		} else {
 			msgs = append(msgs, fmt.Sprintf("Not a directory: /%s", p))
+			break
 		}
 	}
 
@@ -188,6 +197,7 @@ func mkdirNormalMasterRun(master *Master, arg string, rep *WorkResponse) {
 		}
 		return
 	}
+	
 	if !dirAttr.IsDirectory() {
 		rep.Stderr = fmt.Sprintf("Is not a directory: /%s", dir)
 		rep.Exit = os.Waitmsg{
@@ -196,10 +206,19 @@ func mkdirNormalMasterRun(master *Master, arg string, rep *WorkResponse) {
 		return
 	}
 
-	chAttr := mkdirEntry(rootless)
+	chAttr := master.fileServer.attr.Get(rootless)
+	if !chAttr.Deletion() {
+		rep.Stderr = fmt.Sprintf("File exists: /%s", rootless)
+		rep.Exit = os.Waitmsg{
+			WaitStatus: (1<<8),
+		}
+	}
+	chAttr = mkdirEntry(rootless)
 
 	fs := FileSet{}
-	fs.Files = append(fs.Files, chAttr)
+	dirAttr.Ctime_ns = chAttr.Ctime_ns
+	dirAttr.Mtime_ns = chAttr.Mtime_ns
+	fs.Files = append(fs.Files, dirAttr, chAttr)
 	master.replay(fs)
 	master.mirrors.queueFiles(nil, fs)
 }
