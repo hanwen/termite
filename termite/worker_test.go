@@ -7,8 +7,8 @@ import (
 	"http"
 	"io/ioutil"
 	"os"
+	"net"
 	"path/filepath"
-	"rand"
 	"rpc"
 	"strings"
 	"sync"
@@ -82,22 +82,22 @@ func NewTestCase(t *testing.T) *testCase {
 	me.wd = me.tmp + "/wd"
 	os.MkdirAll(me.wd, 0755)
 
-	// TODO - pick unused port
-	me.coordinatorPort = int(rand.Int31n(60000) + 1024)
-	coordinatorAddr := fmt.Sprintf(":%d", me.coordinatorPort)
-	var wg sync.WaitGroup
+	me.coordinator = NewCoordinator(me.secret)
+	go me.coordinator.PeriodicCheck()
+	go me.coordinator.ServeHTTP(0)
+	for me.coordinator.listener == nil {
+		time.Sleep(1e6)
+	}
+	coordinatorAddr := me.coordinator.listener.Addr()
+	_, portString, _ := net.SplitHostPort(coordinatorAddr.String())
+	fmt.Sscanf(portString, "%d", &me.coordinatorPort)
 
-	wg.Add(2)
-	go func() {
-		me.coordinator = NewCoordinator(me.secret)
-		go me.coordinator.PeriodicCheck()
-		go me.coordinator.ServeHTTP(me.coordinatorPort)
-		wg.Done()
-	}()
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
 		masterCache := NewContentCache(me.tmp + "/master-cache")
 		me.master = NewMaster(
-			masterCache, coordinatorAddr,
+			masterCache, coordinatorAddr.String(),
 			[]string{},
 			me.secret, []string{}, 1)
 		me.master.fileServer.excludePrivate = false
@@ -106,7 +106,7 @@ func NewTestCase(t *testing.T) *testCase {
 		go me.master.Start(me.socket)
 		wg.Done()
 	}()
-	go me.StartWorker(coordinatorAddr)
+	go me.StartWorker(coordinatorAddr.String())
 	wg.Wait()
 
 	for i := 0; me.coordinator.WorkerCount() == 0 && i < 10; i++ {
