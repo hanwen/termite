@@ -62,7 +62,7 @@ func (me *FsServer) GetAttr(req *AttrRequest, rep *AttrResponse) os.Error {
 
 	a := me.attr.GetDir(req.Name)
 	if a.Hash != "" {
-		log.Printf("GetAttr %v %x", a, a.Hash)
+		log.Printf("GetAttr %v", a)
 	}
 	rep.Attrs = append(rep.Attrs, a)
 	return nil
