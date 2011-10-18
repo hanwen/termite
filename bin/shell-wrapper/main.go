@@ -76,13 +76,13 @@ func NewWorkRequest(cmd string, dir string, topdir string) *termite.WorkRequest 
 		}
 
 		// A no-frills command invocation: do it directly.
-		var err os.Error
-		req.Binary, err = exec.LookPath(parsed[0])
+		binary, err := exec.LookPath(parsed[0])
 		if err == nil {
 			req.Argv = parsed
-			if len(req.Binary) > 0 && req.Binary[0] != '/' {
-				req.Binary = filepath.Join(req.Dir, req.Binary)
+			if len(binary) > 0 && binary[0] != '/' {
+				binary = filepath.Join(req.Dir, binary)
 			}
+			req.Binary = binary
 		}
 	}
 
