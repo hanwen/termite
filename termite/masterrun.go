@@ -136,7 +136,7 @@ func mkdirMaybeMasterRun(master *Master, req *WorkRequest, rep *WorkResponse) bo
 func mkdirParentMasterRun(master *Master, arg string, rep *WorkResponse) {
 	rootless := strings.TrimLeft(arg, "/")
 	components := strings.Split(rootless, "/")
-	fs := FileSet{}
+
 	msgs := []string{}
 	parent := master.fileServer.attr.Get("")
 	for i := range components {
@@ -147,8 +147,11 @@ func mkdirParentMasterRun(master *Master, arg string, rep *WorkResponse) {
 			entry := mkdirEntry(p)
 			parent.Ctime_ns = entry.Ctime_ns
 			parent.Mtime_ns = entry.Mtime_ns
-			fs.Files = append(fs.Files, parent)
-			fs.Files = append(fs.Files, entry)
+			fs := FileSet{
+				[]*FileAttr{parent, entry},
+			}
+			master.replay(fs)
+			master.mirrors.queueFiles(nil, fs)
 			
 			parent = entry
 		} else if dirAttr.IsDirectory() {
@@ -159,8 +162,6 @@ func mkdirParentMasterRun(master *Master, arg string, rep *WorkResponse) {
 		}
 	}
 
-	master.replay(fs)
-	master.mirrors.queueFiles(nil, fs)
 	if len(msgs) > 0 {
 		rep.Stderr = strings.Join(msgs, "\n")
 		rep.Exit.WaitStatus = 1 << 8
