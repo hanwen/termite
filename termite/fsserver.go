@@ -61,22 +61,15 @@ func (me *FsServer) GetAttr(req *AttrRequest, rep *AttrResponse) os.Error {
 	}
 
 	a := me.attr.GetDir(req.Name)
-	me.LogGetAttrResult(a)
+	me.logGetAttrResult(a)
 
 	rep.Attrs = append(rep.Attrs, a)
 	return nil
 }
 
-func (me *FsServer) LogGetAttrResult(a *FileAttr) {
+func (me *FsServer) logGetAttrResult(a *FileAttr) {
 	if a.Hash != "" {
 		log.Printf("GetAttr %v", a)
-	}
-	if a.NameModeMap != nil {
-		codes := []string{}
-		for n, m := range a.NameModeMap {
-			codes = append(codes, fmt.Sprintf("%s=%s", n, m.String()))
-		}
-		log.Printf("GetAttr %s: %s", a.Path, strings.Join(codes, " "))
 	}
 }
 
