@@ -62,9 +62,9 @@ func (me *fileSetWaiter) drop(id int) {
 }
 
 func (me *fileSetWaiter) wait(rep *WorkResponse, waitId int) (err os.Error) {
-	log.Println("Got data for tasks: ", rep.TaskIds)
-
 	if rep.FileSet != nil {
+		log.Println("Got data for tasks: ", rep.TaskIds, rep.FileSet.Files)
+
 		err = me.process(*rep.FileSet)
 		for _, id := range rep.TaskIds {
 			if id == waitId {
