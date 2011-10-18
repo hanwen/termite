@@ -98,6 +98,30 @@ var controlCharMap = map[byte]bool{
 	'`': true,
 }
 
+
+func MakeUnescape(cmd string) string {
+	word := make([]byte, 0, len(cmd))
+
+	lastSlash := false
+	for _, intCh := range cmd {
+		ch := byte(intCh)
+		if lastSlash {
+			if ch != '\n' {
+				word = append(word, '\\', ch)
+			}
+			lastSlash = false
+		} else {
+			if ch == '\\'  {
+				lastSlash = true
+			} else {
+				word = append(word, ch)
+			}
+		}
+	}
+
+	return string(word)
+}
+
 // ParseCommand tries to parse quoting for a shell command line.  It
 // will give up and return nil when it returns shell-metacharacters
 // ($, ` , etc.)
