@@ -90,6 +90,7 @@ func NewWorkRequest(cmd string, dir string, topdir string) *termite.WorkRequest 
 }
 
 func PrepareRun(cmd string, dir string, topdir string) (*termite.WorkRequest, *termite.LocalRule) {
+	cmd = termite.MakeUnescape(cmd)
 	if cmd == ":" || strings.TrimRight(cmd, " ") == "" {
 		os.Exit(0)
 	}
@@ -253,7 +254,7 @@ func main() {
 	}
 
 	if waitMsg.ExitStatus() != 0 {
-		log.Printf("Failed: '%s'", *command)
+		log.Printf("Failed: '%q'", *command)
 	}
 
 	// TODO - is this necessary?

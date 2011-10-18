@@ -99,3 +99,19 @@ func TestSavingCopy(t *testing.T) {
 		t.Errorf("Should drop contents for large copies.")
 	}
 }
+
+func TestMakeUnescape(t *testing.T) {
+	cases := []struct{
+		in, out string
+	}{
+		{"abc\ndef", "abc\ndef"},
+		{"abc\\\ndef", "abcdef"},
+		{"abc\\\\\ndef", "abc\\\\\ndef"},
+	}
+	for i, c := range cases {
+		got := MakeUnescape(c.in)
+		if c.out != got {
+			t.Errorf("%d: MakeUnescape(%q) = %q != %q", i, c.in, got, c.out)
+		}
+	}
+}
