@@ -214,7 +214,9 @@ func (me *AttributeCache) update(files []*FileAttr) {
 			attributes[r.Path] = old
 		}
 		old.Merge(r)
+		me.busy[r.Path] = false, false
 	}
+	me.cond.Broadcast()
 }
 
 func (me *AttributeCache) Refresh(prefix string) FileSet {
