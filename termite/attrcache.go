@@ -29,6 +29,7 @@ func NewAttributeCache(getter func(n string) *FileAttr,
 	me.cond = sync.NewCond(&me.mutex)
 	me.getter = getter
 	me.statter = statter
+
 	return me
 }
 
@@ -123,21 +124,26 @@ func (me *AttributeCache) localGet(name string, withdir bool) (rep *FileAttr) {
 
 func (me *AttributeCache) get(name string, withdir bool) (rep *FileAttr) {
 	rep = me.localGet(name, withdir)
+	
 	if rep != nil {
 		return rep
-	}
-
-	if name != "" {
-		dir, base := SplitPath(name)
-		dirAttr := me.get(dir, true)
-		if dirAttr.NameModeMap != nil && dirAttr.NameModeMap[base] == 0 {
-			return &FileAttr{Path: name}
-		}
 	}
 
 	defer me.Verify()
 	me.mutex.Lock()
 	defer me.mutex.Unlock()
+	return me.unsafeGet(name, withdir)
+}
+	
+func (me *AttributeCache) unsafeGet(name string, withdir bool) (rep *FileAttr) {
+	if name != "" {
+		dir, base := SplitPath(name)
+		dirAttr := me.unsafeGet(dir, true)
+		if dirAttr.NameModeMap != nil && dirAttr.NameModeMap[base] == 0 {
+			return &FileAttr{Path: name}
+		}
+	}
+
 	for me.busy[name] && me.attributes[name] == nil {
 		me.cond.Wait()
 	}
@@ -208,7 +214,9 @@ func (me *AttributeCache) update(files []*FileAttr) {
 			attributes[r.Path] = old
 		}
 		old.Merge(r)
+		me.busy[r.Path] = false, false
 	}
+	me.cond.Broadcast()
 }
 
 func (me *AttributeCache) Refresh(prefix string) FileSet {
