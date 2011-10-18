@@ -76,7 +76,7 @@ func (me *FsServer) LogGetAttrResult(a *FileAttr) {
 		for n, m := range a.NameModeMap {
 			codes = append(codes, fmt.Sprintf("%s=%s", n, m.String()))
 		}
-		log.Printf("GetAttr %s: %s", strings.Join(codes, " "))
+		log.Printf("GetAttr %s: %s", a.Path, strings.Join(codes, " "))
 	}
 }
 
