@@ -128,8 +128,7 @@ func (me *AttributeCache) get(name string, withdir bool) (rep *FileAttr) {
 	if rep != nil {
 		return rep
 	}
-
-	defer me.Verify()
+	
 	me.mutex.Lock()
 	defer me.mutex.Unlock()
 	return me.unsafeGet(name, withdir)
@@ -139,7 +138,7 @@ func (me *AttributeCache) unsafeGet(name string, withdir bool) (rep *FileAttr) {
 	if name != "" {
 		dir, base := SplitPath(name)
 		dirAttr := me.unsafeGet(dir, true)
-		if dirAttr.NameModeMap != nil && dirAttr.NameModeMap[base] == 0 {
+		if dirAttr.Deletion() || !dirAttr.IsDirectory() || dirAttr.NameModeMap[base] == 0 {
 			return &FileAttr{Path: name}
 		}
 	}
@@ -168,6 +167,7 @@ func (me *AttributeCache) unsafeGet(name string, withdir bool) (rep *FileAttr) {
 	}
 	me.cond.Broadcast()
 	me.busy[name] = false, false
+	me.verify()
 	return rep.Copy(withdir)
 }
 
