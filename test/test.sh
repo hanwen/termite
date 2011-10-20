@@ -7,7 +7,7 @@ name=$1
 shift
 
 export TERMITE_DIR=$(cd .. ; pwd)
-dd if=/dev/random of=secret.txt bs=20 count=1 && chmod 0600 secret.txt
+dd if=/dev/urandom of=secret.txt bs=20 count=1 && chmod 0600 secret.txt
 ${TERMITE_DIR}/bin/coordinator/coordinator -port ${pprefix}8 &
 sleep 1
 sudo -n true
@@ -29,11 +29,16 @@ echo "ran test"
 (cd ${name}; ${TERMITE_DIR}/bin/shell-wrapper/shell-wrapper -shutdown)
 curl ${coord}/workerkill?host=all
 curl ${coord}/shutdown
+
+# wait a bit for everything to come down.
+sleep 1
 if test "$status" != "0"
 then
     echo FAIL
+    exit 1
 else
     echo PASS
+    exit 0
 fi
 
 
