@@ -33,10 +33,10 @@ func NewAttributeCache(getter func(n string) *FileAttr,
 	return me
 }
 
-var paranoia = false
+var Paranoia = false
 
 func (me *AttributeCache) Verify() {
-	if !paranoia {
+	if !Paranoia {
 		return
 	}
 	me.mutex.RLock()
@@ -45,7 +45,7 @@ func (me *AttributeCache) Verify() {
 }
 
 func (me *AttributeCache) verify() {
-	if !paranoia {
+	if !Paranoia {
 		return
 	}
 	for k, v := range me.attributes {

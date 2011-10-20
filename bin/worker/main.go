@@ -37,8 +37,11 @@ func main() {
 	user := flag.String("user", "nobody", "Run as this user.")
 	memcache := flag.Int("filecache", 1024, "number of <32k files to cache in memory")
 	logfile := flag.String("logfile", "", "Output log file to use.")
+	paranoia := flag.Bool("paranoia", false, "Check attribute cache.")
 	flag.Parse()
 
+	termite.Paranoia = *paranoia
+	
 	log.SetPrefix("W")
 
 	if os.Geteuid() != 0 {

@@ -16,7 +16,7 @@ import (
 // TODO - fold common code.
 
 func init() {
-	paranoia = true
+	Paranoia = true
 }
 
 func TestFsServerCache(t *testing.T) {
