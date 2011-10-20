@@ -149,7 +149,7 @@ func Inspect(files []string) {
 		for _, a := range rep.Attrs {
 			log.Printf("%v", *a)
 			for n, m := range a.NameModeMap {
-				log.Printf(" %q: %o", n, m)
+				log.Printf(" %q: %s", n, m)
 			}
 		}
 	}
