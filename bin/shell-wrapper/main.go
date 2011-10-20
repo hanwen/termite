@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"rpc"
+	"sort"
 	"strings"
 )
 
@@ -146,10 +147,16 @@ func Inspect(files []string) {
 			log.Fatal("LocalMaster.InspectFile: ", err)
 		}
 
+
 		for _, a := range rep.Attrs {
-			log.Printf("%v", *a)
+			entries := []string{}
+			log.Printf("%v", a.LongString())
 			for n, m := range a.NameModeMap {
-				log.Printf(" %q: %s", n, m)
+				entries = append(entries, fmt.Sprintf("%s %s", n, m))
+			}
+			sort.Strings(entries)
+			for _, e := range entries {
+				log.Println(e)
 			}
 		}
 	}

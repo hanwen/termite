@@ -13,6 +13,7 @@ var _ = log.Printf
 
 func (me FileAttr) String() string {
 	id := me.Path
+	
 	if me.Hash != "" {
 		id += fmt.Sprintf(" sz %d md5 %x..", me.FileInfo.Size, me.Hash[:4])
 	}
@@ -20,11 +21,25 @@ func (me FileAttr) String() string {
 		id += fmt.Sprintf(" -> %s", me.Link)
 	}
 	if me.FileInfo != nil {
-		id += fmt.Sprintf(" m=%o", me.FileInfo.Mode)
+		id += fmt.Sprintf(" %s:%o", FileMode(me.FileInfo.Mode), me.FileInfo.Mode & 07777)
 	} else {
 		id += " (del)"
 	}
 	return id
+}
+
+func (me FileAttr) LongString() string {
+	s := me.String()
+	if me.FileInfo != nil {
+		s += fmt.Sprintf(" C%d.%09d, M%d.%09d, A%d.%09d",
+			me.Ctime_ns / 1e9, 
+			me.Ctime_ns % 1e9, 
+			me.Mtime_ns / 1e9, 
+			me.Mtime_ns % 1e9, 
+			me.Atime_ns / 1e9, 
+			me.Atime_ns % 1e9)
+	}
+	return s
 }
 
 func (me FileAttr) Deletion() bool {
