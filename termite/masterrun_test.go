@@ -86,6 +86,16 @@ func TestEndToEndMkdirExist(t *testing.T) {
 	tc.RunFail(WorkRequest{
 		Argv: []string{"mkdir", "file.txt"},
 	})
+	fi, _ := os.Lstat(tc.tmp+"/wd/file.txt")
+	if !fi.IsRegular() {
+		t.Fatal("Should be regular file.")
+	}
+
+	fa := tc.master.fileServer.attr.Get(
+		strings.TrimLeft(tc.tmp+"/wd/file.txt", "/"))
+	if fa == nil || fa.Deletion() || !fa.IsRegular() {
+		t.Fatal("Attrcache out of sync", fa)
+	}
 }
 
 func TestEndToEndMkdir(t *testing.T) {

@@ -213,6 +213,7 @@ func mkdirNormalMasterRun(master *Master, arg string, rep *WorkResponse) {
 		rep.Exit = os.Waitmsg{
 			WaitStatus: (1<<8),
 		}
+		return
 	}
 	chAttr = mkdirEntry(rootless)
 

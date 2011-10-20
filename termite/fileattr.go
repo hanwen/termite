@@ -108,19 +108,19 @@ func (me *FileAttr) Merge(r FileAttr) {
 		panic("should not merge deletions")
 	}
 
-	mine := me.NameModeMap
 	other := r.NameModeMap
-
+	mine := me.NameModeMap
 	*me = r
 	me.NameModeMap = nil
 
-	if me.FileInfo.IsDirectory() {
-		me.NameModeMap = mine
-		if me.NameModeMap == nil {
+	if me.IsDirectory() {
+		if other != nil {
 			me.NameModeMap = make(map[string]FileMode)
-		}
-		for k, v := range other {
-			me.NameModeMap[k] = v
+			for k, v := range other {
+				me.NameModeMap[k] = v
+			}
+		} else {
+			me.NameModeMap = mine
 		}
 	}
 }

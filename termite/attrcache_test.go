@@ -1,6 +1,7 @@
 package termite
 
 import (
+	"fmt"
 	"github.com/hanwen/go-fuse/fuse"
 	"log"
 	"io/ioutil"
@@ -46,7 +47,7 @@ func TestAttrCacheNil(t *testing.T) {
 	}
 }
 
-func TestAttrCache(t *testing.T) {
+func attrCacheTestCase(t *testing.T) (*AttributeCache, string, func()) {
 	dir, err := ioutil.TempDir("", "termite")
 	check(err)
 	syscall.Umask(0)
@@ -58,7 +59,16 @@ func TestAttrCache(t *testing.T) {
 		func(n string) *os.FileInfo {
 			return testStat(t, filepath.Join(dir, n))
 		})
-	err = ioutil.WriteFile(dir+"/file", []byte{42}, 0604)
+	return ac, dir, func() {
+		os.RemoveAll(dir)
+	}
+}
+
+func TestAttrCache(t *testing.T) {
+	ac, dir, clean := attrCacheTestCase(t)
+	defer clean()
+
+	err := ioutil.WriteFile(dir+"/file", []byte{42}, 0604)
 	check(err)
 
 	f := ac.Get("file")
@@ -113,5 +123,40 @@ func TestAttrCache(t *testing.T) {
 	if f.Mode&0777 != 0666 {
 		t.Fatalf("Got %o , want 0666", f.Mode)
 	}
-
 }
+
+func TestAttrCacheRefresh(t *testing.T) {
+	ac, dir, clean := attrCacheTestCase(t)
+	defer clean()
+
+	os.Mkdir(dir + "/a", 0755)
+	d := ac.GetDir("")
+	if len(d.NameModeMap) != 1 || d.NameModeMap["a"] == 0 {
+		t.Fatal("GetDir fail.", d.NameModeMap)
+	}
+
+	os.Remove(dir + "/a")
+		
+	i := 0
+	for {
+		newFi, err := os.Lstat(dir)
+		check(err)
+		if newFi.Ctime_ns != d.Ctime_ns {
+			break
+		}
+		err = os.Mkdir(dir + fmt.Sprintf("/d%d", i), 0755)
+		check(err)
+
+		time.Sleep(10e6)
+		i++
+	}
+
+	ac.Refresh("")
+
+	d2 := ac.GetDir("")
+
+	if d2.NameModeMap["a"] != 0 {
+		t.Fatal("a should have disappeared.")
+	}
+}
+

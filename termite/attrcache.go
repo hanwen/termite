@@ -210,10 +210,13 @@ func (me *AttributeCache) update(files []*FileAttr) {
 
 		old := attributes[r.Path]
 		if old == nil {
-			old = &r
-			attributes[r.Path] = old
+			if r.NameModeMap == nil && r.IsDirectory() {
+				r.NameModeMap = map[string]FileMode{}
+			}
+			attributes[r.Path] = &r
+		} else {
+			old.Merge(r)
 		}
-		old.Merge(r)
 		me.busy[r.Path] = false, false
 	}
 	me.cond.Broadcast()
@@ -241,6 +244,10 @@ func (me *AttributeCache) Refresh(prefix string) FileSet {
 			}
 			updated = append(updated, &del)
 		}
+		
+		// TODO - should generate deletion based on dir
+		// contents too?
+		
 		// TODO - does this handle symlinks corrrectly?
 		if fi != nil && attr.FileInfo != nil && EncodeFileInfo(*attr.FileInfo) != EncodeFileInfo(*fi) {
 			newEnt := me.getter(key)
