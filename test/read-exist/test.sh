@@ -12,11 +12,11 @@ do
     echo hello > d$x/d$y/f
 
     cat <<EOF>>Makefile
-default: out/d$x/f$y
+default: out/dst$x/f$y
 
-out/d$x/f$y:
-	mkdir -p out/d$x
-	cp -f d$x/d$y/f out/d$x/f$y
+out/dst$x/f$y:
+	mkdir -p out/dst$x
+	cp -f d$x/d$y/f out/dst$x/f$y
 EOF
     
   done
