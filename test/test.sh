@@ -27,7 +27,7 @@ status="$?"
 echo "ran test"
 
 (cd ${name}; ${TERMITE_DIR}/bin/shell-wrapper/shell-wrapper -shutdown)
-curl ${coord}/workerkill?host=all
+curl ${coord}/killall
 curl ${coord}/shutdown
 
 # wait a bit for everything to come down.
