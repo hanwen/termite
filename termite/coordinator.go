@@ -136,7 +136,14 @@ func (me *Coordinator) rootHandler(w http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(w, "<p>version %s", Version())
 	defer fmt.Fprintf(w, "</body></html>")
 
-	for _, worker := range me.workers {
+	keys := []string{}
+	for k := range me.workers {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	
+	for _, k := range keys {
+		worker := me.workers[k]
 		fmt.Fprintf(w, "<li><a href=\"worker?host=%s\">address <tt>%s</tt>, host <tt>%s</tt></a>",
 			worker.Address, worker.Address, worker.Name)
 	}
