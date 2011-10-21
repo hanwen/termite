@@ -291,8 +291,12 @@ func (me *Coordinator) logHandler(w http.ResponseWriter, req *http.Request) {
 		fmt.Fprintf(w, "<body>Error: %s</body></html>", err.String())
 		return
 	}
+	sz := int64(500*1024)
+	sizeStr, ok := req.URL.Query()["size"]
+	if ok {
+		fmt.Scanf(sizeStr[0], "%d", &sz)
+	}
 
-	sz := int64(50*1024)
 	logReq := LogRequest{Whence: os.SEEK_END, Off: -sz, Size: sz}
 	logRep := LogResponse{}
 	client := rpc.NewClient(conn)
