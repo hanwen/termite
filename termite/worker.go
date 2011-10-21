@@ -22,7 +22,7 @@ var _ = log.Println
 type WorkerDaemon struct {
 	Nobody *user.User
 	secret []byte
-
+	Hostname      string
 	listener      net.Listener
 	rpcServer     *rpc.Server
 	contentCache  *ContentCache
@@ -99,7 +99,7 @@ func NewWorkerDaemon(options *WorkerOptions) *WorkerDaemon {
 		options.ReportInterval = 60.0
 	}
 	copied := *options
-
+	
 	cache := NewContentCache(options.CacheDir)
 	cache.SetMemoryCacheSize(options.FileContentCount)
 	me := &WorkerDaemon{
@@ -124,6 +124,7 @@ func NewWorkerDaemon(options *WorkerOptions) *WorkerDaemon {
 	me.cond = sync.NewCond(&me.mirrorMapMutex)
 	me.stopListener = make(chan int, 1)
 	me.rpcServer.Register(me)
+	me.Hostname, _ = os.Hostname()
 	return me
 }
 

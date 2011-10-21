@@ -201,6 +201,7 @@ func (me *Mirror) Run(req *WorkRequest, rep *WorkResponse) os.Error {
 
 	rep.LastTime = 0
 	log.Println(rep)
+	rep.WorkerId = fmt.Sprintf("%s: %s", me.daemon.Hostname, me.daemon.listener.Addr().String())
 	return nil
 }
 

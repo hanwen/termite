@@ -241,14 +241,15 @@ func main() {
 		req, rule = PrepareRun(*command, *directory, topDir)
 	}
 	var waitMsg *os.Waitmsg
+	rep := termite.WorkResponse{}
 	if rule != nil && rule.Local {
 		waitMsg = RunLocally(req, rule)
 		if !rule.SkipRefresh {
 			Refresh()
 		}
+		rep.WorkerId = "(local)"
 	} else {
 		req.Debug = req.Debug || os.Getenv("TERMITE_DEBUG") != "" || *debug
-		rep := termite.WorkResponse{}
 		err := Rpc().Call("LocalMaster.Run", &req, &rep)
 		if err != nil {
 			log.Fatal("LocalMaster.Run: ", err)
@@ -261,7 +262,7 @@ func main() {
 	}
 
 	if waitMsg.ExitStatus() != 0 {
-		log.Printf("Failed: '%q'", *command)
+		log.Printf("Failed %s: '%q'", rep.WorkerId, *command)
 	}
 
 	// TODO - is this necessary?
