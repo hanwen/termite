@@ -450,6 +450,30 @@ func TestEndToEndShutdown(t *testing.T) {
 	}
 }
 
+func TestEndToEndLogFile(t *testing.T) {
+	tc := NewTestCase(t)
+	defer tc.Clean()
+	fn :=tc.wd+"/logfile.txt"
+	ioutil.WriteFile(fn, []byte("magic string"), 0644)
+	for _, w := range tc.workers {
+		w.LogFileName = fn
+	}
+	addresses := []string{}
+	for addr := range tc.coordinator.workers {
+		addresses = append(addresses, addr)
+	}
+	for _, a := range addresses {
+		cl := http.Client{}
+		req, err := cl.Get(fmt.Sprintf("http://localhost:%d/log?host=%s", tc.coordinatorPort, a))
+		check(err)
+
+		data, _ := ioutil.ReadAll(req.Body)
+		if !strings.Contains(string(data), "magic string") {
+			t.Errorf("'magic string' missing. Got: %q", data)
+		}
+	}
+}
+
 func TestEndToEndSpecialEntries(t *testing.T) {
 	tc := NewTestCase(t)
 	defer tc.Clean()

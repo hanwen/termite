@@ -135,8 +135,8 @@ func (me *Coordinator) rootHandler(w http.ResponseWriter, req *http.Request) {
 	}
 	fmt.Fprintf(w, "</ul>")
 
-	fmt.Fprintf(w, "<hr><p><a href=\"workerkill?host=all\">kill all workers,</a>"+
-		"<a href=\"restart?host=all\">restart all workers</a>")
+	fmt.Fprintf(w, "<hr><p><a href=\"killall\">kill all workers,</a>"+
+		"<a href=\"restartall\">restart all workers</a>")
 }
 
 func (me *Coordinator) shutdownSelf(w http.ResponseWriter, req *http.Request) {
@@ -147,42 +147,62 @@ func (me *Coordinator) shutdownSelf(w http.ResponseWriter, req *http.Request) {
 	time.AfterFunc(100e6, func() { me.Shutdown() })
 }
 
-func (me *Coordinator) killHandler(w http.ResponseWriter, req *http.Request) {
+func (me *Coordinator) killAllHandler(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
-	q := req.URL.Query()
-	vs, ok := q["host"]
-	if !ok || len(vs) == 0 {
-		fmt.Fprintf(w, "<html><body>404 query param 'host' missing</body></html>")
+	restart := req.URL.Path == "restartall"
+	errs := []os.Error{}
+	for _, w := range me.workerAddresses() {
+		conn, err := DialTypedConnection(w, RPC_CHANNEL, me.secret)
+		if err == nil {
+			killReq := ShutdownRequest{Restart: restart}
+			rep := ShutdownResponse{}
+			cl := rpc.NewClient(conn)
+			defer cl.Close()
+			err = cl.Call("WorkerDaemon.Shutdown", &killReq, &rep)
+		}
+		
+		if err != nil {
+			errs = append(errs, fmt.Errorf("%s: %v", w, err))
+		}
+	}
+
+	if len(errs) > 0 {
+		fmt.Fprintf(w, "Error: %v", errs)
+		return 
+	}
+
+	action := "kill"
+	if restart {
+		action = "restart"
+	}
+	fmt.Fprintf(w, "<p>%s in progress", action)
+	// Should have a redirect.
+	fmt.Fprintf(w, "<p><a href=\"/\">back to index</a>")
+	go me.checkReachable()
+}
+
+func (me *Coordinator) killHandler(w http.ResponseWriter, req *http.Request) {
+	addr, conn, err := me.getHost(req)
+	if err != nil {
+		// TODO - set error status.
+		fmt.Fprintf(w, "<html><head><title>Termite worker error</title></head>")
+		fmt.Fprintf(w, "<body>Error: %s</body></html>", err.String())
 		return
 	}
-	addr := string(vs[0])
-
+	defer conn.Close()
+	
+	w.Header().Set("Content-Type", "text/html")
 	restart := req.URL.Path == "restart"
 	fmt.Fprintf(w, "<html><head><title>Termite worker status</title></head>")
 	fmt.Fprintf(w, "<body><h1>Status %s</h1>", addr)
 	defer fmt.Fprintf(w, "</body></html>")
 
-	if addr != "all" && !me.haveWorker(addr) {
-		fmt.Fprintf(w, "<p><tt>worker %q unknown<tt>", addr)
-		return
-	}
 
-	var err os.Error
-	if addr == "all" {
-		errs := []os.Error{}
-		for _, w := range me.workerAddresses() {
-			err = me.shutdownWorker(w, restart)
-			if err != nil {
-				errs = append(errs, fmt.Errorf("%s: %v", w, err))
-			}
-		}
-		if len(errs) > 0 {
-			err = fmt.Errorf("%v", errs)
-		}
-	} else {
-		err = me.shutdownWorker(addr, restart)
-	}
-
+	killReq := ShutdownRequest{Restart: restart}
+	rep := ShutdownResponse{}
+	cl := rpc.NewClient(conn)
+	defer cl.Close()
+	err = cl.Call("WorkerDaemon.Shutdown", &killReq, &rep)
 	if err != nil {
 		fmt.Fprintf(w, "<p><tt>Error: %v<tt>", err)
 		return
@@ -192,7 +212,7 @@ func (me *Coordinator) killHandler(w http.ResponseWriter, req *http.Request) {
 	if restart {
 		action = "restart"
 	}
-	fmt.Fprintf(w, "<p>%s of %s in progress", action, addr)
+	fmt.Fprintf(w, "<p>%s of %s in progress", action, conn.RemoteAddr())
 	// Should have a redirect.
 	fmt.Fprintf(w, "<p><a href=\"/\">back to index</a>")
 	go me.checkReachable()
@@ -229,27 +249,59 @@ func (me *Coordinator) haveWorker(addr string) bool {
 	return ok
 }
 
-func (me *Coordinator) workerHandler(w http.ResponseWriter, req *http.Request) {
-	w.Header().Set("Content-Type", "text/html")
+
+func (me *Coordinator) getHost(req *http.Request) (string, net.Conn, os.Error) {
 	q := req.URL.Query()
 	vs, ok := q["host"]
 	if !ok || len(vs) == 0 {
-		fmt.Fprintf(w, "<html><body>404 query param 'host' missing</body></html>")
-		return
+		return "", nil, fmt.Errorf("404 query param 'host' missing")
 	}
 	addr := string(vs[0])
-	fmt.Fprintf(w, "<html><head><title>Termite worker status</title></head>")
-	fmt.Fprintf(w, "<body><h1>Status %s</h1>", addr)
-	defer fmt.Fprintf(w, "</body></html>")
-
 	if !me.haveWorker(addr) {
-		fmt.Fprintf(w, "<p><tt>worker %q unknown<tt>", addr)
-		return
+		return "", nil, fmt.Errorf("worker %q unknown", addr)
 	}
 
 	conn, err := DialTypedConnection(addr, RPC_CHANNEL, me.secret)
 	if err != nil {
-		fmt.Fprintf(w, "<p><tt>error dialing: %v<tt>", err)
+		return "", nil, fmt.Errorf("error dialing: %v", err)
+	}
+
+	return addr, conn, nil
+}
+
+func (me *Coordinator) logHandler(w http.ResponseWriter, req *http.Request) {
+	_, conn, err := me.getHost(req)
+	if err != nil {
+		// TODO - set error status.
+		fmt.Fprintf(w, "<html><head><title>Termite worker error</title></head>")
+		fmt.Fprintf(w, "<body>Error: %s</body></html>", err.String())
+		return
+	}
+
+	sz := int64(50*1024)
+	logReq := LogRequest{Whence: os.SEEK_END, Off: -sz, Size: sz}
+	logRep := LogResponse{}
+	client := rpc.NewClient(conn)
+	err = client.Call("WorkerDaemon.Log", &logReq, &logRep)
+	client.Close()
+	if err != nil {
+		// TODO - set error status.
+		fmt.Fprintf(w, "<html><head><title>Termite worker error</title></head>")
+		fmt.Fprintf(w, "<body>Error: %s</body></html>", err.String())
+		return
+	}
+	
+	w.Header().Set("Content-Type", "text/plain")
+	w.Write(logRep.Data)
+	return
+}
+
+func (me *Coordinator) workerHandler(w http.ResponseWriter, req *http.Request) {
+	addr, conn, err := me.getHost(req)
+	if err != nil {
+		// TODO - set error status.
+		fmt.Fprintf(w, "<html><head><title>Termite worker error</title></head>")
+		fmt.Fprintf(w, "<body>Error: %s</body></html>", err.String())
 		return
 	}
 
@@ -266,6 +318,7 @@ func (me *Coordinator) workerHandler(w http.ResponseWriter, req *http.Request) {
 
 	fmt.Fprintf(w, "<p>Worker %s<p>Version %s<p>Jobs %d\n",
 		addr, status.Version, status.MaxJobCount)
+	fmt.Fprintf(w, "<p><a href=\"/log?host=%s\">Worker log %s</a>\n", addr, addr)
 	fmt.Fprintf(w, "<p><table><tr><th>self cpu (ms)</th><th>self sys (ms)</th>"+
 		"<th>child cpu (ms)</th><th>child sys (ms)</th><th>total</th></tr>")
 	start := len(status.CpuStats) - 5
@@ -331,6 +384,10 @@ func (me *Coordinator) ServeHTTP(port int) {
 		func(w http.ResponseWriter, req *http.Request) {
 			me.workerHandler(w, req)
 		})
+	me.Mux.HandleFunc("/log",
+		func(w http.ResponseWriter, req *http.Request) {
+			me.logHandler(w, req)
+		})
 	me.Mux.HandleFunc("/shutdown",
 		func(w http.ResponseWriter, req *http.Request) {
 			me.shutdownSelf(w, req)
@@ -338,6 +395,14 @@ func (me *Coordinator) ServeHTTP(port int) {
 	me.Mux.HandleFunc("/workerkill",
 		func(w http.ResponseWriter, req *http.Request) {
 			me.killHandler(w, req)
+		})
+	me.Mux.HandleFunc("/killall",
+		func(w http.ResponseWriter, req *http.Request) {
+			me.killAllHandler(w, req)
+		})
+	me.Mux.HandleFunc("/restartall",
+		func(w http.ResponseWriter, req *http.Request) {
+			me.killAllHandler(w, req)
 		})
 	me.Mux.HandleFunc("/restart",
 		func(w http.ResponseWriter, req *http.Request) {

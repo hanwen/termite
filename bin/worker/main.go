@@ -61,6 +61,8 @@ func main() {
 		FileContentCount: *memcache,
 		ReapCount:        *reapcount,
 	}
+
+	daemon := termite.NewWorkerDaemon(&opts)
 	if *logfile != "" {
 		f, err := os.OpenFile(*logfile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 		if err != nil {
@@ -68,9 +70,9 @@ func main() {
 		}
 		log.Println("Log output to", *logfile)
 		log.SetOutput(f)
+		daemon.LogFileName = *logfile
 	}
 
-	daemon := termite.NewWorkerDaemon(&opts)
 	log.Println(termite.Version())
 	go handleStop(daemon)
 	daemon.RunWorkerServer(*port, *coordinator)

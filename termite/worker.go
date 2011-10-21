@@ -41,6 +41,7 @@ type WorkerDaemon struct {
 	shuttingDown   bool
 	mustRestart    bool
 	options        *WorkerOptions
+	LogFileName    string
 }
 
 type WorkerOptions struct {
@@ -254,6 +255,53 @@ func (me *WorkerDaemon) Shutdown(req *ShutdownRequest, rep *ShutdownResponse) os
 	}
 	log.Println("All mirrors have shut down.")
 	me.listener.Close()
+	return nil
+}
+
+func (me *WorkerDaemon) Log(req *LogRequest, rep *LogResponse) os.Error {
+	if me.LogFileName == "" {
+		return fmt.Errorf("No log filename set.")
+	}
+
+	f, err := os.Open(me.LogFileName)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	size, err := f.Seek(0, os.SEEK_END)
+	if err != nil {
+		return err
+	}
+
+	switch req.Whence {
+	case os.SEEK_END:
+		if req.Off < -size{
+			req.Off = -size
+		}
+		if req.Off + req.Size > 0 {
+			req.Size = -req.Off
+		}
+	case os.SEEK_SET:
+		if req.Off > size {
+			req.Off = size
+		}
+		if req.Off + req.Size > size {
+			req.Size = size - req.Off
+		}
+	}
+	
+	log.Printf("Sending log: %v", req)
+	_, err = f.Seek(req.Off, req.Whence)
+	if err != nil {
+		return err
+	}
+	rep.Data = make([]byte, req.Size)
+	n, err := f.Read(rep.Data)
+	if err != nil {
+		return err
+	}
+	rep.Data = rep.Data[:n]
 	return nil
 }
 

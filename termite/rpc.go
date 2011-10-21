@@ -142,3 +142,13 @@ type ShutdownRequest struct {
 type ShutdownResponse struct {
 
 }
+
+type LogRequest struct {
+	Whence int
+	Off    int64
+	Size   int64
+}
+	
+type LogResponse struct {
+	Data   []byte
+}
