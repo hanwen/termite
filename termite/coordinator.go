@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"rpc"
+	"sort"
 	"sync"
 	"time"
 )
@@ -79,7 +80,13 @@ func (me *Coordinator) List(req *int, rep *Registered) os.Error {
 	me.mutex.Lock()
 	defer me.mutex.Unlock()
 
-	for _, w := range me.workers {
+	keys := []string{}
+	for k := range me.workers {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		w := me.workers[k]
 		rep.Registrations = append(rep.Registrations, w.Registration)
 	}
 	return nil
