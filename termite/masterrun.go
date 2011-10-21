@@ -55,6 +55,7 @@ func rmMaybeMasterRun(master *Master, req *WorkRequest, rep *WorkResponse) bool 
 		return false
 	}
 
+	log.Println("Running in master:", req.Summary())
 	todo := []string{}
 	for _, a := range g.Args {
 		if a[0] != '/' {
@@ -117,7 +118,9 @@ func mkdirMaybeMasterRun(master *Master, req *WorkRequest, rep *WorkResponse) bo
 		if strings.Contains(a, "..") {
 			return false
 		}
-	}	
+	}
+	
+	log.Println("Running in master:", req.Summary())
 	for _, a := range g.Args {
 		if a[0] != '/' {
 			a = filepath.Join(req.Dir, a)
