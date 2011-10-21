@@ -142,9 +142,6 @@ TODO
 * Security:
   - Security review for the connection scheme.
 
-* Features
-  - Collect worker log information and expose on HTTP.
-  
 * Data collection:
   - RPC delays.
   
