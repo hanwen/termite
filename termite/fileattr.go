@@ -22,6 +22,9 @@ func (me FileAttr) String() string {
 	}
 	if me.FileInfo != nil {
 		id += fmt.Sprintf(" %s:%o", FileMode(me.FileInfo.Mode), me.FileInfo.Mode & 07777)
+		if me.NameModeMap != nil {
+			id += "+names"
+		}
 	} else {
 		id += " (del)"
 	}
