@@ -86,7 +86,8 @@ type Timing struct {
 }
 
 type FileSet struct {
-	Files []*FileAttr
+	Files  []*FileAttr
+	OriginAddress string
 }
 
 func (me *FileSet) String() string {

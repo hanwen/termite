@@ -95,7 +95,6 @@ func rmMaybeMasterRun(master *Master, req *WorkRequest, rep *WorkResponse) bool 
 	}
 	fs.Sort()
 	master.replay(fs)
-	master.mirrors.queueFiles(nil, fs)
 
 	rep.Stderr = strings.Join(msgs, "\n")
 	rep.Exit.WaitStatus = syscall.WaitStatus(status << 8)
@@ -151,10 +150,9 @@ func mkdirParentMasterRun(master *Master, arg string, rep *WorkResponse) {
 			parent.Ctime_ns = entry.Ctime_ns
 			parent.Mtime_ns = entry.Mtime_ns
 			fs := FileSet{
-				[]*FileAttr{parent, entry},
+				Files: []*FileAttr{parent, entry},
 			}
 			master.replay(fs)
-			master.mirrors.queueFiles(nil, fs)
 			
 			parent = entry
 		} else if dirAttr.IsDirectory() {
@@ -225,5 +223,4 @@ func mkdirNormalMasterRun(master *Master, arg string, rep *WorkResponse) {
 	dirAttr.Mtime_ns = chAttr.Mtime_ns
 	fs.Files = append(fs.Files, dirAttr, chAttr)
 	master.replay(fs)
-	master.mirrors.queueFiles(nil, fs)
 }

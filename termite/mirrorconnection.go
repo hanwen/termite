@@ -24,11 +24,10 @@ type mirrorConnection struct {
 
 	master *Master
 	*fileSetWaiter
+}
 
-	// Any file updates that we should ship to the worker before
-	// running any jobs.
-	pendingChangesMutex sync.Mutex
-	pendingChanges      []*FileAttr
+func (me *mirrorConnection) Id() string {
+	return me.workerAddr
 }
 
 func (me *mirrorConnection) replay(fset FileSet) os.Error {
@@ -43,26 +42,14 @@ func (me *mirrorConnection) replay(fset FileSet) os.Error {
 			}
 		}
 	}
+	fset.OriginAddress = me.workerAddr
 	me.master.replay(fset)
-	me.master.mirrors.queueFiles(me, fset)
 	return nil
 }
 
-func (me *mirrorConnection) queueFiles(fset FileSet) {
-	me.pendingChangesMutex.Lock()
-	defer me.pendingChangesMutex.Unlock()
-	me.pendingChanges = append(me.pendingChanges, fset.Files...)
-}
-
-func (me *mirrorConnection) sendFiles() os.Error {
-	me.pendingChangesMutex.Lock()
-	defer me.pendingChangesMutex.Unlock()
-	if len(me.pendingChanges) == 0 {
-		return nil
-	}
-	
+func (me *mirrorConnection) Send(files []*FileAttr) os.Error {
 	req := UpdateRequest{
-		Files: me.pendingChanges,
+		Files: files,
 	}
 	rep := UpdateResponse{}
 	err := me.rpcClient.Call("Mirror.Update", &req, &rep)
@@ -70,8 +57,7 @@ func (me *mirrorConnection) sendFiles() os.Error {
 		log.Println("Mirror.Update failure", err)
 		return err
 	}
-	log.Printf("Sent pending changes to %s: %v", me.workerAddr, me.pendingChanges)
-	me.pendingChanges = me.pendingChanges[:0]
+	log.Printf("Sent pending changes to %s", me.workerAddr)
 	return nil
 }
 
@@ -220,14 +206,6 @@ func (me *mirrorConnections) dropConnections() {
 	me.stats = newMasterStats()
 }
 
-func (me *mirrorConnections) queueFiles(origin *mirrorConnection, fset FileSet) {
-	for _, w := range me.mirrors {
-		if origin != w {
-			w.queueFiles(fset)
-		}
-	}
-}
-
 // Gets a mirrorConnection to run on.  Will block if none available
 func (me *mirrorConnections) pick() (*mirrorConnection, os.Error) {
 	me.Mutex.Lock()
@@ -266,9 +244,10 @@ func (me *mirrorConnections) pick() (*mirrorConnection, os.Error) {
 }
 
 func (me *mirrorConnections) drop(mc *mirrorConnection, err os.Error) {
+	me.master.fileServer.attr.RmClient(mc)
+	
 	me.Mutex.Lock()
 	defer me.Mutex.Unlock()
-
 	log.Printf("Dropping mirror %s. Reason: %s", mc.workerAddr, err)
 	mc.connection.Close()
 	mc.reverseConnection.Close()
@@ -330,6 +309,7 @@ func (me *mirrorConnections) tryConnect() {
 			}
 			mc.workerAddr = addr
 			me.mirrors[addr] = mc
+			me.master.fileServer.attr.AddClient(mc)
 		}
 	}
 }

@@ -150,7 +150,6 @@ func (me *Master) createMirror(addr string, jobs int) (*mirrorConnection, os.Err
 		return mc.replay(fset)
 	})
 
-	mc.queueFiles(me.fileServer.copyCache())
 	return mc, nil
 }
 
@@ -190,7 +189,7 @@ func (me *Master) runOnce(req *WorkRequest, rep *WorkResponse) os.Error {
 	if err != nil {
 		return err
 	}
-	err = mirror.sendFiles()
+	err = me.fileServer.attr.Send(mirror)
 	if err != nil {
 		me.mirrors.drop(mirror, err)
 		return err
@@ -328,6 +327,8 @@ func (me *Master) replay(fset FileSet) {
 			log.Fatal("Chtimes", err)
 		}
 	}
+	
+	me.fileServer.attr.Queue(fset)
 
 	me.replayChannel <- &req
 	<-req.Done
@@ -336,6 +337,6 @@ func (me *Master) replay(fset FileSet) {
 func (me *Master) refreshAttributeCache() {
 	for _, r := range []string{me.writableRoot, me.srcRoot} {
 		updated := me.fileServer.refreshAttributeCache(r[1:])
-		me.mirrors.queueFiles(nil, updated)
+		me.fileServer.attr.Queue(updated)
 	}
 }

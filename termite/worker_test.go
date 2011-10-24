@@ -302,16 +302,18 @@ func TestEndToEndNegativeNotify(t *testing.T) {
 
 	newContent := []byte("new content")
 	hash := tc.master.cache.Save(newContent)
-	ioutil.WriteFile(tc.wd+"/output.txt", newContent, 0644)
 	updated := []*FileAttr{
 		&FileAttr{
 			Path:     tc.wd[1:] + "/output.txt",
-			FileInfo: &os.FileInfo{Mode: fuse.S_IFREG | 0644, Size: int64(len(newContent))},
+			FileInfo: &os.FileInfo{
+				Mode: fuse.S_IFREG | 0644,
+				Size: int64(len(newContent)),
+			},
 			Hash:     hash,
 		},
 	}
-	fset := FileSet{updated}
-	tc.master.mirrors.queueFiles(nil, fset)
+	fset := FileSet{Files: updated}
+	tc.master.replay(fset)
 
 	rep = tc.RunSuccess(WorkRequest{
 		Argv: []string{"cat", "output.txt"},

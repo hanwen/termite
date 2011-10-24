@@ -1,6 +1,7 @@
 package termite
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -18,6 +19,85 @@ type AttributeCache struct {
 	busy       map[string]bool
 	getter     func(name string) *FileAttr
 	statter    func(name string) *os.FileInfo
+
+	clients    map[string]*attrCachePending
+}
+
+type attrCachePending struct {
+	client  AttributeCacheClient
+	pending []*FileAttr
+	busy    bool
+}
+
+type AttributeCacheClient interface {
+	Id() string
+	Send([]*FileAttr) os.Error
+}
+
+func (me *AttributeCache) RmClient(client AttributeCacheClient) {
+	id := client.Id()
+	me.mutex.Lock()
+	defer me.mutex.Unlock()
+
+	c := me.clients[id]
+	c.pending = nil
+	c.busy = false
+	me.clients[id] = nil, false
+	me.cond.Broadcast()
+}
+
+func (me *AttributeCache) AddClient(client AttributeCacheClient) {
+	id := client.Id()
+	me.mutex.Lock()
+	defer me.mutex.Unlock()
+	_, ok := me.clients[id]
+	if ok {
+		log.Panicf("Already have client %q", id)
+	}
+
+	clData := attrCachePending{
+		client: client,
+		pending: me.copyFiles().Files,
+	}
+	
+	me.clients[id] = &clData
+}
+
+func (me *AttributeCache) Send(client AttributeCacheClient) os.Error {
+	me.mutex.Lock()
+	defer me.mutex.Unlock()
+	id := client.Id()
+	c := me.clients[id]
+	if c == nil {
+		return fmt.Errorf("client %q disappeared", id)
+	}
+
+	for c.busy {
+		me.cond.Wait()
+	}
+
+	if len(c.pending) == 0 {
+		return nil
+	}
+	p := c.pending
+	c.pending = c.pending[:0]
+	c.busy = true
+	me.mutex.Unlock()	
+	err := c.client.Send(p)
+	me.mutex.Lock()	
+	c.busy = false
+	me.cond.Broadcast()
+	return err
+}
+
+func (me *AttributeCache) Queue(fs FileSet) {
+	me.mutex.Lock()
+	defer me.mutex.Unlock()
+	for id, w := range me.clients {
+		if id != fs.OriginAddress {
+			w.pending = append(w.pending, fs.Files...)
+		}
+	}
 }
 
 func NewAttributeCache(getter func(n string) *FileAttr,
@@ -29,7 +109,7 @@ func NewAttributeCache(getter func(n string) *FileAttr,
 	me.cond = sync.NewCond(&me.mutex)
 	me.getter = getter
 	me.statter = statter
-
+	me.clients = make(map[string]*attrCachePending)
 	return me
 }
 
@@ -255,7 +335,7 @@ func (me *AttributeCache) Refresh(prefix string) FileSet {
 			updated = append(updated, newEnt)
 		}
 	}
-	fs := FileSet{updated}
+	fs := FileSet{Files: updated}
 	fs.Sort()
 
 	me.update(fs.Files)
@@ -266,12 +346,16 @@ func (me *AttributeCache) Copy() FileSet {
 	me.mutex.RLock()
 	defer me.mutex.RUnlock()
 
+	return me.copyFiles()
+}
+
+func (me *AttributeCache) copyFiles() FileSet {
 	dump := []*FileAttr{}
 	for _, attr := range me.attributes {
 		dump = append(dump, attr.Copy(true))
 	}
 
-	fs := FileSet{dump}
+	fs := FileSet{Files: dump}
 	fs.Sort()
 	return fs
 }

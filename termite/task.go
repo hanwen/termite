@@ -173,7 +173,7 @@ func (me *Mirror) fillReply(ufs *unionfs.MemUnionFs) *FileSet {
 
 		files = append(files, f)
 	}
-	fs := FileSet{files}
+	fs := FileSet{Files: files}
 	ufs.Clear()
 	fs.Sort()
 

@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"testing"
 	"time"
@@ -160,3 +161,101 @@ func TestAttrCacheRefresh(t *testing.T) {
 	}
 }
 
+type testClient struct {
+	id string
+	attrs []*FileAttr
+}
+
+func (me *testClient) Id() string {
+	return me.id
+}
+
+func (me *testClient) Send(attrs []*FileAttr) os.Error {
+	for _, a := range attrs {
+		me.attrs  = append(me.attrs, a.Copy(true))
+		if strings.Contains(a.Path, "delay") {
+			time.Sleep(a.Size * 1e6)
+		}
+	}
+	return nil
+}
+	
+func TestAttrCacheClientBasic(t *testing.T) {
+	ac, _, clean := attrCacheTestCase(t)
+	defer clean()
+
+	cl := testClient {
+	id: "testid",
+	}
+	
+	ac.AddClient(&cl)
+
+	fa1 := FileAttr{
+		Path: "f1",
+		FileInfo: &os.FileInfo{Mode: syscall.S_IFREG | 0644},
+	}
+	fs := FileSet{
+		Files: []*FileAttr{&fa1},
+	}
+	ac.Queue(fs)
+	
+	fa2 := FileAttr{
+		Path: "f2",
+		FileInfo: &os.FileInfo{Mode: syscall.S_IFREG | 0644},
+	}
+	fs.Files = []*FileAttr{&fa2}
+	fs.OriginAddress = "testid"
+
+	ac.Queue(fs)
+
+	err := ac.Send(&cl)
+	check(err)
+
+	if len(cl.attrs) != 1 {
+		t.Errorf("Send error: %s", cl.attrs)
+	}
+}
+
+
+func TestAttrCacheClientWait(t *testing.T) {
+	ac, _, clean := attrCacheTestCase(t)
+	defer clean()
+
+	cl := testClient {
+	id: "testid",
+	}
+
+	ac.AddClient(&cl)
+	d := int64(60)
+	fa1 := FileAttr{
+		Path: fmt.Sprintf("delay%d", d),
+		FileInfo: &os.FileInfo{
+			Mode: syscall.S_IFREG | 0644,
+			Size: d,
+		},
+	}
+	fs := FileSet{Files: []*FileAttr{&fa1}}
+	ac.Queue(fs)
+	done := make(chan int, 2)
+	start := make(chan int, 1)
+	func() {
+		start <- 1
+		err := ac.Send(&cl)
+		check(err)
+		done <- 1
+	}()
+
+	fs2 := FileSet{Files: []*FileAttr{}}
+	<-start
+	ac.Queue(fs2)
+
+	time.Sleep(d/2 * 1e6)
+	err2 := ac.Send(&cl)
+	check(err2)
+	done <- 2
+
+	if <-done != 1 {
+		t.Errorf("Order incorrect. ")
+	}
+	<-done
+}
