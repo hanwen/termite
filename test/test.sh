@@ -6,6 +6,9 @@ coord=localhost:${pprefix}8
 name=$1
 shift
 
+# Guard against memory leaks: max 512mb.
+ulimit -m 524288
+
 export TERMITE_DIR=$(cd .. ; pwd)
 dd if=/dev/urandom of=secret.txt bs=20 count=1 && chmod 0600 secret.txt
 ${TERMITE_DIR}/bin/coordinator/coordinator -port ${pprefix}8 &
