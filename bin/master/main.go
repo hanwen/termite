@@ -5,6 +5,7 @@ import (
 	"github.com/hanwen/termite/termite"
 	"io/ioutil"
 	"log"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -44,13 +45,48 @@ func main() {
 	c := termite.NewContentCache(*cachedir)
 	c.SetMemoryCacheSize(*memcache)
 
-	master := termite.NewMaster(
-		c, *coordinator, workerList, secret, excludeList, *jobs)
-	master.SetSrcRoot(*srcRoot)
+	root, sock := absSocket(*socket)
+	opts := termite.MasterOptions{
+		Secret: secret,
+		MaxJobs: *jobs,
+		Excludes: excludeList,
+		Workers: workerList,
+		Coordinator: *coordinator,
+		SrcRoot: *srcRoot,
+		WritableRoot: root,
+	}
+	master := termite.NewMaster(c, &opts)
 	master.SetKeepAlive(*keepAlive, *houseHoldPeriod)
 
 	log.Println(termite.Version())
 
 	go master.ServeHTTP(*port)
-	master.Start(*socket)
+	master.Start(sock)
+}
+
+func absSocket(sock string) (root, absSock string) {
+	absSock, err := filepath.Abs(sock)
+	if err != nil {
+		log.Fatal("abs", err)
+	}
+
+	fi, err := os.Stat(absSock)
+	if fi != nil && fi.IsSocket() {
+		conn, _ := net.Dial("unix", absSock)
+		if conn != nil {
+			conn.Close()
+			log.Fatal("socket has someone listening: ", absSock)
+		}
+		// TODO - should check explicitly for the relevant error message.
+		log.Println("removing dead socket", absSock)
+		os.Remove(absSock)
+	}
+
+	root, _ = termite.SplitPath(absSock)
+	root, err = filepath.EvalSymlinks(root)
+	if err != nil {
+		log.Fatal("EvalSymlinks", err)
+	}
+	root = filepath.Clean(root)
+	return root, absSock
 }

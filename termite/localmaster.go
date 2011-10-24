@@ -5,7 +5,6 @@ import (
 	"log"
 	"net"
 	"os"
-	"path/filepath"
 	"rpc"
 	"time"
 )
@@ -57,48 +56,22 @@ func (me *LocalMaster) InspectFile(req *AttrRequest, rep *AttrResponse) os.Error
 }
 
 func (me *LocalMaster) start(sock string) {
-	absSock, err := filepath.Abs(sock)
-	if err != nil {
-		log.Fatal("abs", err)
-	}
-
-	fi, err := os.Stat(absSock)
-	if fi != nil && fi.IsSocket() {
-		conn, _ := net.Dial("unix", absSock)
-		if conn != nil {
-			conn.Close()
-			log.Fatal("socket has someone listening: ", absSock)
-		}
-		// TODO - should check explicitly for the relevant error message.
-		log.Println("removing dead socket", absSock)
-		os.Remove(absSock)
-	}
-
-	me.listener, err = net.Listen("unix", absSock)
-	defer os.Remove(absSock)
+	l, err := net.Listen("unix", sock)
 	if err != nil {
 		log.Fatal("startLocalServer: ", err)
 	}
-	err = os.Chmod(absSock, 0700)
+	me.listener = l
+	defer os.Remove(sock)
+	
+	err = os.Chmod(sock, 0700)
 	if err != nil {
 		log.Fatal("sock chmod", err)
 	}
 
-	writableRoot := ""
-	writableRoot, err = filepath.EvalSymlinks(absSock)
-	if err != nil {
-		log.Fatal("EvalSymlinks", err)
-	}
-	writableRoot = filepath.Clean(writableRoot)
-	writableRoot, _ = SplitPath(writableRoot)
-
-	me.master.writableRoot = writableRoot
-	me.master.CheckPrivate()
-
 	// TODO - reinstate this; it currenly makes a bunch of tests fail.
 	// go me.master.fileServer.FetchDirs(strings.TrimLeft(writableRoot, "/"))
 
-	log.Println("accepting connections on", absSock)
+	log.Println("accepting connections on", sock)
 	for {
 		conn, err := me.listener.Accept()
 		if err == os.EINVAL {

@@ -10,7 +10,8 @@ func (me *Master) statusHandler(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
 	fmt.Fprintf(w, "<html><head><title>Master status</title></head>")
-	fmt.Fprintf(w, "<body><h1>Master for %s</h1>", me.writableRoot)
+	fmt.Fprintf(w, "<body><h1>Master for %s</h1>", me.options.WritableRoot)
+
 	fmt.Fprintf(w, "<p>%s", Version())
 	defer fmt.Fprintf(w, "</body></html>")
 

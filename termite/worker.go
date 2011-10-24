@@ -26,7 +26,6 @@ type WorkerDaemon struct {
 	listener      net.Listener
 	rpcServer     *rpc.Server
 	contentCache  *ContentCache
-	contentServer *ContentServer
 	maxJobCount   int
 	pending       *PendingConnections
 	cacheDir      string
@@ -106,7 +105,6 @@ func NewWorkerDaemon(options *WorkerOptions) *WorkerDaemon {
 		secret:        options.Secret,
 		contentCache:  cache,
 		mirrorMap:     make(map[string]*Mirror),
-		contentServer: &ContentServer{Cache: cache},
 		pending:       NewPendingConnections(),
 		maxJobCount:   options.Jobs,
 		tmpDir:        options.TempDir,
@@ -174,7 +172,7 @@ func (me *WorkerDaemon) report(coordinator string, port int) {
 
 // TODO - should expose under ContentServer name?
 func (me *WorkerDaemon) FileContent(req *ContentRequest, rep *ContentResponse) os.Error {
-	return me.contentServer.FileContent(req, rep)
+	return ServeFileContent(me.contentCache, req, rep)
 }
 
 func (me *WorkerDaemon) CreateMirror(req *CreateMirrorRequest, rep *CreateMirrorResponse) os.Error {

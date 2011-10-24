@@ -4,7 +4,6 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"path/filepath"
 	"rpc"
 )
 
@@ -12,16 +11,26 @@ type Master struct {
 	cache         *ContentCache
 	fileServer    *FsServer
 	fileServerRpc *rpc.Server
-	secret        []byte
-
-	retryCount   int
+	excluded     map[string]bool
+	attr         *AttributeCache
 	mirrors      *mirrorConnections
-	writableRoot string
-	srcRoot      string
 	pending      *PendingConnections
 	taskIds      chan int
-
+	options      *MasterOptions
 	replayChannel chan *replayRequest
+}
+
+type MasterOptions struct {
+	WritableRoot string
+	SrcRoot      string
+	RetryCount   int
+	Excludes       []string
+	ExcludePrivate bool
+
+	Coordinator string
+	Workers     []string
+	Secret      []byte
+	MaxJobs     int	
 }
 
 type replayRequest struct {
@@ -30,21 +39,83 @@ type replayRequest struct {
 	Done     chan int
 }
 
-func NewMaster(cache *ContentCache, coordinator string, workers []string, secret []byte, excluded []string, maxJobs int) *Master {
+func (me *Master) uncachedGetAttr(name string) (rep *FileAttr) {
+	rep = &FileAttr{Path: name}
+	p := me.path(name)
+	fi, _ := os.Lstat(p)
+	
+	// We don't want to expose the master's private files to the
+	// world.
+	if me.options.ExcludePrivate && fi != nil && fi.Mode&0077 == 0 {
+		log.Printf("Denied access to private file %q", name)
+		return rep
+	}
+
+	if me.excluded[name] {
+		log.Printf("Denied access to excluded file %q", name)
+		return rep
+	}
+	rep.FileInfo = fi
+	if fi != nil {
+		me.fillContent(rep)
+	}
+	return rep
+}
+
+func (me *Master) fillContent(rep *FileAttr) {
+	if rep.IsSymlink() || rep.IsDirectory() {
+		rep.ReadFromFs(me.path(rep.Path))
+	}
+	if rep.IsRegular() {
+		// TODO - /usr should be configurable.
+		fullPath := me.path(rep.Path)
+		if HasDirPrefix(fullPath, "/usr") && !HasDirPrefix(fullPath, "/usr/local") {
+			rep.Hash = me.cache.SaveImmutablePath(fullPath)
+		} else {
+			rep.Hash = me.cache.SavePath(fullPath)
+		}
+		if rep.Hash == "" {
+			// Typically happens if we want to open /etc/shadow as normal user.
+			log.Println("fillContent returning EPERM for", rep.Path)
+			rep.FileInfo = nil
+		}
+	}
+}
+
+
+func (me *Master) path(n string) string {
+	return "/" + n
+}
+
+func NewMaster(cache *ContentCache, options *MasterOptions) *Master {
 	me := &Master{
 		cache:         cache,
-		fileServer:    NewFsServer("/", cache, excluded),
-		secret:        secret,
-		retryCount:    3,
 		taskIds:       make(chan int, 100),
 		replayChannel: make(chan *replayRequest, 1),
 	}
-	me.mirrors = newMirrorConnections(me, workers, coordinator, maxJobs)
-	me.secret = secret
+	o := *options
+	me.options = &o
+	me.excluded = make(map[string]bool)
+	for _, e := range options.Excludes {
+		me.excluded[e] = true
+	}
+	
+	me.mirrors = newMirrorConnections(
+		me, options.Workers, options.Coordinator, options.MaxJobs)
 	me.pending = NewPendingConnections()
+	me.attr = NewAttributeCache(func(n string) *FileAttr {
+			return me.uncachedGetAttr(n)
+		},
+		func(n string) *os.FileInfo {
+			fi, _ := os.Lstat(me.path(n))
+			return fi
+		})
+	me.fileServer = NewFsServer(me.attr, me.cache)
 	me.fileServerRpc = rpc.NewServer()
 	me.fileServerRpc.Register(me.fileServer)
 
+	me.CheckPrivate()
+	
 	// Generate taskids.
 	go func() {
 		i := 0
@@ -66,12 +137,7 @@ func NewMaster(cache *ContentCache, coordinator string, workers []string, secret
 	return me
 }
 
-func (me *Master) SetSrcRoot(root string) {
-	root, _ = filepath.Abs(root)
-	me.srcRoot = filepath.Clean(root)
-	log.Println("SrcRoot is", me.srcRoot)
-}
-
+// todo - move to options.
 func (me *Master) SetKeepAlive(keepalive float64, household float64) {
 	if household > 0.0 || keepalive > 0.0 {
 		me.mirrors.setKeepAliveNs(1e9*keepalive, 1e9*household)
@@ -79,10 +145,10 @@ func (me *Master) SetKeepAlive(keepalive float64, household float64) {
 }
 
 func (me *Master) CheckPrivate() {
-	if !me.fileServer.excludePrivate {
+	if !me.options.ExcludePrivate {
 		return
 	}
-	d := me.writableRoot
+	d := me.options.WritableRoot
 	for d != "" {
 		fi, err := os.Lstat(d)
 		if err != nil {
@@ -100,20 +166,21 @@ func (me *Master) Start(sock string) {
 }
 
 func (me *Master) createMirror(addr string, jobs int) (*mirrorConnection, os.Error) {
-	conn, err := DialTypedConnection(addr, RPC_CHANNEL, me.secret)
+	secret := me.options.Secret
+	conn, err := DialTypedConnection(addr, RPC_CHANNEL, secret)
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
 
 	rpcId := ConnectionId()
-	rpcConn, err := DialTypedConnection(addr, rpcId, me.secret)
+	rpcConn, err := DialTypedConnection(addr, rpcId, secret)
 	if err != nil {
 		return nil, err
 	}
 
 	revId := ConnectionId()
-	revConn, err := DialTypedConnection(addr, revId, me.secret)
+	revConn, err := DialTypedConnection(addr, revId, secret)
 	if err != nil {
 		rpcConn.Close()
 		return nil, err
@@ -122,7 +189,7 @@ func (me *Master) createMirror(addr string, jobs int) (*mirrorConnection, os.Err
 	req := CreateMirrorRequest{
 		RpcId:        rpcId,
 		RevRpcId:     revId,
-		WritableRoot: me.writableRoot,
+		WritableRoot: me.options.WritableRoot,
 		MaxJobCount:  jobs,
 	}
 	rep := CreateMirrorResponse{}
@@ -160,7 +227,7 @@ func (me *Master) runOnMirror(mirror *mirrorConnection, req *WorkRequest, rep *W
 	if req.StdinId != "" {
 		inputConn := me.pending.WaitConnection(req.StdinId)
 		destInputConn, err := DialTypedConnection(mirror.connection.RemoteAddr().String(),
-			req.StdinId, me.secret)
+			req.StdinId, me.options.Secret)
 		if err != nil {
 			return err
 		}
@@ -218,7 +285,7 @@ func (me *Master) run(req *WorkRequest, rep *WorkResponse) (err os.Error) {
 	}
 
 	err = me.runOnce(req, rep)
-	for i := 0; i < me.retryCount && err != nil; i++ {
+	for i := 0; i < me.options.RetryCount && err != nil; i++ {
 		log.Println("Retrying; last error:", err)
 		err = me.runOnce(req, rep)
 	}
@@ -273,7 +340,7 @@ func (me *Master) replayFileModifications(infos []*FileAttr, newFiles map[string
 		}
 	}
 
-	me.fileServer.updateFiles(infos)
+	me.attr.Update(infos)
 }
 
 func (me *Master) replay(fset FileSet) {
@@ -291,7 +358,7 @@ func (me *Master) replay(fset FileSet) {
 		}
 
 		log.Printf("Prepare %x: %s", info.Hash, info.Path)
-		f, err := ioutil.TempFile(me.writableRoot, ".tmp-termite")
+		f, err := ioutil.TempFile(me.options.WritableRoot, ".tmp-termite")
 		if err != nil {
 			log.Fatal("TempFile", err)
 		}
@@ -335,8 +402,22 @@ func (me *Master) replay(fset FileSet) {
 }
 
 func (me *Master) refreshAttributeCache() {
-	for _, r := range []string{me.writableRoot, me.srcRoot} {
-		updated := me.fileServer.refreshAttributeCache(r[1:])
+	last := ""
+	for _, r := range []string{me.options.WritableRoot, me.options.SrcRoot} {
+		if last == r || r == "" {
+			continue
+		}
+		updated := me.attr.Refresh(r[1:])
 		me.fileServer.attr.Queue(updated)
+		last = r
+	}
+}
+
+func (me *Master) FetchDirs(root string) {
+	a := me.attr.GetDir(root)
+	for n, m := range a.NameModeMap {
+		if m.IsDirectory() {
+			me.FetchDirs(me.path(n))
+		}
 	}
 }

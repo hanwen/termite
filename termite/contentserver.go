@@ -6,16 +6,8 @@ import (
 	"rpc"
 )
 
-// TODO - should have an interface that opens a network connection and
-// streams the whole file directly, to avoid choppy RPCs?
-
-// Content server exposes an md5 keyed content store for RPC.
-type ContentServer struct {
-	Cache *ContentCache
-}
-
-func (me *ContentServer) FileContent(req *ContentRequest, rep *ContentResponse) os.Error {
-	if c := me.Cache.ContentsIfLoaded(req.Hash); c != nil {
+func ServeFileContent(cache *ContentCache, req *ContentRequest, rep *ContentResponse) os.Error {
+	if c := cache.ContentsIfLoaded(req.Hash); c != nil {
 		end := req.End
 		if end > len(c) {
 			end = len(c)
@@ -24,7 +16,7 @@ func (me *ContentServer) FileContent(req *ContentRequest, rep *ContentResponse) 
 		return nil
 	}
 
-	f, err := os.Open(me.Cache.Path(req.Hash))
+	f, err := os.Open(cache.Path(req.Hash))
 	if err != nil {
 		return err
 	}

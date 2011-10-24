@@ -96,11 +96,14 @@ func NewTestCase(t *testing.T) *testCase {
 	wg.Add(1)
 	go func() {
 		masterCache := NewContentCache(me.tmp + "/master-cache")
-		me.master = NewMaster(
-			masterCache, coordinatorAddr.String(),
-			[]string{},
-			me.secret, []string{}, 1)
-		me.master.fileServer.excludePrivate = false
+		masterOpts := MasterOptions{
+			WritableRoot: me.wd,
+			RetryCount: 3,
+			Secret: me.secret,
+			MaxJobs: 1,
+			Coordinator: coordinatorAddr.String(),
+		}
+		me.master = NewMaster(masterCache, &masterOpts)
 		me.master.SetKeepAlive(0.5, 0.5)
 		me.socket = me.wd + "/master-socket"
 		go me.master.Start(me.socket)
@@ -434,7 +437,7 @@ func TestEndToEndShutdown(t *testing.T) {
 	// In the test, shutdown doesn't really exit the worker, since
 	// we can't stop the already running accept(); retry would
 	// cause the test to hang.
-	tc.master.retryCount = 0
+	tc.master.options.RetryCount = 0
 
 	req := WorkRequest{
 		Argv: []string{"touch", "file.txt"},

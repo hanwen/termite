@@ -16,13 +16,13 @@ import (
 var _ = log.Printf
 
 func testStat(t *testing.T, n string) *os.FileInfo {
-	t.Logf("stat %q", n)
+	t.Logf("test stat %q", n)
 	f, _ := os.Lstat(n)
 	return f
 }
 
 func testGetattr(t *testing.T, n string) *FileAttr {
-	t.Logf("getattr %q", n)
+	t.Logf("test getattr %q", n)
 	fi, _ := os.Lstat(n)
 	a := FileAttr{
 		FileInfo: fi,

@@ -227,5 +227,5 @@ func (me *Mirror) newWorkerTask(req *WorkRequest, rep *WorkResponse) (*WorkerTas
 }
 
 func (me *Mirror) FileContent(req *ContentRequest, rep *ContentResponse) os.Error {
-	return me.daemon.contentServer.FileContent(req, rep)
+	return ServeFileContent(me.daemon.contentCache, req, rep)
 }
