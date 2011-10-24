@@ -31,13 +31,13 @@ func TestFsServerCache(t *testing.T) {
 	}
 
 	me.attr.Refresh("")
-	c := me.server.copyCache().Files
+	c := me.attr.Copy().Files
 	if len(c) > 0 {
 		t.Errorf("cache not empty? %#v", c)
 	}
 
 	os.Lstat(me.mnt + "/file.txt")
-	c = me.server.copyCache().Files
+	c = me.attr.Copy().Files
 	if len(c) != 2 {
 		t.Errorf("cache should have 2 entries, got %#v", c)
 	}
