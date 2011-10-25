@@ -40,8 +40,6 @@ func main() {
 	paranoia := flag.Bool("paranoia", false, "Check attribute cache.")
 	flag.Parse()
 
-	termite.Paranoia = *paranoia
-	
 	log.SetPrefix("W")
 
 	if os.Geteuid() != 0 {
@@ -58,6 +56,7 @@ func main() {
 		CacheDir:         *cachedir,
 		Jobs:             *jobs,
 		User:             user,
+		Paranoia:         *paranoia,
 		FileContentCount: *memcache,
 		ReapCount:        *reapcount,
 	}

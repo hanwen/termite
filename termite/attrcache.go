@@ -21,6 +21,8 @@ type AttributeCache struct {
 	statter    func(name string) *os.FileInfo
 
 	clients    map[string]*attrCachePending
+
+	Paranoia   bool
 }
 
 type attrCachePending struct {
@@ -113,10 +115,8 @@ func NewAttributeCache(getter func(n string) *FileAttr,
 	return me
 }
 
-var Paranoia = false
-
 func (me *AttributeCache) Verify() {
-	if !Paranoia {
+	if !me.Paranoia {
 		return
 	}
 	me.mutex.RLock()
@@ -125,7 +125,7 @@ func (me *AttributeCache) Verify() {
 }
 
 func (me *AttributeCache) verify() {
-	if !Paranoia {
+	if !me.Paranoia {
 		return
 	}
 	for k, v := range me.attributes {

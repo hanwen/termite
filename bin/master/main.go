@@ -31,7 +31,6 @@ func main() {
 	paranoia := flag.Bool("paranoia", false, "Check attribute cache.")
 
 	flag.Parse()
-	termite.Paranoia = *paranoia
 
 	log.SetPrefix("M")
 
@@ -54,6 +53,7 @@ func main() {
 		Coordinator: *coordinator,
 		SrcRoot: *srcRoot,
 		WritableRoot: root,
+		Paranoia: *paranoia,
 	}
 	master := termite.NewMaster(c, &opts)
 	master.SetKeepAlive(*keepAlive, *houseHoldPeriod)

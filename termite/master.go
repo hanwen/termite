@@ -31,6 +31,7 @@ type MasterOptions struct {
 	Workers     []string
 	Secret      []byte
 	MaxJobs     int	
+	Paranoia    bool
 }
 
 type replayRequest struct {

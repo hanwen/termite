@@ -44,6 +44,7 @@ type WorkerDaemon struct {
 }
 
 type WorkerOptions struct {
+	Paranoia bool
 	Secret   []byte
 	TempDir  string
 	CacheDir string

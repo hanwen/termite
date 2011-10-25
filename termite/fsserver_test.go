@@ -16,10 +16,6 @@ import (
 
 // TODO - fold common code.
 
-func init() {
-	Paranoia = true
-}
-
 func TestFsServerCache(t *testing.T) {
 	me := newRpcFsTestCase(t)
 	defer me.Clean()
@@ -98,7 +94,7 @@ func newRpcFsTestCase(t *testing.T) (me *rpcFsTestCase) {
 		func(n string) *os.FileInfo {
 			return testStat(t, filepath.Join(me.orig, n))
 		})
-
+	me.attr.Paranoia = true
 	me.server = NewFsServer(me.attr, cache)
 
 	var err os.Error
