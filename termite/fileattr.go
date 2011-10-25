@@ -13,7 +13,7 @@ var _ = log.Printf
 
 func (me FileAttr) String() string {
 	id := me.Path
-	
+
 	if me.Hash != "" {
 		id += fmt.Sprintf(" sz %d md5 %x..", me.FileInfo.Size, me.Hash[:4])
 	}
@@ -21,7 +21,7 @@ func (me FileAttr) String() string {
 		id += fmt.Sprintf(" -> %s", me.Link)
 	}
 	if me.FileInfo != nil {
-		id += fmt.Sprintf(" %s:%o", FileMode(me.FileInfo.Mode), me.FileInfo.Mode & 07777)
+		id += fmt.Sprintf(" %s:%o", FileMode(me.FileInfo.Mode), me.FileInfo.Mode&07777)
 		if me.NameModeMap != nil {
 			id += "+names"
 		}
@@ -35,12 +35,12 @@ func (me FileAttr) LongString() string {
 	s := me.String()
 	if me.FileInfo != nil {
 		s += fmt.Sprintf(" C%d.%09d, M%d.%09d, A%d.%09d",
-			me.Ctime_ns / 1e9, 
-			me.Ctime_ns % 1e9, 
-			me.Mtime_ns / 1e9, 
-			me.Mtime_ns % 1e9, 
-			me.Atime_ns / 1e9, 
-			me.Atime_ns % 1e9)
+			me.Ctime_ns/1e9,
+			me.Ctime_ns%1e9,
+			me.Mtime_ns/1e9,
+			me.Mtime_ns%1e9,
+			me.Atime_ns/1e9,
+			me.Atime_ns%1e9)
 	}
 	return s
 }
@@ -132,19 +132,26 @@ func (me *FileAttr) Merge(r FileAttr) {
 
 func (me FileMode) String() string {
 	switch uint32(me) & syscall.S_IFMT {
-	case syscall.S_IFIFO: return "p"
-	case syscall.S_IFCHR: return "c"
-	case syscall.S_IFDIR: return "d"
-	case syscall.S_IFBLK: return "b"
-	case syscall.S_IFREG: return "f"
-	case syscall.S_IFLNK: return "l"
-	case syscall.S_IFSOCK: return "s"
+	case syscall.S_IFIFO:
+		return "p"
+	case syscall.S_IFCHR:
+		return "c"
+	case syscall.S_IFDIR:
+		return "d"
+	case syscall.S_IFBLK:
+		return "b"
+	case syscall.S_IFREG:
+		return "f"
+	case syscall.S_IFLNK:
+		return "l"
+	case syscall.S_IFSOCK:
+		return "s"
 	default:
 		log.Panic("Unknown mode: %o", me)
 	}
 	return "0"
 }
-	
+
 func (me FileMode) IsFifo() bool { return (uint32(me) & syscall.S_IFMT) == syscall.S_IFIFO }
 
 // IsChar reports whether the FileInfo describes a character special file.

@@ -20,9 +20,9 @@ type AttributeCache struct {
 	getter     func(name string) *FileAttr
 	statter    func(name string) *os.FileInfo
 
-	clients    map[string]*attrCachePending
+	clients map[string]*attrCachePending
 
-	Paranoia   bool
+	Paranoia bool
 }
 
 type attrCachePending struct {
@@ -60,10 +60,10 @@ func (me *AttributeCache) AddClient(client AttributeCacheClient) {
 	}
 
 	clData := attrCachePending{
-		client: client,
+		client:  client,
 		pending: me.copyFiles().Files,
 	}
-	
+
 	me.clients[id] = &clData
 }
 
@@ -86,9 +86,9 @@ func (me *AttributeCache) Send(client AttributeCacheClient) os.Error {
 	p := c.pending
 	c.pending = nil
 	c.busy = true
-	me.mutex.Unlock()	
+	me.mutex.Unlock()
 	err := c.client.Send(p)
-	me.mutex.Lock()	
+	me.mutex.Lock()
 	c.busy = false
 	me.cond.Broadcast()
 	return err
@@ -148,7 +148,7 @@ func (me *AttributeCache) verify() {
 		}
 		for childName, mode := range v.NameModeMap {
 			if strings.Contains(childName, "\000") || strings.Contains(childName, "/") || len(childName) == 0 {
-				log.Panicf("%q has illegal child name %q: %o", k, childName, mode)  
+				log.Panicf("%q has illegal child name %q: %o", k, childName, mode)
 			}
 			if mode == 0 {
 				log.Panicf("child has 0 mode: %q.%q", k, childName)
@@ -206,16 +206,16 @@ func (me *AttributeCache) localGet(name string, withdir bool) (rep *FileAttr) {
 
 func (me *AttributeCache) get(name string, withdir bool) (rep *FileAttr) {
 	rep = me.localGet(name, withdir)
-	
+
 	if rep != nil {
 		return rep
 	}
-	
+
 	me.mutex.Lock()
 	defer me.mutex.Unlock()
 	return me.unsafeGet(name, withdir)
 }
-	
+
 func (me *AttributeCache) unsafeGet(name string, withdir bool) (rep *FileAttr) {
 	if name != "" {
 		dir, base := SplitPath(name)
@@ -284,7 +284,7 @@ func (me *AttributeCache) update(files []*FileAttr) {
 				dirAttr.NameModeMap[basename] = FileMode(r.Mode &^ 07777)
 			}
 		}
-		
+
 		if r.Deletion() {
 			attributes[r.Path] = nil, false
 			continue
@@ -298,7 +298,7 @@ func (me *AttributeCache) update(files []*FileAttr) {
 			log.Println("Discarding contentless dir update: ", r)
 			continue
 		}
-		
+
 		if old == nil {
 			attributes[r.Path] = &r
 		} else {
@@ -331,10 +331,10 @@ func (me *AttributeCache) Refresh(prefix string) FileSet {
 			}
 			updated = append(updated, &del)
 		}
-		
+
 		// TODO - should generate deletion based on dir
 		// contents too?
-		
+
 		// TODO - does this handle symlinks corrrectly?
 		if fi != nil && attr.FileInfo != nil && EncodeFileInfo(*attr.FileInfo) != EncodeFileInfo(*fi) {
 			newEnt := me.getter(key)
@@ -366,4 +366,3 @@ func (me *AttributeCache) copyFiles() FileSet {
 	fs.Sort()
 	return fs
 }
-

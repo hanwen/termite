@@ -98,10 +98,10 @@ func NewTestCase(t *testing.T) *testCase {
 		masterCache := NewContentCache(me.tmp + "/master-cache")
 		masterOpts := MasterOptions{
 			WritableRoot: me.wd,
-			RetryCount: 3,
-			Secret: me.secret,
-			MaxJobs: 1,
-			Coordinator: coordinatorAddr.String(),
+			RetryCount:   3,
+			Secret:       me.secret,
+			MaxJobs:      1,
+			Coordinator:  coordinatorAddr.String(),
 		}
 		me.master = NewMaster(masterCache, &masterOpts)
 		me.master.SetKeepAlive(0.5, 0.5)
@@ -134,7 +134,7 @@ func (me *testCase) Clean() {
 		rep := ShutdownResponse{}
 		err := w.Shutdown(&req, &rep)
 		if err != nil {
-			me.tester.Fatal("Worker shutdown error:", err) 
+			me.tester.Fatal("Worker shutdown error:", err)
 		}
 	}
 
@@ -191,7 +191,6 @@ func (me *testCase) Run(req WorkRequest, mustExit bool) (rep WorkResponse) {
 	return rep
 }
 
-
 // Simple end-to-end test.  It skips the chroot, but should give a
 // basic assurance that things work as expected.
 func TestEndToEndBasic(t *testing.T) {
@@ -247,9 +246,9 @@ func TestEndToEndFullPath(t *testing.T) {
 	client := rpc.NewClient(rpcConn)
 	req := WorkRequest{
 		Binary: "true",
-		Argv: []string{"true"},
-		Env: testEnv(),
-		Dir: tc.wd,
+		Argv:   []string{"true"},
+		Env:    testEnv(),
+		Dir:    tc.wd,
 	}
 	rep := &WorkResponse{}
 	err := client.Call("LocalMaster.Run", &req, &rep)
@@ -264,27 +263,25 @@ func TestEndToEndFullPath(t *testing.T) {
 	client.Close()
 }
 
-
 func TestEndToEndFormatError(t *testing.T) {
 	tc := NewTestCase(t)
 	defer tc.Clean()
 
-	ioutil.WriteFile(tc.wd + "/ls.sh", []byte("ls"), 0755)
+	ioutil.WriteFile(tc.wd+"/ls.sh", []byte("ls"), 0755)
 
 	rpcConn := OpenSocketConnection(tc.socket, RPC_CHANNEL, 1e7)
 	client := rpc.NewClient(rpcConn)
 	req := WorkRequest{
 		Binary: tc.wd + "/ls.sh",
-		Argv: []string{"ls.sh"},
-		Env: testEnv(),
-		Dir: tc.wd,
+		Argv:   []string{"ls.sh"},
+		Env:    testEnv(),
+		Dir:    tc.wd,
 	}
 	rep := &WorkResponse{}
 	err := client.Call("LocalMaster.Run", &req, &rep)
 	t.Log(err)
 	client.Close()
 }
-
 
 func TestEndToEndExec(t *testing.T) {
 	tc := NewTestCase(t)
@@ -307,12 +304,12 @@ func TestEndToEndNegativeNotify(t *testing.T) {
 	hash := tc.master.cache.Save(newContent)
 	updated := []*FileAttr{
 		&FileAttr{
-			Path:     tc.wd[1:] + "/output.txt",
+			Path: tc.wd[1:] + "/output.txt",
 			FileInfo: &os.FileInfo{
 				Mode: fuse.S_IFREG | 0644,
 				Size: int64(len(newContent)),
 			},
-			Hash:     hash,
+			Hash: hash,
 		},
 	}
 	fset := FileSet{Files: updated}
@@ -458,7 +455,7 @@ func TestEndToEndShutdown(t *testing.T) {
 func TestEndToEndLogFile(t *testing.T) {
 	tc := NewTestCase(t)
 	defer tc.Clean()
-	fn :=tc.wd+"/logfile.txt"
+	fn := tc.wd + "/logfile.txt"
 	ioutil.WriteFile(fn, []byte("magic string"), 0644)
 	for _, w := range tc.workers {
 		w.LogFileName = fn
@@ -538,7 +535,6 @@ func TestEndToEndLinkReap(t *testing.T) {
 	}
 }
 
-
 func TestEndToEndKillChild(t *testing.T) {
 	tc := NewTestCase(t)
 	defer tc.Clean()
@@ -549,7 +545,7 @@ func TestEndToEndKillChild(t *testing.T) {
 	complete := make(chan int)
 	go func() {
 		tc.Run(req, false)
-		complete  <- 1
+		complete <- 1
 	}()
 
 	time.Sleep(0.5e9)
@@ -558,5 +554,3 @@ func TestEndToEndKillChild(t *testing.T) {
 	time.Sleep(0.5e9)
 	<-complete
 }
-
-

@@ -99,7 +99,6 @@ var controlCharMap = map[byte]bool{
 	'#': true,
 }
 
-
 func MakeUnescape(cmd string) string {
 	word := make([]byte, 0, len(cmd))
 
@@ -112,7 +111,7 @@ func MakeUnescape(cmd string) string {
 			}
 			lastSlash = false
 		} else {
-			if ch == '\\'  {
+			if ch == '\\' {
 				lastSlash = true
 			} else {
 				word = append(word, ch)

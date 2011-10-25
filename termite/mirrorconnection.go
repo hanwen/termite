@@ -213,7 +213,7 @@ func (me *mirrorConnections) dropConnections() {
 func (me *mirrorConnections) find(name string) (*mirrorConnection, os.Error) {
 	me.Mutex.Lock()
 	defer me.Mutex.Unlock()
-	
+
 	var found *mirrorConnection
 	for nm, v := range me.mirrors {
 		if strings.Contains(nm, name) {
@@ -227,7 +227,6 @@ func (me *mirrorConnections) find(name string) (*mirrorConnection, os.Error) {
 	found.availableJobs--
 	return found, nil
 }
-
 
 func (me *mirrorConnections) pick() (*mirrorConnection, os.Error) {
 	me.Mutex.Lock()
@@ -267,7 +266,7 @@ func (me *mirrorConnections) pick() (*mirrorConnection, os.Error) {
 
 func (me *mirrorConnections) drop(mc *mirrorConnection, err os.Error) {
 	me.master.fileServer.attr.RmClient(mc)
-	
+
 	me.Mutex.Lock()
 	defer me.Mutex.Unlock()
 	log.Printf("Dropping mirror %s. Reason: %s", mc.workerAddr, err)

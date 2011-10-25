@@ -19,7 +19,9 @@ type splicePair struct {
 var splicePairs chan *splicePair
 
 var pipeMaxSize *int
-const defaultPipeSize = 16*4096
+
+const defaultPipeSize = 16 * 4096
+
 func init() {
 	splicePairs = make(chan *splicePair, 100)
 }
@@ -92,7 +94,7 @@ func newSplicePair() (me *splicePair, err os.Error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	errNo := 0
 	_, errNo = fcntl(me.r.Fd(), syscall.F_SETFL, os.O_NONBLOCK)
 	if errNo != 0 {
@@ -104,7 +106,7 @@ func newSplicePair() (me *splicePair, err os.Error) {
 		me.Close()
 		return nil, os.NewSyscallError("fcntl setfl w", errNo)
 	}
-	
+
 	me.size, errNo = fcntl(me.r.Fd(), F_GETPIPE_SZ, 0)
 	if errNo == syscall.EINVAL {
 		// From manpage on ubuntu Lucid:

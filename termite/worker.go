@@ -20,17 +20,17 @@ import (
 var _ = log.Println
 
 type WorkerDaemon struct {
-	Nobody *user.User
-	secret []byte
-	Hostname      string
-	listener      net.Listener
-	rpcServer     *rpc.Server
-	contentCache  *ContentCache
-	maxJobCount   int
-	pending       *PendingConnections
-	cacheDir      string
-	tmpDir        string
-	stats         *cpuStatSampler
+	Nobody       *user.User
+	secret       []byte
+	Hostname     string
+	listener     net.Listener
+	rpcServer    *rpc.Server
+	contentCache *ContentCache
+	maxJobCount  int
+	pending      *PendingConnections
+	cacheDir     string
+	tmpDir       string
+	stats        *cpuStatSampler
 
 	stopListener chan int
 
@@ -99,19 +99,19 @@ func NewWorkerDaemon(options *WorkerOptions) *WorkerDaemon {
 		options.ReportInterval = 60.0
 	}
 	copied := *options
-	
+
 	cache := NewContentCache(options.CacheDir)
 	cache.SetMemoryCacheSize(options.FileContentCount)
 	me := &WorkerDaemon{
-		secret:        options.Secret,
-		contentCache:  cache,
-		mirrorMap:     make(map[string]*Mirror),
-		pending:       NewPendingConnections(),
-		maxJobCount:   options.Jobs,
-		tmpDir:        options.TempDir,
-		rpcServer:     rpc.NewServer(),
-		stats:         newCpuStatSampler(),
-		options:       &copied,
+		secret:       options.Secret,
+		contentCache: cache,
+		mirrorMap:    make(map[string]*Mirror),
+		pending:      NewPendingConnections(),
+		maxJobCount:  options.Jobs,
+		tmpDir:       options.TempDir,
+		rpcServer:    rpc.NewServer(),
+		stats:        newCpuStatSampler(),
+		options:      &copied,
 	}
 	if os.Geteuid() == 0 && options.User != nil {
 		nobody, err := user.Lookup(*options.User)
@@ -276,21 +276,21 @@ func (me *WorkerDaemon) Log(req *LogRequest, rep *LogResponse) os.Error {
 
 	switch req.Whence {
 	case os.SEEK_END:
-		if req.Off < -size{
+		if req.Off < -size {
 			req.Off = -size
 		}
-		if req.Off + req.Size > 0 {
+		if req.Off+req.Size > 0 {
 			req.Size = -req.Off
 		}
 	case os.SEEK_SET:
 		if req.Off > size {
 			req.Off = size
 		}
-		if req.Off + req.Size > size {
+		if req.Off+req.Size > size {
 			req.Size = size - req.Off
 		}
 	}
-	
+
 	log.Printf("Sending log: %v", req)
 	_, err = f.Seek(req.Off, req.Whence)
 	if err != nil {

@@ -62,7 +62,7 @@ func (me *LocalMaster) start(sock string) {
 	}
 	me.listener = l
 	defer os.Remove(sock)
-	
+
 	err = os.Chmod(sock, 0700)
 	if err != nil {
 		log.Fatal("sock chmod", err)

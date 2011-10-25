@@ -147,7 +147,6 @@ func Inspect(files []string) {
 			log.Fatal("LocalMaster.InspectFile: ", err)
 		}
 
-
 		for _, a := range rep.Attrs {
 			entries := []string{}
 			log.Printf("%v", a.LongString())

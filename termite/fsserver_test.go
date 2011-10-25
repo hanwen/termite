@@ -157,18 +157,18 @@ func TestRpcFsReadDirCache(t *testing.T) {
 		t.Fatalf("Missing entry %q %v", "file.txt", entries)
 	}
 
-	before, _ := os.Lstat(me.orig+"/subdir")
+	before, _ := os.Lstat(me.orig + "/subdir")
 	for {
 		err = ioutil.WriteFile(me.orig+"/subdir/unstatted.txt", []byte("somethingelse"), 0644)
 		check(err)
-		after, _ := os.Lstat(me.orig+"/subdir")
+		after, _ := os.Lstat(me.orig + "/subdir")
 		if before.Mtime_ns != after.Mtime_ns {
 			break
 		}
 		time.Sleep(10e6)
-		os.Remove(me.orig+"/subdir/unstatted.txt")
+		os.Remove(me.orig + "/subdir/unstatted.txt")
 	}
-	
+
 	err = os.Remove(me.orig + "/subdir/file.txt")
 	check(err)
 

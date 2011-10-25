@@ -19,8 +19,8 @@ type WorkerTask struct {
 	*WorkResponse
 	stdinConn net.Conn
 	mirror    *Mirror
-	cmd       *exec.Cmd 
-	taskInfo string
+	cmd       *exec.Cmd
+	taskInfo  string
 }
 
 func (me *WorkerTask) Kill() {

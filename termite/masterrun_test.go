@@ -1,4 +1,5 @@
 package termite
+
 import (
 	"fmt"
 	"io/ioutil"
@@ -28,22 +29,21 @@ func TestEndToEndMkdirParentTimestamp(t *testing.T) {
 		Argv: []string{"mkdir", "-p", tc.wd + "/dir"},
 	})
 	rootless := strings.TrimLeft(tc.wd, "/")
-	beforeNs := tc.master.fileServer.attr.Get(rootless+"/dir").Ctime_ns
+	beforeNs := tc.master.fileServer.attr.Get(rootless + "/dir").Ctime_ns
 	var after *FileAttr
 	for i := 0; ; i++ {
 		time.Sleep(10e6)
 		subdir := fmt.Sprintf(tc.wd+"/dir/subdir%d", i)
 		tc.RunSuccess(WorkRequest{
 			Argv: []string{"mkdir", "-p", subdir},
-				
 		})
 		after = tc.master.fileServer.attr.Get(strings.TrimLeft(subdir, "/"))
 		if after.Ctime_ns != beforeNs {
 			break
 		}
 	}
-	
-	afterDir := tc.master.fileServer.attr.Get(rootless+"/dir")
+
+	afterDir := tc.master.fileServer.attr.Get(rootless + "/dir")
 	if afterDir.Ctime_ns == beforeNs {
 		t.Errorf("Forgot to update parent timestamps")
 	}
@@ -57,7 +57,7 @@ func TestEndToEndMkdirNoParentTimestamp(t *testing.T) {
 		Argv: []string{"mkdir", "-p", tc.wd + "/dir"},
 	})
 	rootless := strings.TrimLeft(tc.wd, "/")
-	beforeNs := tc.master.fileServer.attr.Get(rootless+"/dir").Ctime_ns
+	beforeNs := tc.master.fileServer.attr.Get(rootless + "/dir").Ctime_ns
 	var after *FileAttr
 	for i := 0; ; i++ {
 		time.Sleep(10e6)
@@ -70,8 +70,8 @@ func TestEndToEndMkdirNoParentTimestamp(t *testing.T) {
 			break
 		}
 	}
-	
-	afterDir := tc.master.fileServer.attr.Get(rootless+"/dir")
+
+	afterDir := tc.master.fileServer.attr.Get(rootless + "/dir")
 	if afterDir.Ctime_ns == beforeNs {
 		t.Errorf("Forgot to update parent timestamps")
 	}
@@ -80,13 +80,13 @@ func TestEndToEndMkdirNoParentTimestamp(t *testing.T) {
 func TestEndToEndMkdirExist(t *testing.T) {
 	tc := NewTestCase(t)
 	defer tc.Clean()
-	
+
 	err := ioutil.WriteFile(tc.tmp+"/wd/file.txt", []byte{42}, 0644)
 	check(err)
 	tc.RunFail(WorkRequest{
 		Argv: []string{"mkdir", "file.txt"},
 	})
-	fi, _ := os.Lstat(tc.tmp+"/wd/file.txt")
+	fi, _ := os.Lstat(tc.tmp + "/wd/file.txt")
 	if !fi.IsRegular() {
 		t.Fatal("Should be regular file.")
 	}

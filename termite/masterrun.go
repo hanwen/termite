@@ -118,7 +118,7 @@ func mkdirMaybeMasterRun(master *Master, req *WorkRequest, rep *WorkResponse) bo
 			return false
 		}
 	}
-	
+
 	log.Println("Running in master:", req.Summary())
 	for _, a := range g.Args {
 		if a[0] != '/' {
@@ -153,7 +153,7 @@ func mkdirParentMasterRun(master *Master, arg string, rep *WorkResponse) {
 				Files: []*FileAttr{parent, entry},
 			}
 			master.replay(fs)
-			
+
 			parent = entry
 		} else if dirAttr.IsDirectory() {
 			parent = dirAttr
@@ -199,7 +199,7 @@ func mkdirNormalMasterRun(master *Master, arg string, rep *WorkResponse) {
 		}
 		return
 	}
-	
+
 	if !dirAttr.IsDirectory() {
 		rep.Stderr = fmt.Sprintf("Is not a directory: /%s", dir)
 		rep.Exit = os.Waitmsg{
@@ -212,7 +212,7 @@ func mkdirNormalMasterRun(master *Master, arg string, rep *WorkResponse) {
 	if !chAttr.Deletion() {
 		rep.Stderr = fmt.Sprintf("File exists: /%s", rootless)
 		rep.Exit = os.Waitmsg{
-			WaitStatus: (1<<8),
+			WaitStatus: (1 << 8),
 		}
 		return
 	}

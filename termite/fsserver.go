@@ -6,14 +6,14 @@ import (
 )
 
 type FsServer struct {
-	contentCache   *ContentCache
-	attr           *AttributeCache
+	contentCache *ContentCache
+	attr         *AttributeCache
 }
 
 func NewFsServer(attr *AttributeCache, cache *ContentCache) *FsServer {
 	me := &FsServer{
-		contentCache:   cache,
-		attr: attr,
+		contentCache: cache,
+		attr:         attr,
 	}
 
 	return me
@@ -36,4 +36,3 @@ func (me *FsServer) GetAttr(req *AttrRequest, rep *AttrResponse) os.Error {
 	rep.Attrs = append(rep.Attrs, a)
 	return nil
 }
-

@@ -46,14 +46,14 @@ func main() {
 
 	root, sock := absSocket(*socket)
 	opts := termite.MasterOptions{
-		Secret: secret,
-		MaxJobs: *jobs,
-		Excludes: excludeList,
-		Workers: workerList,
-		Coordinator: *coordinator,
-		SrcRoot: *srcRoot,
+		Secret:       secret,
+		MaxJobs:      *jobs,
+		Excludes:     excludeList,
+		Workers:      workerList,
+		Coordinator:  *coordinator,
+		SrcRoot:      *srcRoot,
 		WritableRoot: root,
-		Paranoia: *paranoia,
+		Paranoia:     *paranoia,
 	}
 	master := termite.NewMaster(c, &opts)
 	master.SetKeepAlive(*keepAlive, *houseHoldPeriod)

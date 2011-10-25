@@ -11,26 +11,26 @@ type Master struct {
 	cache         *ContentCache
 	fileServer    *FsServer
 	fileServerRpc *rpc.Server
-	excluded     map[string]bool
-	attr         *AttributeCache
-	mirrors      *mirrorConnections
-	pending      *PendingConnections
-	taskIds      chan int
-	options      *MasterOptions
+	excluded      map[string]bool
+	attr          *AttributeCache
+	mirrors       *mirrorConnections
+	pending       *PendingConnections
+	taskIds       chan int
+	options       *MasterOptions
 	replayChannel chan *replayRequest
 }
 
 type MasterOptions struct {
-	WritableRoot string
-	SrcRoot      string
-	RetryCount   int
+	WritableRoot   string
+	SrcRoot        string
+	RetryCount     int
 	Excludes       []string
 	ExcludePrivate bool
 
 	Coordinator string
 	Workers     []string
 	Secret      []byte
-	MaxJobs     int	
+	MaxJobs     int
 	Paranoia    bool
 }
 
@@ -44,7 +44,7 @@ func (me *Master) uncachedGetAttr(name string) (rep *FileAttr) {
 	rep = &FileAttr{Path: name}
 	p := me.path(name)
 	fi, _ := os.Lstat(p)
-	
+
 	// We don't want to expose the master's private files to the
 	// world.
 	if me.options.ExcludePrivate && fi != nil && fi.Mode&0077 == 0 {
@@ -83,7 +83,6 @@ func (me *Master) fillContent(rep *FileAttr) {
 	}
 }
 
-
 func (me *Master) path(n string) string {
 	return "/" + n
 }
@@ -100,13 +99,13 @@ func NewMaster(cache *ContentCache, options *MasterOptions) *Master {
 	for _, e := range options.Excludes {
 		me.excluded[e] = true
 	}
-	
+
 	me.mirrors = newMirrorConnections(
 		me, options.Workers, options.Coordinator, options.MaxJobs)
 	me.pending = NewPendingConnections()
 	me.attr = NewAttributeCache(func(n string) *FileAttr {
-			return me.uncachedGetAttr(n)
-		},
+		return me.uncachedGetAttr(n)
+	},
 		func(n string) *os.FileInfo {
 			fi, _ := os.Lstat(me.path(n))
 			return fi
@@ -116,7 +115,7 @@ func NewMaster(cache *ContentCache, options *MasterOptions) *Master {
 	me.fileServerRpc.Register(me.fileServer)
 
 	me.CheckPrivate()
-	
+
 	// Generate taskids.
 	go func() {
 		i := 0
@@ -226,7 +225,7 @@ func (me *Master) runOnMirror(mirror *mirrorConnection, req *WorkRequest, rep *W
 	if err != nil {
 		return err
 	}
-	
+
 	defer me.mirrors.jobDone(mirror)
 
 	// Tunnel stdin.
@@ -288,7 +287,7 @@ func (me *Master) run(req *WorkRequest, rep *WorkResponse) (err os.Error) {
 		}
 		return me.runOnMirror(mc, req, rep)
 	}
-	
+
 	err = me.runOnce(req, rep)
 	for i := 0; i < me.options.RetryCount && err != nil; i++ {
 		log.Println("Retrying; last error:", err)
@@ -399,7 +398,7 @@ func (me *Master) replay(fset FileSet) {
 			log.Fatal("Chtimes", err)
 		}
 	}
-	
+
 	me.fileServer.attr.Queue(fset)
 
 	me.replayChannel <- &req

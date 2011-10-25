@@ -141,7 +141,7 @@ func (me *Coordinator) rootHandler(w http.ResponseWriter, req *http.Request) {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
-	
+
 	for _, k := range keys {
 		worker := me.workers[k]
 		fmt.Fprintf(w, "<li><a href=\"worker?host=%s\">address <tt>%s</tt>, host <tt>%s</tt></a>",
@@ -174,7 +174,7 @@ func (me *Coordinator) killAllHandler(w http.ResponseWriter, req *http.Request) 
 			defer cl.Close()
 			err = cl.Call("WorkerDaemon.Shutdown", &killReq, &rep)
 		}
-		
+
 		if err != nil {
 			errs = append(errs, fmt.Errorf("%s: %v", w, err))
 		}
@@ -182,7 +182,7 @@ func (me *Coordinator) killAllHandler(w http.ResponseWriter, req *http.Request) 
 
 	if len(errs) > 0 {
 		fmt.Fprintf(w, "Error: %v", errs)
-		return 
+		return
 	}
 
 	action := "kill"
@@ -204,13 +204,12 @@ func (me *Coordinator) killHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	defer conn.Close()
-	
+
 	w.Header().Set("Content-Type", "text/html")
 	restart := req.URL.Path == "restart"
 	fmt.Fprintf(w, "<html><head><title>Termite worker status</title></head>")
 	fmt.Fprintf(w, "<body><h1>Status %s</h1>", addr)
 	defer fmt.Fprintf(w, "</body></html>")
-
 
 	killReq := ShutdownRequest{Restart: restart}
 	rep := ShutdownResponse{}
@@ -263,7 +262,6 @@ func (me *Coordinator) haveWorker(addr string) bool {
 	return ok
 }
 
-
 func (me *Coordinator) getHost(req *http.Request) (string, net.Conn, os.Error) {
 	q := req.URL.Query()
 	vs, ok := q["host"]
@@ -291,7 +289,7 @@ func (me *Coordinator) logHandler(w http.ResponseWriter, req *http.Request) {
 		fmt.Fprintf(w, "<body>Error: %s</body></html>", err.String())
 		return
 	}
-	sz := int64(500*1024)
+	sz := int64(500 * 1024)
 	sizeStr, ok := req.URL.Query()["size"]
 	if ok {
 		fmt.Scanf(sizeStr[0], "%d", &sz)
@@ -308,7 +306,7 @@ func (me *Coordinator) logHandler(w http.ResponseWriter, req *http.Request) {
 		fmt.Fprintf(w, "<body>Error: %s</body></html>", err.String())
 		return
 	}
-	
+
 	w.Header().Set("Content-Type", "text/plain")
 	w.Write(logRep.Data)
 	return

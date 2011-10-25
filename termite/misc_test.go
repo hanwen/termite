@@ -101,7 +101,7 @@ func TestSavingCopy(t *testing.T) {
 }
 
 func TestMakeUnescape(t *testing.T) {
-	cases := []struct{
+	cases := []struct {
 		in, out string
 	}{
 		{"abc\ndef", "abc\ndef"},

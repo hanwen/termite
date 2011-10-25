@@ -87,7 +87,7 @@ type Timing struct {
 }
 
 type FileSet struct {
-	Files  []*FileAttr
+	Files         []*FileAttr
 	OriginAddress string
 }
 
@@ -122,7 +122,7 @@ type WorkRequest struct {
 	RanLocally   bool
 
 	// If set, must run on worker. Used for debugging.
-	Worker       string
+	Worker string
 }
 
 func (me *WorkRequest) Summary() string {
@@ -154,7 +154,7 @@ type LogRequest struct {
 	Off    int64
 	Size   int64
 }
-	
+
 type LogResponse struct {
-	Data   []byte
+	Data []byte
 }

@@ -110,7 +110,7 @@ func TestAttrCache(t *testing.T) {
 		err = os.Chmod(dir+"/file", 0666)
 		check(err)
 	}
-	
+
 	err = ioutil.WriteFile(dir+"/other", []byte{43}, 0666)
 	check(err)
 
@@ -130,14 +130,14 @@ func TestAttrCacheRefresh(t *testing.T) {
 	ac, dir, clean := attrCacheTestCase(t)
 	defer clean()
 
-	os.Mkdir(dir + "/a", 0755)
+	os.Mkdir(dir+"/a", 0755)
 	d := ac.GetDir("")
 	if len(d.NameModeMap) != 1 || d.NameModeMap["a"] == 0 {
 		t.Fatal("GetDir fail.", d.NameModeMap)
 	}
 
 	os.Remove(dir + "/a")
-		
+
 	i := 0
 	for {
 		newFi, err := os.Lstat(dir)
@@ -145,7 +145,7 @@ func TestAttrCacheRefresh(t *testing.T) {
 		if newFi.Ctime_ns != d.Ctime_ns {
 			break
 		}
-		err = os.Mkdir(dir + fmt.Sprintf("/d%d", i), 0755)
+		err = os.Mkdir(dir+fmt.Sprintf("/d%d", i), 0755)
 		check(err)
 
 		time.Sleep(10e6)
@@ -162,7 +162,7 @@ func TestAttrCacheRefresh(t *testing.T) {
 }
 
 type testClient struct {
-	id string
+	id    string
 	attrs []*FileAttr
 }
 
@@ -172,35 +172,35 @@ func (me *testClient) Id() string {
 
 func (me *testClient) Send(attrs []*FileAttr) os.Error {
 	for _, a := range attrs {
-		me.attrs  = append(me.attrs, a.Copy(true))
+		me.attrs = append(me.attrs, a.Copy(true))
 		if strings.Contains(a.Path, "delay") {
 			time.Sleep(a.Size * 1e6)
 		}
 	}
 	return nil
 }
-	
+
 func TestAttrCacheClientBasic(t *testing.T) {
 	ac, _, clean := attrCacheTestCase(t)
 	defer clean()
 
-	cl := testClient {
-	id: "testid",
+	cl := testClient{
+		id: "testid",
 	}
-	
+
 	ac.AddClient(&cl)
 
 	fa1 := FileAttr{
-		Path: "f1",
+		Path:     "f1",
 		FileInfo: &os.FileInfo{Mode: syscall.S_IFREG | 0644},
 	}
 	fs := FileSet{
 		Files: []*FileAttr{&fa1},
 	}
 	ac.Queue(fs)
-	
+
 	fa2 := FileAttr{
-		Path: "f2",
+		Path:     "f2",
 		FileInfo: &os.FileInfo{Mode: syscall.S_IFREG | 0644},
 	}
 	fs.Files = []*FileAttr{&fa2}
@@ -220,7 +220,7 @@ func TestAttrCacheClientExtra(t *testing.T) {
 	ac, dir, clean := attrCacheTestCase(t)
 	defer clean()
 
-	err := ioutil.WriteFile(dir + "/file.txt", []byte{42}, 0644)
+	err := ioutil.WriteFile(dir+"/file.txt", []byte{42}, 0644)
 	check(err)
 
 	f := ac.Get("file.txt")
@@ -228,8 +228,8 @@ func TestAttrCacheClientExtra(t *testing.T) {
 		t.Fatalf("'file.txt' should be present.")
 	}
 
-	cl := testClient {
-	id: "testid",
+	cl := testClient{
+		id: "testid",
 	}
 
 	ac.AddClient(&cl)
@@ -245,8 +245,8 @@ func TestAttrCacheClientWait(t *testing.T) {
 	ac, _, clean := attrCacheTestCase(t)
 	defer clean()
 
-	cl := testClient {
-	id: "testid",
+	cl := testClient{
+		id: "testid",
 	}
 
 	ac.AddClient(&cl)
@@ -273,7 +273,7 @@ func TestAttrCacheClientWait(t *testing.T) {
 	<-start
 	ac.Queue(fs2)
 
-	time.Sleep(d/2 * 1e6)
+	time.Sleep(d / 2 * 1e6)
 	err2 := ac.Send(&cl)
 	check(err2)
 	done <- 2
@@ -284,9 +284,8 @@ func TestAttrCacheClientWait(t *testing.T) {
 	<-done
 }
 
-
 type attrClient struct {
-	id string
+	id   string
 	attr *AttributeCache
 }
 
@@ -298,12 +297,12 @@ func (me *attrClient) Send(attrs []*FileAttr) os.Error {
 	me.attr.Update(attrs)
 	return nil
 }
-	
+
 func TestAttrCacheIncompleteDir(t *testing.T) {
 	ac, _, clean := attrCacheTestCase(t)
 	defer clean()
 	cl := attrClient{
-		id: "testid",
+		id:   "testid",
 		attr: NewAttributeCache(nil, nil),
 	}
 
@@ -325,7 +324,7 @@ func TestAttrCacheIncompleteDir(t *testing.T) {
 	// timestamp update.
 	dir := FileAttr{
 		FileInfo: &os.FileInfo{
-			Mode: syscall.S_IFDIR | 0755,
+			Mode:     syscall.S_IFDIR | 0755,
 			Ctime_ns: 100,
 		},
 		Path: "a",
@@ -337,15 +336,13 @@ func TestAttrCacheIncompleteDir(t *testing.T) {
 		},
 		Path: "a/file.txt",
 	}
-	
+
 	fs = FileSet{Files: []*FileAttr{&dir, &child}}
 	ac.Queue(fs)
 	ac.Send(&cl)
 
-	g := cl.attr.localGet("a", false) 
+	g := cl.attr.localGet("a", false)
 	if g != nil {
 		t.Errorf("Client should ignore timestamp update to unknown directory: %v", g)
 	}
 }
-
-	
