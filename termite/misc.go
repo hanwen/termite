@@ -253,6 +253,8 @@ func HookedCopy(w io.Writer, r io.Reader, proc func([]byte)) os.Error {
 
 // Like io.Copy, but returns the buffer if it was small enough to hold
 // of the copied bytes.
+//
+// TODO - decide on in-memory caching inside contentcache, based on size of data.
 func SavingCopy(w io.Writer, r io.Reader, bufSize int) ([]byte, os.Error) {
 	buf := make([]byte, bufSize)
 	total := 0
