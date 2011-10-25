@@ -80,7 +80,7 @@ func (me *AttributeCache) Send(client AttributeCacheClient) os.Error {
 		return nil
 	}
 	p := c.pending
-	c.pending = c.pending[:0]
+	c.pending = nil
 	c.busy = true
 	me.mutex.Unlock()	
 	err := c.client.Send(p)
