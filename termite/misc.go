@@ -96,6 +96,7 @@ var controlCharMap = map[byte]bool{
 	'}': true,
 	'~': true,
 	'`': true,
+	'#': true,
 }
 
 
