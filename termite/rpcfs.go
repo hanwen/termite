@@ -11,13 +11,13 @@ import (
 type RpcFs struct {
 	fuse.DefaultFileSystem
 	cache *ContentCache
-
 	client *rpc.Client
 
 	// Roots that we should try to fetch locally.
 	localRoots []string
 
 	attr *AttributeCache
+	id   string
 }
 
 func NewRpcFs(server *rpc.Client, cache *ContentCache) *RpcFs {
@@ -48,8 +48,13 @@ func (me *RpcFs) updateFiles(files []*FileAttr) {
 }
 
 func (me *RpcFs) fetchAttr(n string) *FileAttr {
-	req := &AttrRequest{Name: n}
+	req := &AttrRequest{
+		Name: n,
+		Origin: me.id,
+	}
 	rep := &AttrResponse{}
+
+	
 	err := me.client.Call("FsServer.GetAttr", req, rep)
 	if err != nil {
 		// fatal?

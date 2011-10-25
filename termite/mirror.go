@@ -43,6 +43,7 @@ func NewMirror(daemon *WorkerDaemon, rpcConn, revConn net.Conn) *Mirror {
 	}
 	mirror.cond = sync.NewCond(&mirror.fsMutex)
 	mirror.rpcFs = NewRpcFs(mirror.fileServer, daemon.contentCache)
+	mirror.rpcFs.id = daemon.Hostname
 	mirror.rpcFs.attr.Paranoia = daemon.options.Paranoia
 	mirror.rpcFs.localRoots = []string{"/lib", "/usr"}
 

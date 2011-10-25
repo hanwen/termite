@@ -19,7 +19,8 @@ type ContentResponse struct {
 }
 
 type AttrRequest struct {
-	Name string
+	Origin string
+	Name   string
 }
 
 type FileMode uint32
