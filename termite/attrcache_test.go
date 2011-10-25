@@ -216,6 +216,30 @@ func TestAttrCacheClientBasic(t *testing.T) {
 	}
 }
 
+func TestAttrCacheClientExtra(t *testing.T) {
+	ac, dir, clean := attrCacheTestCase(t)
+	defer clean()
+
+	err := ioutil.WriteFile(dir + "/file.txt", []byte{42}, 0644)
+	check(err)
+
+	f := ac.Get("file.txt")
+	if f.Deletion() {
+		t.Fatalf("'file.txt' should be present.")
+	}
+
+	cl := testClient {
+	id: "testid",
+	}
+
+	ac.AddClient(&cl)
+	err = ac.Send(&cl)
+	check(err)
+
+	if len(cl.attrs) != 2 {
+		t.Errorf("Send error: %s", cl.attrs)
+	}
+}
 
 func TestAttrCacheClientWait(t *testing.T) {
 	ac, _, clean := attrCacheTestCase(t)
