@@ -70,8 +70,6 @@ type rpcFsTestCase struct {
 	sockL, sockR io.ReadWriteCloser
 }
 
-
-
 func newRpcFsTestCase(t *testing.T) (me *rpcFsTestCase) {
 	me = &rpcFsTestCase{}
 	me.tmp, _ = ioutil.TempDir("", "term-fss")

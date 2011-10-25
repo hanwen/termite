@@ -283,3 +283,69 @@ func TestAttrCacheClientWait(t *testing.T) {
 	}
 	<-done
 }
+
+
+type attrClient struct {
+	id string
+	attr *AttributeCache
+}
+
+func (me *attrClient) Id() string {
+	return me.id
+}
+
+func (me *attrClient) Send(attrs []*FileAttr) os.Error {
+	me.attr.Update(attrs)
+	return nil
+}
+	
+func TestAttrCacheIncompleteDir(t *testing.T) {
+	ac, _, clean := attrCacheTestCase(t)
+	defer clean()
+	cl := attrClient{
+		id: "testid",
+		attr: NewAttributeCache(nil, nil),
+	}
+
+	ac.AddClient(&cl)
+
+	root := FileAttr{
+		FileInfo: &os.FileInfo{
+			Mode: syscall.S_IFDIR | 0644,
+		},
+		NameModeMap: map[string]FileMode{
+			"a": FileMode(syscall.S_IFDIR),
+		},
+		Path: "",
+	}
+	fs := FileSet{Files: []*FileAttr{&root}}
+	ac.Queue(fs)
+	ac.Send(&cl)
+
+	// timestamp update.
+	dir := FileAttr{
+		FileInfo: &os.FileInfo{
+			Mode: syscall.S_IFDIR | 0755,
+			Ctime_ns: 100,
+		},
+		Path: "a",
+	}
+	// entry update.
+	child := FileAttr{
+		FileInfo: &os.FileInfo{
+			Mode: syscall.S_IFREG | 0644,
+		},
+		Path: "a/file.txt",
+	}
+	
+	fs = FileSet{Files: []*FileAttr{&dir, &child}}
+	ac.Queue(fs)
+	ac.Send(&cl)
+
+	g := cl.attr.localGet("a", false) 
+	if g != nil {
+		t.Errorf("Client should ignore timestamp update to unknown directory: %v", g)
+	}
+}
+
+	

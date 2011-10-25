@@ -43,7 +43,9 @@ func NewMirror(daemon *WorkerDaemon, rpcConn, revConn net.Conn) *Mirror {
 	}
 	mirror.cond = sync.NewCond(&mirror.fsMutex)
 	mirror.rpcFs = NewRpcFs(mirror.fileServer, daemon.contentCache)
-	mirror.rpcFs.id = daemon.Hostname
+
+	_, portString, _ := net.SplitHostPort(daemon.listener.Addr().String())
+	mirror.rpcFs.id = daemon.Hostname + ":" + portString
 	mirror.rpcFs.attr.Paranoia = daemon.options.Paranoia
 	mirror.rpcFs.localRoots = []string{"/lib", "/usr"}
 

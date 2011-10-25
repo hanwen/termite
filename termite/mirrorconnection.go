@@ -222,7 +222,7 @@ func (me *mirrorConnections) find(name string) (*mirrorConnection, os.Error) {
 		}
 	}
 	if found == nil {
-		return nil, fmt.Errorf("No worker with name: %q", name)
+		return nil, fmt.Errorf("No worker with name: %q. Have %v", name, me.mirrors)
 	}
 	found.availableJobs--
 	return found, nil

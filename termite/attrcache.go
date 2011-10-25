@@ -291,10 +291,15 @@ func (me *AttributeCache) update(files []*FileAttr) {
 		}
 
 		old := attributes[r.Path]
+		if old == nil && r.IsDirectory() && r.NameModeMap == nil {
+			// This is a metadata update only. If it does
+			// not come with contents, we can't use it to
+			// short-cut deletion queries.
+			log.Println("Discarding contentless dir update: ", r)
+			continue
+		}
+		
 		if old == nil {
-			if r.NameModeMap == nil && r.IsDirectory() {
-				r.NameModeMap = map[string]FileMode{}
-			}
 			attributes[r.Path] = &r
 		} else {
 			old.Merge(r)
@@ -361,3 +366,4 @@ func (me *AttributeCache) copyFiles() FileSet {
 	fs.Sort()
 	return fs
 }
+
