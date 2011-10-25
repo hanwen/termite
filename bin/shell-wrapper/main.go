@@ -197,8 +197,9 @@ func main() {
 	inspect := flag.Bool("inspect", false, "inspect files on master.")
 	exec := flag.Bool("exec", false, "run command args without shell.")
 	directory := flag.String("dir", "", "directory from where to run (default: cwd).")
-
+	worker := flag.String("worker", "", "request to run on a worker explicitly")
 	debug := flag.Bool("dbg", false, "set on debugging in request.")
+
 	flag.Parse()
 	log.SetPrefix("S")
 
@@ -250,6 +251,7 @@ func main() {
 		rep.WorkerId = "(local)"
 	} else {
 		req.Debug = req.Debug || os.Getenv("TERMITE_DEBUG") != "" || *debug
+		req.Worker = *worker
 		err := Rpc().Call("LocalMaster.Run", &req, &rep)
 		if err != nil {
 			log.Fatal("LocalMaster.Run: ", err)

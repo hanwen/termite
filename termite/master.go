@@ -222,6 +222,11 @@ func (me *Master) createMirror(addr string, jobs int) (*mirrorConnection, os.Err
 }
 
 func (me *Master) runOnMirror(mirror *mirrorConnection, req *WorkRequest, rep *WorkResponse) os.Error {
+	err := me.fileServer.attr.Send(mirror)
+	if err != nil {
+		return err
+	}
+	
 	defer me.mirrors.jobDone(mirror)
 
 	// Tunnel stdin.
@@ -245,7 +250,7 @@ func (me *Master) runOnMirror(mirror *mirrorConnection, req *WorkRequest, rep *W
 	}
 
 	mirror.fileSetWaiter.newChannel(req.TaskId)
-	err := mirror.rpcClient.Call("Mirror.Run", req, rep)
+	err = mirror.rpcClient.Call("Mirror.Run", req, rep)
 	if err == nil {
 		err = mirror.fileSetWaiter.wait(rep, req.TaskId)
 	}
@@ -257,21 +262,12 @@ func (me *Master) runOnce(req *WorkRequest, rep *WorkResponse) os.Error {
 	if err != nil {
 		return err
 	}
-	err = me.fileServer.attr.Send(mirror)
-	if err != nil {
-		me.mirrors.drop(mirror, err)
-		return err
-	}
-
 	err = me.runOnMirror(mirror, req, rep)
 	if err != nil {
 		me.mirrors.drop(mirror, err)
 		return err
 	}
 
-	if err != nil {
-		return err
-	}
 	rep.FileSet = nil
 	return err
 }
@@ -285,6 +281,14 @@ func (me *Master) run(req *WorkRequest, rep *WorkResponse) (err os.Error) {
 		return nil
 	}
 
+	if req.Worker != "" {
+		mc, err := me.mirrors.find(req.Worker)
+		if err != nil {
+			return err
+		}
+		return me.runOnMirror(mc, req, rep)
+	}
+	
 	err = me.runOnce(req, rep)
 	for i := 0; i < me.options.RetryCount && err != nil; i++ {
 		log.Println("Retrying; last error:", err)

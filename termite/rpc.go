@@ -120,6 +120,9 @@ type WorkRequest struct {
 	Env          []string
 	Dir          string
 	RanLocally   bool
+
+	// If set, must run on worker. Used for debugging.
+	Worker       string
 }
 
 func (me *WorkRequest) Summary() string {

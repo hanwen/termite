@@ -1,11 +1,13 @@
 package termite
 
 import (
+	"fmt"
 	"log"
 	"net"
 	"os"
 	"rand"
 	"rpc"
+	"strings"
 	"sync"
 	"time"
 )
@@ -208,6 +210,25 @@ func (me *mirrorConnections) dropConnections() {
 }
 
 // Gets a mirrorConnection to run on.  Will block if none available
+func (me *mirrorConnections) find(name string) (*mirrorConnection, os.Error) {
+	me.Mutex.Lock()
+	defer me.Mutex.Unlock()
+	
+	var found *mirrorConnection
+	for nm, v := range me.mirrors {
+		if strings.Contains(nm, name) {
+			found = v
+			break
+		}
+	}
+	if found == nil {
+		return nil, fmt.Errorf("No worker with name: %q", name)
+	}
+	found.availableJobs--
+	return found, nil
+}
+
+
 func (me *mirrorConnections) pick() (*mirrorConnection, os.Error) {
 	me.Mutex.Lock()
 	defer me.Mutex.Unlock()

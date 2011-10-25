@@ -42,10 +42,12 @@ func (me *AttributeCache) RmClient(client AttributeCacheClient) {
 	defer me.mutex.Unlock()
 
 	c := me.clients[id]
-	c.pending = nil
-	c.busy = false
-	me.clients[id] = nil, false
-	me.cond.Broadcast()
+	if c != nil {
+		c.pending = nil
+		c.busy = false
+		me.clients[id] = nil, false
+		me.cond.Broadcast()
+	}
 }
 
 func (me *AttributeCache) AddClient(client AttributeCacheClient) {
