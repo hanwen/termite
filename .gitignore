@@ -6,6 +6,7 @@ termite-bin.tar.bz2
 .nfs*
 _*
 6.out
+.tmp-termite*
 bin/chroot/chroot
 bin/worker/worker
 bin/rpcfs/rpcfs
