@@ -29,7 +29,7 @@ func (me *Master) statusHandler(w http.ResponseWriter, req *http.Request) {
 
 	fmt.Fprintf(w, "<p>%s", Version())
 	histo, total := me.sizeHistogram()
-	fmt.Fprintf(w, "<p>Filesizes: ")
+	fmt.Fprintf(w, "<p>Filesizes of %d files: ", total)
 	for e, h := range histo {
 		if h == 0 {
 			continue
