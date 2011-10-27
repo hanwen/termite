@@ -8,7 +8,7 @@ import (
 	"io/ioutil"
 )
 
-func TestDiskCache(t *testing.T) {
+func TestContentCache(t *testing.T) {
 	content := []byte("hello")
 
 	d, _ := ioutil.TempDir("", "term-cc")
@@ -54,7 +54,7 @@ func TestLocalPath(t *testing.T) {
 	}
 }
 
-func TestDiskCacheDestructiveSave(t *testing.T) {
+func TestContentCacheDestructiveSave(t *testing.T) {
 	content := []byte("hello")
 
 	d, _ := ioutil.TempDir("", "term-cc")
@@ -93,7 +93,7 @@ func TestDiskCacheDestructiveSave(t *testing.T) {
 	}
 }
 
-func TestDiskCacheStream(t *testing.T) {
+func TestContentCacheStream(t *testing.T) {
 	content := []byte("hello")
 
 	d, _ := ioutil.TempDir("", "term-cc")
@@ -104,8 +104,7 @@ func TestDiskCacheStream(t *testing.T) {
 	h.Write(content)
 	checksum := string(h.Sum())
 
-	b := bytes.NewBuffer(content)
-	savedSum := cache.SaveStream(b)
+	savedSum := cache.Save(content)
 	if string(savedSum) != string(md5(content)) {
 		t.Fatal("mismatch")
 	}
@@ -123,8 +122,8 @@ func TestDiskCacheStream(t *testing.T) {
 	}
 }
 
-func TestDiskCacheStreamReturnContent(t *testing.T) {
-	content := make([]byte, _BUFSIZE-1)
+func TestContentCacheStreamReturnContent(t *testing.T) {
+	content := make([]byte, _MEMORY_LIMIT-1)
 	for i := range content {
 		content[i] = 'x'
 	}
@@ -133,20 +132,18 @@ func TestDiskCacheStreamReturnContent(t *testing.T) {
 	defer os.RemoveAll(d)
 	cache := NewContentCache(d)
 
-	b := bytes.NewBuffer(content)
-	hash := cache.SaveStream(b)
+	hash := cache.Save(content)
 
 	if !cache.inMemoryCache.Has(hash) {
 		t.Errorf("should have key %x", hash)
 	}
 
-	content = make([]byte, _BUFSIZE+1)
+	content = make([]byte, _MEMORY_LIMIT+1)
 	for i := range content {
 		content[i] = 'y'
 	}
 
-	b = bytes.NewBuffer(content)
-	hash = cache.SaveStream(b)
+	hash = cache.Save(content)
 	if cache.inMemoryCache.Has(hash) {
 		t.Errorf("should not have key %x %v", hash, cache.inMemoryCache.Get(hash))
 	}

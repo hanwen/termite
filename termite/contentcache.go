@@ -120,15 +120,13 @@ func (me *ContentCache) NewHashWriter() *HashWriter {
 type HashWriter struct {
 	hasher hash.Hash
 	dest   *os.File
-	hash   string
 }
 
 func NewHashWriter(dir string, hashfunc crypto.Hash) *HashWriter {
 	me := &HashWriter{}
 	tmp, err := ioutil.TempFile(dir, ".md5temp")
 	if err != nil {
-		panic(err)
-		log.Fatal(err)
+		log.Panic("NewHashWriter: ", err)
 	}
 
 	me.dest = tmp
@@ -136,10 +134,32 @@ func NewHashWriter(dir string, hashfunc crypto.Hash) *HashWriter {
 	return me
 }
 
+func (me *HashWriter) Sum() string {
+	return string(me.hasher.Sum())
+}
+
 func (me *HashWriter) Write(p []byte) (n int, err os.Error) {
 	n, err = me.dest.Write(p)
 	me.hasher.Write(p[:n])
 	return n, err
+}
+
+func (me *HashWriter) WriteClose(p []byte) (err os.Error) {
+	_, err = me.Write(p)
+	if err != nil {
+		return err
+	}
+	err = me.Close()
+	return err
+}
+
+func (me *HashWriter) CopyClose(input io.Reader, size int64) os.Error {
+	_, err := io.CopyN(me, input, size)
+	if err != nil {
+		return err
+	}
+	err = me.Close()
+	return err 
 }
 
 func (me *HashWriter) Close() os.Error {
@@ -150,7 +170,7 @@ func (me *HashWriter) Close() os.Error {
 	}
 	src := me.dest.Name()
 	dir, _ := filepath.Split(src)
-	sum := string(me.hasher.Sum())
+	sum := me.Sum()
 	sumpath := HashPath(dir, sum)
 
 	log.Printf("saving hash %x\n", sum)
@@ -174,12 +194,20 @@ func (me *ContentCache) DestructiveSavePath(path string) (md5 string, err os.Err
 	}
 	before, _ := f.Stat()
 	defer f.Close()
-
+	
 	h := crypto.MD5.New()
-	content, err := SavingCopy(h, f, _BUFSIZE)
-	if err != nil {
-		return "", err
+	var content []byte 
+	if before.Size < _MEMORY_LIMIT {
+		content, err = ioutil.ReadAll(f)
+		if err != nil {
+			return "", err
+		}
+
+		h.Write(content)
+	} else {
+		io.Copy(h, f)
 	}
+
 	s := string(h.Sum())
 	if me.HasHash(s) {
 		os.Remove(path)
@@ -217,7 +245,8 @@ func (me *ContentCache) SavePath(path string) (md5 string) {
 	}
 	defer f.Close()
 
-	return me.SaveStream(f)
+	fi, _ := f.Stat()
+	return me.SaveStream(f, fi.Size)
 }
 
 func (me *ContentCache) SaveImmutablePath(path string) (md5 string) {
@@ -230,9 +259,21 @@ func (me *ContentCache) SaveImmutablePath(path string) (md5 string) {
 	}
 	defer f.Close()
 
-	content, err := SavingCopy(hasher, f, 32*1024)
+	var content []byte
+	fi, _ := f.Stat()
+	if fi.Size < _MEMORY_LIMIT {
+		content, err = ioutil.ReadAll(f)
+		if err != nil {
+			log.Println("ReadAll:", err)
+			return ""
+		}
+		hasher.Write(content)
+	} else {
+		_, err = io.Copy(hasher, f)
+	}
+	
 	if err != nil && err != os.EOF {
-		log.Println("SavingCopy:", err)
+		log.Println("io.Copy:", err)
 		return ""
 	}
 
@@ -250,29 +291,42 @@ func (me *ContentCache) SaveImmutablePath(path string) (md5 string) {
 
 func (me *ContentCache) Save(content []byte) (md5 string) {
 	buf := bytes.NewBuffer(content)
-	return me.SaveStream(buf)
-
+	return me.SaveStream(buf, int64(len(content)))
 }
 
-func (me *ContentCache) SaveStream(input io.Reader) (md5 string) {
-	dup := me.NewHashWriter()
-	content, err := SavingCopy(dup, input, _BUFSIZE)
+func (me *ContentCache) saveViaMemory(content []byte) (md5 string) {
+	writer := me.NewHashWriter()
+	err := writer.WriteClose(content)
 	if err != nil {
-		log.Println("SaveStream:", err)
+		log.Println("saveViaMemory:", err)
 		return ""
 	}
-	err = dup.Close()
-	if err != nil {
-		log.Println("dup.Close:", err)
-		return ""
-	}
-	hash := string(dup.hasher.Sum())
-
-	if content != nil && me.inMemoryCache != nil {
+	hash := writer.Sum()
+	
+	if me.inMemoryCache != nil {
 		me.mutex.Lock()
 		defer me.mutex.Unlock()
 		me.inMemoryCache.Add(hash, content)
 	}
-
 	return hash
+}
+
+const _MEMORY_LIMIT = 32*1024
+func (me *ContentCache) SaveStream(input io.Reader, size int64) (md5 string) {
+	if size < _MEMORY_LIMIT {
+		b, err := ioutil.ReadAll(input)
+		if int64(len(b)) != size {
+			log.Panicf("SaveStream: short read: %v %v", len(b), err)
+		}
+
+		return me.saveViaMemory(b)
+	}
+	
+	dup := me.NewHashWriter()
+	err := dup.CopyClose(input, size)
+	if err != nil {
+		return ""
+	}
+	
+	return dup.Sum()
 }

@@ -251,41 +251,6 @@ func HookedCopy(w io.Writer, r io.Reader, proc func([]byte)) os.Error {
 	return nil
 }
 
-// Like io.Copy, but returns the buffer if it was small enough to hold
-// of the copied bytes.
-//
-// TODO - decide on in-memory caching inside contentcache, based on size of data.
-func SavingCopy(w io.Writer, r io.Reader, bufSize int) ([]byte, os.Error) {
-	buf := make([]byte, bufSize)
-	total := 0
-	for {
-		n, err := r.Read(buf)
-		todo := buf[:n]
-		total += n
-		for len(todo) > 0 {
-			n, err = w.Write(todo)
-			if err != nil {
-				break
-			}
-			todo = todo[n:]
-		}
-		if len(todo) > 0 {
-			return nil, err
-		}
-		if err == os.EOF || n == 0 {
-			break
-		}
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if total < cap(buf) {
-		return buf[:total], nil
-	}
-	return nil, nil
-}
-
 func (me *WorkResponse) String() string {
 	return fmt.Sprintf("WorkResponse{exit %d, taskids %v: %v. Err: %s, Out: %s}",
 		me.Exit.ExitStatus(),

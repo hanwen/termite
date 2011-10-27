@@ -1,7 +1,6 @@
 package termite
 
 import (
-	"bytes"
 	"log"
 	"testing"
 )
@@ -80,23 +79,6 @@ func TestParseCommand(t *testing.T) {
 				}
 			}
 		}
-	}
-}
-
-func TestSavingCopy(t *testing.T) {
-	content := make([]byte, _BUFSIZE+1)
-	for i := range content {
-		content[i] = 'y'
-	}
-
-	readFrom := bytes.NewBuffer(content)
-	writeTo := &bytes.Buffer{}
-	content, err := SavingCopy(writeTo, readFrom, _BUFSIZE)
-	if err != nil {
-		t.Fatalf("SavingCopy failed with %v", err)
-	}
-	if content != nil {
-		t.Errorf("Should drop contents for large copies.")
 	}
 }
 

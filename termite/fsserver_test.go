@@ -68,10 +68,21 @@ type rpcFsTestCase struct {
 	state  *fuse.MountState
 
 	sockL, sockR io.ReadWriteCloser
+
+	tester *testing.T
+}
+
+func (me *rpcFsTestCase) getattr(n string) *FileAttr {
+	p := filepath.Join(me.orig, n)
+	a := testGetattr(me.tester, p)
+	if a.Hash != "" {
+		me.cache.SavePath(p)
+	}
+	return a
 }
 
 func newRpcFsTestCase(t *testing.T) (me *rpcFsTestCase) {
-	me = &rpcFsTestCase{}
+	me = &rpcFsTestCase{tester: t}
 	me.tmp, _ = ioutil.TempDir("", "term-fss")
 
 	me.mnt = me.tmp + "/mnt"
@@ -82,18 +93,14 @@ func newRpcFsTestCase(t *testing.T) (me *rpcFsTestCase) {
 	os.Mkdir(me.mnt, 0700)
 	os.Mkdir(me.orig, 0700)
 
-	cache := NewContentCache(srvCache)
+	me.cache = NewContentCache(srvCache)
 	me.attr = NewAttributeCache(
-		func(n string) *FileAttr {
-			p := filepath.Join(me.orig, n)
-			cache.SavePath(p)
-			return testGetattr(t, p)
-		},
+		func(n string) *FileAttr { return me.getattr(n) },
 		func(n string) *os.FileInfo {
 			return testStat(t, filepath.Join(me.orig, n))
 		})
 	me.attr.Paranoia = true
-	me.server = NewFsServer(me.attr, cache)
+	me.server = NewFsServer(me.attr, me.cache)
 
 	var err os.Error
 	me.sockL, me.sockR, err = fuse.Socketpair("unix")
