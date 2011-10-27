@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"sync"
 	"syscall"
 )
 
@@ -16,14 +17,44 @@ type splicePair struct {
 	size int
 }
 
-var splicePairs chan *splicePair
+type splicePairPool struct {
+	sync.Mutex
+	unused map[*splicePair]bool
+}
 
+func newSplicePairPool() *splicePairPool {
+	return &splicePairPool{
+		unused: make(map[*splicePair]bool),
+	}
+}
+
+func (me *splicePairPool) get() (p *splicePair, err os.Error) {
+	me.Lock()
+	defer me.Unlock()
+
+	for s := range me.unused {
+		me.unused[s] = false, false
+		return s, nil
+	}
+
+	return newSplicePair()
+}
+
+func (me *splicePairPool) done(p *splicePair) {
+	me.Lock()
+	defer me.Unlock()
+
+	me.unused[p] = true
+}
+
+
+var splicePool *splicePairPool
 var pipeMaxSize *int
 
 const defaultPipeSize = 16 * 4096
 
 func init() {
-	splicePairs = make(chan *splicePair, 100)
+	splicePool = newSplicePairPool()
 }
 
 func getPipeMaxSize() int {
@@ -122,21 +153,6 @@ func newSplicePair() (me *splicePair, err os.Error) {
 	return me, nil
 }
 
-func getSplice() (p *splicePair, err os.Error) {
-	select {
-	case p = <-splicePairs:
-		// already done.
-	default:
-		p, err = newSplicePair()
-	}
-	return p, err
-}
-
-func returnSplice(p *splicePair) {
-	if p != nil {
-		splicePairs <- p
-	}
-}
 
 func SpliceCopy(dst *os.File, src *os.File, p *splicePair) (int64, os.Error) {
 	total := int64(0)
@@ -183,11 +199,11 @@ func CopyFile(dstName string, srcName string, mode int) os.Error {
 }
 
 func CopyFds(dst *os.File, src *os.File) (err os.Error) {
-	p, err := getSplice()
+	p, err := splicePool.get()
 	if p != nil {
 		p.Grow(256 * 1024)
 		_, err := SpliceCopy(dst, src, p)
-		returnSplice(p)
+		splicePool.done(p)
 		return err
 	} else {
 		_, err = io.Copy(dst, src)
