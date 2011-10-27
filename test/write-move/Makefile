@@ -1,6 +1,8 @@
-default: out $(foreach n, $(shell seq 1 100), out/$(n).o)
+default: out concat
+
 out:
 	mkdir $@
+
 .PRECIOUS:
 out/%.o:
 	touch $@.bla
@@ -9,3 +11,5 @@ out/%.o:
 clean:
 	rm -rf out
 
+concat: $(foreach n, $(shell seq 1 100), out/$(n).o)
+	cat $^ > $@
