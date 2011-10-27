@@ -40,8 +40,6 @@ func main() {
 	paranoia := flag.Bool("paranoia", false, "Check attribute cache.")
 	flag.Parse()
 
-	log.SetPrefix("W")
-
 	if os.Geteuid() != 0 {
 		log.Fatal("This program must run as root")
 	}
@@ -70,6 +68,8 @@ func main() {
 		log.Println("Log output to", *logfile)
 		log.SetOutput(f)
 		daemon.LogFileName = *logfile
+	} else {
+		log.SetPrefix("W")
 	}
 
 	log.Println(termite.Version())

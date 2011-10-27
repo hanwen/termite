@@ -19,6 +19,7 @@ func main() {
 	coordinator := flag.String("coordinator", "localhost:1233",
 		"address of coordinator. Overrides -workers")
 	socket := flag.String("socket", ".termite-socket", "socket to listen for commands")
+	logfile := flag.String("logfile", "", "where to send log output.")
 	exclude := flag.String("exclude",
 		"usr/lib/locale/locale-archive,sys,proc,dev,selinux,cgroup", "prefixes to not export.")
 	secretFile := flag.String("secret", "secret.txt", "file containing password.")
@@ -32,8 +33,17 @@ func main() {
 
 	flag.Parse()
 
-	log.SetPrefix("M")
-
+	if *logfile != "" {
+		f, err := os.OpenFile(*logfile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+		if err != nil {
+			log.Fatal("Could not open log file.", err)
+		}
+		log.Println("Log output to", *logfile)
+		log.SetOutput(f)
+	} else {
+		log.SetPrefix("M")
+	}
+	
 	secret, err := ioutil.ReadFile(*secretFile)
 	if err != nil {
 		log.Fatal("ReadFile", err)
