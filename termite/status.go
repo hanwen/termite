@@ -13,11 +13,9 @@ func (me *Mirror) Status(req *MirrorStatusRequest, rep *MirrorStatusResponse) os
 	rep.WaitingTasks = me.waiting
 	rep.ShuttingDown = me.shuttingDown
 
-	i := 0
 	for fs := range me.activeFses {
-		i++
 		for t := range fs.tasks {
-			rep.Running = append(rep.Running, fmt.Sprintf("fs %d: %s", i, t.taskInfo))
+			rep.Running = append(rep.Running, fmt.Sprintf("fs %s: %s", fs.id, t.taskInfo))
 		}
 	}
 	return nil

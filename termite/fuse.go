@@ -27,7 +27,7 @@ type workerFuseFs struct {
 	unionNodeFs *fuse.PathNodeFs
 
 	// Protected by Mirror.fsMutex
-	id      int
+	id      string
 	reaping bool
 
 	// When this reaches zero, we reap the filesystem.

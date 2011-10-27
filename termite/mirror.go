@@ -26,7 +26,7 @@ type Mirror struct {
 	fsMutex      sync.Mutex
 	cond         *sync.Cond
 	waiting      int
-	nextId       int
+	nextFsId     int
 	activeFses   map[*workerFuseFs]bool
 	shuttingDown bool
 }
@@ -129,8 +129,6 @@ func (me *Mirror) newFs(t *WorkerTask) (fs *workerFuseFs, err os.Error) {
 // Must hold lock.
 func (me *Mirror) prepareFs(fs *workerFuseFs) {
 	fs.reaping = false
-	fs.id = me.nextId
-	me.nextId++
 	fs.taskIds = make([]int, 0, me.daemon.options.ReapCount)
 }
 
@@ -146,7 +144,7 @@ func (me *Mirror) considerReap(fs *workerFuseFs, task *WorkerTask) bool {
 }
 
 func (me *Mirror) reapFuse(fs *workerFuseFs) (results *FileSet, taskIds []int) {
-	log.Printf("Reaping fuse FS %d", fs.id)
+	log.Printf("Reaping fuse FS %v", fs.id)
 	results = me.fillReply(fs.unionFs)
 
 	// Must do updateFiles before ReturnFuse, since the
@@ -212,7 +210,12 @@ func (me *Mirror) Run(req *WorkRequest, rep *WorkResponse) os.Error {
 const _DELETIONS = "DELETIONS"
 
 func (me *Mirror) newWorkerFuseFs() (*workerFuseFs, os.Error) {
-	return newWorkerFuseFs(me.daemon.tmpDir, me.rpcFs, me.writableRoot, me.daemon.Nobody)
+	f, err := newWorkerFuseFs(me.daemon.tmpDir, me.rpcFs, me.writableRoot, me.daemon.Nobody)
+
+	f.id = fmt.Sprintf("%d", me.nextFsId)
+	me.nextFsId++
+	
+	return f, err
 }
 
 func (me *Mirror) newWorkerTask(req *WorkRequest, rep *WorkResponse) (*WorkerTask, os.Error) {

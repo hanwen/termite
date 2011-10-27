@@ -109,7 +109,7 @@ func (me *WorkerTask) runInFuse(fuseFs *workerFuseFs) os.Error {
 	if me.WorkRequest.Debug {
 		printCmd = fmt.Sprintf("%v", cmd)
 	}
-	me.taskInfo = fmt.Sprintf("%v, dir %v, fuse FS %d",
+	me.taskInfo = fmt.Sprintf("%v, dir %v, fuse FS %v",
 		printCmd, cmd.Dir, fuseFs.id)
 	err := cmd.Wait()
 
