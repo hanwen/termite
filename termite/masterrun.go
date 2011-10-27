@@ -21,6 +21,7 @@ func (me *Master) MaybeRunInMaster(req *WorkRequest, rep *WorkResponse) bool {
 		return mkdirMaybeMasterRun(me, req, rep)
 	case "rm":
 		return rmMaybeMasterRun(me, req, rep)
+	// TODO - implement mv ?
 	}
 	return false
 }
@@ -185,6 +186,7 @@ func mkdirEntry(rootless string) *FileAttr {
 			Uid:      uid,
 			Gid:      gid,
 		},
+		NameModeMap: map[string]FileMode{},
 	}
 }
 
