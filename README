@@ -148,7 +148,6 @@ TODO
 * Speed
   - Worker:
   - Master:
-    * send known attrs together with readdir.
     * worker <-> worker file content fetching
   - Master/Worker:
     * streaming connections for file transport.
