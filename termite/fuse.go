@@ -168,12 +168,7 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string, 
 	return me, nil
 }
 
-func (me *workerFuseFs) update(attrs []*FileAttr, origin *workerFuseFs) {
-	if me == origin {
-		// TODO - should reread inode numbers, in case they
-		// are reused.
-	}
-
+func (me *workerFuseFs) update(attrs []*FileAttr) {
 	updates := map[string]*unionfs.Result{}
 	for _, attr := range attrs {
 		path := strings.TrimLeft(attr.Path, "/")

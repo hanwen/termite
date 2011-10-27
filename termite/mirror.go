@@ -146,11 +146,8 @@ func (me *Mirror) considerReap(fs *workerFuseFs, task *WorkerTask) bool {
 func (me *Mirror) reapFuse(fs *workerFuseFs) (results *FileSet, taskIds []int) {
 	log.Printf("Reaping fuse FS %v", fs.id)
 	results = me.fillReply(fs.unionFs)
-
-	// Must do updateFiles before ReturnFuse, since the
-	// next job should not see out-of-date files.
-	me.updateFiles(results.Files, fs)
-
+	fs.unionFs.Reset()
+	
 	return results, fs.taskIds[:]
 }
 
@@ -171,18 +168,18 @@ func (me *Mirror) returnFs(fs *workerFuseFs) {
 }
 
 func (me *Mirror) Update(req *UpdateRequest, rep *UpdateResponse) os.Error {
-	me.updateFiles(req.Files, nil)
+	me.updateFiles(req.Files)
 	return nil
 }
 
-func (me *Mirror) updateFiles(attrs []*FileAttr, origin *workerFuseFs) {
+func (me *Mirror) updateFiles(attrs []*FileAttr) {
 	me.rpcFs.updateFiles(attrs)
 
 	me.fsMutex.Lock()
 	defer me.fsMutex.Unlock()
 
 	for fs := range me.activeFses {
-		fs.update(attrs, origin)
+		fs.update(attrs)
 	}
 }
 

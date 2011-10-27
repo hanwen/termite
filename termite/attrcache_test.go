@@ -199,15 +199,6 @@ func TestAttrCacheClientBasic(t *testing.T) {
 	}
 	ac.Queue(fs)
 
-	fa2 := FileAttr{
-		Path:     "f2",
-		FileInfo: &os.FileInfo{Mode: syscall.S_IFREG | 0644},
-	}
-	fs.Files = []*FileAttr{&fa2}
-	fs.OriginAddress = "testid"
-
-	ac.Queue(fs)
-
 	err := ac.Send(&cl)
 	check(err)
 

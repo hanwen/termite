@@ -97,10 +97,8 @@ func (me *AttributeCache) Send(client AttributeCacheClient) os.Error {
 func (me *AttributeCache) Queue(fs FileSet) {
 	me.mutex.Lock()
 	defer me.mutex.Unlock()
-	for id, w := range me.clients {
-		if id != fs.OriginAddress {
-			w.pending = append(w.pending, fs.Files...)
-		}
+	for _, w := range me.clients {
+		w.pending = append(w.pending, fs.Files...)
 	}
 }
 

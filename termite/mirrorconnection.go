@@ -44,7 +44,6 @@ func (me *mirrorConnection) replay(fset FileSet) os.Error {
 			}
 		}
 	}
-	fset.OriginAddress = me.workerAddr
 	me.master.replay(fset)
 	return nil
 }
