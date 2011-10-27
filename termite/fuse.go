@@ -23,7 +23,7 @@ type workerFuseFs struct {
 	fsConnector *fuse.FileSystemConnector
 	unionFs     *unionfs.MemUnionFs
 	procFs      *ProcFs
-	nodeFs      *fuse.PathNodeFs
+	rpcNodeFs   *fuse.PathNodeFs
 	unionNodeFs *fuse.PathNodeFs
 
 	// Protected by Mirror.fsMutex
@@ -57,7 +57,7 @@ func (me *workerFuseFs) Stop() {
 func (me *workerFuseFs) SetDebug(debug bool) {
 	me.MountState.Debug = debug
 	me.fsConnector.Debug = debug
-	me.nodeFs.Debug = debug
+	me.rpcNodeFs.Debug = debug
 }
 
 func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string, nobody *user.User) (*workerFuseFs, os.Error) {
@@ -94,7 +94,7 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string, 
 		fuseOpts.AllowOther = true
 	}
 
-	me.nodeFs = fuse.NewPathNodeFs(rpcFs, nil)
+	me.rpcNodeFs = fuse.NewPathNodeFs(rpcFs, nil)
 	ttl := 30.0
 	mOpts := fuse.FileSystemOptions{
 		EntryTimeout:    ttl,
@@ -106,7 +106,7 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string, 
 		PortableInodes: true,
 	}
 
-	me.fsConnector = fuse.NewFileSystemConnector(me.nodeFs, &mOpts)
+	me.fsConnector = fuse.NewFileSystemConnector(me.rpcNodeFs, &mOpts)
 	me.MountState = fuse.NewMountState(me.fsConnector)
 	err = me.MountState.Mount(me.mount, &fuseOpts)
 	if err != nil {
@@ -140,7 +140,7 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string, 
 			subOpts = nil
 		}
 
-		code := me.nodeFs.Mount(s.mountpoint, s.fs, subOpts)
+		code := me.rpcNodeFs.Mount(s.mountpoint, s.fs, subOpts)
 		if !code.Ok() {
 			me.MountState.Unmount()
 			return nil, os.NewError(fmt.Sprintf("submount error for %s: %v", s.mountpoint, code))
@@ -159,7 +159,7 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string, 
 		rpcFs.GetAttr("tmp", nil)
 		rpcFs.GetAttr(me.writableRoot, nil)
 	}
-	code := me.nodeFs.Mount(me.writableRoot, me.unionFs, &mOpts)
+	code := me.rpcNodeFs.Mount(me.writableRoot, me.unionFs, &mOpts)
 	if !code.Ok() {
 		me.MountState.Unmount()
 		return nil, os.NewError(fmt.Sprintf("submount error for %s: %v", me.writableRoot, code))
@@ -173,7 +173,7 @@ func (me *workerFuseFs) update(attrs []*FileAttr) {
 	for _, attr := range attrs {
 		path := strings.TrimLeft(attr.Path, "/")
 		if !strings.HasPrefix(path, me.writableRoot) {
-			log.Printf("invalid prefix on %q, expect %q", path, me.writableRoot)
+			me.rpcNodeFs.Notify(path)
 			continue
 		}
 		path = strings.TrimLeft(path[len(me.writableRoot):], "/")
