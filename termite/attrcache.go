@@ -248,7 +248,13 @@ func (me *AttributeCache) unsafeGet(name string, withdir bool) (rep *FileAttr) {
 	me.cond.Broadcast()
 	me.busy[name] = false, false
 	me.verify()
-	return rep.Copy(withdir)
+
+	c := rep.Copy(withdir)
+	sendCopy := rep.Copy(true)
+	for _, w := range me.clients {
+		w.pending = append(w.pending, sendCopy)
+	}
+	return c	
 }
 
 func (me *AttributeCache) Update(files []*FileAttr) {
