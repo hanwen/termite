@@ -21,14 +21,17 @@ type AttributeCache struct {
 	statter    func(name string) *os.FileInfo
 
 	clients map[string]*attrCachePending
-
+	nextFileSetId   int
+	
 	Paranoia bool
 }
 
 type attrCachePending struct {
 	client  AttributeCacheClient
 	pending []*FileAttr
-	busy    bool
+	sentId    int
+	pendingId int
+	busy      bool
 }
 
 type AttributeCacheClient interface {
@@ -62,7 +65,9 @@ func (me *AttributeCache) AddClient(client AttributeCacheClient) {
 	clData := attrCachePending{
 		client:  client,
 		pending: me.copyFiles().Files,
+		pendingId: me.nextFileSetId,
 	}
+	me.nextFileSetId++
 
 	me.clients[id] = &clData
 }
@@ -70,17 +75,17 @@ func (me *AttributeCache) AddClient(client AttributeCacheClient) {
 func (me *AttributeCache) Send(client AttributeCacheClient) os.Error {
 	me.mutex.Lock()
 	defer me.mutex.Unlock()
-	id := client.Id()
-	c := me.clients[id]
+	c := me.clients[client.Id()]
 	if c == nil {
-		return fmt.Errorf("client %q disappeared", id)
+		return fmt.Errorf("client %q disappeared", client.Id())
 	}
 
-	for c.busy {
+	needSync := c.pendingId
+	for c.busy && needSync > c.sentId {
 		me.cond.Wait()
 	}
 
-	if len(c.pending) == 0 {
+	if len(c.pending) == 0 || needSync <= c.sentId {
 		return nil
 	}
 	p := c.pending
@@ -90,6 +95,7 @@ func (me *AttributeCache) Send(client AttributeCacheClient) os.Error {
 	err := c.client.Send(p)
 	me.mutex.Lock()
 	c.busy = false
+	c.sentId = needSync
 	me.cond.Broadcast()
 	return err
 }
@@ -97,9 +103,13 @@ func (me *AttributeCache) Send(client AttributeCacheClient) os.Error {
 func (me *AttributeCache) Queue(fs FileSet) {
 	me.mutex.Lock()
 	defer me.mutex.Unlock()
+
+	fsid := me.nextFileSetId
+	me.nextFileSetId ++
 	for _, w := range me.clients {
 		w.pending = append(w.pending, fs.Files...)
-	}
+		w.pendingId = fsid
+	}	
 }
 
 func NewAttributeCache(getter func(n string) *FileAttr,
@@ -108,6 +118,7 @@ func NewAttributeCache(getter func(n string) *FileAttr,
 		attributes: make(map[string]*FileAttr),
 		busy:       map[string]bool{},
 	}
+	me.nextFileSetId = 1
 	me.cond = sync.NewCond(&me.mutex)
 	me.getter = getter
 	me.statter = statter
