@@ -221,7 +221,9 @@ func (me *Master) createMirror(addr string, jobs int) (*mirrorConnection, os.Err
 }
 
 func (me *Master) runOnMirror(mirror *mirrorConnection, req *WorkRequest, rep *WorkResponse) os.Error {
+	me.mirrors.stats.Enter("send")
 	err := me.fileServer.attr.Send(mirror)
+	me.mirrors.stats.Exit("send")
 	if err != nil {
 		return err
 	}
@@ -249,9 +251,13 @@ func (me *Master) runOnMirror(mirror *mirrorConnection, req *WorkRequest, rep *W
 	}
 
 	mirror.fileSetWaiter.newChannel(req.TaskId)
+	me.mirrors.stats.Enter("remote")
 	err = mirror.rpcClient.Call("Mirror.Run", req, rep)
+	me.mirrors.stats.Exit("remote")
 	if err == nil {
+		me.mirrors.stats.Enter("filewait")
 		err = mirror.fileSetWaiter.wait(rep, req.TaskId)
+		me.mirrors.stats.Exit("filewait")
 	}
 	return err
 }
@@ -272,8 +278,8 @@ func (me *Master) runOnce(req *WorkRequest, rep *WorkResponse) os.Error {
 }
 
 func (me *Master) run(req *WorkRequest, rep *WorkResponse) (err os.Error) {
-	me.mirrors.stats.MarkReceive()
-	defer me.mirrors.stats.MarkReturn(rep)
+	me.mirrors.stats.Enter("run")
+	defer me.mirrors.stats.Exit("run")
 	req.TaskId = <-me.taskIds
 	if me.MaybeRunInMaster(req, rep) {
 		log.Println("Ran in master:", req.Summary())
