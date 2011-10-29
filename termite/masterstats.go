@@ -58,7 +58,7 @@ func (me *masterStats) writeHttp(w http.ResponseWriter) {
 	me.counterMutex.Lock()
 	defer me.counterMutex.Unlock()
 
-	for k, v := range me.phaseCounts {
-		fmt.Fprintf(w, "<p>Jobs in %s status: %d ", k, v)
+	for _, k := range []string{"run", "send", "remote", "filewait"} {
+		fmt.Fprintf(w, "<p>Jobs in %s status: %d ", k, me.phaseCounts[k])
 	}
 }
