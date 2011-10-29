@@ -178,6 +178,7 @@ func (me *RpcFs) Open(name string, flags uint32, context *fuse.Context) (fuse.Fi
 
 	f, err := os.Open(p)
 	if err != nil {
+		log.Fatal("ContentCache open error:", err)
 		return nil, fuse.OsErrorToErrno(err)
 	}
 
