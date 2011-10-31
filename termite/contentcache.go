@@ -20,6 +20,9 @@ type ContentCache struct {
 	mutex         sync.Mutex
 	hashPathMap   map[string]string
 	inMemoryCache *LruCache
+
+	memoryTries int
+	memoryHits int
 }
 
 // NewContentCache creates a content cache based in directory d.
@@ -50,6 +53,13 @@ func (me *ContentCache) SetMemoryCacheSize(fileCount int) {
 	if me.inMemoryCache.Size() != fileCount {
 		me.inMemoryCache = NewLruCache(fileCount)
 	}
+}
+
+func (me *ContentCache) MemoryHitRate() float64 {
+	if me.memoryTries == 0 {
+		return 0.0
+	}
+	return float64(me.memoryHits)/float64(me.memoryTries)
 }
 
 func HashPath(dir string, md5 string) string {
@@ -95,11 +105,13 @@ func (me *ContentCache) HasHash(hash string) bool {
 func (me *ContentCache) ContentsIfLoaded(hash string) []byte {
 	me.mutex.Lock()
 	defer me.mutex.Unlock()
+	me.memoryTries++
 	if me.inMemoryCache == nil {
 		return nil
 	}
 	c := me.inMemoryCache.Get(hash)
 	if c != nil {
+		me.memoryHits++
 		return c.([]byte)
 	}
 	return nil

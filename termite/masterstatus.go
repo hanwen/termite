@@ -45,14 +45,14 @@ func (me *Master) statusHandler(w http.ResponseWriter, req *http.Request) {
 		} 
 		fmt.Fprintf(w, "%d%s: %d (%d %%), ", 1 << uint(e), suffix, h, (100*h)/total)
 	}
-	
 
-	defer fmt.Fprintf(w, "</body></html>")
+	fmt.Fprintf(w, "<p>ContentCache memory hit rate: %.0f %%", 100.0*me.cache.MemoryHitRate())
 
 	me.mirrors.stats.writeHttp(w)
 
 	fmt.Fprintf(w, "<p>Master parallelism (--jobs): %d. Reserved job slots: %d",
 		me.mirrors.wantedMaxJobs, me.mirrors.maxJobs())
+	fmt.Fprintf(w, "</body></html>")
 }
 
 func (me *Master) ServeHTTP(port int) {

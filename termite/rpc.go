@@ -79,6 +79,7 @@ type WorkerStatusResponse struct {
 	// In chronological order.
 	CpuStats []CpuStat
 	TotalCpu CpuStat
+	ContentCacheHitRate float64
 }
 
 type Timing struct {

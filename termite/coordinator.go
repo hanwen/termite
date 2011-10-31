@@ -362,6 +362,7 @@ func (me *Coordinator) workerHandler(w http.ResponseWriter, req *http.Request) {
 		float64(minuteStat.Total())/60.0e9)
 
 	fmt.Fprintf(w, "<p>Total CPU: %s", status.TotalCpu.Percent())
+	fmt.Fprintf(w, "<p>Content cache hit rate: %.0f %%", status.ContentCacheHitRate)
 
 	for _, mirrorStatus := range status.MirrorStatus {
 		me.mirrorStatusHtml(w, mirrorStatus)

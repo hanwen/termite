@@ -37,5 +37,6 @@ func (me *WorkerDaemon) Status(req *WorkerStatusRequest, rep *WorkerStatusRespon
 	rep.ShuttingDown = me.shuttingDown
 	rep.CpuStats = me.stats.CpuStats()
 	rep.TotalCpu = *TotalCpuStat()
+	rep.ContentCacheHitRate = me.contentCache.MemoryHitRate()
 	return nil
 }

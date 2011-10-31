@@ -418,7 +418,7 @@ func (me *Master) refreshAttributeCache() {
 			continue
 		}
 		updated := me.attr.Refresh(r[1:])
-		me.fileServer.attr.Queue(updated)
+		me.attr.Queue(updated)
 		last = r
 	}
 }
