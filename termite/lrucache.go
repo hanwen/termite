@@ -70,7 +70,7 @@ func (me *LruCache) Has(key string) bool {
 }
 
 func (me *LruCache) Size() int {
-	return me.size
+	return len(me.contents)
 }
 
 func (me *LruCache) Get(key string) (val interface{}) {
