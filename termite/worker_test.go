@@ -333,6 +333,9 @@ func TestEndToEndMoveFile(t *testing.T) {
 
 	err := ioutil.WriteFile(tc.wd+"/e2e-move.txt", []byte{42}, 0644)
 	check(err)
+
+	tc.refresh()
+	
 	tc.RunSuccess(WorkRequest{
 		Argv: []string{"mv", "e2e-move.txt", "e2e-new.txt"},
 	})
@@ -365,19 +368,16 @@ func TestEndToEndStdout(t *testing.T) {
 	defer tc.Clean()
 
 	err := os.Symlink("oldlink", tc.wd+"/symlink")
-	if err != nil {
-		t.Fatal("oldlink symlink", err)
-	}
+	check(err)
 
 	shcmd := make([]byte, 1500)
 	for i := 0; i < len(shcmd); i++ {
 		shcmd[i] = 'a'
 	}
 	err = ioutil.WriteFile(tc.tmp+"/wd/file.txt", shcmd, 0644)
-	if err != nil {
-		t.Fatalf("WriteFile %#v", err)
-	}
-
+	check(err)
+	tc.refresh()
+	
 	rep := tc.RunSuccess(WorkRequest{
 		Argv: []string{"cat", "file.txt"},
 	})
