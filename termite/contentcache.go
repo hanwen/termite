@@ -243,7 +243,7 @@ func (me *ContentCache) DestructiveSavePath(path string) (md5 string, err os.Err
 	f.Chmod(0444)
 	after, _ := f.Stat()
 	if after.Mtime_ns != before.Mtime_ns || after.Size != before.Size {
-		log.Fatal("File changed during save", before, after)
+		log.Fatal("File changed during save", OsFileInfo(*before), OsFileInfo(*after))
 	}
 	return s, nil
 }
