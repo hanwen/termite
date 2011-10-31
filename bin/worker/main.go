@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"runtime"
 	"syscall"
 )
 
@@ -38,8 +39,8 @@ func main() {
 	memcache := flag.Int("filecache", 1024, "number of <32k files to cache in memory")
 	logfile := flag.String("logfile", "", "Output log file to use.")
 	paranoia := flag.Bool("paranoia", false, "Check attribute cache.")
+	cpus := flag.Int("cpus", 1, "Number of CPUs to use.")
 	flag.Parse()
-
 	if os.Geteuid() != 0 {
 		log.Fatal("This program must run as root")
 	}
@@ -71,8 +72,10 @@ func main() {
 	} else {
 		log.SetPrefix("W")
 	}
-
-	log.Println(termite.Version())
+	if *cpus > 0 {
+		runtime.GOMAXPROCS(*cpus)
+	}
+	log.Printf("%s on %d CPUs", termite.Version(), runtime.GOMAXPROCS(0))
 	go handleStop(daemon)
 	daemon.RunWorkerServer(*port, *coordinator)
 }
