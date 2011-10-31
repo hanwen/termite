@@ -1,7 +1,6 @@
 package termite
 
 import (
-	"bytes"
 	"os"
 	"fmt"
 	"crypto"
@@ -302,8 +301,7 @@ func (me *ContentCache) SaveImmutablePath(path string) (md5 string) {
 }
 
 func (me *ContentCache) Save(content []byte) (md5 string) {
-	buf := bytes.NewBuffer(content)
-	return me.SaveStream(buf, int64(len(content)))
+	return me.saveViaMemory(content)
 }
 
 func (me *ContentCache) saveViaMemory(content []byte) (md5 string) {

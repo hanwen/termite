@@ -58,6 +58,15 @@ func FetchBetweenContentServers(client *rpc.Client, rpcName string, hash string,
 			return err
 		}
 
+		if len(rep.Chunk) < chunkSize && written == 0 {
+			output.Close()
+			saved := dest.Save(rep.Chunk)
+			if saved != hash {
+				log.Fatalf("Corruption: savedHash %x != requested hash %x.", saved, hash)
+			}
+			return nil
+		}
+		
 		n, err := output.Write(rep.Chunk)
 		written += n
 		if err != nil {
