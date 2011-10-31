@@ -30,6 +30,8 @@ func (me *Master) statusHandler(w http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(w, "<p>%s", Version())
 	histo, total := me.sizeHistogram()
 	fmt.Fprintf(w, "<p>Filesizes of %d files: ", total)
+
+	cum := 0
 	for e, h := range histo {
 		if h == 0 {
 			continue
@@ -42,8 +44,9 @@ func (me *Master) statusHandler(w http.ResponseWriter, req *http.Request) {
 		case e >= 10:
 			suffix = "K"
 			e -= 10
-		} 
-		fmt.Fprintf(w, "%d%s: %d (%d %%), ", 1 << uint(e), suffix, h, (100*h)/total)
+		}
+		cum += h
+		fmt.Fprintf(w, "%d%s: %d (%d %%), ", 1 << uint(e), suffix, h, (100*cum)/total)
 	}
 
 	fmt.Fprintf(w, "<p>ContentCache memory hit rate: %.0f %%", 100.0*me.cache.MemoryHitRate())
