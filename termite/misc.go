@@ -14,6 +14,9 @@ import (
 	"time"
 )
 
+type OsFileInfo fuse.OsFileInfo
+type OsFileInfos fuse.OsFileInfos
+
 func init() {
 	rand.Seed(time.Nanoseconds() ^ (int64(os.Getpid()) << 32))
 }
