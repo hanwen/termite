@@ -143,7 +143,10 @@ func TestContentCacheStreamReturnContent(t *testing.T) {
 		content[i] = 'y'
 	}
 
-	hash = cache.Save(content)
+	f, _ := ioutil.TempFile("", "term-cc")
+	err := ioutil.WriteFile(f.Name(), content, 0644)
+	check(err)
+	hash = cache.SavePath(f.Name())
 	if cache.inMemoryCache.Has(hash) {
 		t.Errorf("should not have key %x %v", hash, cache.inMemoryCache.Get(hash))
 	}

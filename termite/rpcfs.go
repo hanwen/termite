@@ -33,9 +33,13 @@ func NewRpcFs(server *rpc.Client, cache *ContentCache) *RpcFs {
 	return me
 }
 
-func (me *RpcFs) FetchHash(h string) os.Error {
-	return FetchBetweenContentServers(me.client, "FsServer.FileContent", h,
+func (me *RpcFs) FetchHash(h string, sz int64) os.Error {
+	err := FetchBetweenContentServers(me.client, "FsServer.FileContent", h,
 		me.cache)
+	if err == nil && sz < _MEMORY_LIMIT {
+		me.cache.FaultIn(h)
+	}
+	return err
 }
 
 func (me *RpcFs) Update(req *UpdateRequest, resp *UpdateResponse) os.Error {
@@ -169,7 +173,7 @@ func (me *RpcFs) Open(name string, flags uint32, context *fuse.Context) (fuse.Fi
 	p := me.cache.Path(a.Hash)
 	if _, err := os.Lstat(p); fuse.OsErrorToErrno(err) == fuse.ENOENT {
 		log.Printf("Fetching contents for file %s: %x", name, a.Hash)
-		err := me.FetchHash(a.Hash)
+		err := me.FetchHash(a.Hash, a.Size)
 		if err != nil {
 			log.Printf("Error fetching contents %v", err)
 			return nil, fuse.EIO
@@ -213,7 +217,7 @@ func (me *RpcFs) GetAttr(name string, context *fuse.Context) (*os.FileInfo, fuse
 		return nil, fuse.ENOENT
 	}
 	if r.Hash != "" {
-		me.FetchHash(r.Hash)
+		go me.FetchHash(r.Hash, r.Size)
 	}
 	return r.FileInfo, r.Status()
 }

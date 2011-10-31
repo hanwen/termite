@@ -300,6 +300,22 @@ func (me *ContentCache) SaveImmutablePath(path string) (md5 string) {
 	return md5
 }
 
+// FaultIn loads the data from disk into the memory cache.
+func (me *ContentCache) FaultIn(hash string) {
+	me.mutex.Lock()
+	defer me.mutex.Unlock()
+	if me.inMemoryCache.Get(hash) != nil {
+		return
+	}
+	me.mutex.Unlock()
+	c, err := ioutil.ReadFile(me.Path(hash))
+	me.mutex.Lock()
+	if err != nil {
+		log.Fatal("FaultIn:", err)
+	}
+	me.inMemoryCache.Add(hash, c)
+}
+
 func (me *ContentCache) Save(content []byte) (md5 string) {
 	return me.saveViaMemory(content)
 }
@@ -321,7 +337,7 @@ func (me *ContentCache) saveViaMemory(content []byte) (md5 string) {
 	return hash
 }
 
-const _MEMORY_LIMIT = 32*1024
+const _MEMORY_LIMIT = 128*1024
 func (me *ContentCache) SaveStream(input io.Reader, size int64) (md5 string) {
 	if size < _MEMORY_LIMIT {
 		b, err := ioutil.ReadAll(input)
@@ -340,3 +356,4 @@ func (me *ContentCache) SaveStream(input io.Reader, size int64) (md5 string) {
 	
 	return dup.Sum()
 }
+
