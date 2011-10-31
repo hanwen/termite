@@ -32,7 +32,7 @@ func (me *FsServer) GetAttr(req *AttrRequest, rep *AttrResponse) os.Error {
 	a := me.attr.GetDir(req.Name)
 	if a.Hash != "" {
 		log.Printf("GetAttr %v", a)
-		if a.Size  < _MEMORY_LIMIT {
+		if a.Size < _MEMORY_LIMIT {
 			go me.contentCache.FaultIn(a.Hash)
 		}
 	}

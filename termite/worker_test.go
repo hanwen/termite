@@ -155,6 +155,10 @@ func (me *testCase) Clean() {
 	}
 }
 
+func (me *testCase) refresh() {
+	me.master.refreshAttributeCache()
+}
+
 func (me *testCase) RunFail(req WorkRequest) (rep WorkResponse) {
 	rep = me.Run(req, true)
 	if rep.Exit.ExitStatus() == 0 {
@@ -389,6 +393,7 @@ func TestEndToEndModeChange(t *testing.T) {
 
 	err := ioutil.WriteFile(tc.tmp+"/wd/file.txt", []byte{42}, 0644)
 	check(err)
+	tc.refresh()
 
 	tc.RunSuccess(WorkRequest{
 		Argv: []string{"chmod", "a+x", "file.txt"},
@@ -526,6 +531,8 @@ func TestEndToEndLinkReap(t *testing.T) {
 
 	// TODO - drop this.
 	ioutil.WriteFile(tc.wd+"/file.txt", []byte{42}, 0644)
+	tc.refresh()
+	
 	req := WorkRequest{
 		Argv: []string{"sh", "-c", "echo hello > file.txt ; ln file.txt foo.txt"},
 	}

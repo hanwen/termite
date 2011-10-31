@@ -4,7 +4,9 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
 	"rpc"
+	"strings"
 )
 
 type Master struct {
@@ -162,6 +164,14 @@ func (me *Master) CheckPrivate() {
 }
 
 func (me *Master) Start(sock string) {
+	// Fetch in the background.
+	last := ""
+	for _, r := range []string{me.options.WritableRoot, me.options.SrcRoot} {
+		if last == r || r == "" {
+			continue
+		}
+		go me.fetchAll(strings.TrimLeft(r, "/"))
+	}
 	localStart(me, sock)
 }
 
@@ -423,11 +433,9 @@ func (me *Master) refreshAttributeCache() {
 	}
 }
 
-func (me *Master) FetchDirs(root string) {
-	a := me.attr.GetDir(root)
-	for n, m := range a.NameModeMap {
-		if m.IsDirectory() {
-			me.FetchDirs(me.path(n))
-		}
+func (me *Master) fetchAll(path string) {
+	a := me.attr.GetDir(path)
+	for n := range a.NameModeMap {
+		me.fetchAll(filepath.Join(path, n))
 	}
 }
