@@ -37,6 +37,7 @@ MANUAL_GOFILES=\
 	rpcfs.go \
 	status.go \
 	task.go \
+	timerpc.go \
 	timer.go \
 	version.go \
 	worker.go \

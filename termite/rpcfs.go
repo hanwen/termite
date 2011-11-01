@@ -11,7 +11,7 @@ import (
 type RpcFs struct {
 	fuse.DefaultFileSystem
 	cache  *ContentCache
-	client *rpc.Client
+	client *TimedRpcClient
 
 	// Roots that we should try to fetch locally.
 	localRoots []string
@@ -22,7 +22,7 @@ type RpcFs struct {
 
 func NewRpcFs(server *rpc.Client, cache *ContentCache) *RpcFs {
 	me := &RpcFs{}
-	me.client = server
+	me.client = NewTimedRpcClient(server)
 
 	me.attr = NewAttributeCache(
 		func(n string) *FileAttr {
@@ -34,8 +34,10 @@ func NewRpcFs(server *rpc.Client, cache *ContentCache) *RpcFs {
 }
 
 func (me *RpcFs) FetchHash(h string, sz int64) os.Error {
-	err := FetchBetweenContentServers(me.client, "FsServer.FileContent", h,
-		me.cache)
+	err := me.cache.FetchFromServer(
+		func(req *ContentRequest, rep *ContentResponse) os.Error {
+			return me.client.Call("FsServer.FileContent", req, rep)
+		}, h)
 	if err == nil && sz < _MEMORY_LIMIT {
 		me.cache.FaultIn(h)
 	}

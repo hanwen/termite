@@ -3,7 +3,6 @@ package termite
 import (
 	"log"
 	"os"
-	"rpc"
 )
 
 func ServeFileContent(cache *ContentCache, req *ContentRequest, rep *ContentResponse) os.Error {
@@ -32,17 +31,14 @@ func ServeFileContent(cache *ContentCache, req *ContentRequest, rep *ContentResp
 	return err
 }
 
-// FetchHash issues a FileContent RPC to read an entire file, and store into ContentCache.
-//
-// TODO - open a connection for this instead.
-func FetchBetweenContentServers(client *rpc.Client, rpcName string, hash string,
-	dest *ContentCache) os.Error {
-	if dest.HasHash(hash) {
+func (me *ContentCache) FetchFromServer(fetcher func(req *ContentRequest, rep *ContentResponse) os.Error,
+	hash string) os.Error {
+	if me.HasHash(hash) {
 		return nil
 	}
 	chunkSize := 1 << 18
 
-	output := dest.NewHashWriter()
+	output := me.NewHashWriter()
 	written := 0
 	for {
 		req := &ContentRequest{
@@ -52,7 +48,7 @@ func FetchBetweenContentServers(client *rpc.Client, rpcName string, hash string,
 		}
 
 		rep := &ContentResponse{}
-		err := client.Call(rpcName, req, rep)
+		err := fetcher(req, rep)
 		if err != nil {
 			log.Println("FileContent error:", err)
 			return err
@@ -60,7 +56,7 @@ func FetchBetweenContentServers(client *rpc.Client, rpcName string, hash string,
 
 		if len(rep.Chunk) < chunkSize && written == 0 {
 			output.Close()
-			saved := dest.Save(rep.Chunk)
+			saved := me.Save(rep.Chunk)
 			if saved != hash {
 				log.Fatalf("Corruption: savedHash %x != requested hash %x.", saved, hash)
 			}

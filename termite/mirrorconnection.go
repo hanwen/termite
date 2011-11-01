@@ -37,8 +37,10 @@ func (me *mirrorConnection) replay(fset FileSet) os.Error {
 	// leave the FS in a half-finished state.
 	for _, info := range fset.Files {
 		if info.Hash != "" {
-			err := FetchBetweenContentServers(
-				me.rpcClient, "Mirror.FileContent", info.Hash, me.master.cache)
+			err := me.master.cache.FetchFromServer(
+				func(req *ContentRequest, rep *ContentResponse) os.Error {
+					return me.rpcClient.Call("Mirror.FileContent", req, rep)
+			}, info.Hash)
 			if err != nil {
 				return err
 			}

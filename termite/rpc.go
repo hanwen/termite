@@ -50,6 +50,11 @@ type MirrorStatusRequest struct {
 
 }
 
+type RpcTiming struct {
+	N   int64
+	Ns  int64
+}
+
 type MirrorStatusResponse struct {
 	Root         string
 	Granted      int
@@ -57,6 +62,7 @@ type MirrorStatusResponse struct {
 	ShuttingDown bool
 	WaitingTasks int
 	IdleFses     int
+	RpcTimings   map[string]*RpcTiming
 }
 
 type WorkerStatusRequest struct {

@@ -374,6 +374,10 @@ func (me *Coordinator) workerHandler(w http.ResponseWriter, req *http.Request) {
 
 func (me *Coordinator) mirrorStatusHtml(w http.ResponseWriter, s MirrorStatusResponse) {
 	fmt.Fprintf(w, "<h2>Mirror %s</h2>", s.Root)
+	for k, v := range s.RpcTimings {
+		fmt.Fprintf(w, "<li>%s: %d calls, %d us/call.\n", k, v.N, (v.Ns / v.N) / 1e3)
+	}
+	
 	fmt.Fprintf(w, "<p>%d maximum jobs, %d running, %d waiting tasks, %d unused filesystems.\n",
 		s.Granted, len(s.Running), s.WaitingTasks, s.IdleFses)
 	if s.ShuttingDown {
