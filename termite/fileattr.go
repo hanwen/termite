@@ -97,6 +97,7 @@ func (me *FileAttr) ReadFromFs(p string) {
 		if e == nil {
 			me.Link = l
 		} else {
+			log.Panicf("Readlink %q error: %v", p, e)
 			me.FileInfo = nil
 		}
 	}
