@@ -70,14 +70,15 @@ func (me FileAttr) Copy(withdir bool) *FileAttr {
 }
 
 func (me *FileAttr) ReadFromFs(p string) {
+	var err os.Error
 	switch {
 	case me.IsRegular():
-		c, e := ioutil.ReadFile(p)
-		if e == nil {
+		if c, e := ioutil.ReadFile(p); e == nil {
 			me.Hash = md5(c)
 		} else {
-			me.FileInfo = nil
+			err = e
 		}
+
 	case me.IsDirectory():
 		d, e := ioutil.ReadDir(p)
 		if e == nil {
@@ -90,16 +91,20 @@ func (me *FileAttr) ReadFromFs(p string) {
 				}
 			}
 		} else {
-			me.FileInfo = nil
+			err = e
 		}
+
 	case me.IsSymlink():
-		l, e := os.Readlink(p)
-		if e == nil {
+		if l, e := os.Readlink(p); e == nil {
 			me.Link = l
 		} else {
-			log.Panicf("Readlink %q error: %v", p, e)
-			me.FileInfo = nil
+			err = e
 		}
+	}
+
+	if err != nil {
+		log.Panicf("Error reading %q (%s): %v", FileMode(me.FileInfo.Mode), p, err)
+		me.FileInfo = nil
 	}
 }
 

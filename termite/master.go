@@ -68,8 +68,7 @@ func (me *Master) uncachedGetAttr(name string) (rep *FileAttr) {
 func (me *Master) fillContent(rep *FileAttr) {
 	if rep.IsSymlink() || rep.IsDirectory() {
 		rep.ReadFromFs(me.path(rep.Path))
-	}
-	if rep.IsRegular() {
+	} else if rep.IsRegular() {
 		// TODO - /usr should be configurable.
 		fullPath := me.path(rep.Path)
 		if HasDirPrefix(fullPath, "/usr") && !HasDirPrefix(fullPath, "/usr/local") {
