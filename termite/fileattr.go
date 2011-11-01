@@ -103,7 +103,7 @@ func (me *FileAttr) ReadFromFs(p string) {
 	}
 
 	if err != nil {
-		log.Panicf("Error reading %q (%s): %v", FileMode(me.FileInfo.Mode), p, err)
+		log.Println("Error reading %q (%s): %v", FileMode(me.FileInfo.Mode), p, err)
 		me.FileInfo = nil
 	}
 }
