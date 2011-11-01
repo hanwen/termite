@@ -43,7 +43,7 @@ func (me *fileSetWaiter) signal(id int) {
 	if ch != nil {
 		ch <- 1
 		close(ch)
-		me.channels[id] = nil, false
+		delete(me.channels, id)
 	}
 }
 
@@ -52,13 +52,13 @@ func (me *fileSetWaiter) flush(id int) {
 	defer me.Unlock()
 	ch := me.channels[id]
 	close(ch)
-	me.channels[id] = nil, false
+	delete(me.channels, id)
 }
 
 func (me *fileSetWaiter) drop(id int) {
 	me.Lock()
 	defer me.Unlock()
-	me.channels[id] = nil, false
+	delete(me.channels, id)
 }
 
 func (me *fileSetWaiter) wait(rep *WorkResponse, waitId int) (err os.Error) {

@@ -271,8 +271,8 @@ func (me *mirrorConnections) drop(mc *mirrorConnection, err os.Error) {
 	log.Printf("Dropping mirror %s. Reason: %s", mc.workerAddr, err)
 	mc.connection.Close()
 	mc.reverseConnection.Close()
-	me.mirrors[mc.workerAddr] = nil, false
-	me.workers[mc.workerAddr] = false, false
+	delete(me.mirrors, mc.workerAddr)
+	delete(me.workers, mc.workerAddr)
 }
 
 func (me *mirrorConnections) jobDone(mc *mirrorConnection) {
@@ -318,7 +318,7 @@ func (me *mirrorConnections) tryConnect() {
 		mc, err := me.master.createMirror(addr, wanted)
 		me.Mutex.Lock()
 		if err != nil {
-			me.workers[addr] = false, false
+			delete(me.workers, addr)
 			log.Println("nonfatal error creating mirror:", err)
 		} else {
 			// This could happen in the unlikely event of

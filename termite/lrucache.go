@@ -39,7 +39,7 @@ func NewLruCache(size int) (me *LruCache) {
 func (me *LruCache) Add(key string, val interface{}) {
 	evict := me.lastUsedKeys[me.nextEvict]
 	if evict != nil {
-		me.contents[evict.key] = nil, false
+		delete(me.contents, evict.key)
 	}
 
 	e := &cacheEntry{

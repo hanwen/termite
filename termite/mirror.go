@@ -75,7 +75,7 @@ func (me *Mirror) Shutdown() {
 		}
 		if len(fs.tasks) == 0 {
 			fs.Stop()
-			me.activeFses[fs] = false, false
+			delete(me.activeFses, fs)
 		}
 	}
 
@@ -135,7 +135,7 @@ func (me *Mirror) prepareFs(fs *workerFuseFs) {
 func (me *Mirror) considerReap(fs *workerFuseFs, task *WorkerTask) bool {
 	me.fsMutex.Lock()
 	defer me.fsMutex.Unlock()
-	fs.tasks[task] = false, false
+	delete(fs.tasks, task)
 	if len(fs.tasks) == 0 {
 		fs.reaping = true
 	}
@@ -147,7 +147,7 @@ func (me *Mirror) reapFuse(fs *workerFuseFs) (results *FileSet, taskIds []int) {
 	log.Printf("Reaping fuse FS %v", fs.id)
 	results = me.fillReply(fs.unionFs)
 	fs.unionFs.Reset()
-	
+
 	return results, fs.taskIds[:]
 }
 
@@ -162,7 +162,7 @@ func (me *Mirror) returnFs(fs *workerFuseFs) {
 	fs.SetDebug(false)
 	if me.shuttingDown {
 		fs.Stop()
-		me.activeFses[fs] = false, false
+		delete(me.activeFses, fs)
 		me.cond.Broadcast()
 	}
 }
@@ -211,7 +211,7 @@ func (me *Mirror) newWorkerFuseFs() (*workerFuseFs, os.Error) {
 
 	f.id = fmt.Sprintf("%d", me.nextFsId)
 	me.nextFsId++
-	
+
 	return f, err
 }
 

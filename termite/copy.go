@@ -33,7 +33,7 @@ func (me *splicePairPool) get() (p *splicePair, err os.Error) {
 	defer me.Unlock()
 
 	for s := range me.unused {
-		me.unused[s] = false, false
+		delete(me.unused, s)
 		return s, nil
 	}
 
@@ -46,7 +46,6 @@ func (me *splicePairPool) done(p *splicePair) {
 
 	me.unused[p] = true
 }
-
 
 var splicePool *splicePairPool
 var pipeMaxSize *int
@@ -152,7 +151,6 @@ func newSplicePair() (me *splicePair, err os.Error) {
 	}
 	return me, nil
 }
-
 
 func SpliceCopy(dst *os.File, src *os.File, p *splicePair) (int64, os.Error) {
 	total := int64(0)

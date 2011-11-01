@@ -20,15 +20,15 @@ type AttributeCache struct {
 	getter     func(name string) *FileAttr
 	statter    func(name string) *os.FileInfo
 
-	clients map[string]*attrCachePending
-	nextFileSetId   int
-	
+	clients       map[string]*attrCachePending
+	nextFileSetId int
+
 	Paranoia bool
 }
 
 type attrCachePending struct {
-	client  AttributeCacheClient
-	pending []*FileAttr
+	client    AttributeCacheClient
+	pending   []*FileAttr
 	sentId    int
 	pendingId int
 	busy      bool
@@ -48,7 +48,7 @@ func (me *AttributeCache) RmClient(client AttributeCacheClient) {
 	if c != nil {
 		c.pending = nil
 		c.busy = false
-		me.clients[id] = nil, false
+		delete(me.clients, id)
 		me.cond.Broadcast()
 	}
 }
@@ -63,8 +63,8 @@ func (me *AttributeCache) AddClient(client AttributeCacheClient) {
 	}
 
 	clData := attrCachePending{
-		client:  client,
-		pending: me.copyFiles().Files,
+		client:    client,
+		pending:   me.copyFiles().Files,
 		pendingId: me.nextFileSetId,
 	}
 	me.nextFileSetId++
@@ -105,11 +105,11 @@ func (me *AttributeCache) Queue(fs FileSet) {
 	defer me.mutex.Unlock()
 
 	fsid := me.nextFileSetId
-	me.nextFileSetId ++
+	me.nextFileSetId++
 	for _, w := range me.clients {
 		w.pending = append(w.pending, fs.Files...)
 		w.pendingId = fsid
-	}	
+	}
 }
 
 func NewAttributeCache(getter func(n string) *FileAttr,
@@ -257,7 +257,7 @@ func (me *AttributeCache) unsafeGet(name string, withdir bool) (rep *FileAttr) {
 		me.attributes[name] = rep
 	}
 	me.cond.Broadcast()
-	me.busy[name] = false, false
+	delete(me.busy, name)
 	me.verify()
 
 	c := rep.Copy(withdir)
@@ -265,7 +265,7 @@ func (me *AttributeCache) unsafeGet(name string, withdir bool) (rep *FileAttr) {
 	for _, w := range me.clients {
 		w.pending = append(w.pending, sendCopy)
 	}
-	return c	
+	return c
 }
 
 func (me *AttributeCache) Update(files []*FileAttr) {
@@ -294,14 +294,14 @@ func (me *AttributeCache) update(files []*FileAttr) {
 				log.Panicf("parent dir has no NameModeMap: %q", dir)
 			}
 			if r.Deletion() {
-				dirAttr.NameModeMap[basename] = 0, false
+				delete(dirAttr.NameModeMap, basename)
 			} else {
 				dirAttr.NameModeMap[basename] = FileMode(r.Mode &^ 07777)
 			}
 		}
 
 		if r.Deletion() {
-			attributes[r.Path] = nil, false
+			delete(attributes, r.Path)
 			continue
 		}
 
@@ -319,7 +319,7 @@ func (me *AttributeCache) update(files []*FileAttr) {
 		} else {
 			old.Merge(r)
 		}
-		me.busy[r.Path] = false, false
+		delete(me.busy, r.Path)
 	}
 	me.cond.Broadcast()
 }

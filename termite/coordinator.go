@@ -110,7 +110,7 @@ func (me *Coordinator) checkReachable() {
 	me.mutex.Lock()
 	for _, a := range toDelete {
 		if me.workers[a].LastReported < now {
-			me.workers[a] = nil, false
+			delete(me.workers, a)
 		}
 	}
 	me.mutex.Unlock()
@@ -362,7 +362,7 @@ func (me *Coordinator) workerHandler(w http.ResponseWriter, req *http.Request) {
 		float64(minuteStat.Total())/60.0e9)
 
 	fmt.Fprintf(w, "<p>Total CPU: %s", status.TotalCpu.Percent())
-	fmt.Fprintf(w, "<p>Content cache hit rate: %.0f %%", 100.0 * status.ContentCacheHitRate)
+	fmt.Fprintf(w, "<p>Content cache hit rate: %.0f %%", 100.0*status.ContentCacheHitRate)
 
 	for _, mirrorStatus := range status.MirrorStatus {
 		me.mirrorStatusHtml(w, mirrorStatus)

@@ -200,7 +200,7 @@ func (me *WorkerDaemon) DropMirror(mirror *Mirror) {
 	defer me.mirrorMapMutex.Unlock()
 
 	log.Println("dropping mirror", mirror.key)
-	me.mirrorMap[mirror.key] = nil, false
+	delete(me.mirrorMap, mirror.key)
 	me.cond.Broadcast()
 	runtime.GC()
 }

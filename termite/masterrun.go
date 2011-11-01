@@ -21,7 +21,7 @@ func (me *Master) MaybeRunInMaster(req *WorkRequest, rep *WorkResponse) bool {
 		return mkdirMaybeMasterRun(me, req, rep)
 	case "rm":
 		return rmMaybeMasterRun(me, req, rep)
-	// TODO - implement mv ?
+		// TODO - implement mv ?
 	}
 	return false
 }
@@ -44,13 +44,13 @@ func rmMaybeMasterRun(master *Master, req *WorkRequest, rep *WorkResponse) bool 
 	g := Getopt(req.Argv[1:], nil, nil, true)
 
 	force := g.HasLong("force") || g.HasShort('f')
-	g.Long["force"] = "", false
-	g.Short['f'] = "", false
+	delete(g.Long, "force")
+	delete(g.Short, 'f')
 
 	recursive := g.HasLong("recursive") || g.HasShort('r') || g.HasShort('R')
-	g.Long["recursive"] = "", false
-	g.Short['R'] = "", false
-	g.Short['r'] = "", false
+	delete(g.Long, "recursive")
+	delete(g.Short, 'R')
+	delete(g.Short, 'r')
 
 	if g.HasOptions() {
 		return false
@@ -107,8 +107,8 @@ func mkdirMaybeMasterRun(master *Master, req *WorkRequest, rep *WorkResponse) bo
 
 	hasParent := g.HasLong("parent") || g.HasShort('p')
 
-	g.Long["parent"] = "", false
-	g.Short['p'] = "", false
+	delete(g.Long, "parent")
+	delete(g.Short, 'p')
 
 	if len(g.Short) > 0 || len(g.Long) > 0 {
 		return false
