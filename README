@@ -134,23 +134,14 @@ CAVEATS
 * Hardlinks on the workers are translated to copies on the master.
 
 
-TODO
+TODO (by decreasing priority)
 
-* Packages to compile:
-  - linux kernel
+* Collect RPC timings
+* In-memory file writing.
+* Add faulting-in cond for ContentCache.
+* Compile linux kernel
+* Security review for the connection scheme.
 
-* Security:
-  - Security review for the connection scheme.
-
-* Data collection:
-  - RPC delays.
-  
-* Speed
-  - Worker:
-  - Master:
-    * worker <-> worker file content fetching
-  - Master/Worker:
-    * streaming connections for file transport.
 
 SUCCESSFUL COMPILES
 
