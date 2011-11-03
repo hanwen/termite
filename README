@@ -136,9 +136,8 @@ CAVEATS
 
 TODO (by decreasing priority)
 
-* Collect RPC timings
-* In-memory file writing.
 * Add faulting-in cond for ContentCache.
+* In-memory file writing.
 * Compile linux kernel
 * Security review for the connection scheme.
 

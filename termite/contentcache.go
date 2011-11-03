@@ -12,6 +12,10 @@ import (
 	"sync"
 )
 
+// TODO
+// - in-mem cache for have of files.
+// - readdir of all files on startup.
+
 // Content based addressing cache.
 type ContentCache struct {
 	dir string
