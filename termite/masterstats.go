@@ -13,6 +13,7 @@ type masterStats struct {
 	counterMutex sync.Mutex
 	phaseCounts   map[string]int
 	cpuStats      *cpuStatSampler
+	fsServerStats *TimerStats
 }
 
 func newMasterStats() *masterStats {

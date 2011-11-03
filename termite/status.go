@@ -15,7 +15,7 @@ func (me *Mirror) Status(req *MirrorStatusRequest, rep *MirrorStatusResponse) er
 			rep.Running = append(rep.Running, fmt.Sprintf("fs %s: %s", fs.id, t.taskInfo))
 		}
 	}
-	rep.RpcTimings = me.rpcFs.client.Timings()
+	rep.RpcTimings = me.rpcFs.client.TimingMessages()
 	return nil
 }
 

@@ -55,6 +55,10 @@ type RpcTiming struct {
 	Ns  int64
 }
 
+func (me *RpcTiming) String() string {
+	return fmt.Sprintf("%d calls, %d us/call", me.N, (me.Ns/me.N)/1e3)
+}
+
 type MirrorStatusResponse struct {
 	Root         string
 	Granted      int
@@ -62,7 +66,7 @@ type MirrorStatusResponse struct {
 	ShuttingDown bool
 	WaitingTasks int
 	IdleFses     int
-	RpcTimings   map[string]*RpcTiming
+	RpcTimings   []string
 }
 
 type WorkerStatusRequest struct {

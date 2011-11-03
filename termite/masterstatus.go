@@ -50,7 +50,11 @@ func (me *Master) statusHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	fmt.Fprintf(w, "<p>ContentCache memory hit rate: %.0f %%", 100.0*me.cache.MemoryHitRate())
-
+	fmt.Fprintf(w, "<ul>")
+	for _, msg := range me.fileServer.stats.TimingMessages() {
+		fmt.Fprintf(w, "<li>%s", msg)
+	}
+	fmt.Fprintf(w, "</ul>")
 	me.mirrors.stats.writeHttp(w)
 
 	fmt.Fprintf(w, "<p>Master parallelism (--jobs): %d. Reserved job slots: %d",
