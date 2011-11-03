@@ -33,9 +33,9 @@ func NewRpcFs(server *rpc.Client, cache *ContentCache) *RpcFs {
 	return me
 }
 
-func (me *RpcFs) FetchHash(h string, sz int64) os.Error {
+func (me *RpcFs) FetchHash(h string, sz int64) error {
 	err := me.cache.FetchFromServer(
-		func(req *ContentRequest, rep *ContentResponse) os.Error {
+		func(req *ContentRequest, rep *ContentResponse) error {
 			return me.client.Call("FsServer.FileContent", req, rep)
 		}, h)
 	if err == nil && sz < _MEMORY_LIMIT {
@@ -44,7 +44,7 @@ func (me *RpcFs) FetchHash(h string, sz int64) os.Error {
 	return err
 }
 
-func (me *RpcFs) Update(req *UpdateRequest, resp *UpdateResponse) os.Error {
+func (me *RpcFs) Update(req *UpdateRequest, resp *UpdateResponse) error {
 	me.updateFiles(req.Files)
 	return nil
 }

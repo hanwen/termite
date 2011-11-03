@@ -1,9 +1,9 @@
 package termite
 
 import (
+	"errors"
 	"fmt"
 	"net"
-	"os"
 	"log"
 	"rpc"
 	"sync"
@@ -95,7 +95,7 @@ func (me *Mirror) runningCount() int {
 	return r
 }
 
-func (me *Mirror) newFs(t *WorkerTask) (fs *workerFuseFs, err os.Error) {
+func (me *Mirror) newFs(t *WorkerTask) (fs *workerFuseFs, err error) {
 	me.fsMutex.Lock()
 	defer me.fsMutex.Unlock()
 
@@ -106,7 +106,7 @@ func (me *Mirror) newFs(t *WorkerTask) (fs *workerFuseFs, err os.Error) {
 	me.waiting--
 
 	if me.shuttingDown {
-		return nil, os.NewError("shutting down")
+		return nil, errors.New("shutting down")
 	}
 
 	for fs := range me.activeFses {
@@ -167,7 +167,7 @@ func (me *Mirror) returnFs(fs *workerFuseFs) {
 	}
 }
 
-func (me *Mirror) Update(req *UpdateRequest, rep *UpdateResponse) os.Error {
+func (me *Mirror) Update(req *UpdateRequest, rep *UpdateResponse) error {
 	me.updateFiles(req.Files)
 	return nil
 }
@@ -183,7 +183,7 @@ func (me *Mirror) updateFiles(attrs []*FileAttr) {
 	}
 }
 
-func (me *Mirror) Run(req *WorkRequest, rep *WorkResponse) os.Error {
+func (me *Mirror) Run(req *WorkRequest, rep *WorkResponse) error {
 	log.Print("Received request", req)
 	// Don't run me.updateFiles() as we don't want to issue
 	// unneeded cache invalidations.
@@ -206,7 +206,7 @@ func (me *Mirror) Run(req *WorkRequest, rep *WorkResponse) os.Error {
 
 const _DELETIONS = "DELETIONS"
 
-func (me *Mirror) newWorkerFuseFs() (*workerFuseFs, os.Error) {
+func (me *Mirror) newWorkerFuseFs() (*workerFuseFs, error) {
 	f, err := newWorkerFuseFs(me.daemon.tmpDir, me.rpcFs, me.writableRoot, me.daemon.Nobody)
 
 	f.id = fmt.Sprintf("%d", me.nextFsId)
@@ -215,7 +215,7 @@ func (me *Mirror) newWorkerFuseFs() (*workerFuseFs, os.Error) {
 	return f, err
 }
 
-func (me *Mirror) newWorkerTask(req *WorkRequest, rep *WorkResponse) (*WorkerTask, os.Error) {
+func (me *Mirror) newWorkerTask(req *WorkRequest, rep *WorkResponse) (*WorkerTask, error) {
 	var stdin net.Conn
 	if req.StdinId != "" {
 		stdin = me.daemon.pending.WaitConnection(req.StdinId)
@@ -230,6 +230,6 @@ func (me *Mirror) newWorkerTask(req *WorkRequest, rep *WorkResponse) (*WorkerTas
 	return task, nil
 }
 
-func (me *Mirror) FileContent(req *ContentRequest, rep *ContentResponse) os.Error {
+func (me *Mirror) FileContent(req *ContentRequest, rep *ContentResponse) error {
 	return ServeFileContent(me.daemon.contentCache, req, rep)
 }

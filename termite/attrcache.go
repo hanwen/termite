@@ -36,7 +36,7 @@ type attrCachePending struct {
 
 type AttributeCacheClient interface {
 	Id() string
-	Send([]*FileAttr) os.Error
+	Send([]*FileAttr) error
 }
 
 func (me *AttributeCache) RmClient(client AttributeCacheClient) {
@@ -72,7 +72,7 @@ func (me *AttributeCache) AddClient(client AttributeCacheClient) {
 	me.clients[id] = &clData
 }
 
-func (me *AttributeCache) Send(client AttributeCacheClient) os.Error {
+func (me *AttributeCache) Send(client AttributeCacheClient) error {
 	me.mutex.Lock()
 	defer me.mutex.Unlock()
 	c := me.clients[client.Id()]

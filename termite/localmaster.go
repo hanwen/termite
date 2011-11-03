@@ -25,7 +25,7 @@ func localStart(m *Master, sock string) {
 	me.start(sock)
 }
 
-func (me *LocalMaster) Run(req *WorkRequest, rep *WorkResponse) os.Error {
+func (me *LocalMaster) Run(req *WorkRequest, rep *WorkResponse) error {
 	if req.RanLocally {
 		log.Println("Ran command locally:", req.Argv)
 		return nil
@@ -37,21 +37,21 @@ func (me *LocalMaster) Run(req *WorkRequest, rep *WorkResponse) os.Error {
 	return me.master.run(req, rep)
 }
 
-func (me *LocalMaster) Shutdown(req *int, rep *int) os.Error {
+func (me *LocalMaster) Shutdown(req *int, rep *int) error {
 	time.AfterFunc(1e8, func() {
 		me.listener.Close()
 	})
 	return nil
 }
 
-func (me *LocalMaster) RefreshAttributeCache(input *int, output *int) os.Error {
+func (me *LocalMaster) RefreshAttributeCache(input *int, output *int) error {
 	log.Println("Refreshing attribute cache")
 	me.master.refreshAttributeCache()
 	log.Println("Refresh done")
 	return nil
 }
 
-func (me *LocalMaster) InspectFile(req *AttrRequest, rep *AttrResponse) os.Error {
+func (me *LocalMaster) InspectFile(req *AttrRequest, rep *AttrResponse) error {
 	return me.master.fileServer.GetAttr(req, rep)
 }
 

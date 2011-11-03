@@ -170,7 +170,7 @@ func (me *testClient) Id() string {
 	return me.id
 }
 
-func (me *testClient) Send(attrs []*FileAttr) os.Error {
+func (me *testClient) Send(attrs []*FileAttr) error {
 	for _, a := range attrs {
 		me.attrs = append(me.attrs, a.Copy(true))
 		if strings.Contains(a.Path, "delay") {
@@ -284,7 +284,7 @@ func (me *attrClient) Id() string {
 	return me.id
 }
 
-func (me *attrClient) Send(attrs []*FileAttr) os.Error {
+func (me *attrClient) Send(attrs []*FileAttr) error {
 	me.attr.Update(attrs)
 	return nil
 }

@@ -1,6 +1,7 @@
 package termite
 
 import (
+	"errors"
 	"fmt"
 	"http"
 	"log"
@@ -51,13 +52,13 @@ func NewCoordinator(secret []byte) *Coordinator {
 	}
 }
 
-func (me *Coordinator) Register(req *Registration, rep *int) os.Error {
+func (me *Coordinator) Register(req *Registration, rep *int) error {
 	conn, err := DialTypedConnection(req.Address, RPC_CHANNEL, me.secret)
 	if conn != nil {
 		conn.Close()
 	}
 	if err != nil {
-		return os.NewError(fmt.Sprintf(
+		return errors.New(fmt.Sprintf(
 			"error contacting address: %v", err))
 	}
 
@@ -76,7 +77,7 @@ func (me *Coordinator) WorkerCount() int {
 	return len(me.workers)
 }
 
-func (me *Coordinator) List(req *int, rep *Registered) os.Error {
+func (me *Coordinator) List(req *int, rep *Registered) error {
 	me.mutex.Lock()
 	defer me.mutex.Unlock()
 
@@ -164,7 +165,7 @@ func (me *Coordinator) shutdownSelf(w http.ResponseWriter, req *http.Request) {
 func (me *Coordinator) killAllHandler(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	restart := req.URL.Path == "restartall"
-	errs := []os.Error{}
+	errs := []error{}
 	for _, w := range me.workerAddresses() {
 		conn, err := DialTypedConnection(w, RPC_CHANNEL, me.secret)
 		if err == nil {
@@ -200,7 +201,7 @@ func (me *Coordinator) killHandler(w http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		// TODO - set error status.
 		fmt.Fprintf(w, "<html><head><title>Termite worker error</title></head>")
-		fmt.Fprintf(w, "<body>Error: %s</body></html>", err.String())
+		fmt.Fprintf(w, "<body>Error: %s</body></html>", err.Error())
 		return
 	}
 	defer conn.Close()
@@ -231,7 +232,7 @@ func (me *Coordinator) killHandler(w http.ResponseWriter, req *http.Request) {
 	go me.checkReachable()
 }
 
-func (me *Coordinator) shutdownWorker(addr string, restart bool) os.Error {
+func (me *Coordinator) shutdownWorker(addr string, restart bool) error {
 	conn, err := DialTypedConnection(addr, RPC_CHANNEL, me.secret)
 	if err != nil {
 		return err
@@ -262,7 +263,7 @@ func (me *Coordinator) haveWorker(addr string) bool {
 	return ok
 }
 
-func (me *Coordinator) getHost(req *http.Request) (string, net.Conn, os.Error) {
+func (me *Coordinator) getHost(req *http.Request) (string, net.Conn, error) {
 	q := req.URL.Query()
 	vs, ok := q["host"]
 	if !ok || len(vs) == 0 {
@@ -286,7 +287,7 @@ func (me *Coordinator) logHandler(w http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		// TODO - set error status.
 		fmt.Fprintf(w, "<html><head><title>Termite worker error</title></head>")
-		fmt.Fprintf(w, "<body>Error: %s</body></html>", err.String())
+		fmt.Fprintf(w, "<body>Error: %s</body></html>", err.Error())
 		return
 	}
 	sz := int64(500 * 1024)
@@ -303,7 +304,7 @@ func (me *Coordinator) logHandler(w http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		// TODO - set error status.
 		fmt.Fprintf(w, "<html><head><title>Termite worker error</title></head>")
-		fmt.Fprintf(w, "<body>Error: %s</body></html>", err.String())
+		fmt.Fprintf(w, "<body>Error: %s</body></html>", err.Error())
 		return
 	}
 
@@ -317,7 +318,7 @@ func (me *Coordinator) workerHandler(w http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		// TODO - set error status.
 		fmt.Fprintf(w, "<html><head><title>Termite worker error</title></head>")
-		fmt.Fprintf(w, "<body>Error: %s</body></html>", err.String())
+		fmt.Fprintf(w, "<body>Error: %s</body></html>", err.Error())
 		return
 	}
 
@@ -375,9 +376,9 @@ func (me *Coordinator) workerHandler(w http.ResponseWriter, req *http.Request) {
 func (me *Coordinator) mirrorStatusHtml(w http.ResponseWriter, s MirrorStatusResponse) {
 	fmt.Fprintf(w, "<h2>Mirror %s</h2>", s.Root)
 	for k, v := range s.RpcTimings {
-		fmt.Fprintf(w, "<li>%s: %d calls, %d us/call.\n", k, v.N, (v.Ns / v.N) / 1e3)
+		fmt.Fprintf(w, "<li>%s: %d calls, %d us/call.\n", k, v.N, (v.Ns/v.N)/1e3)
 	}
-	
+
 	fmt.Fprintf(w, "<p>%d maximum jobs, %d running, %d waiting tasks, %d unused filesystems.\n",
 		s.Granted, len(s.Running), s.WaitingTasks, s.IdleFses)
 	if s.ShuttingDown {
@@ -440,10 +441,10 @@ func (me *Coordinator) ServeHTTP(port int) {
 		})
 
 	addr := fmt.Sprintf(":%d", port)
-	var err os.Error
+	var err error
 	me.listener, err = net.Listen("tcp", addr)
 	if err != nil {
-		log.Fatal("net.Listen: ", err.String())
+		log.Fatal("net.Listen: ", err.Error())
 	}
 	log.Println("Coordinator listening on", addr)
 

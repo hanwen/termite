@@ -174,7 +174,7 @@ func (me *Master) Start(sock string) {
 	localStart(me, sock)
 }
 
-func (me *Master) createMirror(addr string, jobs int) (*mirrorConnection, os.Error) {
+func (me *Master) createMirror(addr string, jobs int) (*mirrorConnection, error) {
 	secret := me.options.Secret
 	conn, err := DialTypedConnection(addr, RPC_CHANNEL, secret)
 	if err != nil {
@@ -222,14 +222,14 @@ func (me *Master) createMirror(addr string, jobs int) (*mirrorConnection, os.Err
 		maxJobs:           rep.GrantedJobCount,
 		availableJobs:     rep.GrantedJobCount,
 	}
-	mc.fileSetWaiter = newFileSetWaiter(func(fset FileSet) os.Error {
+	mc.fileSetWaiter = newFileSetWaiter(func(fset FileSet) error {
 		return mc.replay(fset)
 	})
 
 	return mc, nil
 }
 
-func (me *Master) runOnMirror(mirror *mirrorConnection, req *WorkRequest, rep *WorkResponse) os.Error {
+func (me *Master) runOnMirror(mirror *mirrorConnection, req *WorkRequest, rep *WorkResponse) error {
 	me.mirrors.stats.Enter("send")
 	err := me.fileServer.attr.Send(mirror)
 	me.mirrors.stats.Exit("send")
@@ -271,7 +271,7 @@ func (me *Master) runOnMirror(mirror *mirrorConnection, req *WorkRequest, rep *W
 	return err
 }
 
-func (me *Master) runOnce(req *WorkRequest, rep *WorkResponse) os.Error {
+func (me *Master) runOnce(req *WorkRequest, rep *WorkResponse) error {
 	mirror, err := me.mirrors.pick()
 	if err != nil {
 		return err
@@ -286,7 +286,7 @@ func (me *Master) runOnce(req *WorkRequest, rep *WorkResponse) os.Error {
 	return err
 }
 
-func (me *Master) run(req *WorkRequest, rep *WorkResponse) (err os.Error) {
+func (me *Master) run(req *WorkRequest, rep *WorkResponse) (err error) {
 	me.mirrors.stats.Enter("run")
 	defer me.mirrors.stats.Exit("run")
 	req.TaskId = <-me.taskIds
@@ -316,7 +316,7 @@ func (me *Master) replayFileModifications(infos []*FileAttr, newFiles map[string
 	for _, info := range infos {
 		logStr := ""
 		name := "/" + info.Path
-		var err os.Error
+		var err error
 		if info.FileInfo != nil && info.FileInfo.IsDirectory() {
 			err := os.Mkdir(name, info.FileInfo.Mode&07777)
 			if err != nil {

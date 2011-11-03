@@ -52,15 +52,15 @@ func (me *dummyConn) RemoteAddr() net.Addr {
 	return &net.UnixAddr{}
 }
 
-func (me *dummyConn) SetTimeout(nsec int64) os.Error {
+func (me *dummyConn) SetTimeout(nsec int64) error {
 	return nil
 }
 
-func (me *dummyConn) SetReadTimeout(nsec int64) os.Error {
+func (me *dummyConn) SetReadTimeout(nsec int64) error {
 	return nil
 }
 
-func (me *dummyConn) SetWriteTimeout(nsec int64) os.Error {
+func (me *dummyConn) SetWriteTimeout(nsec int64) error {
 	return nil
 }
 

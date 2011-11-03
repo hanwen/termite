@@ -229,7 +229,7 @@ func PrintStdinSliceLen(s []byte) {
 }
 
 // Useful for debugging.
-func HookedCopy(w io.Writer, r io.Reader, proc func([]byte)) os.Error {
+func HookedCopy(w io.Writer, r io.Reader, proc func([]byte)) error {
 	buf := make([]byte, 32*1024)
 	for {
 		n, err := r.Read(buf)

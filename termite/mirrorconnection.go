@@ -1,10 +1,10 @@
 package termite
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"net"
-	"os"
 	"rand"
 	"rpc"
 	"strings"
@@ -32,15 +32,15 @@ func (me *mirrorConnection) Id() string {
 	return me.workerAddr
 }
 
-func (me *mirrorConnection) replay(fset FileSet) os.Error {
+func (me *mirrorConnection) replay(fset FileSet) error {
 	// Must get data before we modify the file-system, so we don't
 	// leave the FS in a half-finished state.
 	for _, info := range fset.Files {
 		if info.Hash != "" {
 			err := me.master.cache.FetchFromServer(
-				func(req *ContentRequest, rep *ContentResponse) os.Error {
+				func(req *ContentRequest, rep *ContentResponse) error {
 					return me.rpcClient.Call("Mirror.FileContent", req, rep)
-			}, info.Hash)
+				}, info.Hash)
 			if err != nil {
 				return err
 			}
@@ -50,7 +50,7 @@ func (me *mirrorConnection) replay(fset FileSet) os.Error {
 	return nil
 }
 
-func (me *mirrorConnection) Send(files []*FileAttr) os.Error {
+func (me *mirrorConnection) Send(files []*FileAttr) error {
 	req := UpdateRequest{
 		Files: files,
 	}
@@ -211,7 +211,7 @@ func (me *mirrorConnections) dropConnections() {
 }
 
 // Gets a mirrorConnection to run on.  Will block if none available
-func (me *mirrorConnections) find(name string) (*mirrorConnection, os.Error) {
+func (me *mirrorConnections) find(name string) (*mirrorConnection, error) {
 	me.Mutex.Lock()
 	defer me.Mutex.Unlock()
 
@@ -229,7 +229,7 @@ func (me *mirrorConnections) find(name string) (*mirrorConnection, os.Error) {
 	return found, nil
 }
 
-func (me *mirrorConnections) pick() (*mirrorConnection, os.Error) {
+func (me *mirrorConnections) pick() (*mirrorConnection, error) {
 	me.Mutex.Lock()
 	defer me.Mutex.Unlock()
 
@@ -243,7 +243,7 @@ func (me *mirrorConnections) pick() (*mirrorConnection, os.Error) {
 			// Didn't connect to anything.  Should
 			// probably direct the wrapper to compile
 			// locally.
-			return nil, os.NewError("No workers found at all.")
+			return nil, errors.New("No workers found at all.")
 		}
 	}
 
@@ -265,7 +265,7 @@ func (me *mirrorConnections) pick() (*mirrorConnection, os.Error) {
 	return found, nil
 }
 
-func (me *mirrorConnections) drop(mc *mirrorConnection, err os.Error) {
+func (me *mirrorConnections) drop(mc *mirrorConnection, err error) {
 	me.master.fileServer.attr.RmClient(mc)
 
 	me.Mutex.Lock()

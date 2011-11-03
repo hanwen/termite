@@ -34,7 +34,7 @@ func (me *DiskFileCache) HasFile(metadata os.FileInfo) bool {
 	return fi != nil
 }
 
-func (me *DiskFileCache) SaveContents(content []byte, dest string) os.Error {
+func (me *DiskFileCache) SaveContents(content []byte, dest string) error {
 	d, _ := filepath.Split(dest)
 	if fi, _ := os.Lstat(d); fi == nil {
 		if err := os.MkdirAll(d, 0700); err != nil {

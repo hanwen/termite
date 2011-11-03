@@ -21,7 +21,7 @@ type ContentCache struct {
 	inMemoryCache *LruCache
 
 	memoryTries int
-	memoryHits int
+	memoryHits  int
 }
 
 // NewContentCache creates a content cache based in directory d.
@@ -58,7 +58,7 @@ func (me *ContentCache) MemoryHitRate() float64 {
 	if me.memoryTries == 0 {
 		return 0.0
 	}
-	return float64(me.memoryHits)/float64(me.memoryTries)
+	return float64(me.memoryHits) / float64(me.memoryTries)
 }
 
 func HashPath(dir string, md5 string) string {
@@ -149,13 +149,13 @@ func (me *HashWriter) Sum() string {
 	return string(me.hasher.Sum())
 }
 
-func (me *HashWriter) Write(p []byte) (n int, err os.Error) {
+func (me *HashWriter) Write(p []byte) (n int, err error) {
 	n, err = me.dest.Write(p)
 	me.hasher.Write(p[:n])
 	return n, err
 }
 
-func (me *HashWriter) WriteClose(p []byte) (err os.Error) {
+func (me *HashWriter) WriteClose(p []byte) (err error) {
 	_, err = me.Write(p)
 	if err != nil {
 		return err
@@ -164,16 +164,16 @@ func (me *HashWriter) WriteClose(p []byte) (err os.Error) {
 	return err
 }
 
-func (me *HashWriter) CopyClose(input io.Reader, size int64) os.Error {
+func (me *HashWriter) CopyClose(input io.Reader, size int64) error {
 	_, err := io.CopyN(me, input, size)
 	if err != nil {
 		return err
 	}
 	err = me.Close()
-	return err 
+	return err
 }
 
-func (me *HashWriter) Close() os.Error {
+func (me *HashWriter) Close() error {
 	me.dest.Chmod(0444)
 	err := me.dest.Close()
 	if err != nil {
@@ -197,7 +197,7 @@ func (me *HashWriter) Close() os.Error {
 
 const _BUFSIZE = 32 * 1024
 
-func (me *ContentCache) DestructiveSavePath(path string) (md5 string, err os.Error) {
+func (me *ContentCache) DestructiveSavePath(path string) (md5 string, err error) {
 	var f *os.File
 	f, err = os.Open(path)
 	if err != nil {
@@ -205,9 +205,9 @@ func (me *ContentCache) DestructiveSavePath(path string) (md5 string, err os.Err
 	}
 	before, _ := f.Stat()
 	defer f.Close()
-	
+
 	h := crypto.MD5.New()
-	var content []byte 
+	var content []byte
 	if before.Size < _MEMORY_LIMIT {
 		content, err = ioutil.ReadAll(f)
 		if err != nil {
@@ -282,8 +282,8 @@ func (me *ContentCache) SaveImmutablePath(path string) (md5 string) {
 	} else {
 		_, err = io.Copy(hasher, f)
 	}
-	
-	if err != nil && err != os.EOF {
+
+	if err != nil && err != io.EOF {
 		log.Println("io.Copy:", err)
 		return ""
 	}
@@ -328,7 +328,7 @@ func (me *ContentCache) saveViaMemory(content []byte) (md5 string) {
 		return ""
 	}
 	hash := writer.Sum()
-	
+
 	if me.inMemoryCache != nil {
 		me.mutex.Lock()
 		defer me.mutex.Unlock()
@@ -337,7 +337,8 @@ func (me *ContentCache) saveViaMemory(content []byte) (md5 string) {
 	return hash
 }
 
-const _MEMORY_LIMIT = 128*1024
+const _MEMORY_LIMIT = 128 * 1024
+
 func (me *ContentCache) SaveStream(input io.Reader, size int64) (md5 string) {
 	if size < _MEMORY_LIMIT {
 		b, err := ioutil.ReadAll(input)
@@ -347,13 +348,12 @@ func (me *ContentCache) SaveStream(input io.Reader, size int64) (md5 string) {
 
 		return me.saveViaMemory(b)
 	}
-	
+
 	dup := me.NewHashWriter()
 	err := dup.CopyClose(input, size)
 	if err != nil {
 		return ""
 	}
-	
+
 	return dup.Sum()
 }
-

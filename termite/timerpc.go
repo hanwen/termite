@@ -1,12 +1,12 @@
 package termite
+
 import (
-	"os"
 	"rpc"
 	"sync"
 	"time"
 )
 
-func (me *TimedRpcClient) Call(serviceMethod string, args interface{}, reply interface{}) os.Error {
+func (me *TimedRpcClient) Call(serviceMethod string, args interface{}, reply interface{}) error {
 	start := time.Nanoseconds()
 	err := me.Client.Call(serviceMethod, args, reply)
 	dt := time.Nanoseconds() - start
@@ -38,14 +38,14 @@ func (me *TimedRpcClient) Timings() map[string]*RpcTiming {
 
 func NewTimedRpcClient(cl *rpc.Client) *TimedRpcClient {
 	return &TimedRpcClient{
-		Client: cl,
+		Client:  cl,
 		timings: map[string]*RpcTiming{},
 	}
 }
 
 type TimedRpcClient struct {
-	mu sync.Mutex
+	mu      sync.Mutex
 	timings map[string]*RpcTiming
-	
+
 	*rpc.Client
 }

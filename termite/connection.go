@@ -3,6 +3,7 @@ package termite
 import (
 	"bytes"
 	"crypto/hmac"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -43,7 +44,7 @@ func sign(conn net.Conn, challenge []byte, secret []byte, local bool) []byte {
 //
 // TODO - should probably use SSL/TLS? Figure out what is useful and
 // necessary here.
-func Authenticate(conn net.Conn, secret []byte) os.Error {
+func Authenticate(conn net.Conn, secret []byte) error {
 	challenge := RandomBytes(challengeLength)
 
 	_, err := conn.Write(challenge)
@@ -70,7 +71,7 @@ func Authenticate(conn net.Conn, secret []byte) os.Error {
 	if bytes.Compare(response, expected) != 0 {
 		log.Println("Authentication failure from", conn.RemoteAddr())
 		conn.Close()
-		return os.NewError("Mismatch in response")
+		return errors.New("Mismatch in response")
 	}
 
 	expectAck := []byte("OK")
@@ -85,7 +86,7 @@ func Authenticate(conn net.Conn, secret []byte) os.Error {
 	ack = ack[:n]
 	if bytes.Compare(expectAck, ack) != 0 {
 		fmt.Println(expectAck, ack)
-		return os.NewError("Missing ack reply")
+		return errors.New("Missing ack reply")
 	}
 
 	return nil
@@ -108,7 +109,7 @@ func AuthenticatedListener(port int, secret []byte) net.Listener {
 	return &Listener{listener, secret}
 }
 
-func (me *Listener) Accept() (net.Conn, os.Error) {
+func (me *Listener) Accept() (net.Conn, error) {
 	for {
 		c, err := me.Listener.Accept()
 		if err != nil {
@@ -121,7 +122,7 @@ func (me *Listener) Accept() (net.Conn, os.Error) {
 		}
 		return c, nil
 	}
-	return nil, os.EOF
+	return nil, io.EOF
 }
 
 // ids:
@@ -209,7 +210,7 @@ func (me *PendingConnections) Accept(conn net.Conn) bool {
 	return true
 }
 
-func DialTypedConnection(addr string, id string, secret []byte) (net.Conn, os.Error) {
+func DialTypedConnection(addr string, id string, secret []byte) (net.Conn, error) {
 	if len(id) != HEADER_LEN {
 		log.Fatal("id != 8", id, len(id))
 	}

@@ -102,7 +102,7 @@ func newRpcFsTestCase(t *testing.T) (me *rpcFsTestCase) {
 	me.attr.Paranoia = true
 	me.server = NewFsServer(me.attr, me.cache)
 
-	var err os.Error
+	var err error
 	me.sockL, me.sockR, err = fuse.Socketpair("unix")
 	if err != nil {
 		t.Fatal(err)
@@ -135,7 +135,7 @@ func (me *rpcFsTestCase) Clean() {
 	me.sockR.Close()
 }
 
-func check(err os.Error) {
+func check(err error) {
 	if err != nil {
 		panic(err)
 	}

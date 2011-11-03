@@ -1,6 +1,7 @@
 package termite
 
 import (
+	"errors"
 	"exec"
 	"fmt"
 	"http"
@@ -61,9 +62,9 @@ type WorkerOptions struct {
 	ReportInterval float64
 }
 
-func (me *WorkerDaemon) getMirror(rpcConn, revConn net.Conn, reserveCount int) (*Mirror, os.Error) {
+func (me *WorkerDaemon) getMirror(rpcConn, revConn net.Conn, reserveCount int) (*Mirror, error) {
 	if reserveCount <= 0 {
-		return nil, os.NewError("must ask positive jobcount")
+		return nil, errors.New("must ask positive jobcount")
 	}
 	me.mirrorMapMutex.Lock()
 	defer me.mirrorMapMutex.Unlock()
@@ -74,7 +75,7 @@ func (me *WorkerDaemon) getMirror(rpcConn, revConn net.Conn, reserveCount int) (
 
 	remaining := me.maxJobCount - used
 	if remaining <= 0 {
-		return nil, os.NewError("no processes available")
+		return nil, errors.New("no processes available")
 	}
 	if remaining < reserveCount {
 		reserveCount = remaining
@@ -172,13 +173,13 @@ func (me *WorkerDaemon) report(coordinator string, port int) {
 }
 
 // TODO - should expose under ContentServer name?
-func (me *WorkerDaemon) FileContent(req *ContentRequest, rep *ContentResponse) os.Error {
+func (me *WorkerDaemon) FileContent(req *ContentRequest, rep *ContentResponse) error {
 	return ServeFileContent(me.contentCache, req, rep)
 }
 
-func (me *WorkerDaemon) CreateMirror(req *CreateMirrorRequest, rep *CreateMirrorResponse) os.Error {
+func (me *WorkerDaemon) CreateMirror(req *CreateMirrorRequest, rep *CreateMirrorResponse) error {
 	if me.shuttingDown {
-		return os.NewError("Worker is shutting down.")
+		return errors.New("Worker is shutting down.")
 	}
 
 	rpcConn := me.pending.WaitConnection(req.RpcId)
@@ -236,7 +237,7 @@ func (me *WorkerDaemon) RunWorkerServer(port int, coordinator string) {
 	}
 }
 
-func (me *WorkerDaemon) Shutdown(req *ShutdownRequest, rep *ShutdownResponse) os.Error {
+func (me *WorkerDaemon) Shutdown(req *ShutdownRequest, rep *ShutdownResponse) error {
 	log.Println("Received Shutdown.")
 	if req.Restart {
 		me.mustRestart = true
@@ -258,7 +259,7 @@ func (me *WorkerDaemon) Shutdown(req *ShutdownRequest, rep *ShutdownResponse) os
 	return nil
 }
 
-func (me *WorkerDaemon) Log(req *LogRequest, rep *LogResponse) os.Error {
+func (me *WorkerDaemon) Log(req *LogRequest, rep *LogResponse) error {
 	if me.LogFileName == "" {
 		return fmt.Errorf("No log filename set.")
 	}

@@ -1,20 +1,20 @@
 package termite
 
 import (
+	"errors"
 	"log"
-	"os"
 	"sync"
 )
 
 var _ = log.Println
 
 type fileSetWaiter struct {
-	process func(fset FileSet) os.Error
+	process func(fset FileSet) error
 	sync.Mutex
 	channels map[int]chan int
 }
 
-func newFileSetWaiter(proc func(FileSet) os.Error) *fileSetWaiter {
+func newFileSetWaiter(proc func(FileSet) error) *fileSetWaiter {
 	return &fileSetWaiter{
 		process:  proc,
 		channels: make(map[int]chan int),
@@ -61,7 +61,7 @@ func (me *fileSetWaiter) drop(id int) {
 	delete(me.channels, id)
 }
 
-func (me *fileSetWaiter) wait(rep *WorkResponse, waitId int) (err os.Error) {
+func (me *fileSetWaiter) wait(rep *WorkResponse, waitId int) (err error) {
 	if rep.FileSet != nil {
 		log.Println("Got data for tasks: ", rep.TaskIds, rep.FileSet.Files)
 
@@ -83,7 +83,7 @@ func (me *fileSetWaiter) wait(rep *WorkResponse, waitId int) (err os.Error) {
 			// already came in.
 			_, ok := <-completion
 			if !ok {
-				return os.NewError("files were never sent.")
+				return errors.New("files were never sent.")
 			}
 		}
 	}

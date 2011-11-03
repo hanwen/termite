@@ -258,7 +258,7 @@ func TestEndToEndFullPath(t *testing.T) {
 	err := client.Call("LocalMaster.Run", &req, &rep)
 	msg := "nil"
 	if err != nil {
-		msg = err.String()
+		msg = err.Error()
 	}
 	t.Log("Call error:", msg)
 	if !strings.Contains(msg, "absolute") {

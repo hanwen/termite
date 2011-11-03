@@ -1,11 +1,12 @@
 package termite
 
 import (
+	"io"
 	"log"
 	"os"
 )
 
-func ServeFileContent(cache *ContentCache, req *ContentRequest, rep *ContentResponse) os.Error {
+func ServeFileContent(cache *ContentCache, req *ContentRequest, rep *ContentResponse) error {
 	if c := cache.ContentsIfLoaded(req.Hash); c != nil {
 		end := req.End
 		if end > len(c) {
@@ -25,14 +26,14 @@ func ServeFileContent(cache *ContentCache, req *ContentRequest, rep *ContentResp
 	n, err := f.ReadAt(rep.Chunk, int64(req.Start))
 	rep.Chunk = rep.Chunk[:n]
 
-	if err == os.EOF {
+	if err == io.EOF {
 		err = nil
 	}
 	return err
 }
 
-func (me *ContentCache) FetchFromServer(fetcher func(req *ContentRequest, rep *ContentResponse) os.Error,
-	hash string) os.Error {
+func (me *ContentCache) FetchFromServer(fetcher func(req *ContentRequest, rep *ContentResponse) error,
+	hash string) error {
 	if me.HasHash(hash) {
 		return nil
 	}
@@ -62,7 +63,7 @@ func (me *ContentCache) FetchFromServer(fetcher func(req *ContentRequest, rep *C
 			}
 			return nil
 		}
-		
+
 		n, err := output.Write(rep.Chunk)
 		written += n
 		if err != nil {

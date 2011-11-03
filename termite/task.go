@@ -51,7 +51,7 @@ func (me *WorkerTask) clock(name string) {
 	me.WorkResponse.clock(name)
 }
 
-func (me *WorkerTask) Run() os.Error {
+func (me *WorkerTask) Run() error {
 	fuseFs, err := me.mirror.newFs(me)
 	if err != nil {
 		return err
@@ -67,7 +67,7 @@ func (me *WorkerTask) Run() os.Error {
 	return err
 }
 
-func (me *WorkerTask) runInFuse(fuseFs *workerFuseFs) os.Error {
+func (me *WorkerTask) runInFuse(fuseFs *workerFuseFs) error {
 	fuseFs.SetDebug(me.WorkRequest.Debug)
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
@@ -113,9 +113,9 @@ func (me *WorkerTask) runInFuse(fuseFs *workerFuseFs) os.Error {
 		printCmd, cmd.Dir, fuseFs.id)
 	err := cmd.Wait()
 
-	waitMsg, ok := err.(*os.Waitmsg)
+	waitMsg, ok := err.(*exec.ExitError)
 	if ok {
-		me.WorkResponse.Exit = *waitMsg
+		me.WorkResponse.Exit = *waitMsg.Waitmsg
 		err = nil
 	}
 
@@ -159,7 +159,7 @@ func (me *Mirror) fillReply(ufs *unionfs.MemUnionFs) *FileSet {
 			}
 			if v.Backing != "" {
 				f.Hash = reapedHashes[v.Backing]
-				var err os.Error
+				var err error
 				if f.Hash == "" {
 					f.Hash, err = cache.DestructiveSavePath(v.Backing)
 				}

@@ -28,7 +28,7 @@ func newSplicePairPool() *splicePairPool {
 	}
 }
 
-func (me *splicePairPool) get() (p *splicePair, err os.Error) {
+func (me *splicePairPool) get() (p *splicePair, err error) {
 	me.Lock()
 	defer me.Unlock()
 
@@ -109,7 +109,7 @@ func (me *splicePair) Grow(n int) bool {
 	return true
 }
 
-func (me *splicePair) Close() os.Error {
+func (me *splicePair) Close() error {
 	err1 := me.r.Close()
 	err2 := me.w.Close()
 	if err1 != nil {
@@ -118,7 +118,7 @@ func (me *splicePair) Close() os.Error {
 	return err2
 }
 
-func newSplicePair() (me *splicePair, err os.Error) {
+func newSplicePair() (me *splicePair, err error) {
 	me = &splicePair{}
 	me.r, me.w, err = os.Pipe()
 	if err != nil {
@@ -152,7 +152,7 @@ func newSplicePair() (me *splicePair, err os.Error) {
 	return me, nil
 }
 
-func SpliceCopy(dst *os.File, src *os.File, p *splicePair) (int64, os.Error) {
+func SpliceCopy(dst *os.File, src *os.File, p *splicePair) (int64, error) {
 	total := int64(0)
 
 	for {
@@ -180,7 +180,7 @@ func SpliceCopy(dst *os.File, src *os.File, p *splicePair) (int64, os.Error) {
 }
 
 // Argument ordering follows io.Copy.
-func CopyFile(dstName string, srcName string, mode int) os.Error {
+func CopyFile(dstName string, srcName string, mode int) error {
 	src, err := os.Open(srcName)
 	if err != nil {
 		return err
@@ -196,7 +196,7 @@ func CopyFile(dstName string, srcName string, mode int) os.Error {
 	return CopyFds(dst, src)
 }
 
-func CopyFds(dst *os.File, src *os.File) (err os.Error) {
+func CopyFds(dst *os.File, src *os.File) (err error) {
 	p, err := splicePool.get()
 	if p != nil {
 		p.Grow(256 * 1024)
@@ -206,7 +206,7 @@ func CopyFds(dst *os.File, src *os.File) (err os.Error) {
 	} else {
 		_, err = io.Copy(dst, src)
 	}
-	if err == os.EOF {
+	if err == io.EOF {
 		err = nil
 	}
 	return err

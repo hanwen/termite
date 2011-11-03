@@ -70,7 +70,7 @@ func (me FileAttr) Copy(withdir bool) *FileAttr {
 }
 
 func (me *FileAttr) ReadFromFs(p string) {
-	var err os.Error
+	var err error
 	switch {
 	case me.IsRegular():
 		if c, e := ioutil.ReadFile(p); e == nil {

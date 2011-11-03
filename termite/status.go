@@ -1,11 +1,8 @@
 package termite
 
-import (
-	"fmt"
-	"os"
-)
+import "fmt"
 
-func (me *Mirror) Status(req *MirrorStatusRequest, rep *MirrorStatusResponse) os.Error {
+func (me *Mirror) Status(req *MirrorStatusRequest, rep *MirrorStatusResponse) error {
 	me.fsMutex.Lock()
 	defer me.fsMutex.Unlock()
 	rep.Root = me.writableRoot
@@ -22,7 +19,7 @@ func (me *Mirror) Status(req *MirrorStatusRequest, rep *MirrorStatusResponse) os
 	return nil
 }
 
-func (me *WorkerDaemon) Status(req *WorkerStatusRequest, rep *WorkerStatusResponse) os.Error {
+func (me *WorkerDaemon) Status(req *WorkerStatusRequest, rep *WorkerStatusResponse) error {
 	me.mirrorMapMutex.Lock()
 	defer me.mirrorMapMutex.Unlock()
 

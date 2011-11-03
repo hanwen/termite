@@ -1,6 +1,7 @@
 package termite
 
 import (
+	"errors"
 	"fmt"
 	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/go-fuse/unionfs"
@@ -60,7 +61,7 @@ func (me *workerFuseFs) SetDebug(debug bool) {
 	me.rpcNodeFs.Debug = debug
 }
 
-func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string, nobody *user.User) (*workerFuseFs, os.Error) {
+func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string, nobody *user.User) (*workerFuseFs, error) {
 	tmpDir, err := ioutil.TempDir(tmpDir, "termite-task")
 	if err != nil {
 		return nil, err
@@ -143,7 +144,7 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string, 
 		code := me.rpcNodeFs.Mount(s.mountpoint, s.fs, subOpts)
 		if !code.Ok() {
 			me.MountState.Unmount()
-			return nil, os.NewError(fmt.Sprintf("submount error for %s: %v", s.mountpoint, code))
+			return nil, errors.New(fmt.Sprintf("submount error for %s: %v", s.mountpoint, code))
 		}
 	}
 	if strings.HasPrefix(me.writableRoot, "tmp/") {
@@ -151,7 +152,7 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string, 
 		err := os.MkdirAll(filepath.Join(me.mount, parent), 0755)
 		if err != nil {
 			me.MountState.Unmount()
-			return nil, os.NewError(fmt.Sprintf("Mkdir of %q in /tmp fail: %v", parent, err))
+			return nil, errors.New(fmt.Sprintf("Mkdir of %q in /tmp fail: %v", parent, err))
 		}
 		// This is hackish, but we don't want rpcfs/fsserver
 		// getting confused by asking for tmp/foo/bar
@@ -162,7 +163,7 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string, 
 	code := me.rpcNodeFs.Mount(me.writableRoot, me.unionFs, &mOpts)
 	if !code.Ok() {
 		me.MountState.Unmount()
-		return nil, os.NewError(fmt.Sprintf("submount error for %s: %v", me.writableRoot, code))
+		return nil, errors.New(fmt.Sprintf("submount error for %s: %v", me.writableRoot, code))
 	}
 
 	return me, nil
