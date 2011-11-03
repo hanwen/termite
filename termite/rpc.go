@@ -56,7 +56,22 @@ type RpcTiming struct {
 }
 
 func (me *RpcTiming) String() string {
-	return fmt.Sprintf("%d calls, %d us/call", me.N, (me.Ns/me.N)/1e3)
+	avg := me.Ns/me.N
+
+	unit := "ns"
+	div := int64(1)
+	switch {
+	case avg > 1e9:
+		unit = "s"
+		div = 1e9
+	case avg > 1e6:
+		unit = "ms"
+		div = 1e6
+	case avg > 1e3:
+		unit = "us"
+		div = 1e3
+	}
+	return fmt.Sprintf("%d calls, %d %s/call", me.N, avg / div, unit)
 }
 
 type MirrorStatusResponse struct {

@@ -2,28 +2,29 @@ package termite
 
 import (
 	"fmt"
+	"github.com/hanwen/go-fuse/fuse"
 	"os"
 	"log"
 	"rpc"
-	"github.com/hanwen/go-fuse/fuse"
+	"time"
 )
 
 type RpcFs struct {
 	fuse.DefaultFileSystem
 	cache  *ContentCache
-	client *TimedRpcClient
+	client *rpc.Client
 
 	// Roots that we should try to fetch locally.
 	localRoots []string
-
+	timings *TimerStats
 	attr *AttributeCache
 	id   string
 }
 
 func NewRpcFs(server *rpc.Client, cache *ContentCache) *RpcFs {
 	me := &RpcFs{}
-	me.client = NewTimedRpcClient(server)
-
+	me.client = server
+	me.timings = NewTimerStats()
 	me.attr = NewAttributeCache(
 		func(n string) *FileAttr {
 			return me.fetchAttr(n)
@@ -33,10 +34,19 @@ func NewRpcFs(server *rpc.Client, cache *ContentCache) *RpcFs {
 	return me
 }
 
+func (me *RpcFs) innerFetch(req *ContentRequest, rep *ContentResponse) error {
+	start := time.Nanoseconds()
+	err := me.client.Call("FsServer.FileContent", req, rep)
+	dt := time.Nanoseconds() - start
+	me.timings.Log("FsServer.FileContent", dt)
+	me.timings.LogN("FsServer.FileContentBytes", int64(len(rep.Chunk)), dt)
+	return err
+}
+
 func (me *RpcFs) FetchHash(h string, sz int64) error {
 	err := me.cache.FetchFromServer(
 		func(req *ContentRequest, rep *ContentResponse) error {
-			return me.client.Call("FsServer.FileContent", req, rep)
+			return me.innerFetch(req, rep)
 		}, h)
 	if err == nil && sz < _MEMORY_LIMIT {
 		me.cache.FaultIn(h)
@@ -58,9 +68,11 @@ func (me *RpcFs) fetchAttr(n string) *FileAttr {
 		Name:   n,
 		Origin: me.id,
 	}
+	start := time.Nanoseconds()
 	rep := &AttrResponse{}
-
 	err := me.client.Call("FsServer.GetAttr", req, rep)
+	dt := time.Nanoseconds() - start
+	me.timings.Log("FsServer.GetAttr", dt)
 	if err != nil {
 		// fatal?
 		log.Println("GetAttr error:", err)

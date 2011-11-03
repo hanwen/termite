@@ -26,6 +26,7 @@ func (me *FsServer) FileContent(req *ContentRequest, rep *ContentResponse) error
 	err := ServeFileContent(me.contentCache, req, rep)
 	dt := time.Nanoseconds()-start
 	me.stats.Log("FsServer.FileContent", dt)
+	me.stats.LogN("FsServer.FileContentBytes", int64(len(rep.Chunk)), dt)
 	return err
 }
 

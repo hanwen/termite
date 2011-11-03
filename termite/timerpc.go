@@ -2,10 +2,8 @@ package termite
 
 import (
 	"fmt"
-	"rpc"
 	"sort"
 	"sync"
-	"time"
 )
 
 type TimerStats struct {
@@ -47,6 +45,10 @@ func (me *TimerStats) Timings() map[string]*RpcTiming {
 }
 
 func (me *TimerStats) Log(name string, dt int64) {
+	me.LogN(name, 1, dt)
+}
+
+func (me *TimerStats) LogN(name string, n int64, dt int64) {
 	me.mu.Lock()
 	defer me.mu.Unlock()
 	timing := me.timings[name]
@@ -55,26 +57,6 @@ func (me *TimerStats) Log(name string, dt int64) {
 		me.timings[name] = timing
 	}
 
-	timing.N++
+	timing.N += n
 	timing.Ns += dt
-}
-
-func (me *TimedRpcClient) Call(serviceMethod string, args interface{}, reply interface{}) error {
-	start := time.Nanoseconds()
-	err := me.Client.Call(serviceMethod, args, reply)
-	dt := time.Nanoseconds() - start
-	me.Log(serviceMethod, dt)
-	return err
-}
-
-func NewTimedRpcClient(cl *rpc.Client) *TimedRpcClient {
-	return &TimedRpcClient{
-		Client:  cl,
-		TimerStats: NewTimerStats(),
-	}
-}
-
-type TimedRpcClient struct {
-	*TimerStats
-	*rpc.Client
 }
