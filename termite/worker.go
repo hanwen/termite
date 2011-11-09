@@ -12,9 +12,9 @@ import (
 	"os"
 	"os/user"
 	"rpc"
-	"sync"
-	"strings"
 	"runtime"
+	"strings"
+	"sync"
 	"time"
 )
 

@@ -3,8 +3,8 @@ package termite
 import (
 	"fmt"
 	"github.com/hanwen/go-fuse/fuse"
-	"os"
 	"log"
+	"os"
 	"rpc"
 	"sync"
 	"time"
@@ -17,14 +17,14 @@ type RpcFs struct {
 
 	// Roots that we should try to fetch locally.
 	localRoots []string
-	timings *TimerStats
-	attr *AttributeCache
-	id   string
+	timings    *TimerStats
+	attr       *AttributeCache
+	id         string
 
 	// Below code is used to make sure we only fetch each hash
 	// once.
-	mutex sync.Mutex
-	cond  *sync.Cond
+	mutex    sync.Mutex
+	cond     *sync.Cond
 	fetching map[string]bool
 }
 
@@ -201,7 +201,7 @@ func (me *RpcFs) Open(name string, flags uint32, context *fuse.Context) (fuse.Fi
 		log.Printf("Error fetching contents %v", err)
 		return nil, fuse.EIO
 	}
-	
+
 	if contents := me.cache.ContentsIfLoaded(a.Hash); contents != nil {
 		return &fuse.WithFlags{
 			File: &rpcFsFile{

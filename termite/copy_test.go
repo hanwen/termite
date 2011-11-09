@@ -1,8 +1,8 @@
 package termite
 
 import (
-	"os"
 	"io/ioutil"
+	"os"
 	"testing"
 )
 

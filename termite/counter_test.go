@@ -1,8 +1,8 @@
 package termite
 
 import (
-	"testing"
 	"log"
+	"testing"
 )
 
 var _ = log.Println

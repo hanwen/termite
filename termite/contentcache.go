@@ -1,14 +1,14 @@
 package termite
 
 import (
-	"os"
-	"fmt"
 	"crypto"
+	"fmt"
 	"hash"
-	"path/filepath"
-	"log"
 	"io"
 	"io/ioutil"
+	"log"
+	"os"
+	"path/filepath"
 	"sync"
 )
 
@@ -45,7 +45,7 @@ func NewContentCache(d string) *ContentCache {
 		dir:           d,
 		hashPathMap:   make(map[string]string),
 		inMemoryCache: NewLruCache(1024),
-		faulting: make(map[string]bool),
+		faulting:      make(map[string]bool),
 	}
 	c.cond = sync.NewCond(&c.mutex)
 	return c
@@ -330,7 +330,7 @@ func (me *ContentCache) FaultIn(hash string) {
 	if err != nil {
 		log.Fatal("FaultIn:", err)
 	}
-	me.faulting[hash] = false, false
+	delete(me.faulting, hash)
 	me.inMemoryCache.Add(hash, c)
 	me.cond.Broadcast()
 }

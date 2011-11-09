@@ -46,7 +46,7 @@ func (me *Master) statusHandler(w http.ResponseWriter, req *http.Request) {
 			e -= 10
 		}
 		cum += h
-		fmt.Fprintf(w, "%d%s: %d (%d %%), ", 1 << uint(e), suffix, h, (100*cum)/total)
+		fmt.Fprintf(w, "%d%s: %d (%d %%), ", 1<<uint(e), suffix, h, (100*cum)/total)
 	}
 
 	fmt.Fprintf(w, "<p>ContentCache memory hit rate: %.0f %%", 100.0*me.cache.MemoryHitRate())

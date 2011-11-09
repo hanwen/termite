@@ -43,7 +43,7 @@ func main() {
 	} else {
 		log.SetPrefix("M")
 	}
-	
+
 	secret, err := ioutil.ReadFile(*secretFile)
 	if err != nil {
 		log.Fatal("ReadFile", err)

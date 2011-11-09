@@ -10,8 +10,8 @@ import (
 	"os"
 	"path/filepath"
 	"rpc"
-	"time"
 	"testing"
+	"time"
 )
 
 // TODO - fold common code.
@@ -23,7 +23,7 @@ func TestRpcFsFetchOnce(t *testing.T) {
 	me.attr.Refresh("")
 
 	ioutil.ReadFile(me.mnt + "/file.txt")
-	
+
 	stats := me.server.stats.Timings()
 	if stats == nil || stats["FsServer.FileContent"] == nil {
 		t.Fatalf("Stats missing: %v", stats)

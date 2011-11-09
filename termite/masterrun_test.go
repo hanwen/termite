@@ -5,8 +5,8 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
-	"time"
 	"testing"
+	"time"
 )
 
 func TestEndToEndMkdirCleanPath(t *testing.T) {
@@ -85,7 +85,7 @@ func TestEndToEndMkdirExist(t *testing.T) {
 	check(err)
 
 	tc.refresh()
-	
+
 	tc.RunFail(WorkRequest{
 		Argv: []string{"mkdir", "file.txt"},
 	})
@@ -108,7 +108,7 @@ func TestEndToEndMkdir(t *testing.T) {
 	err := ioutil.WriteFile(tc.tmp+"/wd/file.txt", []byte{42}, 0644)
 	check(err)
 	tc.refresh()
-	
+
 	tc.RunFail(WorkRequest{
 		Argv: []string{"mkdir", "q/r"},
 	})
@@ -178,7 +178,7 @@ func TestEndToEndRmR(t *testing.T) {
 	os.Mkdir(tc.wd+"/dir/subdir", 0755)
 	ioutil.WriteFile(tc.wd+"/dir/subdir/file.txt", []byte{42}, 0644)
 	tc.refresh()
-	
+
 	tc.RunSuccess(WorkRequest{
 		Argv: []string{"rm", "-r", "dir"},
 	})

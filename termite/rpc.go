@@ -51,12 +51,12 @@ type MirrorStatusRequest struct {
 }
 
 type RpcTiming struct {
-	N   int64
-	Ns  int64
+	N  int64
+	Ns int64
 }
 
 func (me *RpcTiming) String() string {
-	avg := me.Ns/me.N
+	avg := me.Ns / me.N
 
 	unit := "ns"
 	div := int64(1)
@@ -71,7 +71,7 @@ func (me *RpcTiming) String() string {
 		unit = "us"
 		div = 1e3
 	}
-	return fmt.Sprintf("%d calls, %d %s/call", me.N, avg / div, unit)
+	return fmt.Sprintf("%d calls, %d %s/call", me.N, avg/div, unit)
 }
 
 type MirrorStatusResponse struct {
@@ -102,8 +102,8 @@ type WorkerStatusResponse struct {
 	ShuttingDown bool
 
 	// In chronological order.
-	CpuStats []CpuStat
-	TotalCpu CpuStat
+	CpuStats            []CpuStat
+	TotalCpu            CpuStat
 	ContentCacheHitRate float64
 }
 
@@ -113,7 +113,7 @@ type Timing struct {
 }
 
 type FileSet struct {
-	Files         []*FileAttr
+	Files []*FileAttr
 }
 
 func (me *FileSet) String() string {

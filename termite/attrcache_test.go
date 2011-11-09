@@ -3,8 +3,8 @@ package termite
 import (
 	"fmt"
 	"github.com/hanwen/go-fuse/fuse"
-	"log"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"

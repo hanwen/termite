@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/hanwen/termite/termite"
 	"flag"
+	"github.com/hanwen/termite/termite"
 	"io/ioutil"
 	"log"
 	"os"

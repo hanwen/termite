@@ -6,8 +6,8 @@ import (
 	"github.com/hanwen/go-fuse/fuse"
 	"http"
 	"io/ioutil"
-	"os"
 	"net"
+	"os"
 	"path/filepath"
 	"rpc"
 	"strings"
@@ -335,7 +335,7 @@ func TestEndToEndMoveFile(t *testing.T) {
 	check(err)
 
 	tc.refresh()
-	
+
 	tc.RunSuccess(WorkRequest{
 		Argv: []string{"mv", "e2e-move.txt", "e2e-new.txt"},
 	})
@@ -377,7 +377,7 @@ func TestEndToEndStdout(t *testing.T) {
 	err = ioutil.WriteFile(tc.tmp+"/wd/file.txt", shcmd, 0644)
 	check(err)
 	tc.refresh()
-	
+
 	rep := tc.RunSuccess(WorkRequest{
 		Argv: []string{"cat", "file.txt"},
 	})
@@ -532,7 +532,7 @@ func TestEndToEndLinkReap(t *testing.T) {
 	// TODO - drop this.
 	ioutil.WriteFile(tc.wd+"/file.txt", []byte{42}, 0644)
 	tc.refresh()
-	
+
 	req := WorkRequest{
 		Argv: []string{"sh", "-c", "echo hello > file.txt ; ln file.txt foo.txt"},
 	}

@@ -2,13 +2,13 @@ package termite
 
 import (
 	"fmt"
+	"github.com/hanwen/go-fuse/fuse"
 	"io"
-	"os"
 	"net"
+	"os"
+	"rand"
 	"testing"
 	"time"
-	"rand"
-	"github.com/hanwen/go-fuse/fuse"
 )
 
 func TestAuthenticate(t *testing.T) {

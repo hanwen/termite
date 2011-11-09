@@ -10,7 +10,7 @@ import (
 var _ = log.Println
 
 type masterStats struct {
-	counterMutex sync.Mutex
+	counterMutex  sync.Mutex
 	phaseCounts   map[string]int
 	cpuStats      *cpuStatSampler
 	fsServerStats *TimerStats
@@ -18,8 +18,8 @@ type masterStats struct {
 
 func newMasterStats() *masterStats {
 	return &masterStats{
-		phaseCounts:      map[string]int{},
-		cpuStats:         newCpuStatSampler(),
+		phaseCounts: map[string]int{},
+		cpuStats:    newCpuStatSampler(),
 	}
 }
 

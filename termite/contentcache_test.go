@@ -3,9 +3,9 @@ package termite
 import (
 	"bytes"
 	"crypto"
+	"io/ioutil"
 	"os"
 	"testing"
-	"io/ioutil"
 )
 
 func TestContentCache(t *testing.T) {

@@ -3,8 +3,8 @@ package termite
 import (
 	"errors"
 	"fmt"
-	"net"
 	"log"
+	"net"
 	"rpc"
 	"sync"
 )

@@ -2,8 +2,8 @@ package termite
 
 import (
 	"github.com/hanwen/go-fuse/fuse"
-	"os"
 	"io/ioutil"
+	"os"
 	"testing"
 )
 
