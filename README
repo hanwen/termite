@@ -136,7 +136,6 @@ CAVEATS
 
 TODO (by decreasing priority)
 
-* Add faulting-in cond for ContentCache.
 * In-memory file writing.
 * Compile linux kernel
 * Security review for the connection scheme.

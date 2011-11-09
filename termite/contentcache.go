@@ -21,7 +21,9 @@ type ContentCache struct {
 	dir string
 
 	mutex         sync.Mutex
+	cond          *sync.Cond
 	hashPathMap   map[string]string
+	faulting      map[string]bool
 	inMemoryCache *LruCache
 
 	memoryTries int
@@ -39,11 +41,14 @@ func NewContentCache(d string) *ContentCache {
 		}
 	}
 
-	return &ContentCache{
+	c := &ContentCache{
 		dir:           d,
 		hashPathMap:   make(map[string]string),
 		inMemoryCache: NewLruCache(1024),
+		faulting: make(map[string]bool),
 	}
+	c.cond = sync.NewCond(&c.mutex)
+	return c
 }
 
 // SetMemoryCacheSize readjusts the size of the in-memory content
@@ -108,6 +113,9 @@ func (me *ContentCache) HasHash(hash string) bool {
 func (me *ContentCache) ContentsIfLoaded(hash string) []byte {
 	me.mutex.Lock()
 	defer me.mutex.Unlock()
+	for me.faulting[hash] {
+		me.cond.Wait()
+	}
 	me.memoryTries++
 	if me.inMemoryCache == nil {
 		return nil
@@ -308,16 +316,23 @@ func (me *ContentCache) SaveImmutablePath(path string) (md5 string) {
 func (me *ContentCache) FaultIn(hash string) {
 	me.mutex.Lock()
 	defer me.mutex.Unlock()
-	if me.inMemoryCache.Get(hash) != nil {
+	for !me.inMemoryCache.Has(hash) && me.faulting[hash] {
+		me.cond.Wait()
+	}
+	if me.inMemoryCache.Has(hash) {
 		return
 	}
+
+	me.faulting[hash] = true
 	me.mutex.Unlock()
 	c, err := ioutil.ReadFile(me.Path(hash))
 	me.mutex.Lock()
 	if err != nil {
 		log.Fatal("FaultIn:", err)
 	}
+	me.faulting[hash] = false, false
 	me.inMemoryCache.Add(hash, c)
+	me.cond.Broadcast()
 }
 
 func (me *ContentCache) Save(content []byte) (md5 string) {
