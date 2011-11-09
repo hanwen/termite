@@ -2,12 +2,12 @@ package termite
 
 import (
 	"bytes"
-	"exec"
 	"fmt"
 	"github.com/hanwen/go-fuse/unionfs"
 	"log"
 	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"syscall"

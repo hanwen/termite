@@ -3,8 +3,8 @@ package termite
 import (
 	"fmt"
 	"github.com/hanwen/go-fuse/fuse"
-	"http"
 	"log"
+	"net/http"
 )
 
 func (me *Master) sizeHistogram() (histo []int, total int) {

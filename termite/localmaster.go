@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"net/rpc"
 	"os"
-	"rpc"
 	"time"
 )
 

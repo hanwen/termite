@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"github.com/hanwen/go-fuse/fuse"
 	"log"
+	"net/rpc"
 	"os"
-	"rpc"
 	"sync"
 	"time"
 )

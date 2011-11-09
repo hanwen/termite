@@ -2,8 +2,8 @@ package termite
 
 import (
 	"bufio"
+	"encoding/json"
 	"io"
-	"json"
 	"log"
 	"os"
 	"path/filepath"

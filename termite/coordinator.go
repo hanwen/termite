@@ -3,11 +3,11 @@ package termite
 import (
 	"errors"
 	"fmt"
-	"http"
 	"log"
 	"net"
+	"net/http"
+	"net/rpc"
 	"os"
-	"rpc"
 	"sort"
 	"sync"
 	"time"

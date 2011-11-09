@@ -1,15 +1,15 @@
 package termite
 
 import (
-	"exec"
 	"fmt"
 	"github.com/hanwen/go-fuse/fuse"
-	"http"
 	"io/ioutil"
 	"net"
+	"net/http"
+	"net/rpc"
 	"os"
+	"os/exec"
 	"path/filepath"
-	"rpc"
 	"strings"
 	"sync"
 	"testing"

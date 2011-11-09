@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"github.com/hanwen/go-fuse/fuse"
 	"io"
+	"math/rand"
 	"net"
 	"os"
-	"rand"
 	"testing"
 	"time"
 )

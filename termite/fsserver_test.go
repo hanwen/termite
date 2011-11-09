@@ -7,9 +7,9 @@ import (
 	"github.com/hanwen/go-fuse/fuse"
 	"io"
 	"io/ioutil"
+	"net/rpc"
 	"os"
 	"path/filepath"
-	"rpc"
 	"testing"
 	"time"
 )

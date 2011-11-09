@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math/rand"
 	"net"
 	"os"
 	"path/filepath"
-	"rand"
 	"sync"
 	"time"
 )

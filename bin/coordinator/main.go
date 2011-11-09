@@ -4,9 +4,9 @@ import (
 	"flag"
 	"fmt"
 	"github.com/hanwen/termite/termite"
-	"http"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 )

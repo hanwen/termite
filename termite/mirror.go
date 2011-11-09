@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"rpc"
+	"net/rpc"
 	"sync"
 )
 

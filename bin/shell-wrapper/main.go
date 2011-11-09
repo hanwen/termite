@@ -1,14 +1,14 @@
 package main
 
 import (
-	"exec"
 	"flag"
 	"fmt"
 	"github.com/hanwen/termite/termite"
 	"log"
+	"net/rpc"
 	"os"
+	"os/exec"
 	"path/filepath"
-	"rpc"
 	"sort"
 	"strings"
 )

@@ -3,9 +3,9 @@ package termite
 import (
 	"io/ioutil"
 	"log"
+	"net/rpc"
 	"os"
 	"path/filepath"
-	"rpc"
 	"strings"
 )
 

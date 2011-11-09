@@ -2,8 +2,8 @@ package termite
 
 import (
 	"fmt"
-	"http"
 	"log"
+	"net/http"
 	"sync"
 )
 
