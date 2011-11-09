@@ -16,16 +16,28 @@ import (
 
 // TODO - fold common code.
 
+func TestRpcFsFetchOnce(t *testing.T) {
+	me := newRpcFsTestCase(t)
+	defer me.Clean()
+	ioutil.WriteFile(me.orig+"/file.txt", []byte{42}, 0644)
+	me.attr.Refresh("")
+
+	ioutil.ReadFile(me.mnt + "/file.txt")
+	
+	stats := me.server.stats.Timings()
+	if stats == nil || stats["FsServer.FileContent"] == nil {
+		t.Fatalf("Stats missing: %v", stats)
+	} else if stats["FsServer.FileContent"].N > 1 {
+		t.Errorf("File content was served more than once.")
+	}
+}
+
 func TestFsServerCache(t *testing.T) {
 	me := newRpcFsTestCase(t)
 	defer me.Clean()
 
 	content := "hello"
 	err := ioutil.WriteFile(me.orig+"/file.txt", []byte(content), 0644)
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	me.attr.Refresh("")
 	c := me.attr.Copy().Files
 	if len(c) > 0 {

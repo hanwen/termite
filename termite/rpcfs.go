@@ -6,6 +6,7 @@ import (
 	"os"
 	"log"
 	"rpc"
+	"sync"
 	"time"
 )
 
@@ -19,6 +20,12 @@ type RpcFs struct {
 	timings *TimerStats
 	attr *AttributeCache
 	id   string
+
+	// Below code is used to make sure we only fetch each hash
+	// once.
+	mutex sync.Mutex
+	cond  *sync.Cond
+	fetching map[string]bool
 }
 
 func NewRpcFs(server *rpc.Client, cache *ContentCache) *RpcFs {
@@ -29,7 +36,8 @@ func NewRpcFs(server *rpc.Client, cache *ContentCache) *RpcFs {
 		func(n string) *FileAttr {
 			return me.fetchAttr(n)
 		}, nil)
-
+	me.cond = sync.NewCond(&me.mutex)
+	me.fetching = map[string]bool{}
 	me.cache = cache
 	return me
 }
@@ -43,14 +51,29 @@ func (me *RpcFs) innerFetch(req *ContentRequest, rep *ContentResponse) error {
 	return err
 }
 
-func (me *RpcFs) FetchHash(h string, sz int64) error {
+func (me *RpcFs) FetchHash(a *FileAttr) error {
+	me.mutex.Lock()
+	defer me.mutex.Unlock()
+	h := a.Hash
+	for !me.cache.HasHash(h) && me.fetching[h] {
+		me.cond.Wait()
+	}
+	if me.cache.HasHash(h) {
+		return nil
+	}
+	me.fetching[h] = true
+	me.mutex.Unlock()
+	log.Printf("Fetching contents for file %s: %x", a.Path, h)
 	err := me.cache.FetchFromServer(
 		func(req *ContentRequest, rep *ContentResponse) error {
 			return me.innerFetch(req, rep)
 		}, h)
-	if err == nil && sz < _MEMORY_LIMIT {
+	if err == nil && a.Size < _MEMORY_LIMIT {
 		me.cache.FaultIn(h)
 	}
+	me.mutex.Lock()
+	delete(me.fetching, h)
+	me.cond.Broadcast()
 	return err
 }
 
@@ -174,6 +197,11 @@ func (me *RpcFs) Open(name string, flags uint32, context *fuse.Context) (fuse.Fi
 		return nil, fuse.ENOENT
 	}
 
+	if err := me.FetchHash(a); err != nil {
+		log.Printf("Error fetching contents %v", err)
+		return nil, fuse.EIO
+	}
+	
 	if contents := me.cache.ContentsIfLoaded(a.Hash); contents != nil {
 		return &fuse.WithFlags{
 			File: &rpcFsFile{
@@ -185,15 +213,6 @@ func (me *RpcFs) Open(name string, flags uint32, context *fuse.Context) (fuse.Fi
 	}
 
 	p := me.cache.Path(a.Hash)
-	if _, err := os.Lstat(p); fuse.OsErrorToErrno(err) == fuse.ENOENT {
-		log.Printf("Fetching contents for file %s: %x", name, a.Hash)
-		err := me.FetchHash(a.Hash, a.Size)
-		if err != nil {
-			log.Printf("Error fetching contents %v", err)
-			return nil, fuse.EIO
-		}
-	}
-
 	f, err := os.Open(p)
 	if err != nil {
 		log.Fatal("ContentCache open error:", err)
@@ -231,7 +250,7 @@ func (me *RpcFs) GetAttr(name string, context *fuse.Context) (*os.FileInfo, fuse
 		return nil, fuse.ENOENT
 	}
 	if r.Hash != "" {
-		go me.FetchHash(r.Hash, r.Size)
+		go me.FetchHash(r)
 	}
 	return r.FileInfo, r.Status()
 }
