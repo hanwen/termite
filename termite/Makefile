@@ -21,6 +21,7 @@ MANUAL_GOFILES=\
 	fsserver.go \
 	fuse.go \
 	getopt.go \
+	lazyfile.go \
 	lrucache.go \
 	localmaster.go \
 	localrun.go \

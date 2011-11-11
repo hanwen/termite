@@ -52,6 +52,14 @@ func (me *RpcFs) innerFetch(req *ContentRequest, rep *ContentResponse) error {
 }
 
 func (me *RpcFs) FetchHash(a *FileAttr) error {
+	e := me.FetchHashOnce(a)
+	if e == nil && a.Size < _MEMORY_LIMIT {
+		me.cache.FaultIn(a.Hash)
+	}
+	return e	
+}
+
+func (me *RpcFs) FetchHashOnce(a *FileAttr) error {
 	me.mutex.Lock()
 	defer me.mutex.Unlock()
 	h := a.Hash
@@ -68,9 +76,6 @@ func (me *RpcFs) FetchHash(a *FileAttr) error {
 		func(req *ContentRequest, rep *ContentResponse) error {
 			return me.innerFetch(req, rep)
 		}, h)
-	if err == nil && a.Size < _MEMORY_LIMIT {
-		me.cache.FaultIn(h)
-	}
 	me.mutex.Lock()
 	delete(me.fetching, h)
 	me.cond.Broadcast()
@@ -211,17 +216,9 @@ func (me *RpcFs) Open(name string, flags uint32, context *fuse.Context) (fuse.Fi
 			FuseFlags: fuse.FOPEN_KEEP_CACHE,
 		}, fuse.OK
 	}
-
-	p := me.cache.Path(a.Hash)
-	f, err := os.Open(p)
-	if err != nil {
-		log.Fatal("ContentCache open error:", err)
-		return nil, fuse.OsErrorToErrno(err)
-	}
-
 	return &fuse.WithFlags{
 		File: &rpcFsFile{
-			&fuse.ReadOnlyFile{&fuse.LoopbackFile{File: f}},
+			&LazyLoopbackFile{Name: me.cache.Path(a.Hash)},
 			*a.FileInfo,
 		},
 		FuseFlags: fuse.FOPEN_KEEP_CACHE,
