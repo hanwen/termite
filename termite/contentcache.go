@@ -318,7 +318,7 @@ func (me *ContentCache) FetchFromServer(fetcher func(req *ContentRequest, rep *C
 	}
 	chunkSize := 1 << 18
 
-	output := me.NewHashWriter()
+	var output *HashWriter
 	written := 0
 	for {
 		req := &ContentRequest{
@@ -335,14 +335,15 @@ func (me *ContentCache) FetchFromServer(fetcher func(req *ContentRequest, rep *C
 		}
 
 		if len(rep.Chunk) < chunkSize && written == 0 {
-			output.Close()
 			saved := me.Save(rep.Chunk)
 			if saved != hash {
 				log.Fatalf("Corruption: savedHash %x != requested hash %x.", saved, hash)
 			}
 			return nil
-		}
-
+		} else if output == nil {
+			output = me.NewHashWriter()
+ 		}
+		
 		n, err := output.Write(rep.Chunk)
 		written += n
 		if err != nil {
