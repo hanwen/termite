@@ -23,7 +23,6 @@ type ContentCache struct {
 	hashFunc      crypto.Hash
 	mutex         sync.Mutex
 	cond          *sync.Cond
-	hashPathMap   map[string]string
 	faulting      map[string]bool
 	inMemoryCache *LruCache
 
@@ -44,7 +43,6 @@ func NewContentCache(d string) *ContentCache {
 
 	c := &ContentCache{
 		dir:           d,
-		hashPathMap:   make(map[string]string),
 		inMemoryCache: NewLruCache(1024),
 		faulting:      make(map[string]bool),
 		hashFunc:      crypto.MD5,
@@ -84,27 +82,12 @@ func HashPath(dir string, hash string) string {
 	return dst
 }
 
-func (me *ContentCache) localPath(hash string) string {
-	me.mutex.Lock()
-	defer me.mutex.Unlock()
-
-	return me.hashPathMap[hash]
-}
-
 func (me *ContentCache) HasHash(hash string) bool {
 	me.mutex.Lock()
 	defer me.mutex.Unlock()
 
-	_, ok := me.hashPathMap[hash]
-	if ok {
+	if me.inMemoryCache != nil && me.inMemoryCache.Has(hash) {
 		return true
-	}
-
-	if me.inMemoryCache != nil {
-		ok = me.inMemoryCache.Has(hash)
-		if ok {
-			return true
-		}
 	}
 
 	p := HashPath(me.dir, hash)
@@ -131,10 +114,6 @@ func (me *ContentCache) ContentsIfLoaded(hash string) []byte {
 }
 
 func (me *ContentCache) Path(hash string) string {
-	p := me.localPath(hash)
-	if p != "" {
-		return p
-	}
 	return HashPath(me.dir, hash)
 }
 
@@ -273,46 +252,6 @@ func (me *ContentCache) SavePath(path string) (hash string) {
 
 	fi, _ := f.Stat()
 	return me.SaveStream(f, fi.Size)
-}
-
-func (me *ContentCache) SaveImmutablePath(path string) (hash string) {
-	hasher := me.hashFunc.New()
-
-	f, err := os.Open(path)
-	if err != nil {
-		log.Println("SaveImmutablePath:", err)
-		return ""
-	}
-	defer f.Close()
-
-	var content []byte
-	fi, _ := f.Stat()
-	if fi.Size < _MEMORY_LIMIT {
-		content, err = ioutil.ReadAll(f)
-		if err != nil {
-			log.Println("ReadAll:", err)
-			return ""
-		}
-		hasher.Write(content)
-	} else {
-		_, err = io.Copy(hasher, f)
-	}
-
-	if err != nil && err != io.EOF {
-		log.Println("io.Copy:", err)
-		return ""
-	}
-
-	hash = string(hasher.Sum())
-	me.mutex.Lock()
-	defer me.mutex.Unlock()
-	me.hashPathMap[hash] = path
-	if content != nil && me.inMemoryCache != nil {
-		me.inMemoryCache.Add(hash, content)
-	}
-
-	log.Printf("hashed %s to %x", path, hash)
-	return hash
 }
 
 // FaultIn loads the data from disk into the memory cache.

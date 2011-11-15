@@ -69,13 +69,8 @@ func (me *Master) fillContent(rep *FileAttr) {
 	if rep.IsSymlink() || rep.IsDirectory() {
 		rep.ReadFromFs(me.path(rep.Path))
 	} else if rep.IsRegular() {
-		// TODO - /usr should be configurable.
 		fullPath := me.path(rep.Path)
-		if HasDirPrefix(fullPath, "/usr") && !HasDirPrefix(fullPath, "/usr/local") {
-			rep.Hash = me.cache.SaveImmutablePath(fullPath)
-		} else {
-			rep.Hash = me.cache.SavePath(fullPath)
-		}
+		rep.Hash = me.cache.SavePath(fullPath)
 		if rep.Hash == "" {
 			// Typically happens if we want to open /etc/shadow as normal user.
 			log.Println("fillContent returning EPERM for", rep.Path)

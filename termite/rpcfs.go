@@ -140,14 +140,6 @@ func (me *RpcFs) considerSaveLocal(attr *FileAttr) {
 	if EncodeFileInfo(*fi) != EncodeFileInfo(*attr.FileInfo) {
 		return
 	}
-
-	// Avoid fetching local data; this assumes that most paths
-	// will be the same between master and worker.  We mimick
-	// fsserver's logic, so that we don't have nasty surprises
-	// when running server and master on the same machine.
-	if HasDirPrefix(absPath, "/usr") && !HasDirPrefix(absPath, "/usr/local") {
-		me.cache.SaveImmutablePath(absPath)
-	}
 }
 
 ////////////////////////////////////////////////////////////////

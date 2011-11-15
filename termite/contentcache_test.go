@@ -30,30 +30,6 @@ func TestContentCache(t *testing.T) {
 	}
 }
 
-func TestLocalPath(t *testing.T) {
-	f, _ := ioutil.TempFile("", "")
-	defer os.Remove(f.Name())
-	_, err := f.Write([]byte("hello"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	f.Close()
-
-	d, _ := ioutil.TempDir("", "term-cc")
-	defer os.RemoveAll(d)
-	cache := NewContentCache(d)
-
-	saved := cache.SaveImmutablePath(f.Name())
-	/*	content := cache.inMemoryCache.Get(f.Name())
-		if string(md5(content.([]byte))) != string(saved) {
-			t.Fatal("hash mismatch")
-		}
-	*/
-	if f.Name() != cache.Path(saved) {
-		t.Error("path mismatch")
-	}
-}
-
 func TestContentCacheDestructiveSave(t *testing.T) {
 	content := []byte("hello")
 
