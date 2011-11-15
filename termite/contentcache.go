@@ -20,6 +20,7 @@ import (
 type ContentCache struct {
 	dir string
 
+	hashFunc      crypto.Hash
 	mutex         sync.Mutex
 	cond          *sync.Cond
 	hashPathMap   map[string]string
@@ -46,6 +47,7 @@ func NewContentCache(d string) *ContentCache {
 		hashPathMap:   make(map[string]string),
 		inMemoryCache: NewLruCache(1024),
 		faulting:      make(map[string]bool),
+		hashFunc:      crypto.MD5,
 	}
 	c.cond = sync.NewCond(&c.mutex)
 	return c
@@ -70,8 +72,8 @@ func (me *ContentCache) MemoryHitRate() float64 {
 	return float64(me.memoryHits) / float64(me.memoryTries)
 }
 
-func HashPath(dir string, md5 string) string {
-	s := fmt.Sprintf("%x", md5)
+func HashPath(dir string, hash string) string {
+	s := fmt.Sprintf("%x", hash)
 	prefix := s[:2]
 	name := s[2:]
 	dst := filepath.Join(dir, prefix, name)
@@ -137,7 +139,7 @@ func (me *ContentCache) Path(hash string) string {
 }
 
 func (me *ContentCache) NewHashWriter() *HashWriter {
-	return NewHashWriter(me.dir, crypto.MD5)
+	return NewHashWriter(me.dir, me.hashFunc)
 }
 
 type HashWriter struct {
@@ -147,7 +149,7 @@ type HashWriter struct {
 
 func NewHashWriter(dir string, hashfunc crypto.Hash) *HashWriter {
 	me := &HashWriter{}
-	tmp, err := ioutil.TempFile(dir, ".md5temp")
+	tmp, err := ioutil.TempFile(dir, ".hashtemp")
 	if err != nil {
 		log.Panic("NewHashWriter: ", err)
 	}
@@ -209,7 +211,7 @@ func (me *HashWriter) Close() error {
 
 const _BUFSIZE = 32 * 1024
 
-func (me *ContentCache) DestructiveSavePath(path string) (md5 string, err error) {
+func (me *ContentCache) DestructiveSavePath(path string) (hash string, err error) {
 	var f *os.File
 	f, err = os.Open(path)
 	if err != nil {
@@ -218,7 +220,8 @@ func (me *ContentCache) DestructiveSavePath(path string) (md5 string, err error)
 	before, _ := f.Stat()
 	defer f.Close()
 
-	h := crypto.MD5.New()
+	h := me.hashFunc.New()
+	
 	var content []byte
 	if before.Size < _MEMORY_LIMIT {
 		content, err = ioutil.ReadAll(f)
@@ -260,7 +263,7 @@ func (me *ContentCache) DestructiveSavePath(path string) (md5 string, err error)
 	return s, nil
 }
 
-func (me *ContentCache) SavePath(path string) (md5 string) {
+func (me *ContentCache) SavePath(path string) (hash string) {
 	f, err := os.Open(path)
 	if err != nil {
 		log.Println("SavePath:", err)
@@ -272,8 +275,8 @@ func (me *ContentCache) SavePath(path string) (md5 string) {
 	return me.SaveStream(f, fi.Size)
 }
 
-func (me *ContentCache) SaveImmutablePath(path string) (md5 string) {
-	hasher := crypto.MD5.New()
+func (me *ContentCache) SaveImmutablePath(path string) (hash string) {
+	hasher := me.hashFunc.New()
 
 	f, err := os.Open(path)
 	if err != nil {
@@ -300,16 +303,16 @@ func (me *ContentCache) SaveImmutablePath(path string) (md5 string) {
 		return ""
 	}
 
-	md5 = string(hasher.Sum())
+	hash = string(hasher.Sum())
 	me.mutex.Lock()
 	defer me.mutex.Unlock()
-	me.hashPathMap[md5] = path
+	me.hashPathMap[hash] = path
 	if content != nil && me.inMemoryCache != nil {
-		me.inMemoryCache.Add(md5, content)
+		me.inMemoryCache.Add(hash, content)
 	}
 
-	log.Printf("hashed %s to %x", path, md5)
-	return md5
+	log.Printf("hashed %s to %x", path, hash)
+	return hash
 }
 
 // FaultIn loads the data from disk into the memory cache.
@@ -335,18 +338,18 @@ func (me *ContentCache) FaultIn(hash string) {
 	me.cond.Broadcast()
 }
 
-func (me *ContentCache) Save(content []byte) (md5 string) {
+func (me *ContentCache) Save(content []byte) (hash string) {
 	return me.saveViaMemory(content)
 }
 
-func (me *ContentCache) saveViaMemory(content []byte) (md5 string) {
+func (me *ContentCache) saveViaMemory(content []byte) (hash string) {
 	writer := me.NewHashWriter()
 	err := writer.WriteClose(content)
 	if err != nil {
 		log.Println("saveViaMemory:", err)
 		return ""
 	}
-	hash := writer.Sum()
+	hash = writer.Sum()
 
 	if me.inMemoryCache != nil {
 		me.mutex.Lock()
@@ -358,7 +361,7 @@ func (me *ContentCache) saveViaMemory(content []byte) (md5 string) {
 
 const _MEMORY_LIMIT = 128 * 1024
 
-func (me *ContentCache) SaveStream(input io.Reader, size int64) (md5 string) {
+func (me *ContentCache) SaveStream(input io.Reader, size int64) (hash string) {
 	if size < _MEMORY_LIMIT {
 		b, err := ioutil.ReadAll(input)
 		if int64(len(b)) != size {
