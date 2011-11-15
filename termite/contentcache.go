@@ -12,18 +12,15 @@ import (
 	"sync"
 )
 
-// TODO
-// - in-mem cache for have of files.
-// - readdir of all files on startup.
-
 // Content based addressing cache.
 type ContentCache struct {
-	dir string
-
+	dir           string
 	hashFunc      crypto.Hash
+
 	mutex         sync.Mutex
 	cond          *sync.Cond
 	faulting      map[string]bool
+	have          map[string]bool
 	inMemoryCache *LruCache
 
 	memoryTries int
@@ -43,6 +40,7 @@ func NewContentCache(d string) *ContentCache {
 
 	c := &ContentCache{
 		dir:           d,
+		have:          ReadHexDatabase(d),
 		inMemoryCache: NewLruCache(1024),
 		faulting:      make(map[string]bool),
 		hashFunc:      crypto.MD5,
@@ -86,14 +84,9 @@ func (me *ContentCache) HasHash(hash string) bool {
 	me.mutex.Lock()
 	defer me.mutex.Unlock()
 
-	if me.inMemoryCache != nil && me.inMemoryCache.Has(hash) {
-		return true
-	}
-
-	p := HashPath(me.dir, hash)
-	_, err := os.Lstat(p)
-	return err == nil
+	return me.have[hash]
 }
+
 
 func (me *ContentCache) ContentsIfLoaded(hash string) []byte {
 	me.mutex.Lock()
@@ -180,10 +173,7 @@ func (me *HashWriter) Close() error {
 	log.Printf("saving hash %x\n", sum)
 	err = os.Rename(src, sumpath)
 	if err != nil {
-		if fi, _ := os.Lstat(sumpath); fi == nil {
-			log.Println("already have", sumpath)
-			os.Remove(src)
-		}
+		log.Fatal("Rename failed", err)
 	}
 	return err
 }
@@ -219,20 +209,17 @@ func (me *ContentCache) DestructiveSavePath(path string) (hash string, err error
 		return s, nil
 	}
 
+	me.mutex.Lock()
+	me.have[s] = true
 	if content != nil && me.inMemoryCache != nil {
-		me.mutex.Lock()
 		me.inMemoryCache.Add(s, content)
-		me.mutex.Unlock()
 	}
+	me.mutex.Unlock()	
 
 	p := me.Path(s)
 	err = os.Rename(path, p)
 	if err != nil {
-		if fi, _ := os.Lstat(p); fi != nil {
-			os.Remove(p)
-			return s, nil
-		}
-		return "", err
+		log.Fatal("Rename failed", err)
 	}
 	f.Chmod(0444)
 	after, _ := f.Stat()
@@ -290,9 +277,10 @@ func (me *ContentCache) saveViaMemory(content []byte) (hash string) {
 	}
 	hash = writer.Sum()
 
+	me.mutex.Lock()
+	defer me.mutex.Unlock()
+	me.have[hash] = true
 	if me.inMemoryCache != nil {
-		me.mutex.Lock()
-		defer me.mutex.Unlock()
 		me.inMemoryCache.Add(hash, content)
 	}
 	return hash
@@ -315,6 +303,63 @@ func (me *ContentCache) SaveStream(input io.Reader, size int64) (hash string) {
 	if err != nil {
 		return ""
 	}
+	hash = dup.Sum()
+	
+	me.mutex.Lock()
+	defer me.mutex.Unlock()
+	me.have[hash] = true
+	return hash
+}
 
-	return dup.Sum()
+func (me *ContentCache) FetchFromServer(fetcher func(req *ContentRequest, rep *ContentResponse) error,
+	hash string) error {
+	if me.HasHash(hash) {
+		return nil
+	}
+	chunkSize := 1 << 18
+
+	output := me.NewHashWriter()
+	written := 0
+	for {
+		req := &ContentRequest{
+			Hash:  hash,
+			Start: written,
+			End:   written + chunkSize,
+		}
+
+		rep := &ContentResponse{}
+		err := fetcher(req, rep)
+		if err != nil {
+			log.Println("FileContent error:", err)
+			return err
+		}
+
+		if len(rep.Chunk) < chunkSize && written == 0 {
+			output.Close()
+			saved := me.Save(rep.Chunk)
+			if saved != hash {
+				log.Fatalf("Corruption: savedHash %x != requested hash %x.", saved, hash)
+			}
+			return nil
+		}
+
+		n, err := output.Write(rep.Chunk)
+		written += n
+		if err != nil {
+			return err
+		}
+		if len(rep.Chunk) < chunkSize {
+			break
+		}
+	}
+
+	output.Close()
+	saved := string(output.hasher.Sum())
+	if saved != hash {
+		log.Fatalf("Corruption: savedHash %x != requested hash %x.", saved, hash)
+	}
+	me.mutex.Lock()
+	defer me.mutex.Unlock()
+	me.have[saved] = true
+	return nil
 }

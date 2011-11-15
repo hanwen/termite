@@ -27,7 +27,8 @@ func TestRpcFsFetchOnce(t *testing.T) {
 	stats := me.server.stats.Timings()
 	if stats == nil || stats["FsServer.FileContent"] == nil {
 		t.Fatalf("Stats missing: %v", stats)
-	} else if stats["FsServer.FileContent"].N > 1 {
+	}
+	if stats["FsServer.FileContent"].N > 1 {
 		t.Errorf("File content was served more than once.")
 	}
 }

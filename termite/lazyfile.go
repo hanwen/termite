@@ -30,8 +30,6 @@ func (me *LazyLoopbackFile) file() (fuse.File, fuse.Status) {
 			return nil, fuse.OsErrorToErrno(err)
 		}
 		me.f = &fuse.LoopbackFile{File: f}
-		fi, _ := f.Stat()
-		log.Println("opening...", me.Name, fi.Size)
 	}
 	return me.f, fuse.OK
 }
