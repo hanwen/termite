@@ -7,8 +7,6 @@ import (
 
 var _ = log.Println
 
-// TODO - test.
-
 func (me *FileSet) Len() int {
 	return len(me.Files)
 }
