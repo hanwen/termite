@@ -12,7 +12,6 @@ MANUAL_GOFILES=\
 	coordinator.go \
 	copy.go \
 	cpustat.go \
-	counter.go \
 	devnullfs.go \
 	diskcache.go \
 	fileattr.go \
