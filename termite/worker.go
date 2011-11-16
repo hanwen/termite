@@ -19,7 +19,6 @@ import (
 var _ = log.Println
 
 type Worker struct {
-	secret       []byte
 	listener     net.Listener
 	rpcServer    *rpc.Server
 	contentCache *ContentCache
@@ -68,7 +67,6 @@ func NewWorker(options *WorkerOptions) *Worker {
 	cache := NewContentCache(options.CacheDir)
 	cache.SetMemoryCacheSize(options.FileContentCount)
 	me := &Worker{
-		secret:       options.Secret,
 		contentCache: cache,
 		pending:      NewPendingConnections(),
 		rpcServer:    rpc.NewServer(),
@@ -150,7 +148,7 @@ func (me *Worker) serveConn(conn net.Conn) {
 }
 
 func (me *Worker) RunWorkerServer(port int, coordinator string) {
-	me.listener = AuthenticatedListener(port, me.secret)
+	me.listener = AuthenticatedListener(port, me.options.Secret)
 	_, portString, _ := net.SplitHostPort(me.listener.Addr().String())
 
 	fmt.Sscanf(portString, "%d", &port)
