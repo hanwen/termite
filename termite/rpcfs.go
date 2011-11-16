@@ -42,6 +42,10 @@ func NewRpcFs(server *rpc.Client, cache *ContentCache) *RpcFs {
 	return me
 }
 
+func (me *RpcFs) Close() {
+	me.client.Close()
+}
+
 func (me *RpcFs) innerFetch(req *ContentRequest, rep *ContentResponse) error {
 	start := time.Nanoseconds()
 	err := me.client.Call("FsServer.FileContent", req, rep)

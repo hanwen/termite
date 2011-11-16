@@ -12,8 +12,6 @@ import (
 // State associated with one master.
 type Mirror struct {
 	daemon         *Worker
-	fileServer     *rpc.Client
-	fileServerConn net.Conn
 	rpcConn        net.Conn
 	rpcFs          *RpcFs
 	writableRoot   string
@@ -36,13 +34,11 @@ func NewMirror(daemon *Worker, rpcConn, revConn net.Conn) *Mirror {
 
 	mirror := &Mirror{
 		activeFses:     map[*workerFuseFs]bool{},
-		fileServerConn: revConn,
 		rpcConn:        rpcConn,
-		fileServer:     rpc.NewClient(revConn),
 		daemon:         daemon,
 	}
 	mirror.cond = sync.NewCond(&mirror.fsMutex)
-	mirror.rpcFs = NewRpcFs(mirror.fileServer, daemon.contentCache)
+	mirror.rpcFs = NewRpcFs(rpc.NewClient(revConn), daemon.contentCache)
 
 	_, portString, _ := net.SplitHostPort(daemon.listener.Addr().String())
 	mirror.rpcFs.id = daemon.Hostname + ":" + portString
@@ -67,8 +63,7 @@ func (me *Mirror) Shutdown() {
 		return
 	}
 	me.shuttingDown = true
-	me.fileServer.Close()
-	me.fileServerConn.Close()
+	me.rpcFs.Close()
 	for fs := range me.activeFses {
 		for t := range fs.tasks {
 			t.Kill()
