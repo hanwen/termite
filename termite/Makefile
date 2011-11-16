@@ -39,7 +39,6 @@ MANUAL_GOFILES=\
 	status.go \
 	task.go \
 	timerpc.go \
-	timer.go \
 	version.go \
 	worker.go \
 
