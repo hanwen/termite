@@ -13,7 +13,6 @@ MANUAL_GOFILES=\
 	copy.go \
 	cpustat.go \
 	devnullfs.go \
-	diskcache.go \
 	fileattr.go \
 	fileset.go \
 	filesetwaiter.go \
