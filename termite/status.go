@@ -30,7 +30,8 @@ func (me *Worker) Status(req *WorkerStatusRequest, rep *WorkerStatusResponse) er
 
 		rep.MirrorStatus = append(rep.MirrorStatus, mRep)
 	}
-	rep.MaxJobCount = me.maxJobCount
+	// TODO - pass WorkerOptions out.
+	rep.MaxJobCount = me.options.Jobs
 	rep.Version = Version()
 	rep.ShuttingDown = me.shuttingDown
 	rep.CpuStats = me.stats.CpuStats()

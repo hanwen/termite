@@ -26,7 +26,6 @@ type Worker struct {
 	listener     net.Listener
 	rpcServer    *rpc.Server
 	contentCache *ContentCache
-	maxJobCount  int
 	pending      *PendingConnections
 	cacheDir     string
 	tmpDir       string
@@ -72,7 +71,7 @@ func (me *Worker) getMirror(rpcConn, revConn net.Conn, reserveCount int) (*Mirro
 		used += v.maxJobCount
 	}
 
-	remaining := me.maxJobCount - used
+	remaining := me.options.Jobs - used
 	if remaining <= 0 {
 		return nil, errors.New("no processes available")
 	}
@@ -107,7 +106,6 @@ func NewWorker(options *WorkerOptions) *Worker {
 		contentCache: cache,
 		mirrorMap:    make(map[string]*Mirror),
 		pending:      NewPendingConnections(),
-		maxJobCount:  options.Jobs,
 		tmpDir:       options.TempDir,
 		rpcServer:    rpc.NewServer(),
 		stats:        newCpuStatSampler(),
