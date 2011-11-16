@@ -20,16 +20,8 @@ func (me *Mirror) Status(req *MirrorStatusRequest, rep *MirrorStatusResponse) er
 }
 
 func (me *Worker) Status(req *WorkerStatusRequest, rep *WorkerStatusResponse) error {
-	me.mirrorMapMutex.Lock()
-	defer me.mirrorMapMutex.Unlock()
+	me.mirrors.Status(req, rep)
 
-	for _, mirror := range me.mirrorMap {
-		mRep := MirrorStatusResponse{}
-		mReq := MirrorStatusRequest{}
-		mirror.Status(&mReq, &mRep)
-
-		rep.MirrorStatus = append(rep.MirrorStatus, mRep)
-	}
 	// TODO - pass WorkerOptions out.
 	rep.MaxJobCount = me.options.Jobs
 	rep.Version = Version()

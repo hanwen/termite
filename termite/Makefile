@@ -30,6 +30,7 @@ MANUAL_GOFILES=\
 	masterstats.go \
 	masterstatus.go \
 	mirror.go \
+	mirrors.go \
 	mirrorconnection.go \
 	misc.go \
 	periodicsampler.go \

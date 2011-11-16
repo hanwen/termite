@@ -12,9 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"os/user"
-	"runtime"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -29,13 +27,11 @@ type Worker struct {
 	stats        *cpuStatSampler
 
 	stopListener chan int
-
-	mirrorMapMutex sync.Mutex
-	cond           *sync.Cond
-	mirrorMap      map[string]*Mirror
-	shuttingDown   bool
 	mustRestart    bool
 	options        *WorkerOptions
+	shuttingDown   bool
+
+	mirrors *WorkerMirrors
 }
 
 type WorkerOptions struct {
@@ -55,34 +51,6 @@ type WorkerOptions struct {
 	// Delay between contacting the coordinator for making reports.
 	ReportInterval float64
 	LogFileName    string
-
-}
-
-func (me *Worker) getMirror(rpcConn, revConn net.Conn, reserveCount int) (*Mirror, error) {
-	if reserveCount <= 0 {
-		return nil, errors.New("must ask positive jobcount")
-	}
-	me.mirrorMapMutex.Lock()
-	defer me.mirrorMapMutex.Unlock()
-	used := 0
-	for _, v := range me.mirrorMap {
-		used += v.maxJobCount
-	}
-
-	remaining := me.options.Jobs - used
-	if remaining <= 0 {
-		return nil, errors.New("no processes available")
-	}
-	if remaining < reserveCount {
-		reserveCount = remaining
-	}
-
-	mirror := NewMirror(me, rpcConn, revConn)
-	mirror.maxJobCount = reserveCount
-	key := fmt.Sprintf("%v", rpcConn.RemoteAddr())
-	me.mirrorMap[key] = mirror
-	mirror.key = key
-	return mirror, nil
 }
 
 func NewWorker(options *WorkerOptions) *Worker {
@@ -102,14 +70,12 @@ func NewWorker(options *WorkerOptions) *Worker {
 	me := &Worker{
 		secret:       options.Secret,
 		contentCache: cache,
-		mirrorMap:    make(map[string]*Mirror),
 		pending:      NewPendingConnections(),
 		rpcServer:    rpc.NewServer(),
 		stats:        newCpuStatSampler(),
 		options:      &copied,
 	}
-
-	me.cond = sync.NewCond(&me.mirrorMapMutex)
+	me.mirrors = NewWorkerMirrors(me)
 	me.stopListener = make(chan int, 1)
 	me.rpcServer.Register(me)
 	return me
@@ -165,7 +131,7 @@ func (me *Worker) CreateMirror(req *CreateMirrorRequest, rep *CreateMirrorRespon
 
 	rpcConn := me.pending.WaitConnection(req.RpcId)
 	revConn := me.pending.WaitConnection(req.RevRpcId)
-	mirror, err := me.getMirror(rpcConn, revConn, req.MaxJobCount)
+	mirror, err := me.mirrors.getMirror(rpcConn, revConn, req.MaxJobCount)
 	if err != nil {
 		rpcConn.Close()
 		revConn.Close()
@@ -175,16 +141,6 @@ func (me *Worker) CreateMirror(req *CreateMirrorRequest, rep *CreateMirrorRespon
 
 	rep.GrantedJobCount = mirror.maxJobCount
 	return nil
-}
-
-func (me *Worker) DropMirror(mirror *Mirror) {
-	me.mirrorMapMutex.Lock()
-	defer me.mirrorMapMutex.Unlock()
-
-	log.Println("dropping mirror", mirror.key)
-	delete(me.mirrorMap, mirror.key)
-	me.cond.Broadcast()
-	runtime.GC()
 }
 
 func (me *Worker) serveConn(conn net.Conn) {
@@ -216,28 +172,6 @@ func (me *Worker) RunWorkerServer(port int, coordinator string) {
 	if me.mustRestart {
 		me.restart(coordinator)
 	}
-}
-
-func (me *Worker) Shutdown(req *ShutdownRequest, rep *ShutdownResponse) error {
-	log.Println("Received Shutdown.")
-	if req.Restart {
-		me.mustRestart = true
-	}
-	me.mirrorMapMutex.Lock()
-	defer me.mirrorMapMutex.Unlock()
-
-	me.shuttingDown = true
-	for _, m := range me.mirrorMap {
-		m.Shutdown()
-	}
-	log.Println("Asked all mirrors to shut down.")
-	for len(me.mirrorMap) > 0 {
-		log.Println("Live mirror count:", len(me.mirrorMap))
-		me.cond.Wait()
-	}
-	log.Println("All mirrors have shut down.")
-	me.listener.Close()
-	return nil
 }
 
 func (me *Worker) Log(req *LogRequest, rep *LogResponse) error {
@@ -310,4 +244,18 @@ func (me *Worker) restart(coord string) {
 	log.Println("Starting downloaded worker.")
 	cmd := exec.Command(f.Name(), os.Args[1:]...)
 	cmd.Start()
+}
+
+func (me *Worker) DropMirror(mirror *Mirror) {
+	me.mirrors.DropMirror(mirror)
+}
+
+func (me *Worker) Shutdown(req *ShutdownRequest, rep *ShutdownResponse) error {
+	if req.Restart {
+		me.mustRestart = true
+	}
+	me.shuttingDown = true
+	me.mirrors.Shutdown(req)
+	me.listener.Close()
+	return nil
 }
