@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 type Master struct {
@@ -20,6 +21,7 @@ type Master struct {
 	taskIds       chan int
 	options       *MasterOptions
 	replayChannel chan *replayRequest
+	quit          chan int
 }
 
 type MasterOptions struct {
@@ -34,6 +36,9 @@ type MasterOptions struct {
 	Secret      []byte
 	MaxJobs     int
 	Paranoia    bool
+
+	Period      float64
+	KeepAlive   float64
 }
 
 type replayRequest struct {
@@ -88,8 +93,12 @@ func NewMaster(cache *ContentCache, options *MasterOptions) *Master {
 		cache:         cache,
 		taskIds:       make(chan int, 100),
 		replayChannel: make(chan *replayRequest, 1),
+		quit:          make(chan int, 100),
 	}
 	o := *options
+	if o.Period <= 0.0 {
+		o.Period = 60.0
+	}
 	me.options = &o
 	me.excluded = make(map[string]bool)
 	for _, e := range options.Excludes {
@@ -98,6 +107,7 @@ func NewMaster(cache *ContentCache, options *MasterOptions) *Master {
 
 	me.mirrors = newMirrorConnections(
 		me, options.Workers, options.Coordinator, options.MaxJobs)
+	me.mirrors.keepAliveNs = int64(1e9 * options.KeepAlive)
 	me.pending = NewPendingConnections()
 	me.attr = NewAttributeCache(func(n string) *FileAttr {
 		return me.uncachedGetAttr(n)
@@ -133,13 +143,6 @@ func NewMaster(cache *ContentCache, options *MasterOptions) *Master {
 	return me
 }
 
-// todo - move to options.
-func (me *Master) SetKeepAlive(keepalive float64, household float64) {
-	if household > 0.0 || keepalive > 0.0 {
-		me.mirrors.setKeepAliveNs(1e9*keepalive, 1e9*household)
-	}
-}
-
 func (me *Master) CheckPrivate() {
 	if !me.options.ExcludePrivate {
 		return
@@ -166,7 +169,8 @@ func (me *Master) Start(sock string) {
 		}
 		go me.fetchAll(strings.TrimLeft(r, "/"))
 	}
-	localStart(me, sock)
+	go localStart(me, sock)
+	me.waitForExit()
 }
 
 func (me *Master) createMirror(addr string, jobs int) (*mirrorConnection, error) {
@@ -431,5 +435,19 @@ func (me *Master) fetchAll(path string) {
 	a := me.attr.GetDir(path)
 	for n := range a.NameModeMap {
 		me.fetchAll(filepath.Join(path, n))
+	}
+}
+
+func (me *Master) waitForExit() {
+	ticker := time.NewTicker(int64(1e9 * me.options.Period))
+
+	for {
+		select {
+		case <-me.quit:
+			log.Println("quit received.")
+			break
+		case <-ticker.C:
+			me.mirrors.periodicHouseholding()
+		}
 	}
 }

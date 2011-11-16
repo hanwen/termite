@@ -64,9 +64,10 @@ func main() {
 		SrcRoot:      *srcRoot,
 		WritableRoot: root,
 		Paranoia:     *paranoia,
+		Period:       *houseHoldPeriod,
+		KeepAlive:    *keepAlive, 
 	}
 	master := termite.NewMaster(c, &opts)
-	master.SetKeepAlive(*keepAlive, *houseHoldPeriod)
 
 	log.Println(termite.Version())
 

@@ -71,7 +71,6 @@ type mirrorConnections struct {
 	coordinator string
 
 	keepAliveNs int64
-	periodNs    int64
 
 	wantedMaxJobs int
 
@@ -88,7 +87,7 @@ func (me *mirrorConnections) fetchWorkers() (newMap map[string]bool) {
 	newMap = map[string]bool{}
 	client, err := rpc.DialHTTP("tcp", me.coordinator)
 	if err != nil {
-		log.Println("dialing coordinator:", err)
+		log.Println("fetchWorkers: dialing coordinator:", err)
 		return newMap
 	}
 	defer client.Close()
@@ -126,8 +125,8 @@ func newMirrorConnections(m *Master, workers []string, coordinator string, maxJo
 		mirrors:       make(map[string]*mirrorConnection),
 		coordinator:   coordinator,
 		stats:         newMasterStats(),
+		keepAliveNs:   60e9,
 	}
-	me.setKeepAliveNs(60e9, 60e9)
 
 	for _, w := range workers {
 		me.workers[w] = true
@@ -136,25 +135,13 @@ func newMirrorConnections(m *Master, workers []string, coordinator string, maxJo
 		if workers != nil {
 			log.Println("coordinator will overwrite workers.")
 		}
-
-		go me.periodicHouseholding()
 	}
 	return me
 }
 
-func (me *mirrorConnections) setKeepAliveNs(keepAliveNs float64, periodNs float64) {
-	me.keepAliveNs = int64(keepAliveNs)
-	me.periodNs = int64(periodNs)
-}
-
 func (me *mirrorConnections) periodicHouseholding() {
 	me.refreshWorkers()
-	for {
-		c := time.After(me.periodNs)
-		<-c
-		me.refreshWorkers()
-		me.maybeDropConnections()
-	}
+	me.maybeDropConnections()
 }
 
 // Must be called with lock held.

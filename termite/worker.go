@@ -119,7 +119,6 @@ func (me *Worker) report(coordinator string, port int) {
 	}
 }
 
-// TODO - should expose under ContentServer name?
 func (me *Worker) FileContent(req *ContentRequest, rep *ContentResponse) error {
 	return ServeFileContent(me.contentCache, req, rep)
 }

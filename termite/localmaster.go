@@ -6,7 +6,6 @@ import (
 	"net"
 	"net/rpc"
 	"os"
-	"time"
 )
 
 // Expose functionality for the local tool to use.
@@ -38,9 +37,7 @@ func (me *LocalMaster) Run(req *WorkRequest, rep *WorkResponse) error {
 }
 
 func (me *LocalMaster) Shutdown(req *int, rep *int) error {
-	time.AfterFunc(1e8, func() {
-		me.listener.Close()
-	})
+	me.master.quit <- 1
 	return nil
 }
 
