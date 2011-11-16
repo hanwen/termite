@@ -41,7 +41,6 @@ type Worker struct {
 	shuttingDown   bool
 	mustRestart    bool
 	options        *WorkerOptions
-	LogFileName    string
 }
 
 type WorkerOptions struct {
@@ -60,6 +59,7 @@ type WorkerOptions struct {
 
 	// Delay between contacting the coordinator for making reports.
 	ReportInterval float64
+	LogFileName    string
 }
 
 func (me *Worker) getMirror(rpcConn, revConn net.Conn, reserveCount int) (*Mirror, error) {
@@ -260,11 +260,11 @@ func (me *Worker) Shutdown(req *ShutdownRequest, rep *ShutdownResponse) error {
 }
 
 func (me *Worker) Log(req *LogRequest, rep *LogResponse) error {
-	if me.LogFileName == "" {
+	if me.options.LogFileName == "" {
 		return fmt.Errorf("No log filename set.")
 	}
 
-	f, err := os.Open(me.LogFileName)
+	f, err := os.Open(me.options.LogFileName)
 	if err != nil {
 		return err
 	}

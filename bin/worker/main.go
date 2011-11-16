@@ -48,7 +48,18 @@ func main() {
 	if err != nil {
 		log.Fatal("ReadFile", err)
 	}
-
+	
+	if *logfile != "" {
+		f, err := os.OpenFile(*logfile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+		if err != nil {
+			log.Fatal("Could not open log file.", err)
+		}
+		log.Println("Log output to", *logfile)
+		log.SetOutput(f)
+	} else {
+		log.SetPrefix("W")
+	}
+	
 	opts := termite.WorkerOptions{
 		Secret:           secret,
 		TempDir:          *tmpdir,
@@ -58,20 +69,10 @@ func main() {
 		Paranoia:         *paranoia,
 		FileContentCount: *memcache,
 		ReapCount:        *reapcount,
+		LogFileName:      *logfile,
 	}
 
 	daemon := termite.NewWorker(&opts)
-	if *logfile != "" {
-		f, err := os.OpenFile(*logfile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
-		if err != nil {
-			log.Fatal("Could not open log file.", err)
-		}
-		log.Println("Log output to", *logfile)
-		log.SetOutput(f)
-		daemon.LogFileName = *logfile
-	} else {
-		log.SetPrefix("W")
-	}
 	if *cpus > 0 {
 		runtime.GOMAXPROCS(*cpus)
 	}

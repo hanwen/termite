@@ -463,7 +463,7 @@ func TestEndToEndLogFile(t *testing.T) {
 	fn := tc.wd + "/logfile.txt"
 	ioutil.WriteFile(fn, []byte("magic string"), 0644)
 	for _, w := range tc.workers {
-		w.LogFileName = fn
+		w.options.LogFileName = fn
 	}
 	addresses := []string{}
 	for addr := range tc.coordinator.workers {
