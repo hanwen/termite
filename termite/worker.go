@@ -22,13 +22,10 @@ var _ = log.Println
 
 type Worker struct {
 	secret       []byte
-	Hostname     string
 	listener     net.Listener
 	rpcServer    *rpc.Server
 	contentCache *ContentCache
 	pending      *PendingConnections
-	cacheDir     string
-	tmpDir       string
 	stats        *cpuStatSampler
 
 	stopListener chan int
@@ -58,6 +55,7 @@ type WorkerOptions struct {
 	// Delay between contacting the coordinator for making reports.
 	ReportInterval float64
 	LogFileName    string
+
 }
 
 func (me *Worker) getMirror(rpcConn, revConn net.Conn, reserveCount int) (*Mirror, error) {
@@ -106,7 +104,6 @@ func NewWorker(options *WorkerOptions) *Worker {
 		contentCache: cache,
 		mirrorMap:    make(map[string]*Mirror),
 		pending:      NewPendingConnections(),
-		tmpDir:       options.TempDir,
 		rpcServer:    rpc.NewServer(),
 		stats:        newCpuStatSampler(),
 		options:      &copied,
@@ -115,7 +112,6 @@ func NewWorker(options *WorkerOptions) *Worker {
 	me.cond = sync.NewCond(&me.mirrorMapMutex)
 	me.stopListener = make(chan int, 1)
 	me.rpcServer.Register(me)
-	me.Hostname, _ = os.Hostname()
 	return me
 }
 
@@ -138,13 +134,7 @@ func (me *Worker) report(coordinator string, port int) {
 		return
 	}
 
-	hostname, err := os.Hostname()
-	if err != nil {
-		log.Println("hostname", err)
-		return
-	}
-
-	cname, err := net.LookupCNAME(hostname)
+	cname, err := net.LookupCNAME(Hostname)
 	if err != nil {
 		log.Println("cname", err)
 		return
@@ -152,7 +142,7 @@ func (me *Worker) report(coordinator string, port int) {
 	cname = strings.TrimRight(cname, ".")
 	req := Registration{
 		Address: fmt.Sprintf("%v:%d", cname, port),
-		Name:    fmt.Sprintf("%s:%d", hostname, port),
+		Name:    fmt.Sprintf("%s:%d", Hostname, port),
 		Version: Version(),
 	}
 

@@ -41,7 +41,8 @@ func NewMirror(daemon *Worker, rpcConn, revConn net.Conn) *Mirror {
 	mirror.rpcFs = NewRpcFs(rpc.NewClient(revConn), daemon.contentCache)
 
 	_, portString, _ := net.SplitHostPort(daemon.listener.Addr().String())
-	mirror.rpcFs.id = daemon.Hostname + ":" + portString
+
+	mirror.rpcFs.id = Hostname + ":" + portString
 	mirror.rpcFs.attr.Paranoia = daemon.options.Paranoia
 	mirror.rpcFs.localRoots = []string{"/lib", "/usr"}
 
@@ -195,14 +196,14 @@ func (me *Mirror) Run(req *WorkRequest, rep *WorkResponse) error {
 
 	rep.LastTime = 0
 	log.Println(rep)
-	rep.WorkerId = fmt.Sprintf("%s: %s", me.daemon.Hostname, me.daemon.listener.Addr().String())
+	rep.WorkerId = fmt.Sprintf("%s: %s", Hostname, me.daemon.listener.Addr().String())
 	return nil
 }
 
 const _DELETIONS = "DELETIONS"
 
 func (me *Mirror) newWorkerFuseFs() (*workerFuseFs, error) {
-	f, err := newWorkerFuseFs(me.daemon.tmpDir, me.rpcFs, me.writableRoot,
+	f, err := newWorkerFuseFs(me.daemon.options.TempDir, me.rpcFs, me.writableRoot,
 		me.daemon.options.User)
 
 	f.id = fmt.Sprintf("%d", me.nextFsId)

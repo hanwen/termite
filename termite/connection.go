@@ -19,6 +19,16 @@ const _SOCKET = ".termite-socket"
 
 const challengeLength = 20
 
+var Hostname string
+
+func init() {
+	var err error
+	Hostname, err = os.Hostname()
+	if err != nil {
+		log.Println("hostname", err)
+	}
+}
+
 func sign(conn net.Conn, challenge []byte, secret []byte, local bool) []byte {
 	h := hmac.NewSHA1(secret)
 	h.Write(challenge)
