@@ -8,7 +8,6 @@ MANUAL_GOFILES=\
 	attrcache.go \
 	connection.go \
 	contentcache.go \
-	contentserver.go \
 	coordinator.go \
 	copy.go \
 	cpustat.go \

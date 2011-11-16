@@ -1,5 +1,7 @@
 package termite
 
+// Routines for efficient file to file copying.
+
 import (
 	"fmt"
 	"io"

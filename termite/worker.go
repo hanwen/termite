@@ -120,7 +120,7 @@ func (me *Worker) report(coordinator string, port int) {
 }
 
 func (me *Worker) FileContent(req *ContentRequest, rep *ContentResponse) error {
-	return ServeFileContent(me.contentCache, req, rep)
+	return me.contentCache.Serve(req, rep)
 }
 
 func (me *Worker) CreateMirror(req *CreateMirrorRequest, rep *CreateMirrorResponse) error {

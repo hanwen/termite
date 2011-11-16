@@ -23,7 +23,7 @@ func NewFsServer(attr *AttributeCache, cache *ContentCache) *FsServer {
 
 func (me *FsServer) FileContent(req *ContentRequest, rep *ContentResponse) error {
 	start := time.Nanoseconds()
-	err := ServeFileContent(me.contentCache, req, rep)
+	err := me.contentCache.Serve(req, rep)
 	dt := time.Nanoseconds() - start
 	me.stats.Log("FsServer.FileContent", dt)
 	me.stats.LogN("FsServer.FileContentBytes", int64(len(rep.Chunk)), dt)
