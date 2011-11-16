@@ -347,9 +347,6 @@ func (me *AttributeCache) Refresh(prefix string) FileSet {
 			updated = append(updated, &del)
 		}
 
-		// TODO - should generate deletion based on dir
-		// contents too?
-
 		// TODO - does this handle symlinks corrrectly?
 		if fi != nil && attr.FileInfo != nil && EncodeFileInfo(*attr.FileInfo) != EncodeFileInfo(*fi) {
 			newEnt := me.getter(key)

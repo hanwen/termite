@@ -19,7 +19,6 @@ type Registration struct {
 	Address string
 	Name    string
 	Version string
-	// TODO - hash of the secret?
 }
 
 type Registered struct {
@@ -199,7 +198,7 @@ func (me *Coordinator) killAllHandler(w http.ResponseWriter, req *http.Request) 
 func (me *Coordinator) killHandler(w http.ResponseWriter, req *http.Request) {
 	addr, conn, err := me.getHost(req)
 	if err != nil {
-		// TODO - set error status.
+		w.WriteHeader(http.StatusNotFound)
 		fmt.Fprintf(w, "<html><head><title>Termite worker error</title></head>")
 		fmt.Fprintf(w, "<body>Error: %s</body></html>", err.Error())
 		return
@@ -267,7 +266,7 @@ func (me *Coordinator) getHost(req *http.Request) (string, net.Conn, error) {
 	q := req.URL.Query()
 	vs, ok := q["host"]
 	if !ok || len(vs) == 0 {
-		return "", nil, fmt.Errorf("404 query param 'host' missing")
+		return "", nil, fmt.Errorf("query param 'host' missing")
 	}
 	addr := string(vs[0])
 	if !me.haveWorker(addr) {
@@ -285,7 +284,7 @@ func (me *Coordinator) getHost(req *http.Request) (string, net.Conn, error) {
 func (me *Coordinator) logHandler(w http.ResponseWriter, req *http.Request) {
 	_, conn, err := me.getHost(req)
 	if err != nil {
-		// TODO - set error status.
+		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(w, "<html><head><title>Termite worker error</title></head>")
 		fmt.Fprintf(w, "<body>Error: %s</body></html>", err.Error())
 		return
@@ -302,7 +301,7 @@ func (me *Coordinator) logHandler(w http.ResponseWriter, req *http.Request) {
 	err = client.Call("WorkerDaemon.Log", &logReq, &logRep)
 	client.Close()
 	if err != nil {
-		// TODO - set error status.
+		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(w, "<html><head><title>Termite worker error</title></head>")
 		fmt.Fprintf(w, "<body>Error: %s</body></html>", err.Error())
 		return
@@ -316,7 +315,7 @@ func (me *Coordinator) logHandler(w http.ResponseWriter, req *http.Request) {
 func (me *Coordinator) workerHandler(w http.ResponseWriter, req *http.Request) {
 	addr, conn, err := me.getHost(req)
 	if err != nil {
-		// TODO - set error status.
+		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(w, "<html><head><title>Termite worker error</title></head>")
 		fmt.Fprintf(w, "<body>Error: %s</body></html>", err.Error())
 		return

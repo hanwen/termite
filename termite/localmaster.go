@@ -68,9 +68,6 @@ func (me *LocalMaster) start(sock string) {
 		log.Fatal("sock chmod", err)
 	}
 
-	// TODO - reinstate this; it currenly makes a bunch of tests fail.
-	// go me.master.fileServer.FetchDirs(strings.TrimLeft(writableRoot, "/"))
-
 	log.Println("accepting connections on", sock)
 	for {
 		conn, err := me.listener.Accept()
