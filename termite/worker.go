@@ -26,9 +26,9 @@ type Worker struct {
 	stats        *cpuStatSampler
 
 	stopListener chan int
-	mustRestart    bool
-	options        *WorkerOptions
-	shuttingDown   bool
+	mustRestart  bool
+	options      *WorkerOptions
+	shuttingDown bool
 
 	mirrors *WorkerMirrors
 }

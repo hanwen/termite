@@ -14,8 +14,8 @@ import (
 
 // Content based addressing cache.
 type ContentCache struct {
-	dir           string
-	hashFunc      crypto.Hash
+	dir      string
+	hashFunc crypto.Hash
 
 	mutex         sync.Mutex
 	cond          *sync.Cond
@@ -86,7 +86,6 @@ func (me *ContentCache) HasHash(hash string) bool {
 
 	return me.have[hash]
 }
-
 
 func (me *ContentCache) ContentsIfLoaded(hash string) []byte {
 	me.mutex.Lock()
@@ -190,7 +189,7 @@ func (me *ContentCache) DestructiveSavePath(path string) (hash string, err error
 	defer f.Close()
 
 	h := me.hashFunc.New()
-	
+
 	var content []byte
 	if before.Size < _MEMORY_LIMIT {
 		content, err = ioutil.ReadAll(f)
@@ -214,7 +213,7 @@ func (me *ContentCache) DestructiveSavePath(path string) (hash string, err error
 	if content != nil && me.inMemoryCache != nil {
 		me.inMemoryCache.Add(s, content)
 	}
-	me.mutex.Unlock()	
+	me.mutex.Unlock()
 
 	p := me.Path(s)
 	err = os.Rename(path, p)
@@ -304,7 +303,7 @@ func (me *ContentCache) SaveStream(input io.Reader, size int64) (hash string) {
 		return ""
 	}
 	hash = dup.Sum()
-	
+
 	me.mutex.Lock()
 	defer me.mutex.Unlock()
 	me.have[hash] = true
@@ -342,8 +341,8 @@ func (me *ContentCache) FetchFromServer(fetcher func(req *ContentRequest, rep *C
 			return nil
 		} else if output == nil {
 			output = me.NewHashWriter()
- 		}
-		
+		}
+
 		n, err := output.Write(rep.Chunk)
 		written += n
 		if err != nil {

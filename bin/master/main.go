@@ -65,7 +65,7 @@ func main() {
 		WritableRoot: root,
 		Paranoia:     *paranoia,
 		Period:       *houseHoldPeriod,
-		KeepAlive:    *keepAlive, 
+		KeepAlive:    *keepAlive,
 	}
 	master := termite.NewMaster(c, &opts)
 

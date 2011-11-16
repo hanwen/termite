@@ -102,8 +102,8 @@ func NewTestCase(t *testing.T) *testCase {
 			Secret:       me.secret,
 			MaxJobs:      1,
 			Coordinator:  coordinatorAddr.String(),
-			KeepAlive: 0.5,
-			Period: 0.5,
+			KeepAlive:    0.5,
+			Period:       0.5,
 		}
 		me.master = NewMaster(masterCache, &masterOpts)
 		me.socket = me.wd + "/master-socket"
@@ -139,7 +139,7 @@ func (me *testCase) Clean() {
 			me.tester.Fatal("Worker shutdown error:", err)
 		}
 	}
-	
+
 	// TODO - should have explicit worker shutdown routine.
 	me.coordinator.Shutdown()
 	time.Sleep(0.1e9)

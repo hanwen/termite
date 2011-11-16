@@ -18,7 +18,7 @@ type WorkerMirrors struct {
 
 func NewWorkerMirrors(w *Worker) *WorkerMirrors {
 	me := &WorkerMirrors{
-		worker: w,
+		worker:    w,
 		mirrorMap: make(map[string]*Mirror),
 	}
 	me.cond = sync.NewCond(&me.mirrorMapMutex)

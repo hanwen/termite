@@ -6,8 +6,8 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"os/user"
 	"os/signal"
+	"os/user"
 	"runtime"
 	"syscall"
 )
@@ -49,7 +49,7 @@ func main() {
 	if err != nil {
 		log.Fatal("ReadFile", err)
 	}
-	
+
 	if *logfile != "" {
 		f, err := os.OpenFile(*logfile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 		if err != nil {

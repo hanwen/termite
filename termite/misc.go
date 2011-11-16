@@ -282,7 +282,7 @@ func ReadHexDatabase(d string) map[string]bool {
 			if !hexRe.MatchString(s.Name) || !s.IsRegular() {
 				continue
 			}
-			
+
 			hex := e.Name + s.Name
 			bin := make([]byte, len(hex)/2)
 			n, err := fmt.Sscanf(hex, "%x", &bin)

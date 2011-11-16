@@ -60,7 +60,7 @@ func (me *RpcFs) FetchHash(a *FileAttr) error {
 	if e == nil && a.Size < _MEMORY_LIMIT {
 		me.cache.FaultIn(a.Hash)
 	}
-	return e	
+	return e
 }
 
 func (me *RpcFs) FetchHashOnce(a *FileAttr) error {

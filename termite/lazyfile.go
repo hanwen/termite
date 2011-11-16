@@ -12,9 +12,9 @@ var _ = log.Println
 
 type LazyLoopbackFile struct {
 	fuse.DefaultFile
-	
-	mu sync.Mutex
-	f fuse.File
+
+	mu   sync.Mutex
+	f    fuse.File
 	Name string
 }
 
@@ -86,4 +86,3 @@ func (me *LazyLoopbackFile) Chown(uid uint32, gid uint32) fuse.Status {
 func (me *LazyLoopbackFile) Chmod(perms uint32) fuse.Status {
 	return fuse.EPERM
 }
-

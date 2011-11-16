@@ -37,8 +37,8 @@ type MasterOptions struct {
 	MaxJobs     int
 	Paranoia    bool
 
-	Period      float64
-	KeepAlive   float64
+	Period    float64
+	KeepAlive float64
 }
 
 type replayRequest struct {
