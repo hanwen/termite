@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"os/user"
 	"os/signal"
 	"runtime"
 	"syscall"
@@ -35,7 +36,7 @@ func main() {
 	coordinator := flag.String("coordinator", "", "Where to register the worker.")
 	jobs := flag.Int("jobs", 1, "Max number of jobs to run.")
 	reapcount := flag.Int("reap-count", 1, "Number of jobs per filesystem.")
-	user := flag.String("user", "nobody", "Run as this user.")
+	userFlag := flag.String("user", "nobody", "Run as this user.")
 	memcache := flag.Int("filecache", 1024, "number of <32k files to cache in memory")
 	logfile := flag.String("logfile", "", "Output log file to use.")
 	paranoia := flag.Bool("paranoia", false, "Check attribute cache.")
@@ -59,17 +60,23 @@ func main() {
 	} else {
 		log.SetPrefix("W")
 	}
-	
+
 	opts := termite.WorkerOptions{
 		Secret:           secret,
 		TempDir:          *tmpdir,
 		CacheDir:         *cachedir,
 		Jobs:             *jobs,
-		User:             user,
 		Paranoia:         *paranoia,
 		FileContentCount: *memcache,
 		ReapCount:        *reapcount,
 		LogFileName:      *logfile,
+	}
+	if os.Geteuid() == 0 {
+		nobody, err := user.Lookup(*userFlag)
+		if err != nil {
+			log.Fatalf("can't lookup %q: %v", *userFlag, err)
+		}
+		opts.User = nobody
 	}
 
 	daemon := termite.NewWorker(&opts)

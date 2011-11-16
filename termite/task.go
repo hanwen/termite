@@ -82,8 +82,8 @@ func (me *WorkerTask) runInFuse(fuseFs *workerFuseFs) error {
 	if os.Geteuid() == 0 {
 		attr := &syscall.SysProcAttr{}
 		attr.Credential = &syscall.Credential{
-			Uid: uint32(me.mirror.daemon.Nobody.Uid),
-			Gid: uint32(me.mirror.daemon.Nobody.Gid),
+			Uid: uint32(me.mirror.daemon.options.User.Uid),
+			Gid: uint32(me.mirror.daemon.options.User.Gid),
 		}
 		attr.Chroot = fuseFs.mount
 

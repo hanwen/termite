@@ -202,7 +202,8 @@ func (me *Mirror) Run(req *WorkRequest, rep *WorkResponse) error {
 const _DELETIONS = "DELETIONS"
 
 func (me *Mirror) newWorkerFuseFs() (*workerFuseFs, error) {
-	f, err := newWorkerFuseFs(me.daemon.tmpDir, me.rpcFs, me.writableRoot, me.daemon.Nobody)
+	f, err := newWorkerFuseFs(me.daemon.tmpDir, me.rpcFs, me.writableRoot,
+		me.daemon.options.User)
 
 	f.id = fmt.Sprintf("%d", me.nextFsId)
 	me.nextFsId++

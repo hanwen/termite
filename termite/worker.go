@@ -21,7 +21,6 @@ import (
 var _ = log.Println
 
 type Worker struct {
-	Nobody       *user.User
 	secret       []byte
 	Hostname     string
 	listener     net.Listener
@@ -51,7 +50,7 @@ type WorkerOptions struct {
 	Jobs     int
 
 	// If set, change user to this for running.
-	User             *string
+	User             *user.User
 	FileContentCount int
 
 	// How often to reap filesystems. If 1, use 1 FS per task.
@@ -114,13 +113,7 @@ func NewWorker(options *WorkerOptions) *Worker {
 		stats:        newCpuStatSampler(),
 		options:      &copied,
 	}
-	if os.Geteuid() == 0 && options.User != nil {
-		nobody, err := user.Lookup(*options.User)
-		if err != nil {
-			log.Fatalf("can't lookup %q: %v", options.User, err)
-		}
-		me.Nobody = nobody
-	}
+
 	me.cond = sync.NewCond(&me.mirrorMapMutex)
 	me.stopListener = make(chan int, 1)
 	me.rpcServer.Register(me)
