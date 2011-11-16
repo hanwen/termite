@@ -17,7 +17,7 @@ import (
 )
 
 type testCase struct {
-	workers    []*WorkerDaemon
+	workers    []*Worker
 	workerOpts *WorkerOptions
 
 	master          *Master
@@ -52,7 +52,7 @@ func testEnv() []string {
 }
 
 func (me *testCase) StartWorker(coordinator string) {
-	worker := NewWorkerDaemon(me.workerOpts)
+	worker := NewWorker(me.workerOpts)
 	// TODO -racy. 
 	me.workers = append(me.workers, worker)
 	worker.RunWorkerServer(0, coordinator)

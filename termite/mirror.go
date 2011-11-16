@@ -11,14 +11,14 @@ import (
 
 // State associated with one master.
 type Mirror struct {
-	daemon         *WorkerDaemon
+	daemon         *Worker
 	fileServer     *rpc.Client
 	fileServerConn net.Conn
 	rpcConn        net.Conn
 	rpcFs          *RpcFs
 	writableRoot   string
 
-	// key in WorkerDaemon's map.
+	// key in Worker's map.
 	key string
 
 	maxJobCount int
@@ -31,7 +31,7 @@ type Mirror struct {
 	shuttingDown bool
 }
 
-func NewMirror(daemon *WorkerDaemon, rpcConn, revConn net.Conn) *Mirror {
+func NewMirror(daemon *Worker, rpcConn, revConn net.Conn) *Mirror {
 	log.Println("Mirror for", rpcConn, revConn)
 
 	mirror := &Mirror{

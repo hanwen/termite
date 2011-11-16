@@ -172,7 +172,7 @@ func (me *Coordinator) killAllHandler(w http.ResponseWriter, req *http.Request) 
 			rep := ShutdownResponse{}
 			cl := rpc.NewClient(conn)
 			defer cl.Close()
-			err = cl.Call("WorkerDaemon.Shutdown", &killReq, &rep)
+			err = cl.Call("Worker.Shutdown", &killReq, &rep)
 		}
 
 		if err != nil {
@@ -215,7 +215,7 @@ func (me *Coordinator) killHandler(w http.ResponseWriter, req *http.Request) {
 	rep := ShutdownResponse{}
 	cl := rpc.NewClient(conn)
 	defer cl.Close()
-	err = cl.Call("WorkerDaemon.Shutdown", &killReq, &rep)
+	err = cl.Call("Worker.Shutdown", &killReq, &rep)
 	if err != nil {
 		fmt.Fprintf(w, "<p><tt>Error: %v<tt>", err)
 		return
@@ -240,7 +240,7 @@ func (me *Coordinator) shutdownWorker(addr string, restart bool) error {
 	killReq := ShutdownRequest{Restart: restart}
 	rep := ShutdownResponse{}
 	cl := rpc.NewClient(conn)
-	err = cl.Call("WorkerDaemon.Shutdown", &killReq, &rep)
+	err = cl.Call("Worker.Shutdown", &killReq, &rep)
 	cl.Close()
 	conn.Close()
 	return err
@@ -298,7 +298,7 @@ func (me *Coordinator) logHandler(w http.ResponseWriter, req *http.Request) {
 	logReq := LogRequest{Whence: os.SEEK_END, Off: -sz, Size: sz}
 	logRep := LogResponse{}
 	client := rpc.NewClient(conn)
-	err = client.Call("WorkerDaemon.Log", &logReq, &logRep)
+	err = client.Call("Worker.Log", &logReq, &logRep)
 	client.Close()
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -325,7 +325,7 @@ func (me *Coordinator) workerHandler(w http.ResponseWriter, req *http.Request) {
 	status := WorkerStatusResponse{}
 
 	client := rpc.NewClient(conn)
-	err = client.Call("WorkerDaemon.Status", &statusReq, &status)
+	err = client.Call("Worker.Status", &statusReq, &status)
 	client.Close()
 	if err != nil {
 		fmt.Fprintf(w, "<p><tt>RPC error: %v<tt>\n", err)

@@ -20,7 +20,7 @@ import (
 
 var _ = log.Println
 
-type WorkerDaemon struct {
+type Worker struct {
 	Nobody       *user.User
 	secret       []byte
 	Hostname     string
@@ -62,7 +62,7 @@ type WorkerOptions struct {
 	ReportInterval float64
 }
 
-func (me *WorkerDaemon) getMirror(rpcConn, revConn net.Conn, reserveCount int) (*Mirror, error) {
+func (me *Worker) getMirror(rpcConn, revConn net.Conn, reserveCount int) (*Mirror, error) {
 	if reserveCount <= 0 {
 		return nil, errors.New("must ask positive jobcount")
 	}
@@ -89,7 +89,7 @@ func (me *WorkerDaemon) getMirror(rpcConn, revConn net.Conn, reserveCount int) (
 	return mirror, nil
 }
 
-func NewWorkerDaemon(options *WorkerOptions) *WorkerDaemon {
+func NewWorker(options *WorkerOptions) *Worker {
 	if options.FileContentCount == 0 {
 		options.FileContentCount = 1024
 	}
@@ -103,7 +103,7 @@ func NewWorkerDaemon(options *WorkerOptions) *WorkerDaemon {
 
 	cache := NewContentCache(options.CacheDir)
 	cache.SetMemoryCacheSize(options.FileContentCount)
-	me := &WorkerDaemon{
+	me := &Worker{
 		secret:       options.Secret,
 		contentCache: cache,
 		mirrorMap:    make(map[string]*Mirror),
@@ -128,7 +128,7 @@ func NewWorkerDaemon(options *WorkerOptions) *WorkerDaemon {
 	return me
 }
 
-func (me *WorkerDaemon) PeriodicReport(coordinator string, port int) {
+func (me *Worker) PeriodicReport(coordinator string, port int) {
 	if coordinator == "" {
 		log.Println("No coordinator - not doing period reports.")
 		return
@@ -140,7 +140,7 @@ func (me *WorkerDaemon) PeriodicReport(coordinator string, port int) {
 	}
 }
 
-func (me *WorkerDaemon) report(coordinator string, port int) {
+func (me *Worker) report(coordinator string, port int) {
 	client, err := rpc.DialHTTP("tcp", coordinator)
 	if err != nil {
 		log.Println("dialing coordinator:", err)
@@ -173,11 +173,11 @@ func (me *WorkerDaemon) report(coordinator string, port int) {
 }
 
 // TODO - should expose under ContentServer name?
-func (me *WorkerDaemon) FileContent(req *ContentRequest, rep *ContentResponse) error {
+func (me *Worker) FileContent(req *ContentRequest, rep *ContentResponse) error {
 	return ServeFileContent(me.contentCache, req, rep)
 }
 
-func (me *WorkerDaemon) CreateMirror(req *CreateMirrorRequest, rep *CreateMirrorResponse) error {
+func (me *Worker) CreateMirror(req *CreateMirrorRequest, rep *CreateMirrorResponse) error {
 	if me.shuttingDown {
 		return errors.New("Worker is shutting down.")
 	}
@@ -196,7 +196,7 @@ func (me *WorkerDaemon) CreateMirror(req *CreateMirrorRequest, rep *CreateMirror
 	return nil
 }
 
-func (me *WorkerDaemon) DropMirror(mirror *Mirror) {
+func (me *Worker) DropMirror(mirror *Mirror) {
 	me.mirrorMapMutex.Lock()
 	defer me.mirrorMapMutex.Unlock()
 
@@ -206,14 +206,14 @@ func (me *WorkerDaemon) DropMirror(mirror *Mirror) {
 	runtime.GC()
 }
 
-func (me *WorkerDaemon) serveConn(conn net.Conn) {
+func (me *Worker) serveConn(conn net.Conn) {
 	log.Println("Authenticated connection from", conn.RemoteAddr())
 	if !me.pending.Accept(conn) {
 		go me.rpcServer.ServeConn(conn)
 	}
 }
 
-func (me *WorkerDaemon) RunWorkerServer(port int, coordinator string) {
+func (me *Worker) RunWorkerServer(port int, coordinator string) {
 	me.listener = AuthenticatedListener(port, me.secret)
 	_, portString, _ := net.SplitHostPort(me.listener.Addr().String())
 
@@ -237,7 +237,7 @@ func (me *WorkerDaemon) RunWorkerServer(port int, coordinator string) {
 	}
 }
 
-func (me *WorkerDaemon) Shutdown(req *ShutdownRequest, rep *ShutdownResponse) error {
+func (me *Worker) Shutdown(req *ShutdownRequest, rep *ShutdownResponse) error {
 	log.Println("Received Shutdown.")
 	if req.Restart {
 		me.mustRestart = true
@@ -259,7 +259,7 @@ func (me *WorkerDaemon) Shutdown(req *ShutdownRequest, rep *ShutdownResponse) er
 	return nil
 }
 
-func (me *WorkerDaemon) Log(req *LogRequest, rep *LogResponse) error {
+func (me *Worker) Log(req *LogRequest, rep *LogResponse) error {
 	if me.LogFileName == "" {
 		return fmt.Errorf("No log filename set.")
 	}
@@ -306,7 +306,7 @@ func (me *WorkerDaemon) Log(req *LogRequest, rep *LogResponse) error {
 	return nil
 }
 
-func (me *WorkerDaemon) restart(coord string) {
+func (me *Worker) restart(coord string) {
 	cl := http.Client{}
 	req, err := cl.Get(fmt.Sprintf("http://%s/bin/worker", coord))
 	if err != nil {

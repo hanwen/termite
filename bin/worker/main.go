@@ -13,7 +13,7 @@ import (
 
 var _ = log.Printf
 
-func handleStop(daemon *termite.WorkerDaemon) {
+func handleStop(daemon *termite.Worker) {
 	for {
 		sig := <-signal.Incoming
 		switch sig.(os.UnixSignal) {
@@ -60,7 +60,7 @@ func main() {
 		ReapCount:        *reapcount,
 	}
 
-	daemon := termite.NewWorkerDaemon(&opts)
+	daemon := termite.NewWorker(&opts)
 	if *logfile != "" {
 		f, err := os.OpenFile(*logfile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 		if err != nil {

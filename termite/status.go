@@ -19,7 +19,7 @@ func (me *Mirror) Status(req *MirrorStatusRequest, rep *MirrorStatusResponse) er
 	return nil
 }
 
-func (me *WorkerDaemon) Status(req *WorkerStatusRequest, rep *WorkerStatusResponse) error {
+func (me *Worker) Status(req *WorkerStatusRequest, rep *WorkerStatusResponse) error {
 	me.mirrorMapMutex.Lock()
 	defer me.mirrorMapMutex.Unlock()
 
