@@ -13,24 +13,22 @@ import (
 
 func main() {
 	home := os.Getenv("HOME")
-	cachedir := flag.String("cachedir",
-		filepath.Join(home, ".cache", "termite-master"), "content cache")
-	workers := flag.String("workers", "", "comma separated list of worker addresses")
-	coordinator := flag.String("coordinator", "localhost:1233",
-		"address of coordinator. Overrides -workers")
-	socket := flag.String("socket", ".termite-socket", "socket to listen for commands")
-	logfile := flag.String("logfile", "", "where to send log output.")
-	exclude := flag.String("exclude",
-		"usr/lib/locale/locale-archive,sys,proc,dev,selinux,cgroup", "prefixes to not export.")
-	secretFile := flag.String("secret", "secret.txt", "file containing password.")
-	srcRoot := flag.String("sourcedir", "", "root of corresponding source directory")
-	jobs := flag.Int("jobs", 1, "number of jobs to run")
-	port := flag.Int("port", 1237, "http status port")
+	cachedir := flag.String("cachedir", filepath.Join(home, ".cache", "termite-master"), "content cache")
+	coordinator := flag.String("coordinator", "localhost:1233", "address of coordinator. Overrides -workers")
+	exclude := flag.String("exclude", "usr/lib/locale/locale-archive,sys,proc,dev,selinux,cgroup", "prefixes to not export.")
+	fetchAll := flag.Bool("fetch-all", true, "Fetch all files on startup.")
 	houseHoldPeriod := flag.Float64("time.household", 60.0, "how often to do house hold tasks.")
+	jobs := flag.Int("jobs", 1, "number of jobs to run")
 	keepAlive := flag.Float64("time.keepalive", 60.0, "for how long to keep workers reserved.")
+	logfile := flag.String("logfile", "", "where to send log output.")
 	memcache := flag.Int("filecache", 1024, "number of <32k files to cache in memory")
 	paranoia := flag.Bool("paranoia", false, "Check attribute cache.")
-
+	port := flag.Int("port", 1237, "http status port")
+	secretFile := flag.String("secret", "secret.txt", "file containing password.")
+	socket := flag.String("socket", ".termite-socket", "socket to listen for commands")
+	srcRoot := flag.String("sourcedir", "", "root of corresponding source directory")
+	workers := flag.String("workers", "", "comma separated list of worker addresses")
+	
 	flag.Parse()
 
 	if *logfile != "" {
@@ -66,6 +64,7 @@ func main() {
 		Paranoia:     *paranoia,
 		Period:       *houseHoldPeriod,
 		KeepAlive:    *keepAlive,
+		FetchAll:     *fetchAll,
 	}
 	master := termite.NewMaster(c, &opts)
 

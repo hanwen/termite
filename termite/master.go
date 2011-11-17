@@ -37,6 +37,9 @@ type MasterOptions struct {
 	MaxJobs     int
 	Paranoia    bool
 
+	// On startup, fault-in all files.
+	FetchAll    bool
+	
 	Period    float64
 	KeepAlive float64
 }
@@ -163,11 +166,14 @@ func (me *Master) CheckPrivate() {
 func (me *Master) Start(sock string) {
 	// Fetch in the background.
 	last := ""
-	for _, r := range []string{me.options.WritableRoot, me.options.SrcRoot} {
-		if last == r || r == "" {
-			continue
+
+	if me.options.FetchAll {
+		for _, r := range []string{me.options.WritableRoot, me.options.SrcRoot} {
+			if last == r || r == "" {
+				continue
+			}
+			go me.fetchAll(strings.TrimLeft(r, "/"))
 		}
-		go me.fetchAll(strings.TrimLeft(r, "/"))
 	}
 	go localStart(me, sock)
 	me.waitForExit()
