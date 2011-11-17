@@ -445,8 +445,8 @@ func (me *Master) fetchAll(path string) {
 }
 
 func (me *Master) waitForExit() {
+	me.mirrors.refreshWorkers()
 	ticker := time.NewTicker(int64(1e9 * me.options.Period))
-
 	for {
 		select {
 		case <-me.quit:
