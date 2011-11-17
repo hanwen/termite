@@ -24,7 +24,6 @@ MANUAL_GOFILES=\
 	localrun.go \
 	master.go \
 	masterrun.go \
-	masterstats.go \
 	masterstatus.go \
 	mirror.go \
 	mirrors.go \
@@ -34,6 +33,7 @@ MANUAL_GOFILES=\
 	procfs.go \
 	rpc.go \
 	rpcfs.go \
+	serverstats.go \
 	status.go \
 	task.go \
 	timerpc.go \

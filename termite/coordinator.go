@@ -364,6 +364,12 @@ func (me *Coordinator) workerHandler(w http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(w, "<p>Total CPU: %s", status.TotalCpu.Percent())
 	fmt.Fprintf(w, "<p>Content cache hit rate: %.0f %%", 100.0*status.ContentCacheHitRate)
 
+	fmt.Fprintf(w, "<ul>\n")
+	for i, n := range status.PhaseNames {
+		fmt.Fprintf(w, "<li>jobs in phase %s: %d\n", n, status.PhaseCounts[i])
+	}
+	fmt.Fprintf(w, "</ul>\n")
+	
 	for _, mirrorStatus := range status.MirrorStatus {
 		me.mirrorStatusHtml(w, mirrorStatus)
 	}

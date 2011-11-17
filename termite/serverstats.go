@@ -9,33 +9,34 @@ import (
 
 var _ = log.Println
 
-type masterStats struct {
-	counterMutex  sync.Mutex
+type serverStats struct {
+	mutex         sync.Mutex
 	phaseCounts   map[string]int
 	cpuStats      *cpuStatSampler
-	fsServerStats *TimerStats
+	phaseOrder    []string 
 }
 
-func newMasterStats() *masterStats {
-	return &masterStats{
+func newServerStats() *serverStats {
+	return &serverStats{
 		phaseCounts: map[string]int{},
 		cpuStats:    newCpuStatSampler(),
 	}
 }
 
-func (me *masterStats) Enter(phase string) {
-	me.counterMutex.Lock()
-	defer me.counterMutex.Unlock()
+func (me *serverStats) Enter(phase string) {
+	me.mutex.Lock()
+	defer me.mutex.Unlock()
 	me.phaseCounts[phase]++
 }
 
-func (me *masterStats) Exit(phase string) {
-	me.counterMutex.Lock()
-	defer me.counterMutex.Unlock()
+func (me *serverStats) Exit(phase string) {
+	me.mutex.Lock()
+	defer me.mutex.Unlock()
 	me.phaseCounts[phase]--
 }
 
-func (me *masterStats) writeHttp(w http.ResponseWriter) {
+func (me *serverStats) writeHttp(w http.ResponseWriter) {
+	// TODO - share code with coordinator HTTP code.
 	minuteStat := CpuStat{}
 	fiveSecStat := CpuStat{}
 	stats := me.cpuStats.CpuStats()
@@ -56,10 +57,22 @@ func (me *masterStats) writeHttp(w http.ResponseWriter) {
 			float64(fiveSecStat.SelfCpu)*1e-9, float64(fiveSecStat.SelfSys)*1e-9,
 			float64(fiveSecStat.SelfCpu+fiveSecStat.SelfSys)/float64(s*1e9))
 	}
-	me.counterMutex.Lock()
-	defer me.counterMutex.Unlock()
+	me.mutex.Lock()
+	defer me.mutex.Unlock()
 
-	for _, k := range []string{"run", "send", "remote", "filewait"} {
-		fmt.Fprintf(w, "<p>Jobs in %s status: %d ", k, me.phaseCounts[k])
+	fmt.Fprintf(w, "<ul>")
+	for _, k := range me.phaseOrder {
+		fmt.Fprintf(w, "<li>Jobs in phase %s: %d ", k, me.phaseCounts[k])
+	}
+	fmt.Fprintf(w, "</ul>")
+}
+
+func (me *serverStats) FillWorkerStatus(rep *WorkerStatusResponse) {
+	me.mutex.Lock()
+	defer me.mutex.Unlock()
+	rep.CpuStats = me.cpuStats.CpuStats()
+	for _, n := range me.phaseOrder {
+		rep.PhaseNames = append(rep.PhaseNames, n) 
+		rep.PhaseCounts = append(rep.PhaseCounts, me.phaseCounts[n]) 
 	}
 }

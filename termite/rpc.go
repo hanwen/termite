@@ -105,6 +105,8 @@ type WorkerStatusResponse struct {
 	CpuStats            []CpuStat
 	TotalCpu            CpuStat
 	ContentCacheHitRate float64
+	PhaseNames          []string        
+	PhaseCounts         []int 
 }
 
 type Timing struct {

@@ -180,7 +180,9 @@ func (me *Mirror) updateFiles(attrs []*FileAttr) {
 }
 
 func (me *Mirror) Run(req *WorkRequest, rep *WorkResponse) error {
+	me.daemon.stats.Enter("run")
 	log.Print("Received request", req)
+	
 	// Don't run me.updateFiles() as we don't want to issue
 	// unneeded cache invalidations.
 	task, err := me.newWorkerTask(req, rep)
@@ -197,6 +199,7 @@ func (me *Mirror) Run(req *WorkRequest, rep *WorkResponse) error {
 	rep.LastTime = 0
 	log.Println(rep)
 	rep.WorkerId = fmt.Sprintf("%s: %s", Hostname, me.daemon.listener.Addr().String())
+	me.daemon.stats.Exit("run")
 	return nil
 }
 

@@ -74,7 +74,7 @@ type mirrorConnections struct {
 
 	wantedMaxJobs int
 
-	stats *masterStats
+	stats *serverStats
 
 	// Protects all of the below.
 	sync.Mutex
@@ -124,10 +124,11 @@ func newMirrorConnections(m *Master, workers []string, coordinator string, maxJo
 		workers:       make(map[string]bool),
 		mirrors:       make(map[string]*mirrorConnection),
 		coordinator:   coordinator,
-		stats:         newMasterStats(),
 		keepAliveNs:   60e9,
 	}
+	me.refreshStats()
 
+		
 	for _, w := range workers {
 		me.workers[w] = true
 	}
@@ -137,6 +138,11 @@ func newMirrorConnections(m *Master, workers []string, coordinator string, maxJo
 		}
 	}
 	return me
+}
+
+func (me *mirrorConnections) refreshStats() {
+	me.stats = newServerStats()
+	me.stats.phaseOrder = []string{"run", "send", "remote", "filewait"}
 }
 
 func (me *mirrorConnections) periodicHouseholding() {
@@ -194,7 +200,7 @@ func (me *mirrorConnections) dropConnections() {
 		me.master.attr.RmClient(mc)
 	}
 	me.mirrors = make(map[string]*mirrorConnection)
-	me.stats = newMasterStats()
+	me.refreshStats()
 }
 
 // Gets a mirrorConnection to run on.  Will block if none available

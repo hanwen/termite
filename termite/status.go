@@ -26,7 +26,7 @@ func (me *Worker) Status(req *WorkerStatusRequest, rep *WorkerStatusResponse) er
 	rep.MaxJobCount = me.options.Jobs
 	rep.Version = Version()
 	rep.ShuttingDown = me.shuttingDown
-	rep.CpuStats = me.stats.CpuStats()
+	me.stats.FillWorkerStatus(rep)
 	rep.TotalCpu = *TotalCpuStat()
 	rep.ContentCacheHitRate = me.contentCache.MemoryHitRate()
 	return nil
