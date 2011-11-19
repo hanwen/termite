@@ -1,4 +1,4 @@
-package termite
+package fs
 
 import (
 	"fmt"
@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 	"unicode"
 )
@@ -46,6 +47,13 @@ func isNum(n string) bool {
 		}
 	}
 	return len(n) > 0
+}
+
+// TODO - move into fuse
+func SplitPath(name string) (dir, base string) {
+	dir, base = filepath.Split(name)
+	dir = strings.TrimRight(dir, "/")
+	return dir, base
 }
 
 func (me *ProcFs) GetAttr(name string, context *fuse.Context) (*os.FileInfo, fuse.Status) {

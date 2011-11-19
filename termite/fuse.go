@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/hanwen/go-fuse/fuse"
-	"github.com/hanwen/go-fuse/unionfs"
+	"github.com/hanwen/termite/fs"
 	"io/ioutil"
 	"log"
 	"os"
@@ -22,8 +22,8 @@ type workerFuseFs struct {
 	writableRoot string
 	*fuse.MountState
 	fsConnector *fuse.FileSystemConnector
-	unionFs     *unionfs.MemUnionFs
-	procFs      *ProcFs
+	unionFs     *fs.MemUnionFs
+	procFs      *fs.ProcFs
 	rpcNodeFs   *fuse.PathNodeFs
 	unionNodeFs *fuse.PathNodeFs
 
@@ -115,10 +115,10 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string, 
 	}
 	go me.MountState.Loop()
 
-	me.unionFs = unionfs.NewMemUnionFs(
+	me.unionFs = fs.NewMemUnionFs(
 		me.rwDir, &fuse.PrefixFileSystem{rpcFs, me.writableRoot})
 
-	me.procFs = NewProcFs()
+	me.procFs = fs.NewProcFs()
 	me.procFs.StripPrefix = me.mount
 	if nobody != nil {
 		me.procFs.Uid = nobody.Uid
@@ -132,7 +132,7 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string, 
 		{"proc", fuse.NewPathNodeFs(me.procFs, nil)},
 		{"sys", fuse.NewPathNodeFs(&fuse.ReadonlyFileSystem{fuse.NewLoopbackFileSystem("/sys")}, nil)},
 		{"tmp", fuse.NewMemNodeFs(tmpBacking + "tmp")},
-		{"dev", NewDevNullFs()},
+		{"dev", fs.NewDevNullFs()},
 		{"var/tmp", fuse.NewMemNodeFs(tmpBacking + "vartmp")},
 	}
 	for _, s := range mounts {
@@ -170,7 +170,7 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string, 
 }
 
 func (me *workerFuseFs) update(attrs []*FileAttr) {
-	updates := map[string]*unionfs.Result{}
+	updates := map[string]*fs.Result{}
 	for _, attr := range attrs {
 		path := strings.TrimLeft(attr.Path, "/")
 		if !strings.HasPrefix(path, me.writableRoot) {
@@ -180,9 +180,9 @@ func (me *workerFuseFs) update(attrs []*FileAttr) {
 		path = strings.TrimLeft(path[len(me.writableRoot):], "/")
 
 		if attr.Deletion() {
-			updates[path] = &unionfs.Result{}
+			updates[path] = &fs.Result{}
 		} else {
-			updates[path] = &unionfs.Result{
+			updates[path] = &fs.Result{
 				FileInfo: attr.FileInfo,
 				Original: "",
 				Backing:  "",

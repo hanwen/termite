@@ -1,4 +1,4 @@
-package termite
+package fs
 
 import (
 	"github.com/hanwen/go-fuse/fuse"

@@ -22,6 +22,7 @@ func init() {
 	rand.Seed(time.Nanoseconds() ^ (int64(os.Getpid()) << 32))
 }
 
+// TODO - move into fuse
 func SplitPath(name string) (dir, base string) {
 	dir, base = filepath.Split(name)
 	dir = strings.TrimRight(dir, "/")

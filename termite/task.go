@@ -3,7 +3,7 @@ package termite
 import (
 	"bytes"
 	"fmt"
-	"github.com/hanwen/go-fuse/unionfs"
+	"github.com/hanwen/termite/fs"
 	"log"
 	"net"
 	"os"
@@ -140,7 +140,7 @@ func (me *WorkerTask) runInFuse(fuseFs *workerFuseFs) error {
 
 // Sorts FileAttr such deletions come reversed before additions.
 
-func (me *Mirror) fillReply(ufs *unionfs.MemUnionFs) *FileSet {
+func (me *Mirror) fillReply(ufs *fs.MemUnionFs) *FileSet {
 	yield := ufs.Reap()
 	wrRoot := strings.TrimLeft(me.writableRoot, "/")
 	cache := me.daemon.contentCache

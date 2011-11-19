@@ -2,7 +2,7 @@
 include $(GOROOT)/src/Make.inc
 
 TARG=github.com/hanwen/termite/termite
-DEPS=../../go-fuse/fuse ../../go-fuse/unionfs
+DEPS=../fs
 
 MANUAL_GOFILES=\
 	attrcache.go \
@@ -11,7 +11,6 @@ MANUAL_GOFILES=\
 	coordinator.go \
 	copy.go \
 	cpustat.go \
-	devnullfs.go \
 	fileattr.go \
 	fileset.go \
 	filesetwaiter.go \
@@ -30,7 +29,6 @@ MANUAL_GOFILES=\
 	mirrorconnection.go \
 	misc.go \
 	periodicsampler.go \
-	procfs.go \
 	rpc.go \
 	rpcfs.go \
 	serverstats.go \
