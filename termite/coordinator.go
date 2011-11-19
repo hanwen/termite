@@ -436,7 +436,7 @@ func (me *Coordinator) ServeHTTP(port int) {
 		Handler: me.Mux,
 	}
 	err = httpServer.Serve(me.listener)
-	if err != nil {
-		log.Println("httpServer.Serve: ", err)
+	if err != nil && err != os.EINVAL {
+		log.Println("httpServer.Serve:", err)
 	}
 }
