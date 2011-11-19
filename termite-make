@@ -2,6 +2,12 @@
 
 if test "${TERMITE_CACHE_REFRESHED}" = ""
 then
+  RMV=$( rm --version | head -1 )
+  if ! echo ${RMV} | grep ' 8' >& /dev/null
+  then
+    echo "Need GNU Coreutils 8.x, found '${RMV}'"
+    exit 2
+  fi
   shell-wrapper -refresh
   export TERMITE_CACHE_REFRESHED=yes
 fi
