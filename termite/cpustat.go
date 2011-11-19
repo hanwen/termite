@@ -18,17 +18,17 @@ func sampleTime() interface{} {
 func TotalCpuStat() *CpuStat {
 	c := CpuStat{}
 	r := syscall.Rusage{}
-	errNo := syscall.Getrusage(RUSAGE_SELF, &r)
-	if errNo != 0 {
-		log.Println("Getrusage:", errNo)
+	err := syscall.Getrusage(RUSAGE_SELF, &r)
+	if err != nil {
+		log.Println("Getrusage:", err)
 		return nil
 	}
 
 	c.SelfCpu = syscall.TimevalToNsec(r.Utime)
 	c.SelfSys = syscall.TimevalToNsec(r.Stime)
 
-	errNo = syscall.Getrusage(RUSAGE_CHILDREN, &r)
-	if errNo != 0 {
+	err = syscall.Getrusage(RUSAGE_CHILDREN, &r)
+	if err != nil {
 		return nil
 	}
 	c.ChildCpu = syscall.TimevalToNsec(r.Utime)

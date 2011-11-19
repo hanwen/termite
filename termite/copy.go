@@ -75,10 +75,10 @@ func getPipeMaxSize() int {
 }
 
 // copy & paste from syscall.
-func fcntl(fd int, cmd int, arg int) (val int, errno int) {
+func fcntl(fd int, cmd int, arg int) (val int, errno syscall.Errno) {
 	r0, _, e1 := syscall.Syscall(syscall.SYS_FCNTL, uintptr(fd), uintptr(cmd), uintptr(arg))
 	val = int(r0)
-	errno = int(e1)
+	errno = syscall.Errno(e1)
 	return
 }
 
@@ -127,7 +127,7 @@ func newSplicePair() (me *splicePair, err error) {
 		return nil, err
 	}
 
-	errNo := 0
+	errNo := syscall.Errno(0)
 	_, errNo = fcntl(me.r.Fd(), syscall.F_SETFL, os.O_NONBLOCK)
 	if errNo != 0 {
 		me.Close()
@@ -158,16 +158,16 @@ func SpliceCopy(dst *os.File, src *os.File, p *splicePair) (int64, error) {
 	total := int64(0)
 
 	for {
-		n, errNo := syscall.Splice(src.Fd(), nil, p.w.Fd(), nil, p.size, 0)
-		if errNo != 0 {
-			return total, os.NewSyscallError("Splice", errNo)
+		n, err := syscall.Splice(src.Fd(), nil, p.w.Fd(), nil, p.size, 0)
+		if err != nil {
+			return total, os.NewSyscallError("Splice", err)
 		}
 		if n == 0 {
 			break
 		}
-		m, errNo := syscall.Splice(p.r.Fd(), nil, dst.Fd(), nil, int(n), 0)
-		if errNo != 0 {
-			return total, os.NewSyscallError("Splice", errNo)
+		m, err := syscall.Splice(p.r.Fd(), nil, dst.Fd(), nil, int(n), 0)
+		if err != nil {
+			return total, os.NewSyscallError("Splice", err)
 		}
 		if m < n {
 			panic("m<n")
