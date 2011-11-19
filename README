@@ -115,11 +115,14 @@ SECURITY
 
   If this connection scheme gets broken,
 
-  - a malicious user may request all files from the master that the
-    UID running the master has access to.
+* Worker and master must trust each other, for the following reasons:
 
-  - a malicious user may try to run a binary on the worker that tries
-    to break out of chroot.
+  - workers can request all publicly readable files from the master.
+    
+  - workers can cause the master to run arbitrary binaries as the user
+    compiling.
+
+  - the master can make the worker run arbitrary binaries as 'nobody'.
 
 * The master will never serve files that have no group/other
   permissions.
@@ -139,16 +142,16 @@ TODO (by decreasing priority)
 * In-memory file writing.
 * Compile linux kernel
 * Security review for the connection scheme.
-
+* Better connection scheme? Use exp/ssh, tls?
 
 SUCCESSFUL COMPILES
 
 Termite timings by running master and single worker on the same
-machine.
+machine.  The smaller the package, the larger the overhead. 
 
 * coreutils 8.12 (1.6x slower, Lenovo T60, 2-core, make -j2)
 
-* Make 3.82. (1.6x slower, Lenovo T60, 2-core, make -j2)
+* Make 3.82 (1.85x slower, Lenovo T60, 2-core)
 
 * LLVM 2.9 (1.5 slower, Dell T5300 6-core, make -j12)
 
