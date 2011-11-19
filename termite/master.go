@@ -362,6 +362,14 @@ func (me *Master) replayFileModifications(infos []*FileAttr, newFiles map[string
 		if err != nil {
 			log.Fatal("Replay error ", info.Path, " ", err, infos, logStr)
 		}
+
+		if info.FileInfo != nil {
+			// Reread FileInfo, since some filesystems (eg. ext3) do
+			// not have nanosecond timestamps.
+			//
+			// TODO - test this.
+			info.FileInfo, _ = os.Lstat(name)
+		}
 	}
 
 	me.attr.Update(infos)
