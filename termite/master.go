@@ -268,7 +268,7 @@ func (me *Master) runOnMirror(mirror *mirrorConnection, req *WorkRequest, rep *W
 		log.Println("with environment", req.Env)
 	}
 
-	mirror.fileSetWaiter.NewChannel(req.TaskId)
+	mirror.fileSetWaiter.Prepare(req.TaskId)
 	me.mirrors.stats.Enter("remote")
 	err = mirror.rpcClient.Call("Mirror.Run", req, rep)
 	me.mirrors.stats.Exit("remote")

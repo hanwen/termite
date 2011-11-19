@@ -6,8 +6,6 @@ import (
 	"sync"
 )
 
-var _ = log.Println
-
 type FileSetWaiter struct {
 	process func(fset FileSet) error
 	sync.Mutex
@@ -21,13 +19,13 @@ func NewFileSetWaiter(proc func(FileSet) error) *FileSetWaiter {
 	}
 }
 
-func (me *FileSetWaiter) NewChannel(id int) chan int {
+func (me *FileSetWaiter) Prepare(id int) {
 	me.Lock()
 	defer me.Unlock()
-
-	c := make(chan int, 1)
-	me.channels[id] = c
-	return c
+	if _, ok := me.channels[id]; ok {
+		log.Panicf("Already waiting on id %d", id)
+	}
+	me.channels[id] = make(chan int, 1)
 }
 
 func (me *FileSetWaiter) findChannel(id int) chan int {
