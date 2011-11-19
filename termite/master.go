@@ -464,12 +464,12 @@ func (me *Master) waitForExit() {
 	me.mirrors.refreshWorkers()
 	ticker := time.NewTicker(int64(1e9 * me.options.Period))
 
-	exit := false
-	for !exit {
+L:
+	for {
 		select {
 		case <-me.quit:
 			log.Println("quit received.", me.mirrors.coordinator)
-			exit = true
+			break L
 		case <-ticker.C:
 			log.Println("periodic household.", me.mirrors.coordinator)
 			me.mirrors.periodicHouseholding()

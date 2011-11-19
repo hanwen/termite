@@ -5,7 +5,6 @@ import (
 	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/termite/attr"
 	"io/ioutil"
-	"log"
 	"net"
 	"net/http"
 	"net/rpc"
