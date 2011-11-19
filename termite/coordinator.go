@@ -3,6 +3,7 @@ package termite
 import (
 	"errors"
 	"fmt"
+	"github.com/hanwen/termite/stats"
 	"log"
 	"net"
 	"net/http"
@@ -342,7 +343,7 @@ func (me *Coordinator) workerHandler(w http.ResponseWriter, req *http.Request) {
 		start = 0
 	}
 
-	stat5s := CpuStat{}
+	stat5s := stats.CpuStat{}
 	for _, v := range status.CpuStats[start:] {
 		stat5s = stat5s.Add(v)
 		fmt.Fprintf(w, "<tr><td>%d</td><td>%d</td><td>%d</td><td>%d</td><td>%d</td></tr>",
@@ -351,7 +352,7 @@ func (me *Coordinator) workerHandler(w http.ResponseWriter, req *http.Request) {
 	}
 	fmt.Fprintf(w, "</table>")
 
-	minuteStat := CpuStat{}
+	minuteStat := stats.CpuStat{}
 	for _, v := range status.CpuStats {
 		minuteStat = minuteStat.Add(v)
 	}

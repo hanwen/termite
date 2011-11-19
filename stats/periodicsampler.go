@@ -1,4 +1,4 @@
-package termite
+package stats
 
 import (
 	"log"

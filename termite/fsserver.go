@@ -4,20 +4,21 @@ import (
 	"log"
 	"github.com/hanwen/termite/attr"
 	"github.com/hanwen/termite/cba"
+	"github.com/hanwen/termite/stats"
 	"time"
 )
 
 type FsServer struct {
 	contentCache *cba.ContentCache
 	attributes    *attr.AttributeCache
-	stats        *TimerStats
+	stats        *stats.TimerStats
 }
 
 func NewFsServer(a *attr.AttributeCache, cache *cba.ContentCache) *FsServer {
 	me := &FsServer{
 		contentCache: cache,
 		attributes:   a,
-		stats:        NewTimerStats(),
+		stats:        stats.NewTimerStats(),
 	}
 
 	return me

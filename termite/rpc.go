@@ -3,6 +3,7 @@ package termite
 import (
 	"fmt"
 	"github.com/hanwen/termite/attr"
+	"github.com/hanwen/termite/stats"
 	"os"
 )
 
@@ -27,29 +28,7 @@ type MirrorStatusRequest struct {
 
 }
 
-type RpcTiming struct {
-	N  int64
-	Ns int64
-}
 
-func (me *RpcTiming) String() string {
-	avg := me.Ns / me.N
-
-	unit := "ns"
-	div := int64(1)
-	switch {
-	case avg > 1e9:
-		unit = "s"
-		div = 1e9
-	case avg > 1e6:
-		unit = "ms"
-		div = 1e6
-	case avg > 1e3:
-		unit = "us"
-		div = 1e3
-	}
-	return fmt.Sprintf("%d calls, %d %s/call", me.N, avg/div, unit)
-}
 
 type MirrorStatusResponse struct {
 	Root         string
@@ -65,13 +44,6 @@ type WorkerStatusRequest struct {
 
 }
 
-type CpuStat struct {
-	SelfCpu  int64
-	SelfSys  int64
-	ChildCpu int64
-	ChildSys int64
-}
-
 type WorkerStatusResponse struct {
 	MirrorStatus []MirrorStatusResponse
 	Version      string
@@ -79,8 +51,8 @@ type WorkerStatusResponse struct {
 	ShuttingDown bool
 
 	// In chronological order.
-	CpuStats            []CpuStat
-	TotalCpu            CpuStat
+	CpuStats            []stats.CpuStat
+	TotalCpu            stats.CpuStat
 	ContentCacheHitRate float64
 	PhaseNames          []string        
 	PhaseCounts         []int 

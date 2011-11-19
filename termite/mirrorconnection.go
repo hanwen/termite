@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/hanwen/termite/attr"
 	"github.com/hanwen/termite/cba"
+	"github.com/hanwen/termite/stats"
 	"log"
 	"math/rand"
 	"net"
@@ -55,7 +56,7 @@ func (me *mirrorConnection) replay(fset attr.FileSet) error {
 					return me.innerFetch(start, end, info.Hash)
 				})
 			if saved != info.Hash {
-				log.Fatal("mirrorConnection.replay: fetch corruption got %x want %x", saved, info.Hash)
+				log.Fatalf("mirrorConnection.replay: fetch corruption got %x want %x", saved, info.Hash)
 			}
 			if err != nil {
 				return err
@@ -90,7 +91,7 @@ type mirrorConnections struct {
 
 	wantedMaxJobs int
 
-	stats *serverStats
+	stats *stats.ServerStats
 
 	// Protects all of the below.
 	sync.Mutex
@@ -157,8 +158,8 @@ func newMirrorConnections(m *Master, workers []string, coordinator string, maxJo
 }
 
 func (me *mirrorConnections) refreshStats() {
-	me.stats = newServerStats()
-	me.stats.phaseOrder = []string{"run", "send", "remote", "filewait"}
+	me.stats = stats.NewServerStats()
+	me.stats.PhaseOrder = []string{"run", "send", "remote", "filewait"}
 }
 
 func (me *mirrorConnections) periodicHouseholding() {

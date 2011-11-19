@@ -2,13 +2,12 @@
 include $(GOROOT)/src/Make.inc
 
 TARG=github.com/hanwen/termite/termite
-DEPS=../fs ../attr ../cba
+DEPS=../fs ../attr ../cba ../stats
 
 MANUAL_GOFILES=\
 	connection.go \
 	coordinator.go \
 	copy.go \
-	cpustat.go \
 	fsserver.go \
 	fuse.go \
 	getopt.go \
@@ -22,13 +21,10 @@ MANUAL_GOFILES=\
 	mirrors.go \
 	mirrorconnection.go \
 	misc.go \
-	periodicsampler.go \
 	rpc.go \
 	rpcfs.go \
-	serverstats.go \
 	status.go \
 	task.go \
-	timerpc.go \
 	version.go \
 	worker.go \
 

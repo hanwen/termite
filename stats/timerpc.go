@@ -1,4 +1,4 @@
-package termite
+package stats
 
 import (
 	"fmt"
@@ -9,6 +9,30 @@ import (
 type TimerStats struct {
 	mu      sync.Mutex
 	timings map[string]*RpcTiming
+}
+
+type RpcTiming struct {
+	N  int64
+	Ns int64
+}
+
+func (me *RpcTiming) String() string {
+	avg := me.Ns / me.N
+
+	unit := "ns"
+	div := int64(1)
+	switch {
+	case avg > 1e9:
+		unit = "s"
+		div = 1e9
+	case avg > 1e6:
+		unit = "ms"
+		div = 1e6
+	case avg > 1e3:
+		unit = "us"
+		div = 1e3
+	}
+	return fmt.Sprintf("%d calls, %d %s/call", me.N, avg/div, unit)
 }
 
 func NewTimerStats() *TimerStats {

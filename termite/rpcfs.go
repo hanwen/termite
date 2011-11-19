@@ -5,6 +5,7 @@ import (
 	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/termite/attr"
 	"github.com/hanwen/termite/cba"
+	"github.com/hanwen/termite/stats"
 	"log"
 	"net/rpc"
 	"os"
@@ -19,7 +20,7 @@ type RpcFs struct {
 
 	// Roots that we should try to fetch locally.
 	localRoots []string
-	timings    *TimerStats
+	timings    *stats.TimerStats
 	attr       *attr.AttributeCache
 	id         string
 
@@ -33,7 +34,7 @@ type RpcFs struct {
 func NewRpcFs(server *rpc.Client, cache *cba.ContentCache) *RpcFs {
 	me := &RpcFs{}
 	me.client = server
-	me.timings = NewTimerStats()
+	me.timings = stats.NewTimerStats()
 	me.attr = attr.NewAttributeCache(
 		func(n string) *attr.FileAttr {
 			return me.fetchAttr(n)
@@ -89,7 +90,7 @@ func (me *RpcFs) FetchHashOnce(a *attr.FileAttr) error {
 			return me.innerFetch(s, e, a.Hash)
 		})
 	if saved != h {
-		log.Fatal("RpcFs.FetchHashOnce: fetch corruption got %x want %x", saved, h)
+		log.Fatalf("RpcFs.FetchHashOnce: fetch corruption got %x want %x", saved, h)
 	}
 	
 	me.mutex.Lock()

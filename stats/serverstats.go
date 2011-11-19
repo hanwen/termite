@@ -1,4 +1,4 @@
-package termite
+package stats
 
 import (
 	"fmt"
@@ -9,37 +9,37 @@ import (
 
 var _ = log.Println
 
-type serverStats struct {
+type ServerStats struct {
 	mutex         sync.Mutex
 	phaseCounts   map[string]int
-	cpuStats      *cpuStatSampler
-	phaseOrder    []string 
+	*CpuStatSampler
+	PhaseOrder    []string 
 }
 
-func newServerStats() *serverStats {
-	return &serverStats{
+func NewServerStats() *ServerStats {
+	return &ServerStats{
 		phaseCounts: map[string]int{},
-		cpuStats:    newCpuStatSampler(),
+		CpuStatSampler:    NewCpuStatSampler(),
 	}
 }
 
-func (me *serverStats) Enter(phase string) {
+func (me *ServerStats) Enter(phase string) {
 	me.mutex.Lock()
 	defer me.mutex.Unlock()
 	me.phaseCounts[phase]++
 }
 
-func (me *serverStats) Exit(phase string) {
+func (me *ServerStats) Exit(phase string) {
 	me.mutex.Lock()
 	defer me.mutex.Unlock()
 	me.phaseCounts[phase]--
 }
 
-func (me *serverStats) writeHttp(w http.ResponseWriter) {
+func (me *ServerStats) WriteHttp(w http.ResponseWriter) {
 	// TODO - share code with coordinator HTTP code.
 	minuteStat := CpuStat{}
 	fiveSecStat := CpuStat{}
-	stats := me.cpuStats.CpuStats()
+	stats := me.CpuStats()
 	if len(stats) > 0 {
 		s := 0
 		for i, c := range stats {
@@ -61,18 +61,17 @@ func (me *serverStats) writeHttp(w http.ResponseWriter) {
 	defer me.mutex.Unlock()
 
 	fmt.Fprintf(w, "<ul>")
-	for _, k := range me.phaseOrder {
+	for _, k := range me.PhaseOrder {
 		fmt.Fprintf(w, "<li>Jobs in phase %s: %d ", k, me.phaseCounts[k])
 	}
 	fmt.Fprintf(w, "</ul>")
 }
 
-func (me *serverStats) FillWorkerStatus(rep *WorkerStatusResponse) {
+func (me *ServerStats) PhaseCounts() (r []int) {
 	me.mutex.Lock()
 	defer me.mutex.Unlock()
-	rep.CpuStats = me.cpuStats.CpuStats()
-	for _, n := range me.phaseOrder {
-		rep.PhaseNames = append(rep.PhaseNames, n) 
-		rep.PhaseCounts = append(rep.PhaseCounts, me.phaseCounts[n]) 
+	for _, n := range me.PhaseOrder {
+		r = append(r, me.phaseCounts[n]) 
 	}
+	return r
 }

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/hanwen/termite/cba"
+	"github.com/hanwen/termite/stats"
 	"io"
 	"io/ioutil"
 	"log"
@@ -24,7 +25,7 @@ type Worker struct {
 	rpcServer    *rpc.Server
 	contentCache *cba.ContentCache
 	pending      *PendingConnections
-	stats        *serverStats
+	stats        *stats.ServerStats
 
 	stopListener chan int
 	mustRestart  bool
@@ -71,10 +72,10 @@ func NewWorker(options *WorkerOptions) *Worker {
 		contentCache: cache,
 		pending:      NewPendingConnections(),
 		rpcServer:    rpc.NewServer(),
-		stats:        newServerStats(),
+		stats:        stats.NewServerStats(),
 		options:      &copied,
 	}
-	me.stats.phaseOrder = []string{"run", "fuse", "reap"}
+	me.stats.PhaseOrder = []string{"run", "fuse", "reap"}
 	me.mirrors = NewWorkerMirrors(me)
 	me.stopListener = make(chan int, 1)
 	me.rpcServer.Register(me)

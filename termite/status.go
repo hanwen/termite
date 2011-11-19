@@ -1,6 +1,9 @@
 package termite
 
-import "fmt"
+import (
+	"fmt"
+	"github.com/hanwen/termite/stats"
+)
 
 func (me *Mirror) Status(req *MirrorStatusRequest, rep *MirrorStatusResponse) error {
 	me.fsMutex.Lock()
@@ -26,8 +29,10 @@ func (me *Worker) Status(req *WorkerStatusRequest, rep *WorkerStatusResponse) er
 	rep.MaxJobCount = me.options.Jobs
 	rep.Version = Version()
 	rep.ShuttingDown = me.shuttingDown
-	me.stats.FillWorkerStatus(rep)
-	rep.TotalCpu = *TotalCpuStat()
+	rep.CpuStats = me.stats.CpuStats()
+	rep.PhaseCounts = me.stats.PhaseCounts()
+	rep.PhaseNames = me.stats.PhaseOrder
+	rep.TotalCpu = *stats.TotalCpuStat()
 	rep.ContentCacheHitRate = me.contentCache.MemoryHitRate()
 	return nil
 }

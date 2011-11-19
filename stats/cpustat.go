@@ -1,4 +1,4 @@
-package termite
+package stats
 
 import (
 	"fmt"
@@ -13,6 +13,13 @@ const RUSAGE_CHILDREN = -1
 func sampleTime() interface{} {
 	c := TotalCpuStat()
 	return c
+}
+
+type CpuStat struct {
+	SelfCpu  int64
+	SelfSys  int64
+	ChildCpu int64
+	ChildSys int64
 }
 
 func TotalCpuStat() *CpuStat {
@@ -73,18 +80,18 @@ func (me *CpuStat) Total() int64 {
 	return me.SelfSys + me.SelfCpu + me.ChildSys + me.ChildCpu
 }
 
-type cpuStatSampler struct {
+type CpuStatSampler struct {
 	sampler *PeriodicSampler
 }
 
-func newCpuStatSampler() *cpuStatSampler {
-	me := &cpuStatSampler{
+func NewCpuStatSampler() *CpuStatSampler {
+	me := &CpuStatSampler{
 		sampler: NewPeriodicSampler(1.0, 60, sampleTime),
 	}
 	return me
 }
 
-func (me *cpuStatSampler) CpuStats() (out []CpuStat) {
+func (me *CpuStatSampler) CpuStats() (out []CpuStat) {
 	vals := me.sampler.Values()
 	var last *CpuStat
 	for _, v := range vals {
