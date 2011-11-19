@@ -15,9 +15,6 @@ import (
 	"time"
 )
 
-type OsFileInfo fuse.OsFileInfo
-type OsFileInfos fuse.OsFileInfos
-
 func init() {
 	rand.Seed(time.Nanoseconds() ^ (int64(os.Getpid()) << 32))
 }
@@ -40,12 +37,6 @@ func RandomBytes(n int) []byte {
 func md5str(s string) string {
 	h := crypto.MD5.New()
 	io.WriteString(h, s)
-	return string(h.Sum())
-}
-
-func md5(c []byte) string {
-	h := crypto.MD5.New()
-	h.Write(c)
 	return string(h.Sum())
 }
 

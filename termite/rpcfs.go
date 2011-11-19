@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/termite/attr"
+	"github.com/hanwen/termite/cba"
 	"log"
 	"net/rpc"
 	"os"
@@ -13,7 +14,7 @@ import (
 
 type RpcFs struct {
 	fuse.DefaultFileSystem
-	cache  *ContentCache
+	cache  *cba.ContentCache
 	client *rpc.Client
 
 	// Roots that we should try to fetch locally.
@@ -29,7 +30,7 @@ type RpcFs struct {
 	fetching map[string]bool
 }
 
-func NewRpcFs(server *rpc.Client, cache *ContentCache) *RpcFs {
+func NewRpcFs(server *rpc.Client, cache *cba.ContentCache) *RpcFs {
 	me := &RpcFs{}
 	me.client = server
 	me.timings = NewTimerStats()
@@ -48,12 +49,12 @@ func (me *RpcFs) Close() {
 }
 
 func (me *RpcFs) innerFetch(start, end int, hash string) ([]byte, error) {
-	req := &ContentRequest{
+	req := &cba.ContentRequest{
 	Hash: hash,
 	Start: start,
 	End: end,
 	}
-	rep := &ContentResponse{}
+	rep := &cba.ContentResponse{}
 	startT := time.Nanoseconds()
 	err := me.client.Call("FsServer.FileContent", req, rep)
 	dt := time.Nanoseconds() - startT
@@ -64,7 +65,7 @@ func (me *RpcFs) innerFetch(start, end int, hash string) ([]byte, error) {
 
 func (me *RpcFs) FetchHash(a *attr.FileAttr) error {
 	e := me.FetchHashOnce(a)
-	if e == nil && a.Size < _MEMORY_LIMIT {
+	if e == nil && a.Size < me.cache.MemoryLimit {
 		me.cache.FaultIn(a.Hash)
 	}
 	return e

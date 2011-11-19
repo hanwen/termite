@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/hanwen/termite/attr"
+	"github.com/hanwen/termite/cba"
 	"log"
 	"net"
 	"net/rpc"
@@ -231,6 +232,6 @@ func (me *Mirror) newWorkerTask(req *WorkRequest, rep *WorkResponse) (*WorkerTas
 	return task, nil
 }
 
-func (me *Mirror) FileContent(req *ContentRequest, rep *ContentResponse) error {
+func (me *Mirror) FileContent(req *cba.ContentRequest, rep *cba.ContentResponse) error {
 	return me.daemon.contentCache.Serve(req, rep)
 }

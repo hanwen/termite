@@ -3,6 +3,7 @@ package termite
 import (
 	"crypto"
 	"github.com/hanwen/termite/attr"
+	"github.com/hanwen/termite/cba"
 	"io/ioutil"
 	"log"
 	"net/rpc"
@@ -13,7 +14,7 @@ import (
 )
 
 type Master struct {
-	cache         *ContentCache
+	cache         *cba.ContentCache
 	fileServer    *FsServer
 	fileServerRpc *rpc.Server
 	excluded      map[string]bool
@@ -99,8 +100,9 @@ func (me *Master) path(n string) string {
 }
 
 func NewMaster(options *MasterOptions) *Master {
-	cache := NewContentCache(options.ContentCacheDir, hashFunc)
-	cache.SetMemoryCacheSize(options.ContentCacheMemSize)
+	cache := cba.NewContentCache(options.ContentCacheDir, hashFunc)
+	// TODO - softcode limit.
+	cache.SetMemoryCacheSize(options.ContentCacheMemSize, 128 * 1024)
 
 	me := &Master{
 		cache:         cache,

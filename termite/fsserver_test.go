@@ -6,6 +6,7 @@ package termite
 import (
 	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/termite/attr"
+	"github.com/hanwen/termite/cba"
 	"io"
 	"io/ioutil"
 	"net/rpc"
@@ -75,7 +76,7 @@ type rpcFsTestCase struct {
 	mnt  string
 	orig string
 
-	cache  *ContentCache
+	cache  *cba.ContentCache
 	attr   *attr.AttributeCache
 	server *FsServer
 	rpcFs  *RpcFs
@@ -107,7 +108,7 @@ func newRpcFsTestCase(t *testing.T) (me *rpcFsTestCase) {
 	os.Mkdir(me.mnt, 0700)
 	os.Mkdir(me.orig, 0700)
 
-	me.cache = NewContentCache(srvCache, hashFunc)
+	me.cache = cba.NewContentCache(srvCache, hashFunc)
 	me.attr = attr.NewAttributeCache(
 		func(n string) *attr.FileAttr { return me.getattr(n) },
 		func(n string) *os.FileInfo {
@@ -127,7 +128,7 @@ func newRpcFsTestCase(t *testing.T) (me *rpcFsTestCase) {
 	go rpcServer.ServeConn(me.sockL)
 
 	rpcClient := rpc.NewClient(me.sockR)
-	me.rpcFs = NewRpcFs(rpcClient, NewContentCache(clientCache, hashFunc))
+	me.rpcFs = NewRpcFs(rpcClient, cba.NewContentCache(clientCache, hashFunc))
 	me.rpcFs.id = "rpcfs_test"
 	me.state, _, err = fuse.MountPathFileSystem(me.mnt, me.rpcFs, nil)
 	me.state.Debug = fuse.VerboseTest()

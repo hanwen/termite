@@ -1,12 +1,26 @@
-package termite
+package cba
 
 import (
 	"bytes"
 	"crypto"
+	md5pkg "crypto/md5"
 	"io/ioutil"
 	"os"
 	"testing"
 )
+
+var hashFunc = crypto.MD5
+func md5(c []byte) string {
+	h := md5pkg.New()
+	h.Write(c)
+	return string(h.Sum())
+}
+
+func check(err error) {
+	if err != nil {
+		panic(err)
+	}
+}
 
 func TestContentCache(t *testing.T) {
 	content := []byte("hello")
@@ -99,14 +113,15 @@ func TestContentCacheStream(t *testing.T) {
 }
 
 func TestContentCacheStreamReturnContent(t *testing.T) {
-	content := make([]byte, _MEMORY_LIMIT-1)
+	d, _ := ioutil.TempDir("", "term-cc")
+	cache := NewContentCache(d, hashFunc)
+	cache.SetMemoryCacheSize(100, 1024)
+	content := make([]byte, cache.MemoryLimit-1)
 	for i := range content {
 		content[i] = 'x'
 	}
 
-	d, _ := ioutil.TempDir("", "term-cc")
 	defer os.RemoveAll(d)
-	cache := NewContentCache(d, hashFunc)
 
 	hash := cache.Save(content)
 
@@ -114,7 +129,7 @@ func TestContentCacheStreamReturnContent(t *testing.T) {
 		t.Errorf("should have key %x", hash)
 	}
 
-	content = make([]byte, _MEMORY_LIMIT+1)
+	content = make([]byte, cache.MemoryLimit+1)
 	for i := range content {
 		content[i] = 'y'
 	}

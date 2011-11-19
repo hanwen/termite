@@ -1,4 +1,4 @@
-package termite
+package cba
 
 import (
 	"crypto"
@@ -17,6 +17,9 @@ type ContentCache struct {
 	dir      string
 	hashFunc crypto.Hash
 
+	// Try to keep small files in memory.
+	MemoryLimit   int64
+	
 	mutex         sync.Mutex
 	cond          *sync.Cond
 	faulting      map[string]bool
@@ -51,7 +54,7 @@ func NewContentCache(d string, hash crypto.Hash) *ContentCache {
 
 // SetMemoryCacheSize readjusts the size of the in-memory content
 // cache.  Not thread safe.
-func (me *ContentCache) SetMemoryCacheSize(fileCount int) {
+func (me *ContentCache) SetMemoryCacheSize(fileCount int, limit int) {
 	if fileCount == 0 {
 		me.inMemoryCache = nil
 		return
@@ -59,6 +62,7 @@ func (me *ContentCache) SetMemoryCacheSize(fileCount int) {
 	if me.inMemoryCache.Size() != fileCount {
 		me.inMemoryCache = NewLruCache(fileCount)
 	}
+	me.MemoryLimit = int64(limit)
 }
 
 func (me *ContentCache) MemoryHitRate() float64 {
@@ -191,7 +195,7 @@ func (me *ContentCache) DestructiveSavePath(path string) (hash string, err error
 	h := me.hashFunc.New()
 
 	var content []byte
-	if before.Size < _MEMORY_LIMIT {
+	if before.Size < me.MemoryLimit {
 		content, err = ioutil.ReadAll(f)
 		if err != nil {
 			return "", err
@@ -288,10 +292,8 @@ func (me *ContentCache) saveViaMemory(content []byte) (hash string) {
 	return hash
 }
 
-const _MEMORY_LIMIT = 128 * 1024
-
 func (me *ContentCache) SaveStream(input io.Reader, size int64) (hash string) {
-	if size < _MEMORY_LIMIT {
+	if size < me.MemoryLimit {
 		b, err := ioutil.ReadAll(input)
 		if int64(len(b)) != size {
 			log.Panicf("SaveStream: short read: %v %v", len(b), err)
@@ -350,11 +352,6 @@ func (me *ContentCache) Fetch(fetcher func(start, end int) ([]byte, error)) (str
 	return saved, nil
 }
 
-func (me *ContentCache) Serve(req *ContentRequest, rep *ContentResponse) (err error) {
-	rep.Chunk, err = me.ServeChunk(req.Start, req.End, req.Hash)
-	return err
-}
-
 func (me *ContentCache) ServeChunk(start, end int, hash string) ([]byte, error) {
 	if c := me.ContentsIfLoaded(hash); c != nil {
 		if end > len(c) {
@@ -378,3 +375,9 @@ func (me *ContentCache) ServeChunk(start, end int, hash string) ([]byte, error) 
 	}
 	return chunk, err
 }
+
+func (me *ContentCache) Serve(req *ContentRequest, rep *ContentResponse) (err error) {
+	rep.Chunk, err = me.ServeChunk(req.Start, req.End, req.Hash)
+	return err
+}
+

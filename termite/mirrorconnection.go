@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/hanwen/termite/attr"
+	"github.com/hanwen/termite/cba"
 	"log"
 	"math/rand"
 	"net"
@@ -34,12 +35,12 @@ func (me *mirrorConnection) Id() string {
 }
 
 func (me *mirrorConnection) innerFetch(start, end int, hash string) ([]byte, error) {
-	req := &ContentRequest{
+	req := &cba.ContentRequest{
 		Hash: hash,
 		Start: start,
 		End: end,
 	}
-	rep := &ContentResponse{}
+	rep := &cba.ContentResponse{}
 	err := me.rpcClient.Call("Mirror.FileContent", req, rep)
 	return rep.Chunk, err
 }

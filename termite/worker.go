@@ -1,9 +1,9 @@
 package termite
 
 import (
-	"crypto"
 	"errors"
 	"fmt"
+	"github.com/hanwen/termite/cba"
 	"io"
 	"io/ioutil"
 	"log"
@@ -22,7 +22,7 @@ var _ = log.Println
 type Worker struct {
 	listener     net.Listener
 	rpcServer    *rpc.Server
-	contentCache *ContentCache
+	contentCache *cba.ContentCache
 	pending      *PendingConnections
 	stats        *serverStats
 
@@ -65,8 +65,8 @@ func NewWorker(options *WorkerOptions) *Worker {
 	}
 	copied := *options
 
-	cache := NewContentCache(options.CacheDir, crypto.MD5)
-	cache.SetMemoryCacheSize(options.FileContentCount)
+	cache := cba.NewContentCache(options.CacheDir, hashFunc)
+	cache.SetMemoryCacheSize(options.FileContentCount, 128*1024)
 	me := &Worker{
 		contentCache: cache,
 		pending:      NewPendingConnections(),
@@ -119,7 +119,7 @@ func (me *Worker) report(coordinator string, port int) {
 	}
 }
 
-func (me *Worker) FileContent(req *ContentRequest, rep *ContentResponse) error {
+func (me *Worker) FileContent(req *cba.ContentRequest, rep *cba.ContentResponse) error {
 	return me.contentCache.Serve(req, rep)
 }
 

@@ -3,16 +3,17 @@ package termite
 import (
 	"log"
 	"github.com/hanwen/termite/attr"
+	"github.com/hanwen/termite/cba"
 	"time"
 )
 
 type FsServer struct {
-	contentCache *ContentCache
+	contentCache *cba.ContentCache
 	attributes    *attr.AttributeCache
 	stats        *TimerStats
 }
 
-func NewFsServer(a *attr.AttributeCache, cache *ContentCache) *FsServer {
+func NewFsServer(a *attr.AttributeCache, cache *cba.ContentCache) *FsServer {
 	me := &FsServer{
 		contentCache: cache,
 		attributes:   a,
@@ -22,7 +23,7 @@ func NewFsServer(a *attr.AttributeCache, cache *ContentCache) *FsServer {
 	return me
 }
 
-func (me *FsServer) FileContent(req *ContentRequest, rep *ContentResponse) error {
+func (me *FsServer) FileContent(req *cba.ContentRequest, rep *cba.ContentResponse) error {
 	start := time.Nanoseconds()
 	err := me.contentCache.Serve(req, rep)
 	dt := time.Nanoseconds() - start
@@ -41,7 +42,7 @@ func (me *FsServer) GetAttr(req *AttrRequest, rep *AttrResponse) error {
 	a := me.attributes.GetDir(req.Name)
 	if a.Hash != "" {
 		log.Printf("GetAttr %v", a)
-		if a.Size < _MEMORY_LIMIT {
+		if a.Size < me.contentCache.MemoryLimit {
 			go me.contentCache.FaultIn(a.Hash)
 		}
 	}
