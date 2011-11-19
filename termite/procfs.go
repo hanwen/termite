@@ -74,7 +74,7 @@ func (me *ProcFs) Open(name string, flags uint32, context *fuse.Context) (fuse.F
 	if err == nil {
 		return fuse.NewDataFile(content), fuse.OK
 	}
-	return nil, fuse.OsErrorToErrno(err)
+	return nil, fuse.ToStatus(err)
 }
 
 func (me *ProcFs) String() string {

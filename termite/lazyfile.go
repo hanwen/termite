@@ -27,7 +27,7 @@ func (me *LazyLoopbackFile) file() (fuse.File, fuse.Status) {
 	if me.f == nil {
 		f, err := os.Open(me.Name)
 		if err != nil {
-			return nil, fuse.OsErrorToErrno(err)
+			return nil, fuse.ToStatus(err)
 		}
 		me.f = &fuse.LoopbackFile{File: f}
 	}
