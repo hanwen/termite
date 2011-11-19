@@ -336,31 +336,8 @@ func (me *Coordinator) workerHandler(w http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(w, "<p>Worker %s<p>Version %s<p>Jobs %d\n",
 		addr, status.Version, status.MaxJobCount)
 	fmt.Fprintf(w, "<p><a href=\"/log?host=%s\">Worker log %s</a>\n", addr, addr)
-	fmt.Fprintf(w, "<p><table><tr><th>self cpu (ms)</th><th>self sys (ms)</th>"+
-		"<th>child cpu (ms)</th><th>child sys (ms)</th><th>total</th></tr>")
-	start := len(status.CpuStats) - 5
-	if start < 0 {
-		start = 0
-	}
 
-	stat5s := stats.CpuStat{}
-	for _, v := range status.CpuStats[start:] {
-		stat5s = stat5s.Add(v)
-		fmt.Fprintf(w, "<tr><td>%d</td><td>%d</td><td>%d</td><td>%d</td><td>%d</td></tr>",
-			v.SelfCpu/1e6, v.SelfSys/1e6, v.ChildCpu/1e6, v.ChildSys/1e6,
-			(v.SelfCpu+v.SelfSys+v.ChildCpu+v.ChildSys)/1e6)
-	}
-	fmt.Fprintf(w, "</table>")
-
-	minuteStat := stats.CpuStat{}
-	for _, v := range status.CpuStats {
-		minuteStat = minuteStat.Add(v)
-	}
-
-	fmt.Fprintf(w, "<p>Last 5s: %s (%.1f CPUs.)", stat5s.Percent(),
-		float64(stat5s.Total())/5.0e9)
-	fmt.Fprintf(w, "<p>Last minute: %s (%.1f CPUs.)", minuteStat.Percent(),
-		float64(minuteStat.Total())/60.0e9)
+	stats.CpuStatsWriteHttp(w, status.CpuStats)
 
 	fmt.Fprintf(w, "<p>Total CPU: %s", status.TotalCpu.Percent())
 	fmt.Fprintf(w, "<p>Content cache hit rate: %.0f %%", 100.0*status.ContentCacheHitRate)

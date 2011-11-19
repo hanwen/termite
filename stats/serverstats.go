@@ -35,34 +35,41 @@ func (me *ServerStats) Exit(phase string) {
 	me.phaseCounts[phase]--
 }
 
-func (me *ServerStats) WriteHttp(w http.ResponseWriter) {
-	// TODO - share code with coordinator HTTP code.
-	minuteStat := CpuStat{}
-	fiveSecStat := CpuStat{}
-	stats := me.CpuStats()
+func CpuStatsWriteHttp(w http.ResponseWriter, stats []CpuStat) {
+	statm := CpuStat{}
+	stat5 := CpuStat{}
 	if len(stats) > 0 {
-		s := 0
-		for i, c := range stats {
-			minuteStat = minuteStat.Add(c)
+		count5 := int64(0)
+		fmt.Fprintf(w, "<p><table><tr><th>self cpu (ms)</th><th>self sys (ms)</th>"+
+			"<th>child cpu (ms)</th><th>child sys (ms)</th><th>total</th></tr>")
+		for i, v := range stats {
+			statm = statm.Add(v)
 			if i >= len(stats)-5 {
-				s++
-				fiveSecStat = fiveSecStat.Add(c)
+				count5++
+				stat5 = stat5.Add(v)
+				fmt.Fprintf(w, "<tr><td>%d</td><td>%d</td><td>%d</td><td>%d</td><td>%d</td></tr>",
+					v.SelfCpu/1e6, v.SelfSys/1e6, v.ChildCpu/1e6, v.ChildSys/1e6,
+					(v.SelfCpu+v.SelfSys+v.ChildCpu+v.ChildSys)/1e6)
 			}
 		}
+		fmt.Fprintf(w, "</table>")
 
-		totalm := float64(minuteStat.SelfCpu+minuteStat.SelfSys) / 1.0e9
+		totalm := float64(statm.SelfCpu+statm.SelfSys) / 1.0e9
 		fmt.Fprintf(w, "<p>CPU (last min): %d s self %d s sys, %.2f CPU",
-			minuteStat.SelfCpu/1e9, minuteStat.SelfSys/1e9, totalm/float64(len(stats)))
-		fmt.Fprintf(w, "<p>CPU (last %ds): %.2f self %.2f sys, %.1f CPU", s,
-			float64(fiveSecStat.SelfCpu)*1e-9, float64(fiveSecStat.SelfSys)*1e-9,
-			float64(fiveSecStat.SelfCpu+fiveSecStat.SelfSys)/float64(s*1e9))
+			statm.SelfCpu/1e9, statm.SelfSys/1e9, totalm/float64(len(stats)))
+		fmt.Fprintf(w, "<p>CPU (last %ds): %.2f self %.2f sys, %.1f CPU", count5,
+			float64(stat5.SelfCpu)*1e-9, float64(stat5.SelfSys)*1e-9,
+			float64(stat5.SelfCpu+stat5.SelfSys)/float64(count5*1e9))
 	}
-	me.mutex.Lock()
-	defer me.mutex.Unlock()
+}
 
+func (me *ServerStats) WriteHttp(w http.ResponseWriter) {
+	// TODO - share code with coordinator HTTP code.
+	CpuStatsWriteHttp(w, me.CpuStats())
+	counts := me.PhaseCounts()
 	fmt.Fprintf(w, "<ul>")
-	for _, k := range me.PhaseOrder {
-		fmt.Fprintf(w, "<li>Jobs in phase %s: %d ", k, me.phaseCounts[k])
+	for i, c := range counts {
+		fmt.Fprintf(w, "<li>Jobs in phase %s: %d ", me.PhaseOrder[i], c)
 	}
 	fmt.Fprintf(w, "</ul>")
 }
