@@ -26,7 +26,7 @@ type mirrorConnection struct {
 	availableJobs int
 
 	master *Master
-	*fileSetWaiter
+	fileSetWaiter *FileSetWaiter
 }
 
 func (me *mirrorConnection) Id() string {

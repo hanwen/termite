@@ -231,7 +231,7 @@ func (me *Master) createMirror(addr string, jobs int) (*mirrorConnection, error)
 		maxJobs:           rep.GrantedJobCount,
 		availableJobs:     rep.GrantedJobCount,
 	}
-	mc.fileSetWaiter = newFileSetWaiter(func(fset attr.FileSet) error {
+	mc.fileSetWaiter = NewFileSetWaiter(func(fset attr.FileSet) error {
 		return mc.replay(fset)
 	})
 
@@ -268,13 +268,13 @@ func (me *Master) runOnMirror(mirror *mirrorConnection, req *WorkRequest, rep *W
 		log.Println("with environment", req.Env)
 	}
 
-	mirror.fileSetWaiter.newChannel(req.TaskId)
+	mirror.fileSetWaiter.NewChannel(req.TaskId)
 	me.mirrors.stats.Enter("remote")
 	err = mirror.rpcClient.Call("Mirror.Run", req, rep)
 	me.mirrors.stats.Exit("remote")
 	if err == nil {
 		me.mirrors.stats.Enter("filewait")
-		err = mirror.fileSetWaiter.wait(rep, req.TaskId)
+		err = mirror.fileSetWaiter.Wait(rep, req.TaskId)
 		me.mirrors.stats.Exit("filewait")
 	}
 	return err

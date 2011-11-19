@@ -9,20 +9,20 @@ import (
 
 var _ = log.Println
 
-type fileSetWaiter struct {
+type FileSetWaiter struct {
 	process func(fset attr.FileSet) error
 	sync.Mutex
 	channels map[int]chan int
 }
 
-func newFileSetWaiter(proc func(attr.FileSet) error) *fileSetWaiter {
-	return &fileSetWaiter{
+func NewFileSetWaiter(proc func(attr.FileSet) error) *FileSetWaiter {
+	return &FileSetWaiter{
 		process:  proc,
 		channels: make(map[int]chan int),
 	}
 }
 
-func (me *fileSetWaiter) newChannel(id int) chan int {
+func (me *FileSetWaiter) NewChannel(id int) chan int {
 	me.Lock()
 	defer me.Unlock()
 
@@ -31,13 +31,13 @@ func (me *fileSetWaiter) newChannel(id int) chan int {
 	return c
 }
 
-func (me *fileSetWaiter) findChannel(id int) chan int {
+func (me *FileSetWaiter) findChannel(id int) chan int {
 	me.Lock()
 	defer me.Unlock()
 	return me.channels[id]
 }
 
-func (me *fileSetWaiter) signal(id int) {
+func (me *FileSetWaiter) signal(id int) {
 	me.Lock()
 	defer me.Unlock()
 	ch := me.channels[id]
@@ -48,7 +48,7 @@ func (me *fileSetWaiter) signal(id int) {
 	}
 }
 
-func (me *fileSetWaiter) flush(id int) {
+func (me *FileSetWaiter) flush(id int) {
 	me.Lock()
 	defer me.Unlock()
 	ch := me.channels[id]
@@ -56,13 +56,13 @@ func (me *fileSetWaiter) flush(id int) {
 	delete(me.channels, id)
 }
 
-func (me *fileSetWaiter) drop(id int) {
+func (me *FileSetWaiter) drop(id int) {
 	me.Lock()
 	defer me.Unlock()
 	delete(me.channels, id)
 }
 
-func (me *fileSetWaiter) wait(rep *WorkResponse, waitId int) (err error) {
+func (me *FileSetWaiter) Wait(rep *WorkResponse, waitId int) (err error) {
 	if rep.FileSet != nil {
 		log.Println("Got data for tasks: ", rep.TaskIds, rep.FileSet.Files)
 
