@@ -5,6 +5,7 @@ import (
 	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/termite/attr"
 	"io/ioutil"
+	"log"
 	"net"
 	"net/http"
 	"net/rpc"
@@ -92,7 +93,6 @@ func NewTestCase(t *testing.T) *testCase {
 	coordinatorAddr := me.coordinator.listener.Addr()
 	_, portString, _ := net.SplitHostPort(coordinatorAddr.String())
 	fmt.Sscanf(portString, "%d", &me.coordinatorPort)
-
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
@@ -109,6 +109,12 @@ func NewTestCase(t *testing.T) *testCase {
 		me.master = NewMaster(&masterOpts)
 		me.socket = me.wd + "/master-socket"
 		go me.master.Start(me.socket)
+		for {
+			if fi, _ := os.Lstat(me.socket); fi != nil {
+				break
+			}
+			time.Sleep(10e6)
+		}
 		wg.Done()
 	}()
 	go me.StartWorker(coordinatorAddr.String())

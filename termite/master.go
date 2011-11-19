@@ -463,12 +463,15 @@ func (me *Master) fetchAll(path string) {
 func (me *Master) waitForExit() {
 	me.mirrors.refreshWorkers()
 	ticker := time.NewTicker(int64(1e9 * me.options.Period))
-	for {
+
+	exit := false
+	for !exit {
 		select {
 		case <-me.quit:
-			log.Println("quit received.")
-			break
+			log.Println("quit received.", me.mirrors.coordinator)
+			exit = true
 		case <-ticker.C:
+			log.Println("periodic household.", me.mirrors.coordinator)
 			me.mirrors.periodicHouseholding()
 		}
 	}

@@ -159,10 +159,17 @@ func (me *Worker) RunWorkerServer(port int, coordinator string) {
 
 	for {
 		conn, err := me.listener.Accept()
+		if err == os.EINVAL {
+			break
+		}
 		if err != nil {
+			if e, ok := err.(*net.OpError); ok && e.Err == os.EINVAL {
+				break
+			}
 			log.Println("me.listener", err)
 			break
 		}
+		
 		log.Println("Authenticated connection from", conn.RemoteAddr())
 		if !me.pending.Accept(conn) {
 			go me.rpcServer.ServeConn(conn)
