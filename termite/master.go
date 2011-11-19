@@ -108,7 +108,7 @@ func NewMaster(options *MasterOptions) *Master {
 		cache:         cache,
 		taskIds:       make(chan int, 100),
 		replayChannel: make(chan *replayRequest, 1),
-		quit:          make(chan int, 100),
+		quit:          make(chan int, 0),
 	}
 	o := *options
 	if o.Period <= 0.0 {
