@@ -319,48 +319,44 @@ func (me *Master) run(req *WorkRequest, rep *WorkResponse) (err error) {
 
 func (me *Master) replayFileModifications(infos []*FileAttr, newFiles map[string]string) {
 	for _, info := range infos {
-		logStr := ""
 		name := "/" + info.Path
-		var err error
 		if info.FileInfo != nil && info.FileInfo.IsDirectory() {
-			err := os.Mkdir(name, info.FileInfo.Mode&07777)
-			if err != nil {
+			if err := os.Mkdir(name, info.FileInfo.Mode&07777); err != nil {
 				// some other process may have created
 				// the dir.
-				if fi, _ := os.Lstat(name); fi != nil && fi.IsDirectory() {
-					err = nil
+				fi, _ := os.Lstat(name);
+				if fi == nil && !fi.IsDirectory() {
+					log.Fatal("os.Mkdir", err)
 				}
 			}
 		}
 		if info.Hash != "" {
 			src := newFiles[info.Path]
-			err = os.Rename(src, name)
+			if err := os.Rename(src, name); err != nil {
+				log.Fatal("os.Rename:", err)
+			}
 		}
 		if info.Link != "" {
 			// Ignore errors.
 			os.Remove(name)
-			err = os.Symlink(info.Link, name)
-			logStr += "Symlink,"
+			if err := os.Symlink(info.Link, name); err != nil {
+				log.Fatal("os.Symlink", err)
+			}
+			
 		}
 		if info.Deletion() {
 			if err := os.Remove(name); err != nil {
-				log.Println("delete replay: ", err)
+				log.Fatal("os.Remove:", err)
 			}
 		}
 
 		if info.Hash == "" && info.FileInfo != nil && !info.FileInfo.IsSymlink() {
-			if err == nil {
-				err = os.Chtimes(name, info.FileInfo.Atime_ns, info.FileInfo.Mtime_ns)
-				logStr += "Chtimes,"
+			if err := os.Chtimes(name, info.FileInfo.Atime_ns, info.FileInfo.Mtime_ns); err != nil {
+				log.Fatal("os.Chtimes", err)
 			}
-			if err == nil {
-				err = os.Chmod(name, info.FileInfo.Mode&07777)
-				logStr += "Chmod,"
+			if err := os.Chmod(name, info.FileInfo.Mode&07777); err != nil {
+				log.Fatal("os.Chmod", err)
 			}
-		}
-
-		if err != nil {
-			log.Fatal("Replay error ", info.Path, " ", err, infos, logStr)
 		}
 
 		if info.FileInfo != nil {
