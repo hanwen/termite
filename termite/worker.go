@@ -1,6 +1,7 @@
 package termite
 
 import (
+	"crypto"
 	"errors"
 	"fmt"
 	"io"
@@ -64,7 +65,7 @@ func NewWorker(options *WorkerOptions) *Worker {
 	}
 	copied := *options
 
-	cache := NewContentCache(options.CacheDir)
+	cache := NewContentCache(options.CacheDir, crypto.MD5)
 	cache.SetMemoryCacheSize(options.FileContentCount)
 	me := &Worker{
 		contentCache: cache,

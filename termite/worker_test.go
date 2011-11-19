@@ -96,7 +96,6 @@ func NewTestCase(t *testing.T) *testCase {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
-		masterCache := NewContentCache(me.tmp + "/master-cache")
 		masterOpts := MasterOptions{
 			WritableRoot: me.wd,
 			RetryCount:   3,
@@ -105,8 +104,9 @@ func NewTestCase(t *testing.T) *testCase {
 			Coordinator:  coordinatorAddr.String(),
 			KeepAlive:    0.5,
 			Period:       0.5,
+			ContentCacheDir: me.tmp + "/master-cache",
 		}
-		me.master = NewMaster(masterCache, &masterOpts)
+		me.master = NewMaster(&masterOpts)
 		me.socket = me.wd + "/master-socket"
 		go me.master.Start(me.socket)
 		wg.Done()

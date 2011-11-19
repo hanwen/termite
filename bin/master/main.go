@@ -49,9 +49,6 @@ func main() {
 
 	workerList := strings.Split(*workers, ",")
 	excludeList := strings.Split(*exclude, ",")
-	c := termite.NewContentCache(*cachedir)
-	c.SetMemoryCacheSize(*memcache)
-
 	root, sock := absSocket(*socket)
 	opts := termite.MasterOptions{
 		Secret:       secret,
@@ -65,8 +62,10 @@ func main() {
 		Period:       *houseHoldPeriod,
 		KeepAlive:    *keepAlive,
 		FetchAll:     *fetchAll,
+		ContentCacheDir: *cachedir,
+		ContentCacheMemSize: *memcache,
 	}
-	master := termite.NewMaster(c, &opts)
+	master := termite.NewMaster(&opts)
 
 	log.Println(termite.Version())
 

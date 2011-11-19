@@ -30,7 +30,7 @@ type ContentCache struct {
 // NewContentCache creates a content cache based in directory d.
 // memorySize sets the maximum number of file contents to keep in
 // memory.
-func NewContentCache(d string) *ContentCache {
+func NewContentCache(d string, hash crypto.Hash) *ContentCache {
 	if fi, _ := os.Lstat(d); fi == nil {
 		err := os.MkdirAll(d, 0700)
 		if err != nil {
@@ -43,7 +43,7 @@ func NewContentCache(d string) *ContentCache {
 		have:          ReadHexDatabase(d),
 		inMemoryCache: NewLruCache(1024),
 		faulting:      make(map[string]bool),
-		hashFunc:      crypto.MD5,
+		hashFunc:      hash,
 	}
 	c.cond = sync.NewCond(&c.mutex)
 	return c
@@ -244,6 +244,9 @@ func (me *ContentCache) SavePath(path string) (hash string) {
 func (me *ContentCache) FaultIn(hash string) {
 	me.mutex.Lock()
 	defer me.mutex.Unlock()
+	if me.inMemoryCache == nil {
+		return
+	}
 	for !me.inMemoryCache.Has(hash) && me.faulting[hash] {
 		me.cond.Wait()
 	}

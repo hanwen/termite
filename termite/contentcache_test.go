@@ -14,7 +14,7 @@ func TestContentCache(t *testing.T) {
 	d, _ := ioutil.TempDir("", "term-cc")
 	defer os.RemoveAll(d)
 
-	cache := NewContentCache(d)
+	cache := NewContentCache(d, hashFunc)
 	checksum := string(md5(content))
 
 	f, _ := ioutil.TempFile("", "")
@@ -35,7 +35,7 @@ func TestContentCacheDestructiveSave(t *testing.T) {
 
 	d, _ := ioutil.TempDir("", "term-cc")
 	defer os.RemoveAll(d)
-	cache := NewContentCache(d)
+	cache := NewContentCache(d, hashFunc)
 
 	fn := d + "/test"
 	err := ioutil.WriteFile(fn, content, 0644)
@@ -74,7 +74,7 @@ func TestContentCacheStream(t *testing.T) {
 
 	d, _ := ioutil.TempDir("", "term-cc")
 	defer os.RemoveAll(d)
-	cache := NewContentCache(d)
+	cache := NewContentCache(d, hashFunc)
 
 	h := crypto.MD5.New()
 	h.Write(content)
@@ -106,7 +106,7 @@ func TestContentCacheStreamReturnContent(t *testing.T) {
 
 	d, _ := ioutil.TempDir("", "term-cc")
 	defer os.RemoveAll(d)
-	cache := NewContentCache(d)
+	cache := NewContentCache(d, hashFunc)
 
 	hash := cache.Save(content)
 

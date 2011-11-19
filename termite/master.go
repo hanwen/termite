@@ -44,6 +44,9 @@ type MasterOptions struct {
 	
 	Period    float64
 	KeepAlive float64
+	
+	ContentCacheDir string
+	ContentCacheMemSize int
 }
 
 const hashFunc = crypto.MD5
@@ -95,7 +98,10 @@ func (me *Master) path(n string) string {
 	return "/" + n
 }
 
-func NewMaster(cache *ContentCache, options *MasterOptions) *Master {
+func NewMaster(options *MasterOptions) *Master {
+	cache := NewContentCache(options.ContentCacheDir, hashFunc)
+	cache.SetMemoryCacheSize(options.ContentCacheMemSize)
+
 	me := &Master{
 		cache:         cache,
 		taskIds:       make(chan int, 100),
