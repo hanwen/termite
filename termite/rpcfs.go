@@ -89,7 +89,7 @@ func (me *RpcFs) FetchHashOnce(a *attr.FileAttr) error {
 		func(s, e int) ([]byte, error) {
 			return me.innerFetch(s, e, a.Hash)
 		})
-	if saved != h {
+	if err != nil && saved != h {
 		log.Fatalf("RpcFs.FetchHashOnce: fetch corruption got %x want %x", saved, h)
 	}
 
