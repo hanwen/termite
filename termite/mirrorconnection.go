@@ -33,15 +33,29 @@ func (me *mirrorConnection) Id() string {
 	return me.workerAddr
 }
 
+func (me *mirrorConnection) innerFetch(start, end int, hash string) ([]byte, error) {
+	req := &ContentRequest{
+		Hash: hash,
+		Start: start,
+		End: end,
+	}
+	rep := &ContentResponse{}
+	err := me.rpcClient.Call("Mirror.FileContent", req, rep)
+	return rep.Chunk, err
+}
+
 func (me *mirrorConnection) replay(fset attr.FileSet) error {
 	// Must get data before we modify the file-system, so we don't
 	// leave the FS in a half-finished state.
 	for _, info := range fset.Files {
 		if info.Hash != "" {
-			err := me.master.cache.FetchFromServer(
-				func(req *ContentRequest, rep *ContentResponse) error {
-					return me.rpcClient.Call("Mirror.FileContent", req, rep)
-				}, info.Hash)
+			saved, err := me.master.cache.Fetch(
+				func(start, end int) ([]byte, error) {
+					return me.innerFetch(start, end, info.Hash)
+				})
+			if saved != info.Hash {
+				log.Fatal("mirrorConnection.replay: fetch corruption got %x want %x", saved, info.Hash)
+			}
 			if err != nil {
 				return err
 			}

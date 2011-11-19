@@ -313,82 +313,68 @@ func (me *ContentCache) SaveStream(input io.Reader, size int64) (hash string) {
 	return hash
 }
 
-func (me *ContentCache) FetchFromServer(fetcher func(req *ContentRequest, rep *ContentResponse) error,
-	hash string) error {
-	if me.HasHash(hash) {
-		return nil
-	}
+func (me *ContentCache) Fetch(fetcher func(start, end int) ([]byte, error)) (string, error) {
 	chunkSize := 1 << 18
 
 	var output *HashWriter
 	written := 0
 	for {
-		req := &ContentRequest{
-			Hash:  hash,
-			Start: written,
-			End:   written + chunkSize,
-		}
-
-		rep := &ContentResponse{}
-		err := fetcher(req, rep)
+		content, err := fetcher(written, written+chunkSize)
 		if err != nil {
 			log.Println("FileContent error:", err)
-			return err
+			return "",  err
 		}
 
-		if len(rep.Chunk) < chunkSize && written == 0 {
-			saved := me.Save(rep.Chunk)
-			if saved != hash {
-				log.Fatalf("Corruption: savedHash %x != requested hash %x.", saved, hash)
-			}
-			return nil
+		if len(content) < chunkSize && written == 0 {
+			saved := me.Save(content)
+			return saved, nil
 		} else if output == nil {
 			output = me.NewHashWriter()
 		}
 
-		n, err := output.Write(rep.Chunk)
+		n, err := output.Write(content)
 		written += n
 		if err != nil {
-			return err
+			return "", err
 		}
-		if len(rep.Chunk) < chunkSize {
+		if len(content) < chunkSize {
 			break
 		}
 	}
 
 	output.Close()
 	saved := string(output.hasher.Sum())
-	if saved != hash {
-		log.Fatalf("Corruption: savedHash %x != requested hash %x.", saved, hash)
-	}
 	me.mutex.Lock()
 	defer me.mutex.Unlock()
 	me.have[saved] = true
-	return nil
+	return saved, nil
 }
 
-func (me *ContentCache) Serve(req *ContentRequest, rep *ContentResponse) error {
-	if c := me.ContentsIfLoaded(req.Hash); c != nil {
-		end := req.End
+func (me *ContentCache) Serve(req *ContentRequest, rep *ContentResponse) (err error) {
+	rep.Chunk, err = me.ServeChunk(req.Start, req.End, req.Hash)
+	return err
+}
+
+func (me *ContentCache) ServeChunk(start, end int, hash string) ([]byte, error) {
+	if c := me.ContentsIfLoaded(hash); c != nil {
 		if end > len(c) {
 			end = len(c)
 		}
-		rep.Chunk = c[req.Start:end]
-		return nil
+		return c[start:end], nil
 	}
 
-	f, err := os.Open(me.Path(req.Hash))
+	f, err := os.Open(me.Path(hash))
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer f.Close()
 
-	rep.Chunk = make([]byte, req.End-req.Start)
-	n, err := f.ReadAt(rep.Chunk, int64(req.Start))
-	rep.Chunk = rep.Chunk[:n]
+	chunk := make([]byte, end-start)
+	n, err := f.ReadAt(chunk, int64(start))
+	chunk = chunk[:n]
 
 	if err == io.EOF {
 		err = nil
 	}
-	return err
+	return chunk, err
 }

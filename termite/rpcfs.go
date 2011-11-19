@@ -47,13 +47,19 @@ func (me *RpcFs) Close() {
 	me.client.Close()
 }
 
-func (me *RpcFs) innerFetch(req *ContentRequest, rep *ContentResponse) error {
-	start := time.Nanoseconds()
+func (me *RpcFs) innerFetch(start, end int, hash string) ([]byte, error) {
+	req := &ContentRequest{
+	Hash: hash,
+	Start: start,
+	End: end,
+	}
+	rep := &ContentResponse{}
+	startT := time.Nanoseconds()
 	err := me.client.Call("FsServer.FileContent", req, rep)
-	dt := time.Nanoseconds() - start
+	dt := time.Nanoseconds() - startT
 	me.timings.Log("FsServer.FileContent", dt)
 	me.timings.LogN("FsServer.FileContentBytes", int64(len(rep.Chunk)), dt)
-	return err
+	return rep.Chunk, err
 }
 
 func (me *RpcFs) FetchHash(a *attr.FileAttr) error {
@@ -77,10 +83,14 @@ func (me *RpcFs) FetchHashOnce(a *attr.FileAttr) error {
 	me.fetching[h] = true
 	me.mutex.Unlock()
 	log.Printf("Fetching contents for file %s: %x", a.Path, h)
-	err := me.cache.FetchFromServer(
-		func(req *ContentRequest, rep *ContentResponse) error {
-			return me.innerFetch(req, rep)
-		}, h)
+	saved, err := me.cache.Fetch(
+		func(s, e int) ([]byte, error) {
+			return me.innerFetch(s, e, a.Hash)
+		})
+	if saved != h {
+		log.Fatal("RpcFs.FetchHashOnce: fetch corruption got %x want %x", saved, h)
+	}
+	
 	me.mutex.Lock()
 	delete(me.fetching, h)
 	me.cond.Broadcast()
