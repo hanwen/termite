@@ -2,8 +2,8 @@ package termite
 
 import (
 	"fmt"
-	"github.com/hanwen/termite/attr"
 	"github.com/hanwen/go-fuse/fuse"
+	"github.com/hanwen/termite/attr"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -97,13 +97,13 @@ func NewTestCase(t *testing.T) *testCase {
 	wg.Add(1)
 	go func() {
 		masterOpts := MasterOptions{
-			WritableRoot: me.wd,
-			RetryCount:   3,
-			Secret:       me.secret,
-			MaxJobs:      1,
-			Coordinator:  coordinatorAddr.String(),
-			KeepAlive:    0.5,
-			Period:       0.5,
+			WritableRoot:    me.wd,
+			RetryCount:      3,
+			Secret:          me.secret,
+			MaxJobs:         1,
+			Coordinator:     coordinatorAddr.String(),
+			KeepAlive:       0.5,
+			Period:          0.5,
 			ContentCacheDir: me.tmp + "/master-cache",
 		}
 		me.master = NewMaster(&masterOpts)

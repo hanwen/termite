@@ -28,7 +28,7 @@ func main() {
 	socket := flag.String("socket", ".termite-socket", "socket to listen for commands")
 	srcRoot := flag.String("sourcedir", "", "root of corresponding source directory")
 	workers := flag.String("workers", "", "comma separated list of worker addresses")
-	
+
 	flag.Parse()
 
 	if *logfile != "" {
@@ -51,18 +51,18 @@ func main() {
 	excludeList := strings.Split(*exclude, ",")
 	root, sock := absSocket(*socket)
 	opts := termite.MasterOptions{
-		Secret:       secret,
-		MaxJobs:      *jobs,
-		Excludes:     excludeList,
-		Workers:      workerList,
-		Coordinator:  *coordinator,
-		SrcRoot:      *srcRoot,
-		WritableRoot: root,
-		Paranoia:     *paranoia,
-		Period:       *houseHoldPeriod,
-		KeepAlive:    *keepAlive,
-		FetchAll:     *fetchAll,
-		ContentCacheDir: *cachedir,
+		Secret:              secret,
+		MaxJobs:             *jobs,
+		Excludes:            excludeList,
+		Workers:             workerList,
+		Coordinator:         *coordinator,
+		SrcRoot:             *srcRoot,
+		WritableRoot:        root,
+		Paranoia:            *paranoia,
+		Period:              *houseHoldPeriod,
+		KeepAlive:           *keepAlive,
+		FetchAll:            *fetchAll,
+		ContentCacheDir:     *cachedir,
 		ContentCacheMemSize: *memcache,
 	}
 	master := termite.NewMaster(&opts)

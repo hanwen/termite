@@ -18,8 +18,8 @@ type ContentCache struct {
 	hashFunc crypto.Hash
 
 	// Try to keep small files in memory.
-	MemoryLimit   int64
-	
+	MemoryLimit int64
+
 	mutex         sync.Mutex
 	cond          *sync.Cond
 	faulting      map[string]bool
@@ -324,7 +324,7 @@ func (me *ContentCache) Fetch(fetcher func(start, end int) ([]byte, error)) (str
 		content, err := fetcher(written, written+chunkSize)
 		if err != nil {
 			log.Println("FileContent error:", err)
-			return "",  err
+			return "", err
 		}
 
 		if len(content) < chunkSize && written == 0 {
@@ -380,4 +380,3 @@ func (me *ContentCache) Serve(req *ContentRequest, rep *ContentResponse) (err er
 	rep.Chunk, err = me.ServeChunk(req.Start, req.End, req.Hash)
 	return err
 }
-

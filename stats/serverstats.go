@@ -10,16 +10,16 @@ import (
 var _ = log.Println
 
 type ServerStats struct {
-	mutex         sync.Mutex
-	phaseCounts   map[string]int
+	mutex       sync.Mutex
+	phaseCounts map[string]int
 	*CpuStatSampler
-	PhaseOrder    []string 
+	PhaseOrder []string
 }
 
 func NewServerStats() *ServerStats {
 	return &ServerStats{
-		phaseCounts: map[string]int{},
-		CpuStatSampler:    NewCpuStatSampler(),
+		phaseCounts:    map[string]int{},
+		CpuStatSampler: NewCpuStatSampler(),
 	}
 }
 
@@ -71,7 +71,7 @@ func (me *ServerStats) PhaseCounts() (r []int) {
 	me.mutex.Lock()
 	defer me.mutex.Unlock()
 	for _, n := range me.PhaseOrder {
-		r = append(r, me.phaseCounts[n]) 
+		r = append(r, me.phaseCounts[n])
 	}
 	return r
 }

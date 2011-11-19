@@ -18,6 +18,7 @@ var _ = fmt.Print
 var _ = log.Print
 
 const entryTtl = 0.1
+
 var CheckSuccess = fuse.CheckSuccess
 
 // TODO - use ioutil.WriteFile directly.
@@ -229,7 +230,7 @@ func TestMemUnionFsBasic(t *testing.T) {
 
 	os.Remove(wd + "/mnt/new")
 	names = dirNames(wd + "/mnt")
-	want := map[string]bool{ "rw": true, "ro1": true, "ro2": true, }
+	want := map[string]bool{"rw": true, "ro1": true, "ro2": true}
 	if !reflect.DeepEqual(names, want) {
 		t.Fatalf("mismatch got %v want %v", names, want)
 	}
@@ -243,7 +244,7 @@ func TestMemUnionFsBasic(t *testing.T) {
 		t.Fatalf("got %v want %v", names, want)
 	}
 }
-	
+
 func TestMemUnionFsPromote(t *testing.T) {
 	wd, ufs, clean := setupMemUfs(t)
 	defer clean()

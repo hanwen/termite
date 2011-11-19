@@ -41,12 +41,12 @@ type MasterOptions struct {
 	Paranoia    bool
 
 	// On startup, fault-in all files.
-	FetchAll    bool
-	
+	FetchAll bool
+
 	Period    float64
 	KeepAlive float64
-	
-	ContentCacheDir string
+
+	ContentCacheDir     string
 	ContentCacheMemSize int
 }
 
@@ -102,7 +102,7 @@ func (me *Master) path(n string) string {
 func NewMaster(options *MasterOptions) *Master {
 	cache := cba.NewContentCache(options.ContentCacheDir, hashFunc)
 	// TODO - softcode limit.
-	cache.SetMemoryCacheSize(options.ContentCacheMemSize, 128 * 1024)
+	cache.SetMemoryCacheSize(options.ContentCacheMemSize, 128*1024)
 
 	me := &Master{
 		cache:         cache,
@@ -336,7 +336,7 @@ func (me *Master) replayFileModifications(infos []*attr.FileAttr, newFiles map[s
 			if err := os.Mkdir(name, info.FileInfo.Mode&07777); err != nil {
 				// some other process may have created
 				// the dir.
-				fi, _ := os.Lstat(name);
+				fi, _ := os.Lstat(name)
 				if fi == nil && !fi.IsDirectory() {
 					log.Fatal("os.Mkdir", err)
 				}
@@ -354,7 +354,7 @@ func (me *Master) replayFileModifications(infos []*attr.FileAttr, newFiles map[s
 			if err := os.Symlink(info.Link, name); err != nil {
 				log.Fatal("os.Symlink", err)
 			}
-			
+
 		}
 		if info.Deletion() {
 			if err := os.Remove(name); err != nil {

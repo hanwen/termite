@@ -3,7 +3,7 @@ package termite
 import (
 	"bytes"
 	"fmt"
-	"github.com/hanwen/termite/attr"	
+	"github.com/hanwen/termite/attr"
 	"github.com/hanwen/termite/fs"
 	"log"
 	"net"
@@ -59,17 +59,17 @@ func (me *WorkerTask) Run() error {
 	}
 
 	me.resetClock()
-	me.mirror.daemon.stats.Enter("fuse") 
+	me.mirror.daemon.stats.Enter("fuse")
 	err = me.runInFuse(fuseFs)
-	me.mirror.daemon.stats.Exit("fuse") 
+	me.mirror.daemon.stats.Exit("fuse")
 
 	defer me.mirror.returnFs(fuseFs)
-	
-	me.mirror.daemon.stats.Enter("reap") 
+
+	me.mirror.daemon.stats.Enter("reap")
 	if me.mirror.considerReap(fuseFs, me) {
 		me.WorkResponse.FileSet, me.WorkResponse.TaskIds = me.mirror.reapFuse(fuseFs)
 	}
-	me.mirror.daemon.stats.Exit("reap") 
+	me.mirror.daemon.stats.Exit("reap")
 
 	return err
 }

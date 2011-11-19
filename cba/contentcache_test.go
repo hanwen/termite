@@ -10,6 +10,7 @@ import (
 )
 
 var hashFunc = crypto.MD5
+
 func md5(c []byte) string {
 	h := md5pkg.New()
 	h.Write(c)

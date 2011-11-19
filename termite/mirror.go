@@ -184,7 +184,7 @@ func (me *Mirror) updateFiles(attrs []*attr.FileAttr) {
 func (me *Mirror) Run(req *WorkRequest, rep *WorkResponse) error {
 	me.daemon.stats.Enter("run")
 	log.Print("Received request", req)
-	
+
 	// Don't run me.updateFiles() as we don't want to issue
 	// unneeded cache invalidations.
 	task, err := me.newWorkerTask(req, rep)

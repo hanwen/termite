@@ -27,7 +27,7 @@ type mirrorConnection struct {
 	maxJobs       int
 	availableJobs int
 
-	master *Master
+	master        *Master
 	fileSetWaiter *attr.FileSetWaiter
 }
 
@@ -37,9 +37,9 @@ func (me *mirrorConnection) Id() string {
 
 func (me *mirrorConnection) innerFetch(start, end int, hash string) ([]byte, error) {
 	req := &cba.ContentRequest{
-		Hash: hash,
+		Hash:  hash,
 		Start: start,
-		End: end,
+		End:   end,
 	}
 	rep := &cba.ContentResponse{}
 	err := me.rpcClient.Call("Mirror.FileContent", req, rep)
@@ -50,7 +50,7 @@ func (me *mirrorConnection) replay(fset attr.FileSet) error {
 	// Must get data before we modify the file-system, so we don't
 	// leave the FS in a half-finished state.
 	for _, info := range fset.Files {
-		if info.Hash != "" {
+		if info.Hash != "" && !me.master.cache.HasHash(info.Hash) {
 			saved, err := me.master.cache.Fetch(
 				func(start, end int) ([]byte, error) {
 					return me.innerFetch(start, end, info.Hash)
@@ -145,7 +145,6 @@ func newMirrorConnections(m *Master, workers []string, coordinator string, maxJo
 	}
 	me.refreshStats()
 
-		
 	for _, w := range workers {
 		me.workers[w] = true
 	}

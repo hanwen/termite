@@ -51,9 +51,9 @@ func (me *RpcFs) Close() {
 
 func (me *RpcFs) innerFetch(start, end int, hash string) ([]byte, error) {
 	req := &cba.ContentRequest{
-	Hash: hash,
-	Start: start,
-	End: end,
+		Hash:  hash,
+		Start: start,
+		End:   end,
 	}
 	rep := &cba.ContentResponse{}
 	startT := time.Nanoseconds()
@@ -92,7 +92,7 @@ func (me *RpcFs) FetchHashOnce(a *attr.FileAttr) error {
 	if saved != h {
 		log.Fatalf("RpcFs.FetchHashOnce: fetch corruption got %x want %x", saved, h)
 	}
-	
+
 	me.mutex.Lock()
 	delete(me.fetching, h)
 	me.cond.Broadcast()

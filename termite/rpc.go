@@ -28,8 +28,6 @@ type MirrorStatusRequest struct {
 
 }
 
-
-
 type MirrorStatusResponse struct {
 	Root         string
 	Granted      int
@@ -54,8 +52,8 @@ type WorkerStatusResponse struct {
 	CpuStats            []stats.CpuStat
 	TotalCpu            stats.CpuStat
 	ContentCacheHitRate float64
-	PhaseNames          []string        
-	PhaseCounts         []int 
+	PhaseNames          []string
+	PhaseCounts         []int
 }
 
 type Timing struct {

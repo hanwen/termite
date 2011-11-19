@@ -8,6 +8,7 @@ import (
 	"syscall"
 	"testing"
 )
+
 var _ = md5.New
 
 func TestFileAttrReadFrom(t *testing.T) {

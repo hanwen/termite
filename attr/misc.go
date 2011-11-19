@@ -1,7 +1,8 @@
 package attr
+
 import (
-	"fmt"
 	"crypto"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -22,7 +23,6 @@ func EncodeFileInfo(fi os.FileInfo) string {
 	fi.Name = ""
 	return fmt.Sprintf("%v", fi)
 }
-
 
 // for tests:
 func TestStat(t *testing.T, n string) *os.FileInfo {

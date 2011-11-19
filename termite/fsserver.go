@@ -1,16 +1,16 @@
 package termite
 
 import (
-	"log"
 	"github.com/hanwen/termite/attr"
 	"github.com/hanwen/termite/cba"
 	"github.com/hanwen/termite/stats"
+	"log"
 	"time"
 )
 
 type FsServer struct {
 	contentCache *cba.ContentCache
-	attributes    *attr.AttributeCache
+	attributes   *attr.AttributeCache
 	stats        *stats.TimerStats
 }
 

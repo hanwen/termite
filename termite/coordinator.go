@@ -370,7 +370,7 @@ func (me *Coordinator) workerHandler(w http.ResponseWriter, req *http.Request) {
 		fmt.Fprintf(w, "<li>jobs in phase %s: %d\n", n, status.PhaseCounts[i])
 	}
 	fmt.Fprintf(w, "</ul>\n")
-	
+
 	for _, mirrorStatus := range status.MirrorStatus {
 		me.mirrorStatusHtml(w, mirrorStatus)
 	}

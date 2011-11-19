@@ -657,7 +657,6 @@ func (me *memNode) reset(path string) (entryNotify bool) {
 	return false
 }
 
-
 func stripSlash(fn string) string {
 	return strings.TrimRight(fn, string(filepath.Separator))
 }
