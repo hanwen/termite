@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"syscall"
 	"testing"
 	"time"
@@ -16,7 +17,36 @@ import (
 var _ = fmt.Print
 var _ = log.Print
 
+const entryTtl = 0.1
 var CheckSuccess = fuse.CheckSuccess
+
+// TODO - use ioutil.WriteFile directly.
+func writeToFile(path string, contents string) {
+	err := ioutil.WriteFile(path, []byte(contents), 0644)
+	CheckSuccess(err)
+}
+
+func readFromFile(path string) string {
+	b, err := ioutil.ReadFile(path)
+	CheckSuccess(err)
+	return string(b)
+}
+
+func dirNames(path string) map[string]bool {
+	f, err := os.Open(path)
+	fuse.CheckSuccess(err)
+
+	result := make(map[string]bool)
+	names, err := f.Readdirnames(-1)
+	fuse.CheckSuccess(err)
+	err = f.Close()
+	CheckSuccess(err)
+
+	for _, nm := range names {
+		result[nm] = true
+	}
+	return result
+}
 
 func setupMemUfs(t *testing.T) (workdir string, ufs *MemUnionFs, cleanup func()) {
 	// Make sure system setting does not affect test.
@@ -185,7 +215,9 @@ func TestMemUnionFsBasic(t *testing.T) {
 	expected := map[string]bool{
 		"rw": true, "ro1": true, "ro2": true,
 	}
-	checkMapEq(t, names, expected)
+	if !reflect.DeepEqual(expected, names) {
+		t.Fatal("dir contents mismatch", expected, names)
+	}
 
 	writeToFile(wd+"/mnt/new", "new contents")
 
@@ -195,19 +227,23 @@ func TestMemUnionFsBasic(t *testing.T) {
 	}
 	writeToFile(wd+"/mnt/ro1", "promote me")
 
-	remove(wd + "/mnt/new")
+	os.Remove(wd + "/mnt/new")
 	names = dirNames(wd + "/mnt")
-	checkMapEq(t, names, map[string]bool{
-		"rw": true, "ro1": true, "ro2": true,
-	})
+	want := map[string]bool{ "rw": true, "ro1": true, "ro2": true, }
+	if !reflect.DeepEqual(names, want) {
+		t.Fatalf("mismatch got %v want %v", names, want)
+	}
 
-	remove(wd + "/mnt/ro1")
+	os.Remove(wd + "/mnt/ro1")
 	names = dirNames(wd + "/mnt")
-	checkMapEq(t, names, map[string]bool{
+	want = map[string]bool{
 		"rw": true, "ro2": true,
-	})
+	}
+	if !reflect.DeepEqual(want, names) {
+		t.Fatalf("got %v want %v", names, want)
+	}
 }
-
+	
 func TestMemUnionFsPromote(t *testing.T) {
 	wd, ufs, clean := setupMemUfs(t)
 	defer clean()
@@ -409,6 +445,13 @@ func TestMemUnionFsTruncateTimestamp(t *testing.T) {
 	if abs(truncTs-fi.Mtime_ns) > 0.1e9 {
 		t.Error("timestamp drift", truncTs, fi.Mtime_ns)
 	}
+}
+
+func abs(x int64) int64 {
+	if x < 0 {
+		return -x
+	}
+	return x
 }
 
 func TestMemUnionFsRemoveAll(t *testing.T) {
