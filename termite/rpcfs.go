@@ -3,6 +3,7 @@ package termite
 import (
 	"fmt"
 	"github.com/hanwen/go-fuse/fuse"
+	"github.com/hanwen/termite/attr"
 	"log"
 	"net/rpc"
 	"os"
@@ -18,7 +19,7 @@ type RpcFs struct {
 	// Roots that we should try to fetch locally.
 	localRoots []string
 	timings    *TimerStats
-	attr       *AttributeCache
+	attr       *attr.AttributeCache
 	id         string
 
 	// Below code is used to make sure we only fetch each hash
@@ -32,8 +33,8 @@ func NewRpcFs(server *rpc.Client, cache *ContentCache) *RpcFs {
 	me := &RpcFs{}
 	me.client = server
 	me.timings = NewTimerStats()
-	me.attr = NewAttributeCache(
-		func(n string) *FileAttr {
+	me.attr = attr.NewAttributeCache(
+		func(n string) *attr.FileAttr {
 			return me.fetchAttr(n)
 		}, nil)
 	me.cond = sync.NewCond(&me.mutex)
@@ -55,7 +56,7 @@ func (me *RpcFs) innerFetch(req *ContentRequest, rep *ContentResponse) error {
 	return err
 }
 
-func (me *RpcFs) FetchHash(a *FileAttr) error {
+func (me *RpcFs) FetchHash(a *attr.FileAttr) error {
 	e := me.FetchHashOnce(a)
 	if e == nil && a.Size < _MEMORY_LIMIT {
 		me.cache.FaultIn(a.Hash)
@@ -63,7 +64,7 @@ func (me *RpcFs) FetchHash(a *FileAttr) error {
 	return e
 }
 
-func (me *RpcFs) FetchHashOnce(a *FileAttr) error {
+func (me *RpcFs) FetchHashOnce(a *attr.FileAttr) error {
 	me.mutex.Lock()
 	defer me.mutex.Unlock()
 	h := a.Hash
@@ -91,11 +92,11 @@ func (me *RpcFs) Update(req *UpdateRequest, resp *UpdateResponse) error {
 	return nil
 }
 
-func (me *RpcFs) updateFiles(files []*FileAttr) {
+func (me *RpcFs) updateFiles(files []*attr.FileAttr) {
 	me.attr.Update(files)
 }
 
-func (me *RpcFs) fetchAttr(n string) *FileAttr {
+func (me *RpcFs) fetchAttr(n string) *attr.FileAttr {
 	req := &AttrRequest{
 		Name:   n,
 		Origin: me.id,
@@ -111,7 +112,7 @@ func (me *RpcFs) fetchAttr(n string) *FileAttr {
 		return nil
 	}
 
-	var wanted *FileAttr
+	var wanted *attr.FileAttr
 	for _, attr := range rep.Attrs {
 		if attr.Path == n {
 			wanted = attr
@@ -122,9 +123,9 @@ func (me *RpcFs) fetchAttr(n string) *FileAttr {
 	return wanted
 }
 
-func (me *RpcFs) considerSaveLocal(attr *FileAttr) {
-	absPath := attr.Path
-	if attr.Deletion() || !attr.FileInfo.IsRegular() {
+func (me *RpcFs) considerSaveLocal(a *attr.FileAttr) {
+	absPath := a.Path
+	if a.Deletion() || !a.FileInfo.IsRegular() {
 		return
 	}
 	found := false
@@ -141,7 +142,7 @@ func (me *RpcFs) considerSaveLocal(attr *FileAttr) {
 	if fi == nil {
 		return
 	}
-	if EncodeFileInfo(*fi) != EncodeFileInfo(*attr.FileInfo) {
+	if attr.EncodeFileInfo(*fi) != attr.EncodeFileInfo(*a.FileInfo) {
 		return
 	}
 }

@@ -1,4 +1,4 @@
-package termite
+package attr
 
 import (
 	"os"

@@ -2,19 +2,20 @@ package termite
 
 import (
 	"log"
+	"github.com/hanwen/termite/attr"
 	"time"
 )
 
 type FsServer struct {
 	contentCache *ContentCache
-	attr         *AttributeCache
+	attributes    *attr.AttributeCache
 	stats        *TimerStats
 }
 
-func NewFsServer(attr *AttributeCache, cache *ContentCache) *FsServer {
+func NewFsServer(a *attr.AttributeCache, cache *ContentCache) *FsServer {
 	me := &FsServer{
 		contentCache: cache,
-		attr:         attr,
+		attributes:   a,
 		stats:        NewTimerStats(),
 	}
 
@@ -37,7 +38,7 @@ func (me *FsServer) GetAttr(req *AttrRequest, rep *AttrResponse) error {
 		panic("leading /")
 	}
 
-	a := me.attr.GetDir(req.Name)
+	a := me.attributes.GetDir(req.Name)
 	if a.Hash != "" {
 		log.Printf("GetAttr %v", a)
 		if a.Size < _MEMORY_LIMIT {

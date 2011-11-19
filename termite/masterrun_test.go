@@ -2,6 +2,7 @@ package termite
 
 import (
 	"fmt"
+	"github.com/hanwen/termite/attr"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -29,21 +30,21 @@ func TestEndToEndMkdirParentTimestamp(t *testing.T) {
 		Argv: []string{"mkdir", "-p", tc.wd + "/dir"},
 	})
 	rootless := strings.TrimLeft(tc.wd, "/")
-	beforeNs := tc.master.fileServer.attr.Get(rootless + "/dir").Ctime_ns
-	var after *FileAttr
+	beforeNs := tc.master.fileServer.attributes.Get(rootless + "/dir").Ctime_ns
+	var after *attr.FileAttr
 	for i := 0; ; i++ {
 		time.Sleep(10e6)
 		subdir := fmt.Sprintf(tc.wd+"/dir/subdir%d", i)
 		tc.RunSuccess(WorkRequest{
 			Argv: []string{"mkdir", "-p", subdir},
 		})
-		after = tc.master.fileServer.attr.Get(strings.TrimLeft(subdir, "/"))
+		after = tc.master.fileServer.attributes.Get(strings.TrimLeft(subdir, "/"))
 		if after.Ctime_ns != beforeNs {
 			break
 		}
 	}
 
-	afterDir := tc.master.fileServer.attr.Get(rootless + "/dir")
+	afterDir := tc.master.fileServer.attributes.Get(rootless + "/dir")
 	if afterDir.Ctime_ns == beforeNs {
 		t.Errorf("Forgot to update parent timestamps")
 	}
@@ -57,21 +58,21 @@ func TestEndToEndMkdirNoParentTimestamp(t *testing.T) {
 		Argv: []string{"mkdir", "-p", tc.wd + "/dir"},
 	})
 	rootless := strings.TrimLeft(tc.wd, "/")
-	beforeNs := tc.master.fileServer.attr.Get(rootless + "/dir").Ctime_ns
-	var after *FileAttr
+	beforeNs := tc.master.fileServer.attributes.Get(rootless + "/dir").Ctime_ns
+	var after *attr.FileAttr
 	for i := 0; ; i++ {
 		time.Sleep(10e6)
 		subdir := fmt.Sprintf(tc.wd+"/dir/subdir%d", i)
 		tc.RunSuccess(WorkRequest{
 			Argv: []string{"mkdir", subdir},
 		})
-		after = tc.master.fileServer.attr.Get(strings.TrimLeft(subdir, "/"))
+		after = tc.master.fileServer.attributes.Get(strings.TrimLeft(subdir, "/"))
 		if after.Ctime_ns != beforeNs {
 			break
 		}
 	}
 
-	afterDir := tc.master.fileServer.attr.Get(rootless + "/dir")
+	afterDir := tc.master.fileServer.attributes.Get(rootless + "/dir")
 	if afterDir.Ctime_ns == beforeNs {
 		t.Errorf("Forgot to update parent timestamps")
 	}
@@ -94,7 +95,7 @@ func TestEndToEndMkdirExist(t *testing.T) {
 		t.Fatal("Should be regular file.")
 	}
 
-	fa := tc.master.fileServer.attr.Get(
+	fa := tc.master.fileServer.attributes.Get(
 		strings.TrimLeft(tc.tmp+"/wd/file.txt", "/"))
 	if fa == nil || fa.Deletion() || !fa.IsRegular() {
 		t.Fatal("Attrcache out of sync", fa)

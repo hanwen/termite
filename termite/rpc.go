@@ -2,6 +2,7 @@ package termite
 
 import (
 	"fmt"
+	"github.com/hanwen/termite/attr"
 	"os"
 )
 
@@ -23,23 +24,12 @@ type AttrRequest struct {
 	Name   string
 }
 
-type FileMode uint32
-type FileAttr struct {
-	Path string
-	*os.FileInfo
-	Hash string
-	Link string
-
-	// Only filled for directories.
-	NameModeMap map[string]FileMode
-}
-
 type AttrResponse struct {
-	Attrs []*FileAttr
+	Attrs []*attr.FileAttr
 }
 
 type UpdateRequest struct {
-	Files []*FileAttr
+	Files []*attr.FileAttr
 }
 
 type UpdateResponse struct {
@@ -114,14 +104,6 @@ type Timing struct {
 	Dt   float64
 }
 
-type FileSet struct {
-	Files []*FileAttr
-}
-
-func (me *FileSet) String() string {
-	return fmt.Sprintf("%v", me.Files)
-}
-
 type WorkResponse struct {
 	Exit   os.Waitmsg
 	Stderr string
@@ -131,7 +113,7 @@ type WorkResponse struct {
 
 	LastTime int64
 
-	*FileSet
+	*attr.FileSet
 	TaskIds  []int
 	WorkerId string
 }

@@ -2,6 +2,7 @@ package termite
 
 import (
 	"fmt"
+	"github.com/hanwen/termite/attr"
 	"github.com/hanwen/go-fuse/fuse"
 	"io/ioutil"
 	"net"
@@ -308,8 +309,8 @@ func TestEndToEndNegativeNotify(t *testing.T) {
 
 	newContent := []byte("new content")
 	hash := tc.master.cache.Save(newContent)
-	updated := []*FileAttr{
-		&FileAttr{
+	updated := []*attr.FileAttr{
+		&attr.FileAttr{
 			Path: tc.wd[1:] + "/output.txt",
 			FileInfo: &os.FileInfo{
 				Mode: fuse.S_IFREG | 0644,
@@ -318,7 +319,7 @@ func TestEndToEndNegativeNotify(t *testing.T) {
 			Hash: hash,
 		},
 	}
-	fset := FileSet{Files: updated}
+	fset := attr.FileSet{Files: updated}
 	tc.master.replay(fset)
 
 	rep = tc.RunSuccess(WorkRequest{

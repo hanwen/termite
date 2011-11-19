@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/hanwen/go-fuse/fuse"
+	"github.com/hanwen/termite/attr"
 	"github.com/hanwen/termite/fs"
 	"io/ioutil"
 	"log"
@@ -169,7 +170,7 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string, 
 	return me, nil
 }
 
-func (me *workerFuseFs) update(attrs []*FileAttr) {
+func (me *workerFuseFs) update(attrs []*attr.FileAttr) {
 	updates := map[string]*fs.Result{}
 	for _, attr := range attrs {
 		path := strings.TrimLeft(attr.Path, "/")

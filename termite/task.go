@@ -3,6 +3,7 @@ package termite
 import (
 	"bytes"
 	"fmt"
+	"github.com/hanwen/termite/attr"	
 	"github.com/hanwen/termite/fs"
 	"log"
 	"net"
@@ -140,15 +141,15 @@ func (me *WorkerTask) runInFuse(fuseFs *workerFuseFs) error {
 
 // Sorts FileAttr such deletions come reversed before additions.
 
-func (me *Mirror) fillReply(ufs *fs.MemUnionFs) *FileSet {
+func (me *Mirror) fillReply(ufs *fs.MemUnionFs) *attr.FileSet {
 	yield := ufs.Reap()
 	wrRoot := strings.TrimLeft(me.writableRoot, "/")
 	cache := me.daemon.contentCache
 
-	files := []*FileAttr{}
+	files := []*attr.FileAttr{}
 	reapedHashes := map[string]string{}
 	for path, v := range yield {
-		f := &FileAttr{
+		f := &attr.FileAttr{
 			Path: filepath.Join(wrRoot, path),
 		}
 
@@ -179,7 +180,7 @@ func (me *Mirror) fillReply(ufs *fs.MemUnionFs) *FileSet {
 
 		files = append(files, f)
 	}
-	fs := FileSet{Files: files}
+	fs := attr.FileSet{Files: files}
 	fs.Sort()
 
 	return &fs

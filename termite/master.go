@@ -1,6 +1,8 @@
 package termite
 
 import (
+	"crypto"
+	"github.com/hanwen/termite/attr"
 	"io/ioutil"
 	"log"
 	"net/rpc"
@@ -15,7 +17,7 @@ type Master struct {
 	fileServer    *FsServer
 	fileServerRpc *rpc.Server
 	excluded      map[string]bool
-	attr          *AttributeCache
+	attr          *attr.AttributeCache
 	mirrors       *mirrorConnections
 	pending       *PendingConnections
 	taskIds       chan int
@@ -44,14 +46,16 @@ type MasterOptions struct {
 	KeepAlive float64
 }
 
+const hashFunc = crypto.MD5
+
 type replayRequest struct {
 	NewFiles map[string]string
-	Files    []*FileAttr
+	Files    []*attr.FileAttr
 	Done     chan int
 }
 
-func (me *Master) uncachedGetAttr(name string) (rep *FileAttr) {
-	rep = &FileAttr{Path: name}
+func (me *Master) uncachedGetAttr(name string) (rep *attr.FileAttr) {
+	rep = &attr.FileAttr{Path: name}
 	p := me.path(name)
 	fi, _ := os.Lstat(p)
 
@@ -73,9 +77,9 @@ func (me *Master) uncachedGetAttr(name string) (rep *FileAttr) {
 	return rep
 }
 
-func (me *Master) fillContent(rep *FileAttr) {
+func (me *Master) fillContent(rep *attr.FileAttr) {
 	if rep.IsSymlink() || rep.IsDirectory() {
-		rep.ReadFromFs(me.path(rep.Path))
+		rep.ReadFromFs(me.path(rep.Path), hashFunc)
 	} else if rep.IsRegular() {
 		fullPath := me.path(rep.Path)
 		rep.Hash = me.cache.SavePath(fullPath)
@@ -112,7 +116,7 @@ func NewMaster(cache *ContentCache, options *MasterOptions) *Master {
 		me, options.Workers, options.Coordinator, options.MaxJobs)
 	me.mirrors.keepAliveNs = int64(1e9 * options.KeepAlive)
 	me.pending = NewPendingConnections()
-	me.attr = NewAttributeCache(func(n string) *FileAttr {
+	me.attr = attr.NewAttributeCache(func(n string) *attr.FileAttr {
 		return me.uncachedGetAttr(n)
 	},
 		func(n string) *os.FileInfo {
@@ -227,7 +231,7 @@ func (me *Master) createMirror(addr string, jobs int) (*mirrorConnection, error)
 		maxJobs:           rep.GrantedJobCount,
 		availableJobs:     rep.GrantedJobCount,
 	}
-	mc.fileSetWaiter = newFileSetWaiter(func(fset FileSet) error {
+	mc.fileSetWaiter = newFileSetWaiter(func(fset attr.FileSet) error {
 		return mc.replay(fset)
 	})
 
@@ -236,7 +240,7 @@ func (me *Master) createMirror(addr string, jobs int) (*mirrorConnection, error)
 
 func (me *Master) runOnMirror(mirror *mirrorConnection, req *WorkRequest, rep *WorkResponse) error {
 	me.mirrors.stats.Enter("send")
-	err := me.fileServer.attr.Send(mirror)
+	err := me.fileServer.attributes.Send(mirror)
 	me.mirrors.stats.Exit("send")
 	if err != nil {
 		return err
@@ -317,7 +321,7 @@ func (me *Master) run(req *WorkRequest, rep *WorkResponse) (err error) {
 	return err
 }
 
-func (me *Master) replayFileModifications(infos []*FileAttr, newFiles map[string]string) {
+func (me *Master) replayFileModifications(infos []*attr.FileAttr, newFiles map[string]string) {
 	for _, info := range infos {
 		name := "/" + info.Path
 		if info.FileInfo != nil && info.FileInfo.IsDirectory() {
@@ -371,7 +375,7 @@ func (me *Master) replayFileModifications(infos []*FileAttr, newFiles map[string
 	me.attr.Update(infos)
 }
 
-func (me *Master) replay(fset FileSet) {
+func (me *Master) replay(fset attr.FileSet) {
 	req := replayRequest{
 		make(map[string]string),
 		fset.Files,
@@ -423,7 +427,7 @@ func (me *Master) replay(fset FileSet) {
 		}
 	}
 
-	me.fileServer.attr.Queue(fset)
+	me.fileServer.attributes.Queue(fset)
 
 	me.replayChannel <- &req
 	<-req.Done

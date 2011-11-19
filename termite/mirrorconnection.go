@@ -3,6 +3,7 @@ package termite
 import (
 	"errors"
 	"fmt"
+	"github.com/hanwen/termite/attr"
 	"log"
 	"math/rand"
 	"net"
@@ -32,7 +33,7 @@ func (me *mirrorConnection) Id() string {
 	return me.workerAddr
 }
 
-func (me *mirrorConnection) replay(fset FileSet) error {
+func (me *mirrorConnection) replay(fset attr.FileSet) error {
 	// Must get data before we modify the file-system, so we don't
 	// leave the FS in a half-finished state.
 	for _, info := range fset.Files {
@@ -50,7 +51,7 @@ func (me *mirrorConnection) replay(fset FileSet) error {
 	return nil
 }
 
-func (me *mirrorConnection) Send(files []*FileAttr) error {
+func (me *mirrorConnection) Send(files []*attr.FileAttr) error {
 	req := UpdateRequest{
 		Files: files,
 	}
@@ -259,7 +260,7 @@ func (me *mirrorConnections) pick() (*mirrorConnection, error) {
 }
 
 func (me *mirrorConnections) drop(mc *mirrorConnection, err error) {
-	me.master.fileServer.attr.RmClient(mc)
+	me.master.fileServer.attributes.RmClient(mc)
 
 	me.Mutex.Lock()
 	defer me.Mutex.Unlock()
@@ -324,7 +325,7 @@ func (me *mirrorConnections) tryConnect() {
 			}
 			mc.workerAddr = addr
 			me.mirrors[addr] = mc
-			me.master.fileServer.attr.AddClient(mc)
+			me.master.fileServer.attributes.AddClient(mc)
 		}
 	}
 }

@@ -1,11 +1,17 @@
-package termite
+package attr
 
 import (
-	"log"
+	"fmt"
 	"sort"
 )
 
-var _ = log.Println
+type FileSet struct {
+	Files []*FileAttr
+}
+
+func (me *FileSet) String() string {
+	return fmt.Sprintf("%v", me.Files)
+}
 
 func (me *FileSet) Len() int {
 	return len(me.Files)

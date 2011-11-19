@@ -1,4 +1,4 @@
-package termite
+package attr
 
 import (
 	"fmt"
@@ -15,22 +15,10 @@ import (
 
 var _ = log.Printf
 
-func testStat(t *testing.T, n string) *os.FileInfo {
-	t.Logf("test stat %q", n)
-	f, _ := os.Lstat(n)
-	return f
-}
-
-func testGetattr(t *testing.T, n string) *FileAttr {
-	t.Logf("test getattr %q", n)
-	fi, _ := os.Lstat(n)
-	a := FileAttr{
-		FileInfo: fi,
+func check(err error) {
+	if err != nil {
+		panic(err)
 	}
-	if !a.Deletion() {
-		a.ReadFromFs(n)
-	}
-	return &a
 }
 
 func TestAttrCacheNil(t *testing.T) {
@@ -55,10 +43,10 @@ func attrCacheTestCase(t *testing.T) (*AttributeCache, string, func()) {
 
 	ac := NewAttributeCache(
 		func(n string) *FileAttr {
-			return testGetattr(t, filepath.Join(dir, n))
+			return TestGetattr(t, filepath.Join(dir, n))
 		},
 		func(n string) *os.FileInfo {
-			return testStat(t, filepath.Join(dir, n))
+			return TestStat(t, filepath.Join(dir, n))
 		})
 	return ac, dir, func() {
 		os.RemoveAll(dir)

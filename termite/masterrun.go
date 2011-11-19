@@ -2,6 +2,7 @@ package termite
 
 import (
 	"fmt"
+	"github.com/hanwen/termite/attr"
 	"log"
 	"os"
 	"path/filepath"
@@ -27,7 +28,7 @@ func (me *Master) MaybeRunInMaster(req *WorkRequest, rep *WorkResponse) bool {
 }
 
 func recurseNames(master *Master, name string) (names []string) {
-	a := master.fileServer.attr.GetDir(name)
+	a := master.fileServer.attributes.GetDir(name)
 
 	for n, m := range a.NameModeMap {
 		if m.IsDirectory() {
@@ -66,31 +67,31 @@ func rmMaybeMasterRun(master *Master, req *WorkRequest, rep *WorkResponse) bool 
 		todo = append(todo, a)
 	}
 
-	fs := FileSet{}
+	fs := attr.FileSet{}
 	msgs := []string{}
 	status := 0
 	if recursive {
 		for _, t := range todo {
 			for _, n := range recurseNames(master, t) {
-				fs.Files = append(fs.Files, &FileAttr{
+				fs.Files = append(fs.Files, &attr.FileAttr{
 					Path: n,
 				})
 			}
 		}
 	} else {
 		for _, p := range todo {
-			attr := master.fileServer.attr.GetDir(p)
+			a := master.fileServer.attributes.GetDir(p)
 			switch {
-			case attr.Deletion():
+			case a.Deletion():
 				if !force {
 					msgs = append(msgs, fmt.Sprintf("rm: no such file or directory: %s", p))
 					status = 1
 				}
-			case attr.IsDirectory() && !recursive:
+			case a.IsDirectory() && !recursive:
 				msgs = append(msgs, fmt.Sprintf("rm: is a directory: %s", p))
 				status = 1
 			default:
-				fs.Files = append(fs.Files, &FileAttr{Path: p})
+				fs.Files = append(fs.Files, &attr.FileAttr{Path: p})
 			}
 		}
 	}
@@ -145,13 +146,13 @@ func mkdirParentMasterRun(master *Master, arg string, rep *WorkResponse) {
 	for i := range components {
 		p := strings.Join(components[:i+1], "/")
 
-		dirAttr := master.fileServer.attr.Get(p)
+		dirAttr := master.fileServer.attributes.Get(p)
 		if dirAttr.Deletion() {
 			entry := mkdirEntry(p)
 			parent.Ctime_ns = entry.Ctime_ns
 			parent.Mtime_ns = entry.Mtime_ns
-			fs := FileSet{
-				Files: []*FileAttr{parent, entry},
+			fs := attr.FileSet{
+				Files: []*attr.FileAttr{parent, entry},
 			}
 			master.replay(fs)
 
@@ -170,13 +171,13 @@ func mkdirParentMasterRun(master *Master, arg string, rep *WorkResponse) {
 	}
 }
 
-func mkdirEntry(rootless string) *FileAttr {
+func mkdirEntry(rootless string) *attr.FileAttr {
 	now := time.Nanoseconds()
 	// TODO - could do without these.
 	uid := os.Getuid()
 	gid := os.Getgid()
 
-	return &FileAttr{
+	return &attr.FileAttr{
 		Path: rootless,
 		FileInfo: &os.FileInfo{
 			Mode:     syscall.S_IFDIR | 0755,
@@ -186,14 +187,14 @@ func mkdirEntry(rootless string) *FileAttr {
 			Uid:      uid,
 			Gid:      gid,
 		},
-		NameModeMap: map[string]FileMode{},
+		NameModeMap: map[string]attr.FileMode{},
 	}
 }
 
 func mkdirNormalMasterRun(master *Master, arg string, rep *WorkResponse) {
 	rootless := strings.TrimLeft(arg, "/")
 	dir, _ := SplitPath(rootless)
-	dirAttr := master.fileServer.attr.Get(dir)
+	dirAttr := master.fileServer.attributes.Get(dir)
 	if dirAttr.Deletion() {
 		rep.Stderr = fmt.Sprintf("File not found: /%s", dir)
 		rep.Exit = os.Waitmsg{
@@ -210,7 +211,7 @@ func mkdirNormalMasterRun(master *Master, arg string, rep *WorkResponse) {
 		return
 	}
 
-	chAttr := master.fileServer.attr.Get(rootless)
+	chAttr := master.fileServer.attributes.Get(rootless)
 	if !chAttr.Deletion() {
 		rep.Stderr = fmt.Sprintf("File exists: /%s", rootless)
 		rep.Exit = os.Waitmsg{
@@ -220,7 +221,7 @@ func mkdirNormalMasterRun(master *Master, arg string, rep *WorkResponse) {
 	}
 	chAttr = mkdirEntry(rootless)
 
-	fs := FileSet{}
+	fs := attr.FileSet{}
 	dirAttr.Ctime_ns = chAttr.Ctime_ns
 	dirAttr.Mtime_ns = chAttr.Mtime_ns
 	fs.Files = append(fs.Files, dirAttr, chAttr)

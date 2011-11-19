@@ -1,6 +1,7 @@
-package termite
+package attr
 
 import (
+	"crypto"
 	"fmt"
 	"github.com/hanwen/go-fuse/fuse"
 	"io/ioutil"
@@ -10,6 +11,17 @@ import (
 )
 
 var _ = log.Printf
+
+type FileMode uint32
+type FileAttr struct {
+	Path string
+	*os.FileInfo
+	Hash string
+	Link string
+
+	// Only filled for directories.
+	NameModeMap map[string]FileMode
+}
 
 func (me FileAttr) String() string {
 	id := me.Path
@@ -69,12 +81,14 @@ func (me FileAttr) Copy(withdir bool) *FileAttr {
 	return &a
 }
 
-func (me *FileAttr) ReadFromFs(p string) {
+func (me *FileAttr) ReadFromFs(p string, hashFunc crypto.Hash) {
 	var err error
 	switch {
 	case me.IsRegular():
 		if c, e := ioutil.ReadFile(p); e == nil {
-			me.Hash = md5(c)
+			h := hashFunc.New()
+			h.Write(c)
+			me.Hash = string(h.Sum())
 		} else {
 			err = e
 		}

@@ -3,6 +3,7 @@ package termite
 import (
 	"errors"
 	"fmt"
+	"github.com/hanwen/termite/attr"
 	"log"
 	"net"
 	"net/rpc"
@@ -139,7 +140,7 @@ func (me *Mirror) considerReap(fs *workerFuseFs, task *WorkerTask) bool {
 	return fs.reaping
 }
 
-func (me *Mirror) reapFuse(fs *workerFuseFs) (results *FileSet, taskIds []int) {
+func (me *Mirror) reapFuse(fs *workerFuseFs) (results *attr.FileSet, taskIds []int) {
 	log.Printf("Reaping fuse FS %v", fs.id)
 	results = me.fillReply(fs.unionFs)
 	fs.unionFs.Reset()
@@ -168,7 +169,7 @@ func (me *Mirror) Update(req *UpdateRequest, rep *UpdateResponse) error {
 	return nil
 }
 
-func (me *Mirror) updateFiles(attrs []*FileAttr) {
+func (me *Mirror) updateFiles(attrs []*attr.FileAttr) {
 	me.rpcFs.updateFiles(attrs)
 
 	me.fsMutex.Lock()

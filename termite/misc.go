@@ -210,14 +210,6 @@ func HasDirPrefix(path, prefix string) bool {
 		strings.HasPrefix(path, prefix+string(filepath.Separator))
 }
 
-func EncodeFileInfo(fi os.FileInfo) string {
-	fi.Atime_ns = 0
-	fi.Ino = 0
-	fi.Dev = 0
-	fi.Name = ""
-	return fmt.Sprintf("%v", fi)
-}
-
 func HumanTrim(s string, l int) string {
 	if len(s) < l {
 		return s

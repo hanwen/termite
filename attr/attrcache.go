@@ -1,4 +1,4 @@
-package termite
+package attr
 
 import (
 	"fmt"
@@ -310,7 +310,6 @@ func (me *AttributeCache) update(files []*FileAttr) {
 			// This is a metadata update only. If it does
 			// not come with contents, we can't use it to
 			// short-cut deletion queries.
-			log.Println("Discarding contentless dir update: ", r)
 			continue
 		}
 

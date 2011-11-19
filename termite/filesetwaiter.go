@@ -2,6 +2,7 @@ package termite
 
 import (
 	"errors"
+	"github.com/hanwen/termite/attr"
 	"log"
 	"sync"
 )
@@ -9,12 +10,12 @@ import (
 var _ = log.Println
 
 type fileSetWaiter struct {
-	process func(fset FileSet) error
+	process func(fset attr.FileSet) error
 	sync.Mutex
 	channels map[int]chan int
 }
 
-func newFileSetWaiter(proc func(FileSet) error) *fileSetWaiter {
+func newFileSetWaiter(proc func(attr.FileSet) error) *fileSetWaiter {
 	return &fileSetWaiter{
 		process:  proc,
 		channels: make(map[int]chan int),

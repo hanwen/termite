@@ -5,6 +5,7 @@ package termite
 
 import (
 	"github.com/hanwen/go-fuse/fuse"
+	"github.com/hanwen/termite/attr"
 	"io"
 	"io/ioutil"
 	"net/rpc"
@@ -51,7 +52,7 @@ func TestFsServerCache(t *testing.T) {
 		t.Errorf("cache should have 2 entries, got %#v", c)
 	}
 	name := "file.txt"
-	ok := me.server.attr.Have(name)
+	ok := me.server.attributes.Have(name)
 	if !ok {
 		t.Errorf("no entry for %q", name)
 	}
@@ -63,7 +64,7 @@ func TestFsServerCache(t *testing.T) {
 	}
 
 	me.attr.Refresh("")
-	ok = me.server.attr.Have(name)
+	ok = me.server.attributes.Have(name)
 	if ok {
 		t.Errorf("after rename: entry for %q unexpected", name)
 	}
@@ -75,7 +76,7 @@ type rpcFsTestCase struct {
 	orig string
 
 	cache  *ContentCache
-	attr   *AttributeCache
+	attr   *attr.AttributeCache
 	server *FsServer
 	rpcFs  *RpcFs
 	state  *fuse.MountState
@@ -85,9 +86,9 @@ type rpcFsTestCase struct {
 	tester *testing.T
 }
 
-func (me *rpcFsTestCase) getattr(n string) *FileAttr {
+func (me *rpcFsTestCase) getattr(n string) *attr.FileAttr {
 	p := filepath.Join(me.orig, n)
-	a := testGetattr(me.tester, p)
+	a := attr.TestGetattr(me.tester, p)
 	if a.Hash != "" {
 		me.cache.SavePath(p)
 	}
@@ -107,10 +108,10 @@ func newRpcFsTestCase(t *testing.T) (me *rpcFsTestCase) {
 	os.Mkdir(me.orig, 0700)
 
 	me.cache = NewContentCache(srvCache)
-	me.attr = NewAttributeCache(
-		func(n string) *FileAttr { return me.getattr(n) },
+	me.attr = attr.NewAttributeCache(
+		func(n string) *attr.FileAttr { return me.getattr(n) },
 		func(n string) *os.FileInfo {
-			return testStat(t, filepath.Join(me.orig, n))
+			return attr.TestStat(t, filepath.Join(me.orig, n))
 		})
 	me.attr.Paranoia = true
 	me.server = NewFsServer(me.attr, me.cache)
@@ -264,7 +265,7 @@ func TestRpcFsBasic(t *testing.T) {
 	}
 
 	// This test implementation detail - should be separate?
-	a := me.server.attr.Get("file.txt")
+	a := me.server.attributes.Get("file.txt")
 	if a == nil || a.Hash == "" || string(a.Hash) != string(md5str(content)) {
 		t.Errorf("cache error %v (%x)", a)
 	}
@@ -276,7 +277,7 @@ func TestRpcFsBasic(t *testing.T) {
 	check(err)
 
 	me.attr.Refresh("")
-	a = me.server.attr.Get("file.txt")
+	a = me.server.attributes.Get("file.txt")
 	if a == nil || a.Hash == "" || a.Hash != md5str(newcontent) {
 		t.Errorf("refreshAttributeCache: cache error got %v, want %x", a, md5str(newcontent))
 	}
