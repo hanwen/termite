@@ -10,7 +10,6 @@ MANUAL_GOFILES=\
 	coordinator.go \
 	copy.go \
 	cpustat.go \
-	filesetwaiter.go \
 	fsserver.go \
 	fuse.go \
 	getopt.go \

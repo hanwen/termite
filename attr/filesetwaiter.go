@@ -1,8 +1,7 @@
-package termite
+package attr
 
 import (
 	"errors"
-	"github.com/hanwen/termite/attr"
 	"log"
 	"sync"
 )
@@ -10,12 +9,12 @@ import (
 var _ = log.Println
 
 type FileSetWaiter struct {
-	process func(fset attr.FileSet) error
+	process func(fset FileSet) error
 	sync.Mutex
 	channels map[int]chan int
 }
 
-func NewFileSetWaiter(proc func(attr.FileSet) error) *FileSetWaiter {
+func NewFileSetWaiter(proc func(FileSet) error) *FileSetWaiter {
 	return &FileSetWaiter{
 		process:  proc,
 		channels: make(map[int]chan int),
@@ -62,12 +61,12 @@ func (me *FileSetWaiter) drop(id int) {
 	delete(me.channels, id)
 }
 
-func (me *FileSetWaiter) Wait(rep *WorkResponse, waitId int) (err error) {
-	if rep.FileSet != nil {
-		log.Println("Got data for tasks: ", rep.TaskIds, rep.FileSet.Files)
+func (me *FileSetWaiter) Wait(fs *FileSet, taskids []int, waitId int) (err error) {
+	if fs != nil {
+		log.Println("Got data for tasks: ", taskids, fs.Files)
 
-		err = me.process(*rep.FileSet)
-		for _, id := range rep.TaskIds {
+		err = me.process(*fs)
+		for _, id := range taskids {
 			if id == waitId {
 				continue
 			}
