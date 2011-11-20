@@ -9,8 +9,6 @@ import (
 	"testing"
 )
 
-var hashFunc = crypto.MD5
-
 func md5(c []byte) string {
 	h := md5pkg.New()
 	h.Write(c)
@@ -32,7 +30,6 @@ func newCcTestCase() (*ccTestCase) {
 	d, _ := ioutil.TempDir("", "term-cc")
 	opts := &ContentCacheOptions{
 		Dir: d,
-		Hash: hashFunc,
 		MemCount: 10,
 		MemMaxSize: 1024,
 	}	

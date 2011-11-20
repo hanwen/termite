@@ -1,7 +1,6 @@
 package termite
 
 import (
-	"crypto"
 	"github.com/hanwen/termite/attr"
 	"github.com/hanwen/termite/cba"
 	"io/ioutil"
@@ -49,8 +48,6 @@ type MasterOptions struct {
 	KeepAlive float64
 }
 
-const hashFunc = crypto.MD5
-
 type replayRequest struct {
 	NewFiles map[string]string
 	Files    []*attr.FileAttr
@@ -82,7 +79,7 @@ func (me *Master) uncachedGetAttr(name string) (rep *attr.FileAttr) {
 
 func (me *Master) fillContent(rep *attr.FileAttr) {
 	if rep.IsSymlink() || rep.IsDirectory() {
-		rep.ReadFromFs(me.path(rep.Path), hashFunc)
+		rep.ReadFromFs(me.path(rep.Path), me.options.Hash)
 	} else if rep.IsRegular() {
 		fullPath := me.path(rep.Path)
 		rep.Hash = me.cache.SavePath(fullPath)

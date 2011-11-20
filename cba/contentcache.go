@@ -2,6 +2,8 @@ package cba
 
 import (
 	"crypto"
+	md5pkg "crypto/md5"
+	"crypto/sha1"
 	"fmt"
 	"hash"
 	"io"
@@ -11,6 +13,9 @@ import (
 	"path/filepath"
 	"sync"
 )
+
+var _ = md5pkg.New
+var _ = sha1.New
 
 // Content based addressing cache.
 type ContentCache struct {
