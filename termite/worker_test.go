@@ -55,9 +55,8 @@ func testEnv() []string {
 
 func (me *testCase) StartWorker(coordinator string) {
 	worker := NewWorker(me.workerOpts)
-	// TODO -racy. 
 	me.workers = append(me.workers, worker)
-	worker.RunWorkerServer(0, coordinator)
+	go worker.RunWorkerServer(0, coordinator)
 }
 
 func NewTestCase(t *testing.T) *testCase {
@@ -122,7 +121,7 @@ func NewTestCase(t *testing.T) *testCase {
 		}
 		wg.Done()
 	}()
-	go me.StartWorker(coordinatorAddr.String())
+	me.StartWorker(coordinatorAddr.String())
 	wg.Wait()
 
 	for i := 0; me.coordinator.WorkerCount() == 0 && i < 10; i++ {
