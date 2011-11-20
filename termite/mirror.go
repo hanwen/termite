@@ -222,8 +222,8 @@ func (me *Mirror) newWorkerTask(req *WorkRequest, rep *WorkResponse) (*WorkerTas
 		stdin = me.daemon.pending.WaitConnection(req.StdinId)
 	}
 	task := &WorkerTask{
-		WorkRequest:  req,
-		WorkResponse: rep,
+		req: req,
+		rep: rep,
 		stdinConn:    stdin,
 		mirror:       me,
 		taskInfo:     fmt.Sprintf("%v, dir %v", req.Argv, req.Dir),

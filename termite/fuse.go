@@ -40,7 +40,7 @@ type workerFuseFs struct {
 }
 
 func (me *workerFuseFs) addTask(task *WorkerTask) {
-	me.taskIds = append(me.taskIds, task.WorkRequest.TaskId)
+	me.taskIds = append(me.taskIds, task.req.TaskId)
 	me.tasks[task] = true
 }
 

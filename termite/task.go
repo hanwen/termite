@@ -15,8 +15,8 @@ import (
 )
 
 type WorkerTask struct {
-	*WorkRequest
-	*WorkResponse
+	req *WorkRequest
+	rep *WorkResponse
 	stdinConn net.Conn
 	mirror    *Mirror
 	cmd       *exec.Cmd
@@ -24,7 +24,6 @@ type WorkerTask struct {
 }
 
 func (me *WorkerTask) Kill() {
-	// TODO - racy.
 	if me.cmd.Process != nil {
 		pid := me.cmd.Process.Pid
 		err := syscall.Kill(pid, syscall.SIGQUIT)
@@ -50,7 +49,7 @@ func (me *WorkerTask) Run() error {
 
 	me.mirror.daemon.stats.Enter("reap")
 	if me.mirror.considerReap(fuseFs, me) {
-		me.WorkResponse.FileSet, me.WorkResponse.TaskIds = me.mirror.reapFuse(fuseFs)
+		me.rep.FileSet, me.rep.TaskIds = me.mirror.reapFuse(fuseFs)
 	}
 	me.mirror.daemon.stats.Exit("reap")
 
@@ -58,15 +57,15 @@ func (me *WorkerTask) Run() error {
 }
 
 func (me *WorkerTask) runInFuse(fuseFs *workerFuseFs) error {
-	fuseFs.SetDebug(me.WorkRequest.Debug)
+	fuseFs.SetDebug(me.req.Debug)
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
 
 	// See /bin/true for the background of
 	// /bin/true. http://code.google.com/p/go/issues/detail?id=2373
 	me.cmd = &exec.Cmd{
-		Path: me.WorkRequest.Binary,
-		Args: me.WorkRequest.Argv,
+		Path: me.req.Binary,
+		Args: me.req.Argv,
 	}
 	cmd := me.cmd
 	if os.Geteuid() == 0 {
@@ -78,13 +77,13 @@ func (me *WorkerTask) runInFuse(fuseFs *workerFuseFs) error {
 		attr.Chroot = fuseFs.mount
 
 		cmd.SysProcAttr = attr
-		cmd.Dir = me.WorkRequest.Dir
+		cmd.Dir = me.req.Dir
 	} else {
-		cmd.Path = filepath.Join(fuseFs.mount, me.WorkRequest.Binary)
-		cmd.Dir = filepath.Join(fuseFs.mount, me.WorkRequest.Dir)
+		cmd.Path = filepath.Join(fuseFs.mount, me.req.Binary)
+		cmd.Dir = filepath.Join(fuseFs.mount, me.req.Dir)
 	}
 
-	cmd.Env = me.WorkRequest.Env
+	cmd.Env = me.req.Env
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 	if me.stdinConn != nil {
@@ -96,7 +95,7 @@ func (me *WorkerTask) runInFuse(fuseFs *workerFuseFs) error {
 	}
 
 	printCmd := fmt.Sprintf("%v", cmd.Args)
-	if me.WorkRequest.Debug {
+	if me.req.Debug {
 		printCmd = fmt.Sprintf("%v", cmd)
 	}
 	me.taskInfo = fmt.Sprintf("%v, dir %v, fuse FS %v",
@@ -105,7 +104,7 @@ func (me *WorkerTask) runInFuse(fuseFs *workerFuseFs) error {
 
 	waitMsg, ok := err.(*exec.ExitError)
 	if ok {
-		me.WorkResponse.Exit = *waitMsg.Waitmsg
+		me.rep.Exit = *waitMsg.Waitmsg
 		err = nil
 	}
 
@@ -115,8 +114,8 @@ func (me *WorkerTask) runInFuse(fuseFs *workerFuseFs) error {
 	}
 
 	// We could use a connection here too, but this is simpler.
-	me.WorkResponse.Stdout = stdout.String()
-	me.WorkResponse.Stderr = stderr.String()
+	me.rep.Stdout = stdout.String()
+	me.rep.Stderr = stderr.String()
 
 	return err
 }
