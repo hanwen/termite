@@ -30,6 +30,15 @@ func newSplicePairPool() *splicePairPool {
 	}
 }
 
+func (me *splicePairPool) clear() {
+	me.Lock()
+	defer me.Unlock()
+	for p := range me.unused {
+		p.Close()
+	}
+	me.unused = make(map[*splicePair]bool)
+}
+
 func (me *splicePairPool) get() (p *splicePair, err error) {
 	me.Lock()
 	defer me.Unlock()
@@ -213,3 +222,8 @@ func CopyFds(dst *os.File, src *os.File) (err error) {
 	}
 	return err
 }
+
+func ClearSplicePool() {
+	splicePool.clear()	
+}
+

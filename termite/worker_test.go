@@ -138,15 +138,10 @@ func (me *testCase) fdCount() int {
 func (me *testCase) Clean() {
 	me.master.mirrors.dropConnections()
 	me.master.quit <- 1
-	for _, w := range me.workers {
-		req := ShutdownRequest{}
-		rep := ShutdownResponse{}
-		err := w.Shutdown(&req, &rep)
-		if err != nil {
-			me.tester.Fatal("Worker shutdown error:", err)
-		}
-	}
 
+	me.coordinator.killAll(false)
+	ClearSplicePool()
+	
 	// TODO - should have explicit worker shutdown routine.
 	me.coordinator.Shutdown()
 	time.Sleep(0.1e9)
@@ -574,7 +569,8 @@ func TestEndToEndDenyPrivate(t *testing.T) {
 	tc := NewTestCase(t)
 	defer tc.Clean()
 
-	p := tc.	for p != "" {
+	p := tc.wd
+	for p != "" {
 		os.Chmod(p, 0755)
 		p, _ = SplitPath(p)
 	}

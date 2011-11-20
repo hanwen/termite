@@ -162,35 +162,48 @@ func (me *Coordinator) shutdownSelf(w http.ResponseWriter, req *http.Request) {
 	time.AfterFunc(100e6, func() { me.Shutdown() })
 }
 
+func (me *Coordinator) killAll(restart bool) error {
+	addrs := me.workerAddresses() 
+	done := make(chan error, len(addrs))
+	for _, w := range addrs {
+		go func () {
+			err := me.killWorker(w, restart)
+			done <- err
+		}()
+	}
+
+	errs := []error{}
+	for _ = range addrs {
+		e := <-done
+		if e != nil {
+			errs = append(errs, e)
+		}
+	}
+	if len(errs) > 0 {
+		return fmt.Errorf("%v", errs)
+	}
+	return nil
+}
+
+func (me *Coordinator) killWorker(addr string, restart bool) error {
+	conn, err := DialTypedConnection(addr, RPC_CHANNEL, me.secret)
+	if err == nil {
+		killReq := ShutdownRequest{Restart: restart}
+		rep := ShutdownResponse{}
+		cl := rpc.NewClient(conn)
+		defer cl.Close()
+		err = cl.Call("Worker.Shutdown", &killReq, &rep)
+	}
+	return err
+}
+
 func (me *Coordinator) killAllHandler(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
-	restart := req.URL.Path == "restartall"
-	errs := []error{}
-	for _, w := range me.workerAddresses() {
-		conn, err := DialTypedConnection(w, RPC_CHANNEL, me.secret)
-		if err == nil {
-			killReq := ShutdownRequest{Restart: restart}
-			rep := ShutdownResponse{}
-			cl := rpc.NewClient(conn)
-			defer cl.Close()
-			err = cl.Call("Worker.Shutdown", &killReq, &rep)
-		}
-
-		if err != nil {
-			errs = append(errs, fmt.Errorf("%s: %v", w, err))
-		}
+	fmt.Fprintf(w, "<p>%s in progress", req.URL.Path)
+	err := me.killAll(req.URL.Path == "restartall")
+	if err != nil {
+		fmt.Fprintf(w, "error: %v", err)
 	}
-
-	if len(errs) > 0 {
-		fmt.Fprintf(w, "Error: %v", errs)
-		return
-	}
-
-	action := "kill"
-	if restart {
-		action = "restart"
-	}
-	fmt.Fprintf(w, "<p>%s in progress", action)
 	// Should have a redirect.
 	fmt.Fprintf(w, "<p><a href=\"/\">back to index</a>")
 	go me.checkReachable()
