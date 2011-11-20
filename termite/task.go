@@ -28,8 +28,8 @@ func (me *WorkerTask) Kill() {
 	// TODO - racy.
 	if me.cmd.Process != nil {
 		pid := me.cmd.Process.Pid
-		errNo := syscall.Kill(pid, syscall.SIGQUIT)
-		log.Printf("Killed pid %d, result %d", pid, errNo)
+		err := syscall.Kill(pid, syscall.SIGQUIT)
+		log.Printf("Killed pid %d, result %v", pid, err)
 	}
 }
 
