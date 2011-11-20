@@ -20,7 +20,7 @@ var _ = sha1.New
 // Content based addressing cache.
 type ContentCache struct {
 	// Should not change option values after initalizing. 
-	Options  *ContentCacheOptions
+	Options *ContentCacheOptions
 
 	mutex         sync.Mutex
 	cond          *sync.Cond
@@ -33,9 +33,9 @@ type ContentCache struct {
 }
 
 type ContentCacheOptions struct {
-	Hash crypto.Hash
-	Dir string
-	MemCount int
+	Hash       crypto.Hash
+	Dir        string
+	MemCount   int
 	MemMaxSize int64
 }
 
@@ -54,17 +54,17 @@ func NewContentCache(options *ContentCacheOptions) *ContentCache {
 	}
 
 	c := &ContentCache{
-		Options:       options,
-		have:          ReadHexDatabase(options.Dir),
-		faulting:      make(map[string]bool),
+		Options:  options,
+		have:     ReadHexDatabase(options.Dir),
+		faulting: make(map[string]bool),
 	}
 	if options.MemCount > 0 {
 		c.inMemoryCache = NewLruCache(options.MemCount)
 		if options.MemMaxSize == 0 {
-			options.MemMaxSize = 128*1024
+			options.MemMaxSize = 128 * 1024
 		}
 	}
-	
+
 	c.cond = sync.NewCond(&c.mutex)
 	return c
 }

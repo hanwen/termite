@@ -163,10 +163,10 @@ func (me *Coordinator) shutdownSelf(w http.ResponseWriter, req *http.Request) {
 }
 
 func (me *Coordinator) killAll(restart bool) error {
-	addrs := me.workerAddresses() 
+	addrs := me.workerAddresses()
 	done := make(chan error, len(addrs))
 	for _, w := range addrs {
-		go func () {
+		go func() {
 			err := me.killWorker(w, restart)
 			done <- err
 		}()
@@ -356,7 +356,7 @@ func (me *Coordinator) workerHandler(w http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(w, "<p>Content cache hit rate: %.0f %%", 100.0*status.ContentCacheHitRate)
 
 	stats.CountStatsWriteHttp(w, status.PhaseNames, status.PhaseCounts)
-	
+
 	for _, mirrorStatus := range status.MirrorStatus {
 		me.mirrorStatusHtml(w, mirrorStatus)
 	}
@@ -448,7 +448,7 @@ func (me *Coordinator) ServeHTTP(port int) {
 	if e, ok := err.(*net.OpError); ok && e.Err == os.EINVAL {
 		return
 	}
-		
+
 	if err != nil && err != os.EINVAL {
 		log.Println("httpServer.Serve:", err)
 	}

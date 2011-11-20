@@ -15,8 +15,8 @@ import (
 )
 
 type WorkerTask struct {
-	req *WorkRequest
-	rep *WorkResponse
+	req       *WorkRequest
+	rep       *WorkResponse
 	stdinConn net.Conn
 	mirror    *Mirror
 	cmd       *exec.Cmd

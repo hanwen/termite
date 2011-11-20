@@ -224,6 +224,5 @@ func CopyFds(dst *os.File, src *os.File) (err error) {
 }
 
 func ClearSplicePool() {
-	splicePool.clear()	
+	splicePool.clear()
 }
-

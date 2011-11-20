@@ -73,10 +73,10 @@ func NewTestCase(t *testing.T) *testCase {
 	workerTmp := me.tmp + "/worker-tmp"
 	os.Mkdir(workerTmp, 0700)
 	me.workerOpts = &WorkerOptions{
-		Secret:         me.secret,
-		TempDir:        workerTmp,
+		Secret:  me.secret,
+		TempDir: workerTmp,
 		ContentCacheOptions: cba.ContentCacheOptions{
-			Dir:       me.tmp + "/worker-cache",
+			Dir: me.tmp + "/worker-cache",
 		},
 		Jobs:           1,
 		ReportInterval: 0.1,
@@ -98,14 +98,14 @@ func NewTestCase(t *testing.T) *testCase {
 	wg.Add(1)
 	go func() {
 		masterOpts := MasterOptions{
-			WritableRoot:    me.wd,
-			RetryCount:      3,
-			Secret:          me.secret,
-			MaxJobs:         1,
-			Coordinator:     coordinatorAddr.String(),
-			KeepAlive:       0.5,
-			Period:          0.5,
-			ExposePrivate:   true,
+			WritableRoot:  me.wd,
+			RetryCount:    3,
+			Secret:        me.secret,
+			MaxJobs:       1,
+			Coordinator:   coordinatorAddr.String(),
+			KeepAlive:     0.5,
+			Period:        0.5,
+			ExposePrivate: true,
 			ContentCacheOptions: cba.ContentCacheOptions{
 				Dir: me.tmp + "/master-cache",
 			},
@@ -145,7 +145,7 @@ func (me *testCase) Clean() {
 
 	me.coordinator.killAll(false)
 	ClearSplicePool()
-	
+
 	// TODO - should have explicit worker shutdown routine.
 	me.coordinator.Shutdown()
 	time.Sleep(0.1e9)

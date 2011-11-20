@@ -52,19 +52,19 @@ func main() {
 	excludeList := strings.Split(*exclude, ",")
 	root, sock := absSocket(*socket)
 	opts := termite.MasterOptions{
-		Secret:              secret,
-		MaxJobs:             *jobs,
-		Excludes:            excludeList,
-		Workers:             workerList,
-		Coordinator:         *coordinator,
-		SrcRoot:             *srcRoot,
-		WritableRoot:        root,
-		Paranoia:            *paranoia,
-		Period:              *houseHoldPeriod,
-		KeepAlive:           *keepAlive,
-		FetchAll:            *fetchAll,
+		Secret:       secret,
+		MaxJobs:      *jobs,
+		Excludes:     excludeList,
+		Workers:      workerList,
+		Coordinator:  *coordinator,
+		SrcRoot:      *srcRoot,
+		WritableRoot: root,
+		Paranoia:     *paranoia,
+		Period:       *houseHoldPeriod,
+		KeepAlive:    *keepAlive,
+		FetchAll:     *fetchAll,
 		ContentCacheOptions: cba.ContentCacheOptions{
-			Dir:     *cachedir,
+			Dir:      *cachedir,
 			MemCount: *memcache,
 		},
 	}

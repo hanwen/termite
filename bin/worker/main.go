@@ -63,12 +63,12 @@ func main() {
 	}
 
 	opts := termite.WorkerOptions{
-		Secret:           secret,
-		TempDir:          *tmpdir,
-		Jobs:             *jobs,
-		Paranoia:         *paranoia,
-		ReapCount:        *reapcount,
-		LogFileName:      *logfile,
+		Secret:      secret,
+		TempDir:     *tmpdir,
+		Jobs:        *jobs,
+		Paranoia:    *paranoia,
+		ReapCount:   *reapcount,
+		LogFileName: *logfile,
 		ContentCacheOptions: cba.ContentCacheOptions{
 			Dir:      *cachedir,
 			MemCount: *memcache,

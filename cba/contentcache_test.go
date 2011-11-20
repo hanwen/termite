@@ -20,19 +20,20 @@ func check(err error) {
 		panic(err)
 	}
 }
+
 type ccTestCase struct {
-	dir string
-	cache *ContentCache
-	options  *ContentCacheOptions
+	dir     string
+	cache   *ContentCache
+	options *ContentCacheOptions
 }
 
-func newCcTestCase() (*ccTestCase) {
+func newCcTestCase() *ccTestCase {
 	d, _ := ioutil.TempDir("", "term-cc")
 	opts := &ContentCacheOptions{
-		Dir: d,
-		MemCount: 10,
+		Dir:        d,
+		MemCount:   10,
 		MemMaxSize: 1024,
-	}	
+	}
 	cache := NewContentCache(opts)
 
 	return &ccTestCase{d, cache, opts}

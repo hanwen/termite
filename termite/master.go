@@ -28,12 +28,12 @@ type Master struct {
 
 type MasterOptions struct {
 	cba.ContentCacheOptions
-	
-	WritableRoot   string
-	SrcRoot        string
-	RetryCount     int
-	Excludes       []string
-	ExposePrivate  bool
+
+	WritableRoot  string
+	SrcRoot       string
+	RetryCount    int
+	Excludes      []string
+	ExposePrivate bool
 
 	Coordinator string
 	Workers     []string

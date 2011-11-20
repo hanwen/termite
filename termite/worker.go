@@ -37,14 +37,14 @@ type Worker struct {
 
 type WorkerOptions struct {
 	cba.ContentCacheOptions
-	
+
 	Paranoia bool
 	Secret   []byte
 	TempDir  string
 	Jobs     int
 
 	// If set, change user to this for running.
-	User             *user.User
+	User *user.User
 
 	// How often to reap filesystems. If 1, use 1 FS per task.
 	ReapCount int
@@ -166,7 +166,7 @@ func (me *Worker) RunWorkerServer(port int, coordinator string) {
 			log.Println("me.listener", err)
 			break
 		}
-		
+
 		log.Println("Authenticated connection from", conn.RemoteAddr())
 		if !me.pending.Accept(conn) {
 			go me.rpcServer.ServeConn(conn)
