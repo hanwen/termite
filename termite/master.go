@@ -436,15 +436,8 @@ func (me *Master) replay(fset attr.FileSet) {
 }
 
 func (me *Master) refreshAttributeCache() {
-	last := ""
-	for _, r := range []string{me.options.WritableRoot, me.options.SrcRoot} {
-		if last == r || r == "" {
-			continue
-		}
-		updated := me.attr.Refresh(r[1:])
-		me.attr.Queue(updated)
-		last = r
-	}
+	updated := me.attr.Refresh("")
+	me.attr.Queue(updated)
 }
 
 func (me *Master) fetchAll(path string) {
