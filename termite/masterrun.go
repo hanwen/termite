@@ -173,9 +173,6 @@ func mkdirParentMasterRun(master *Master, arg string, rep *WorkResponse) {
 
 func mkdirEntry(rootless string) *attr.FileAttr {
 	now := time.Nanoseconds()
-	// TODO - could do without these.
-	uid := os.Getuid()
-	gid := os.Getgid()
 
 	return &attr.FileAttr{
 		Path: rootless,
@@ -184,8 +181,6 @@ func mkdirEntry(rootless string) *attr.FileAttr {
 			Atime_ns: now,
 			Ctime_ns: now,
 			Mtime_ns: now,
-			Uid:      uid,
-			Gid:      gid,
 		},
 		NameModeMap: map[string]attr.FileMode{},
 	}
