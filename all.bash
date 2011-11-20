@@ -14,7 +14,7 @@ do
   done
 done
 
-for d in termite
+for d in stats attr cba termite
 do
   (cd $d && gotest )
 done
