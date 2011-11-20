@@ -63,15 +63,17 @@ func CpuStatsWriteHttp(w http.ResponseWriter, stats []CpuStat) {
 	}
 }
 
-func (me *ServerStats) WriteHttp(w http.ResponseWriter) {
-	// TODO - share code with coordinator HTTP code.
-	CpuStatsWriteHttp(w, me.CpuStats())
-	counts := me.PhaseCounts()
+func CountStatsWriteHttp(w http.ResponseWriter, names []string, counts []int) {
 	fmt.Fprintf(w, "<ul>")
 	for i, c := range counts {
-		fmt.Fprintf(w, "<li>Jobs in phase %s: %d ", me.PhaseOrder[i], c)
+		fmt.Fprintf(w, "<li>Jobs in phase %s: %d ", names[i], c)
 	}
 	fmt.Fprintf(w, "</ul>")
+}
+
+func (me *ServerStats) WriteHttp(w http.ResponseWriter) {
+	CpuStatsWriteHttp(w, me.CpuStats())
+	CountStatsWriteHttp(w, me.PhaseOrder, me.PhaseCounts())
 }
 
 func (me *ServerStats) PhaseCounts() (r []int) {
