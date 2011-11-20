@@ -104,6 +104,7 @@ func NewTestCase(t *testing.T) *testCase {
 			KeepAlive:       0.5,
 			Period:          0.5,
 			ContentCacheDir: me.tmp + "/master-cache",
+			ExposePrivate:   true,
 		}
 		me.master = NewMaster(&masterOpts)
 		me.socket = me.wd + "/master-socket"
@@ -214,7 +215,6 @@ func TestEndToEndBasic(t *testing.T) {
 		Argv:    []string{"tee", "output.txt"},
 	}
 
-	// TODO - should separate dial/listen in the daemons?
 	stdinConn := OpenSocketConnection(tc.socket, req.StdinId, 10e6)
 	go func() {
 		stdinConn.Write([]byte("hello"))
@@ -568,4 +568,29 @@ func TestEndToEndKillChild(t *testing.T) {
 	tc.master.mirrors.dropConnections()
 	time.Sleep(0.5e9)
 	<-complete
+}
+
+func TestEndToEndDenyPrivate(t *testing.T) {
+	tc := NewTestCase(t)
+	defer tc.Clean()
+
+	p := tc.	for p != "" {
+		os.Chmod(p, 0755)
+		p, _ = SplitPath(p)
+	}
+
+	err := ioutil.WriteFile(tc.wd+"/file.txt", []byte{42}, 0644)
+	check(err)
+	err = ioutil.WriteFile(tc.wd+"/forbidden.txt", []byte{42}, 0600)
+	check(err)
+
+	tc.master.options.ExposePrivate = false
+	req := WorkRequest{
+		Argv: []string{"cat", "file.txt"},
+	}
+	tc.RunSuccess(req)
+	req = WorkRequest{
+		Argv: []string{"cat", "forbidden.txt"},
+	}
+	tc.RunFail(req)
 }

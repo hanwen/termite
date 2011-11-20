@@ -32,7 +32,7 @@ type MasterOptions struct {
 	SrcRoot        string
 	RetryCount     int
 	Excludes       []string
-	ExcludePrivate bool
+	ExposePrivate  bool
 
 	Coordinator string
 	Workers     []string
@@ -65,7 +65,7 @@ func (me *Master) uncachedGetAttr(name string) (rep *attr.FileAttr) {
 
 	// We don't want to expose the master's private files to the
 	// world.
-	if me.options.ExcludePrivate && fi != nil && fi.Mode&0077 == 0 {
+	if !me.options.ExposePrivate && fi != nil && fi.Mode&0077 == 0 {
 		log.Printf("Denied access to private file %q", name)
 		return rep
 	}
@@ -159,7 +159,7 @@ func NewMaster(options *MasterOptions) *Master {
 }
 
 func (me *Master) CheckPrivate() {
-	if !me.options.ExcludePrivate {
+	if me.options.ExposePrivate {
 		return
 	}
 	d := me.options.WritableRoot
