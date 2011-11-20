@@ -247,6 +247,7 @@ func (me *RpcFs) Readlink(name string, context *fuse.Context) (string, fuse.Stat
 		return "", fuse.EINVAL
 	}
 
+	// TODO - kick off getattr on destination.
 	return a.Link, fuse.OK
 }
 
