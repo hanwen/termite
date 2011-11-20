@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"github.com/hanwen/termite/cba"
 	"github.com/hanwen/termite/termite"
 	"io/ioutil"
 	"log"
@@ -62,8 +63,10 @@ func main() {
 		Period:              *houseHoldPeriod,
 		KeepAlive:           *keepAlive,
 		FetchAll:            *fetchAll,
-		ContentCacheDir:     *cachedir,
-		ContentCacheMemSize: *memcache,
+		ContentCacheOptions: cba.ContentCacheOptions{
+			Dir:     *cachedir,
+			MemCount: *memcache,
+		},
 	}
 	master := termite.NewMaster(&opts)
 

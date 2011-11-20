@@ -106,7 +106,10 @@ func newRpcFsTestCase(t *testing.T) (me *rpcFsTestCase) {
 	os.Mkdir(me.mnt, 0700)
 	os.Mkdir(me.orig, 0700)
 
-	me.cache = cba.NewContentCache(srvCache, hashFunc)
+	copts := cba.ContentCacheOptions{
+		Dir: srvCache,
+	}
+	me.cache = cba.NewContentCache(&copts)
 	me.attr = attr.NewAttributeCache(
 		func(n string) *attr.FileAttr { return me.getattr(n) },
 		func(n string) *os.FileInfo {
@@ -126,7 +129,11 @@ func newRpcFsTestCase(t *testing.T) (me *rpcFsTestCase) {
 	go rpcServer.ServeConn(me.sockL)
 
 	rpcClient := rpc.NewClient(me.sockR)
-	me.rpcFs = NewRpcFs(rpcClient, cba.NewContentCache(clientCache, hashFunc))
+	cOpts := cba.ContentCacheOptions{
+		Dir: clientCache,
+	}
+	cache := cba.NewContentCache(&cOpts)
+	me.rpcFs = NewRpcFs(rpcClient, cache)
 	me.rpcFs.id = "rpcfs_test"
 	me.state, _, err = fuse.MountPathFileSystem(me.mnt, me.rpcFs, nil)
 	me.state.Debug = fuse.VerboseTest()

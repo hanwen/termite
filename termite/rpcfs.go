@@ -66,7 +66,7 @@ func (me *RpcFs) innerFetch(start, end int, hash string) ([]byte, error) {
 
 func (me *RpcFs) FetchHash(a *attr.FileAttr) error {
 	e := me.FetchHashOnce(a)
-	if e == nil && a.Size < me.cache.MemoryLimit {
+	if e == nil && a.Size < me.cache.Options.MemMaxSize {
 		me.cache.FaultIn(a.Hash)
 	}
 	return e

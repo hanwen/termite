@@ -36,15 +36,15 @@ type Worker struct {
 }
 
 type WorkerOptions struct {
+	cba.ContentCacheOptions
+	
 	Paranoia bool
 	Secret   []byte
 	TempDir  string
-	CacheDir string
 	Jobs     int
 
 	// If set, change user to this for running.
 	User             *user.User
-	FileContentCount int
 
 	// How often to reap filesystems. If 1, use 1 FS per task.
 	ReapCount int
@@ -55,9 +55,6 @@ type WorkerOptions struct {
 }
 
 func NewWorker(options *WorkerOptions) *Worker {
-	if options.FileContentCount == 0 {
-		options.FileContentCount = 1024
-	}
 	if options.ReapCount == 0 {
 		options.ReapCount = 4
 	}
@@ -66,8 +63,8 @@ func NewWorker(options *WorkerOptions) *Worker {
 	}
 	copied := *options
 
-	cache := cba.NewContentCache(options.CacheDir, hashFunc)
-	cache.SetMemoryCacheSize(options.FileContentCount, 128*1024)
+	cache := cba.NewContentCache(&options.ContentCacheOptions)
+
 	me := &Worker{
 		contentCache: cache,
 		pending:      NewPendingConnections(),

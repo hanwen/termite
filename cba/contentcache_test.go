@@ -22,49 +22,68 @@ func check(err error) {
 		panic(err)
 	}
 }
+type ccTestCase struct {
+	dir string
+	cache *ContentCache
+	options  *ContentCacheOptions
+}
+
+func newCcTestCase() (*ccTestCase) {
+	d, _ := ioutil.TempDir("", "term-cc")
+	opts := &ContentCacheOptions{
+		Dir: d,
+		Hash: hashFunc,
+		MemCount: 10,
+		MemMaxSize: 1024,
+	}	
+	cache := NewContentCache(opts)
+
+	return &ccTestCase{d, cache, opts}
+}
+
+func (me *ccTestCase) Clean() {
+	os.RemoveAll(me.dir)
+}
 
 func TestContentCache(t *testing.T) {
+	tc := newCcTestCase()
+	defer tc.Clean()
 	content := []byte("hello")
 
-	d, _ := ioutil.TempDir("", "term-cc")
-	defer os.RemoveAll(d)
-
-	cache := NewContentCache(d, hashFunc)
 	checksum := string(md5(content))
 
 	f, _ := ioutil.TempFile("", "")
 	f.Write(content)
 	f.Close()
 
-	savedSum := cache.SavePath(f.Name())
+	savedSum := tc.cache.SavePath(f.Name())
 	if savedSum != checksum {
 		t.Fatal("mismatch", savedSum, checksum)
 	}
-	if !cache.HasHash(checksum) {
+	if !tc.cache.HasHash(checksum) {
 		t.Fatal("path gone")
 	}
 }
 
 func TestContentCacheDestructiveSave(t *testing.T) {
+	tc := newCcTestCase()
+	defer tc.Clean()
+	d := tc.dir
+
 	content := []byte("hello")
-
-	d, _ := ioutil.TempDir("", "term-cc")
-	defer os.RemoveAll(d)
-	cache := NewContentCache(d, hashFunc)
-
 	fn := d + "/test"
 	err := ioutil.WriteFile(fn, content, 0644)
 	if err != nil {
 		t.Error(err)
 	}
 
-	saved, err := cache.DestructiveSavePath(fn)
+	saved, err := tc.cache.DestructiveSavePath(fn)
 	check(err)
 	if string(saved) != string(md5(content)) {
 		t.Error("mismatch")
 	}
 
-	if !cache.HasHash(md5(content)) {
+	if !tc.cache.HasHash(md5(content)) {
 		t.Error("fail")
 	}
 
@@ -74,7 +93,7 @@ func TestContentCacheDestructiveSave(t *testing.T) {
 		t.Error(err)
 	}
 
-	saved, err = cache.DestructiveSavePath(fn)
+	saved, err = tc.cache.DestructiveSavePath(fn)
 	check(err)
 	if saved == "" || saved != md5(content) {
 		t.Error("mismatch")
@@ -85,25 +104,23 @@ func TestContentCacheDestructiveSave(t *testing.T) {
 }
 
 func TestContentCacheStream(t *testing.T) {
+	tc := newCcTestCase()
+	defer tc.Clean()
 	content := []byte("hello")
-
-	d, _ := ioutil.TempDir("", "term-cc")
-	defer os.RemoveAll(d)
-	cache := NewContentCache(d, hashFunc)
 
 	h := crypto.MD5.New()
 	h.Write(content)
 	checksum := string(h.Sum())
 
-	savedSum := cache.Save(content)
+	savedSum := tc.cache.Save(content)
 	if string(savedSum) != string(md5(content)) {
 		t.Fatal("mismatch")
 	}
-	if !cache.HasHash(checksum) {
+	if !tc.cache.HasHash(checksum) {
 		t.Fatal("path gone")
 	}
 
-	data, err := ioutil.ReadFile(cache.Path(checksum))
+	data, err := ioutil.ReadFile(tc.cache.Path(checksum))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,23 +131,20 @@ func TestContentCacheStream(t *testing.T) {
 }
 
 func TestContentCacheStreamReturnContent(t *testing.T) {
-	d, _ := ioutil.TempDir("", "term-cc")
-	cache := NewContentCache(d, hashFunc)
-	cache.SetMemoryCacheSize(100, 1024)
-	content := make([]byte, cache.MemoryLimit-1)
+	tc := newCcTestCase()
+	defer tc.Clean()
+	content := make([]byte, tc.options.MemMaxSize-1)
 	for i := range content {
 		content[i] = 'x'
 	}
 
-	defer os.RemoveAll(d)
+	hash := tc.cache.Save(content)
 
-	hash := cache.Save(content)
-
-	if !cache.inMemoryCache.Has(hash) {
+	if !tc.cache.inMemoryCache.Has(hash) {
 		t.Errorf("should have key %x", hash)
 	}
 
-	content = make([]byte, cache.MemoryLimit+1)
+	content = make([]byte, tc.options.MemMaxSize+1)
 	for i := range content {
 		content[i] = 'y'
 	}
@@ -138,8 +152,8 @@ func TestContentCacheStreamReturnContent(t *testing.T) {
 	f, _ := ioutil.TempFile("", "term-cc")
 	err := ioutil.WriteFile(f.Name(), content, 0644)
 	check(err)
-	hash = cache.SavePath(f.Name())
-	if cache.inMemoryCache.Has(hash) {
-		t.Errorf("should not have key %x %v", hash, cache.inMemoryCache.Get(hash))
+	hash = tc.cache.SavePath(f.Name())
+	if tc.cache.inMemoryCache.Has(hash) {
+		t.Errorf("should not have key %x %v", hash, tc.cache.inMemoryCache.Get(hash))
 	}
 }

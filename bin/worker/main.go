@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"github.com/hanwen/termite/cba"
 	"github.com/hanwen/termite/termite"
 	"io/ioutil"
 	"log"
@@ -64,12 +65,14 @@ func main() {
 	opts := termite.WorkerOptions{
 		Secret:           secret,
 		TempDir:          *tmpdir,
-		CacheDir:         *cachedir,
 		Jobs:             *jobs,
 		Paranoia:         *paranoia,
-		FileContentCount: *memcache,
 		ReapCount:        *reapcount,
 		LogFileName:      *logfile,
+		ContentCacheOptions: cba.ContentCacheOptions{
+			Dir:      *cachedir,
+			MemCount: *memcache,
+		},
 	}
 	if os.Geteuid() == 0 {
 		nobody, err := user.Lookup(*userFlag)

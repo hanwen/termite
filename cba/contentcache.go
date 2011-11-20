@@ -14,11 +14,8 @@ import (
 
 // Content based addressing cache.
 type ContentCache struct {
-	dir      string
-	hashFunc crypto.Hash
-
-	// Try to keep small files in memory.
-	MemoryLimit int64
+	// Should not change option values after initalizing. 
+	Options  *ContentCacheOptions
 
 	mutex         sync.Mutex
 	cond          *sync.Cond
@@ -30,39 +27,41 @@ type ContentCache struct {
 	memoryHits  int
 }
 
+type ContentCacheOptions struct {
+	Hash crypto.Hash
+	Dir string
+	MemCount int
+	MemMaxSize int64
+}
+
 // NewContentCache creates a content cache based in directory d.
 // memorySize sets the maximum number of file contents to keep in
 // memory.
-func NewContentCache(d string, hash crypto.Hash) *ContentCache {
-	if fi, _ := os.Lstat(d); fi == nil {
-		err := os.MkdirAll(d, 0700)
+func NewContentCache(options *ContentCacheOptions) *ContentCache {
+	if options.Hash == 0 {
+		options.Hash = crypto.MD5
+	}
+	if fi, _ := os.Lstat(options.Dir); fi == nil {
+		err := os.MkdirAll(options.Dir, 0700)
 		if err != nil {
 			panic(err)
 		}
 	}
 
 	c := &ContentCache{
-		dir:           d,
-		have:          ReadHexDatabase(d),
-		inMemoryCache: NewLruCache(1024),
+		Options:       options,
+		have:          ReadHexDatabase(options.Dir),
 		faulting:      make(map[string]bool),
-		hashFunc:      hash,
 	}
+	if options.MemCount > 0 {
+		c.inMemoryCache = NewLruCache(options.MemCount)
+		if options.MemMaxSize == 0 {
+			options.MemMaxSize = 128*1024
+		}
+	}
+	
 	c.cond = sync.NewCond(&c.mutex)
 	return c
-}
-
-// SetMemoryCacheSize readjusts the size of the in-memory content
-// cache.  Not thread safe.
-func (me *ContentCache) SetMemoryCacheSize(fileCount int, limit int) {
-	if fileCount == 0 {
-		me.inMemoryCache = nil
-		return
-	}
-	if me.inMemoryCache.Size() != fileCount {
-		me.inMemoryCache = NewLruCache(fileCount)
-	}
-	me.MemoryLimit = int64(limit)
 }
 
 func (me *ContentCache) MemoryHitRate() float64 {
@@ -110,11 +109,11 @@ func (me *ContentCache) ContentsIfLoaded(hash string) []byte {
 }
 
 func (me *ContentCache) Path(hash string) string {
-	return HashPath(me.dir, hash)
+	return HashPath(me.Options.Dir, hash)
 }
 
 func (me *ContentCache) NewHashWriter() *HashWriter {
-	return NewHashWriter(me.dir, me.hashFunc)
+	return NewHashWriter(me.Options.Dir, me.Options.Hash)
 }
 
 type HashWriter struct {
@@ -192,10 +191,10 @@ func (me *ContentCache) DestructiveSavePath(path string) (hash string, err error
 	before, _ := f.Stat()
 	defer f.Close()
 
-	h := me.hashFunc.New()
+	h := me.Options.Hash.New()
 
 	var content []byte
-	if before.Size < me.MemoryLimit {
+	if before.Size < me.Options.MemMaxSize {
 		content, err = ioutil.ReadAll(f)
 		if err != nil {
 			return "", err
@@ -293,7 +292,7 @@ func (me *ContentCache) saveViaMemory(content []byte) (hash string) {
 }
 
 func (me *ContentCache) SaveStream(input io.Reader, size int64) (hash string) {
-	if size < me.MemoryLimit {
+	if size < me.Options.MemMaxSize {
 		b, err := ioutil.ReadAll(input)
 		if int64(len(b)) != size {
 			log.Panicf("SaveStream: short read: %v %v", len(b), err)

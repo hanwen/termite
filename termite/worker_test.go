@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/termite/attr"
+	"github.com/hanwen/termite/cba"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -75,7 +76,9 @@ func NewTestCase(t *testing.T) *testCase {
 	me.workerOpts = &WorkerOptions{
 		Secret:         me.secret,
 		TempDir:        workerTmp,
-		CacheDir:       me.tmp + "/worker-cache",
+		ContentCacheOptions: cba.ContentCacheOptions{
+			Dir:       me.tmp + "/worker-cache",
+		},
 		Jobs:           1,
 		ReportInterval: 0.1,
 	}
@@ -103,8 +106,10 @@ func NewTestCase(t *testing.T) *testCase {
 			Coordinator:     coordinatorAddr.String(),
 			KeepAlive:       0.5,
 			Period:          0.5,
-			ContentCacheDir: me.tmp + "/master-cache",
 			ExposePrivate:   true,
+			ContentCacheOptions: cba.ContentCacheOptions{
+				Dir: me.tmp + "/master-cache",
+			},
 		}
 		me.master = NewMaster(&masterOpts)
 		me.socket = me.wd + "/master-socket"

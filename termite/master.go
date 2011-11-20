@@ -28,6 +28,8 @@ type Master struct {
 }
 
 type MasterOptions struct {
+	cba.ContentCacheOptions
+	
 	WritableRoot   string
 	SrcRoot        string
 	RetryCount     int
@@ -45,9 +47,6 @@ type MasterOptions struct {
 
 	Period    float64
 	KeepAlive float64
-
-	ContentCacheDir     string
-	ContentCacheMemSize int
 }
 
 const hashFunc = crypto.MD5
@@ -100,9 +99,7 @@ func (me *Master) path(n string) string {
 }
 
 func NewMaster(options *MasterOptions) *Master {
-	cache := cba.NewContentCache(options.ContentCacheDir, hashFunc)
-	// TODO - softcode limit.
-	cache.SetMemoryCacheSize(options.ContentCacheMemSize, 128*1024)
+	cache := cba.NewContentCache(&options.ContentCacheOptions)
 
 	me := &Master{
 		cache:         cache,
