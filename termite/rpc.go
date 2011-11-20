@@ -8,8 +8,10 @@ import (
 )
 
 type AttrRequest struct {
-	Origin string
 	Name   string
+
+	// Worker asking for the request. Useful for debugging.
+	Origin string
 }
 
 type AttrResponse struct {
@@ -70,24 +72,32 @@ type WorkResponse struct {
 
 	LastTime int64
 
+	// Reaped files, if any
 	*attr.FileSet
+
+	// Task ids for which the fileset contains data.
 	TaskIds  []int
+
+	// Worker where this was processed.
 	WorkerId string
 }
 
 type WorkRequest struct {
-	// Id of connection streaming stdin.
+	// Unique id of this request.
 	TaskId       int
+	
+	// Id of connection streaming stdin.
 	StdinId      string
 	Debug        bool
-	WritableRoot string
 	Binary       string
 	Argv         []string
 	Env          []string
 	Dir          string
+
+	// Signal that a command ran locally.  Used for logging in the master.
 	RanLocally   bool
 
-	// If set, must run on worker. Used for debugging.
+	// If set, must run on this worker. Used for debugging.
 	Worker string
 }
 
@@ -96,9 +106,13 @@ func (me *WorkRequest) Summary() string {
 }
 
 type CreateMirrorRequest struct {
+	// Ids of connections to use for RPC
 	RpcId        string
 	RevRpcId     string
+
+	// The writable root for the mirror.
 	WritableRoot string
+	
 	// Max number of processes to reserve.
 	MaxJobCount int
 }
