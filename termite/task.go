@@ -12,7 +12,6 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
-	"time"
 )
 
 type WorkerTask struct {
@@ -37,28 +36,12 @@ func (me *WorkerTask) String() string {
 	return me.taskInfo
 }
 
-func (me *WorkResponse) resetClock() {
-	me.LastTime = time.Nanoseconds()
-}
-
-func (me *WorkResponse) clock(name string) {
-	t := time.Nanoseconds()
-	me.Timings = append(me.Timings,
-		Timing{name, 1.0e-6 * float64(t-me.LastTime)})
-	me.LastTime = t
-}
-
-func (me *WorkerTask) clock(name string) {
-	me.WorkResponse.clock(name)
-}
-
 func (me *WorkerTask) Run() error {
 	fuseFs, err := me.mirror.newFs(me)
 	if err != nil {
 		return err
 	}
 
-	me.resetClock()
 	me.mirror.daemon.stats.Enter("fuse")
 	err = me.runInFuse(fuseFs)
 	me.mirror.daemon.stats.Exit("fuse")
@@ -135,7 +118,6 @@ func (me *WorkerTask) runInFuse(fuseFs *workerFuseFs) error {
 	me.WorkResponse.Stdout = stdout.String()
 	me.WorkResponse.Stderr = stderr.String()
 
-	me.clock("worker.runCommand")
 	return err
 }
 

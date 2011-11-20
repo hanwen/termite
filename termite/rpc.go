@@ -70,8 +70,6 @@ type WorkResponse struct {
 
 	Timings []Timing
 
-	LastTime int64
-
 	// Reaped files, if any
 	*attr.FileSet
 
