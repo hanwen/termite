@@ -55,7 +55,7 @@ func (me *mirrorConnection) replay(fset attr.FileSet) error {
 				func(start, end int) ([]byte, error) {
 					return me.innerFetch(start, end, info.Hash)
 				})
-			if err != nil && saved != info.Hash {
+			if err == nil && saved != info.Hash {
 				log.Fatalf("mirrorConnection.replay: fetch corruption got %x want %x", saved, info.Hash)
 			}
 			if err != nil {
