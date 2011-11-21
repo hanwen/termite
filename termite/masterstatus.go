@@ -8,7 +8,7 @@ import (
 )
 
 func (me *Master) sizeHistogram() (histo []int, total int) {
-	for _, f := range me.attr.Copy().Files {
+	for _, f := range me.attributes.Copy().Files {
 		if f.FileInfo != nil && f.IsRegular() {
 			e := fuse.IntToExponent(int(f.Size))
 			for len(histo) <= int(e) {

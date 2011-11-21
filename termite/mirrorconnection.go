@@ -213,7 +213,7 @@ func (me *mirrorConnections) dropConnections() {
 		mc.rpcClient.Close()
 		mc.connection.Close()
 		mc.reverseConnection.Close()
-		me.master.attr.RmClient(mc)
+		me.master.attributes.RmClient(mc)
 	}
 	me.mirrors = make(map[string]*mirrorConnection)
 	me.refreshStats()

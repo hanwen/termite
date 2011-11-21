@@ -17,7 +17,7 @@ type Master struct {
 	fileServer    *FsServer
 	fileServerRpc *rpc.Server
 	excluded      map[string]bool
-	attr          *attr.AttributeCache
+	attributes    *attr.AttributeCache
 	mirrors       *mirrorConnections
 	pending       *PendingConnections
 	taskIds       chan int
@@ -118,14 +118,14 @@ func NewMaster(options *MasterOptions) *Master {
 		me, options.Workers, options.Coordinator, options.MaxJobs)
 	me.mirrors.keepAliveNs = int64(1e9 * options.KeepAlive)
 	me.pending = NewPendingConnections()
-	me.attr = attr.NewAttributeCache(func(n string) *attr.FileAttr {
+	me.attributes = attr.NewAttributeCache(func(n string) *attr.FileAttr {
 		return me.uncachedGetAttr(n)
 	},
 		func(n string) *os.FileInfo {
 			fi, _ := os.Lstat(me.path(n))
 			return fi
 		})
-	me.fileServer = NewFsServer(me.attr, me.cache)
+	me.fileServer = NewFsServer(me.attributes, me.cache)
 	me.fileServerRpc = rpc.NewServer()
 	me.fileServerRpc.Register(me.fileServer)
 
@@ -374,7 +374,7 @@ func (me *Master) replayFileModifications(infos []*attr.FileAttr, newFiles map[s
 		}
 	}
 
-	me.attr.Update(infos)
+	me.attributes.Update(infos)
 }
 
 func (me *Master) replay(fset attr.FileSet) {
@@ -436,12 +436,12 @@ func (me *Master) replay(fset attr.FileSet) {
 }
 
 func (me *Master) refreshAttributeCache() {
-	updated := me.attr.Refresh("")
-	me.attr.Queue(updated)
+	updated := me.attributes.Refresh("")
+	me.attributes.Queue(updated)
 }
 
 func (me *Master) fetchAll(path string) {
-	a := me.attr.GetDir(path)
+	a := me.attributes.GetDir(path)
 	for n := range a.NameModeMap {
 		me.fetchAll(filepath.Join(path, n))
 	}

@@ -142,7 +142,7 @@ func mkdirParentMasterRun(master *Master, arg string, rep *WorkResponse) {
 	components := strings.Split(rootless, "/")
 
 	msgs := []string{}
-	parent := master.attr.Get("")
+	parent := master.attributes.Get("")
 	for i := range components {
 		p := strings.Join(components[:i+1], "/")
 
