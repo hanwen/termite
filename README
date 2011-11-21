@@ -139,7 +139,6 @@ CAVEATS
 
 TODO (by decreasing priority)
 
-* More efficient mv replay.
 * In-memory file writing.
 * Compile linux kernel
 * Security review for the connection scheme.

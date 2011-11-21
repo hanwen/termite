@@ -1,6 +1,7 @@
 package termite
 
 import (
+	"fmt"
 	"github.com/hanwen/termite/attr"
 	"github.com/hanwen/termite/cba"
 	"io/ioutil"
@@ -52,7 +53,8 @@ type replayRequest struct {
 	// Hash => Tempfile name.
 	NewFiles map[string][]string
 
-	// TODO - add a DelFiles map[string]string OldPath => Hash
+	// Path => Hash
+	DelFileHashes map[string]string
 	Files    []*attr.FileAttr
 	Done     chan int
 }
@@ -147,7 +149,7 @@ func NewMaster(options *MasterOptions) *Master {
 	go func() {
 		for {
 			r := <-me.replayChannel
-			me.replayFileModifications(r.Files, r.NewFiles)
+			me.replayFileModifications(r.Files, r.DelFileHashes, r.NewFiles)
 			r.Done <- 1
 		}
 	}()
@@ -326,7 +328,8 @@ func (me *Master) run(req *WorkRequest, rep *WorkResponse) (err error) {
 	return err
 }
 
-func (me *Master) replayFileModifications(infos []*attr.FileAttr, newFiles map[string][]string) {
+func (me *Master) replayFileModifications(
+	infos []*attr.FileAttr, delFileHashes map[string]string, newFiles map[string][]string) {
 	for _, info := range infos {
 		name := "/" + info.Path
 		if info.FileInfo != nil && info.FileInfo.IsDirectory() {
@@ -355,12 +358,19 @@ func (me *Master) replayFileModifications(infos []*attr.FileAttr, newFiles map[s
 			}
 
 		}
-		if info.Deletion() {
+		if info.Deletion() && delFileHashes[info.Path] != "" {
+			dest := fmt.Sprintf("%s/.termite-deltmp%x",
+				me.options.WritableRoot, RandomBytes(8))
+			if err := os.Rename(name, dest); err != nil {
+				log.Fatal("os.Rename:", err)
+			}
+			newFiles[delFileHashes[info.Path]] = append(newFiles[delFileHashes[info.Path]], dest)
+		} else if info.Deletion() {
 			if err := os.Remove(name); err != nil {
 				log.Fatal("os.Remove:", err)
 			}
 		}
-
+		
 		if info.Hash == "" && info.FileInfo != nil && !info.FileInfo.IsSymlink() {
 			if err := os.Chtimes(name, info.FileInfo.Atime_ns, info.FileInfo.Mtime_ns); err != nil {
 				log.Fatal("os.Chtimes", err)
@@ -380,19 +390,41 @@ func (me *Master) replayFileModifications(infos []*attr.FileAttr, newFiles map[s
 	}
 
 	me.attributes.Update(infos)
+	for _, v := range newFiles {
+		for _, f := range v {
+			if err := os.Remove(f); err != nil {
+				log.Fatalf("os.Remove: %v", err)
+			}
+		}
+	}
 }
 
 func (me *Master) replay(fset attr.FileSet) {
 	req := replayRequest{
 		make(map[string][]string),
+		make(map[string]string),
 		fset.Files,
 		make(chan int),
 	}
 
+	haveHashes := make(map[string]int)
 	// We prepare the files before we call
 	// replayFileModifications(), to limit contention.
 	for _, info := range fset.Files {
+		if info.Deletion() {
+			a := me.attributes.Get(info.Path)
+			if a.Deletion() {
+				log.Fatalf("Deletion was already deleted: %v", info)
+			}
+			req.DelFileHashes[info.Path] = a.Hash
+			haveHashes[a.Hash]++
+			continue
+		}
 		if info.Hash == "" {
+			continue
+		}
+		if haveHashes[info.Hash] > 0 {
+			haveHashes[info.Hash]--
 			continue
 		}
 
