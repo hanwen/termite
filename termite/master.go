@@ -49,7 +49,10 @@ type MasterOptions struct {
 }
 
 type replayRequest struct {
-	NewFiles map[string]string
+	// Hash => Tempfile name.
+	NewFiles map[string][]string
+
+	// TODO - add a DelFiles map[string]string OldPath => Hash
 	Files    []*attr.FileAttr
 	Done     chan int
 }
@@ -323,7 +326,7 @@ func (me *Master) run(req *WorkRequest, rep *WorkResponse) (err error) {
 	return err
 }
 
-func (me *Master) replayFileModifications(infos []*attr.FileAttr, newFiles map[string]string) {
+func (me *Master) replayFileModifications(infos []*attr.FileAttr, newFiles map[string][]string) {
 	for _, info := range infos {
 		name := "/" + info.Path
 		if info.FileInfo != nil && info.FileInfo.IsDirectory() {
@@ -337,7 +340,9 @@ func (me *Master) replayFileModifications(infos []*attr.FileAttr, newFiles map[s
 			}
 		}
 		if info.Hash != "" {
-			src := newFiles[info.Path]
+			fs := newFiles[info.Hash]
+			src := fs[len(fs)-1]
+			newFiles[info.Hash] = fs[:len(fs)-1]
 			if err := os.Rename(src, name); err != nil {
 				log.Fatal("os.Rename:", err)
 			}
@@ -379,7 +384,7 @@ func (me *Master) replayFileModifications(infos []*attr.FileAttr, newFiles map[s
 
 func (me *Master) replay(fset attr.FileSet) {
 	req := replayRequest{
-		make(map[string]string),
+		make(map[string][]string),
 		fset.Files,
 		make(chan int),
 	}
@@ -397,8 +402,7 @@ func (me *Master) replay(fset attr.FileSet) {
 			log.Fatal("TempFile", err)
 		}
 
-		req.NewFiles[info.Path] = f.Name()
-
+		req.NewFiles[info.Hash] = append(req.NewFiles[info.Hash], f.Name())
 		content := me.cache.ContentsIfLoaded(info.Hash)
 
 		if content == nil {
