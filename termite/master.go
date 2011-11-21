@@ -413,11 +413,10 @@ func (me *Master) replay(fset attr.FileSet) {
 	for _, info := range fset.Files {
 		if info.Deletion() {
 			a := me.attributes.Get(info.Path)
-			if a.Deletion() {
-				log.Fatalf("Deletion was already deleted: %v", info)
+			if !a.Deletion() {
+				req.DelFileHashes[info.Path] = a.Hash
+				haveHashes[a.Hash]++
 			}
-			req.DelFileHashes[info.Path] = a.Hash
-			haveHashes[a.Hash]++
 			continue
 		}
 		if info.Hash == "" {
