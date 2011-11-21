@@ -36,31 +36,56 @@ func (me *ServerStats) Exit(phase string) {
 }
 
 func CpuStatsWriteHttp(w http.ResponseWriter, stats []CpuStat) {
+	if len(stats) == 0 {
+		return
+	}
+	
 	statm := CpuStat{}
 	stat5 := CpuStat{}
-	if len(stats) > 0 {
-		count5 := int64(0)
-		fmt.Fprintf(w, "<p><table><tr><th>self cpu (ms)</th><th>self sys (ms)</th>"+
-			"<th>child cpu (ms)</th><th>child sys (ms)</th><th>total</th></tr>")
-		for i, v := range stats {
-			statm = statm.Add(v)
-			if i >= len(stats)-5 {
-				count5++
-				stat5 = stat5.Add(v)
-				fmt.Fprintf(w, "<tr><td>%d</td><td>%d</td><td>%d</td><td>%d</td><td>%d</td></tr>",
-					v.SelfCpu/1e6, v.SelfSys/1e6, v.ChildCpu/1e6, v.ChildSys/1e6,
-					(v.SelfCpu+v.SelfSys+v.ChildCpu+v.ChildSys)/1e6)
-			}
+	count5 := int64(0)
+	for i, v := range stats {
+		statm = statm.Add(v)
+		if i >= len(stats)-5 {
+			count5++
+			stat5 = stat5.Add(v)
 		}
-		fmt.Fprintf(w, "</table>")
-
-		totalm := float64(statm.SelfCpu+statm.SelfSys) / 1.0e9
-		fmt.Fprintf(w, "<p>CPU (last min): %d s self %d s sys, %.2f CPU",
-			statm.SelfCpu/1e9, statm.SelfSys/1e9, totalm/float64(len(stats)))
-		fmt.Fprintf(w, "<p>CPU (last %ds): %.2f self %.2f sys, %.1f CPU", count5,
-			float64(stat5.SelfCpu)*1e-9, float64(stat5.SelfSys)*1e-9,
-			float64(stat5.SelfCpu+stat5.SelfSys)/float64(count5*1e9))
 	}
+	
+	printChild := statm.ChildCpu + statm.ChildSys > 0
+	chHeader := ""
+	if printChild {
+		chHeader = "<th>child cpu (ms)</th><th>child sys (ms)</th>"
+	}
+	fmt.Fprintf(w, "<p><table><tr><th>self cpu (ms)</th><th>self sys (ms)</th>%s<th>total</th></tr>",
+		chHeader)
+	for i, v := range stats {
+		if i < len(stats)-5 {
+			continue
+		}
+
+		chRow := ""
+		if printChild {
+			chRow = fmt.Sprintf("<td>%d</td><td>%d</td>", v.ChildCpu/1e6, v.ChildSys/1e6)
+		}
+		
+		fmt.Fprintf(w, "<tr><td>%d</td><td>%d</td>%s<td>%d</td></tr>",
+			v.SelfCpu/1e6, v.SelfSys/1e6, chRow,
+			(v.Total())/1e6)
+	}
+	fmt.Fprintf(w, "</table>")
+
+	fmt.Fprintf(w, "<p>CPU (last min): %d s self %d s sys", statm.SelfCpu/1e9, statm.SelfSys/1e9)
+	if printChild {
+		fmt.Fprintf(w, " %d s child %d s sys", statm.ChildCpu/1e9, statm.ChildSys/1e9)
+	}
+
+	fmt.Fprintf(w, " %.2f CPU", float64(statm.Total())/1e9 / float64(len(stats)))
+	fmt.Fprintf(w, "<p>CPU (last %ds): %.2f self %.2f sys",
+			count5, float64(stat5.SelfCpu)*1e-9, float64(stat5.SelfSys)*1e-9)
+	if printChild {
+		fmt.Fprintf(w, "%.2f s child %.2f s sys", float64(stat5.ChildCpu)*1e-9, float64(stat5.ChildSys)*1e-9)
+	}
+	fmt.Fprintf(w, " %.2f CPU", float64(statm.Total())/1e9 / float64(count5))
 }
 
 func CountStatsWriteHttp(w http.ResponseWriter, names []string, counts []int) {
