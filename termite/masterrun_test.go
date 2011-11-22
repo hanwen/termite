@@ -187,3 +187,17 @@ func TestEndToEndRmR(t *testing.T) {
 		t.Fatalf("rm -r should remove everything: %v", fi)
 	}
 }
+
+func TestEndToEndRmRfNoExist(t *testing.T) {
+	tc := NewTestCase(t)
+	defer tc.Clean()
+
+	tc.refresh()
+
+	tc.RunSuccess(WorkRequest{
+		Argv: []string{"rm", "-rf", "does/not/exist"},
+	})
+	if fi, _ := os.Lstat(tc.wd + "/dir"); fi != nil {
+		t.Fatalf("rm -r should remove everything: %v", fi)
+	}
+}

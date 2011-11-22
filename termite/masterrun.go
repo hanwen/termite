@@ -37,7 +37,9 @@ func recurseNames(master *Master, name string) (names []string) {
 			names = append(names, filepath.Join(name, n))
 		}
 	}
-	names = append(names, name)
+	if !a.Deletion() {
+		names = append(names, name)
+	}
 	return
 }
 
