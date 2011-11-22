@@ -332,7 +332,23 @@ func (me *Master) replayFileModifications(
 	infos []*attr.FileAttr, delFileHashes map[string]string, newFiles map[string][]string) {
 	for _, info := range infos {
 		name := "/" + info.Path
-		if info.FileInfo != nil && info.FileInfo.IsDirectory() {
+		if info.Deletion() {
+			if delFileHashes[info.Path] != "" {
+				dest := fmt.Sprintf("%s/.termite-deltmp%x",
+					me.options.WritableRoot, RandomBytes(8))
+				if err := os.Rename(name, dest); err != nil {
+					log.Fatal("os.Rename:", err)
+				}
+				newFiles[delFileHashes[info.Path]] = append(newFiles[delFileHashes[info.Path]], dest)
+			} else {
+				if err := os.Remove(name); err != nil {
+					log.Fatal("os.Remove:", err)
+				}
+			}
+			continue
+		}
+
+		if info.FileInfo.IsDirectory() {
 			if err := os.Mkdir(name, info.FileInfo.Mode&07777); err != nil {
 				// some other process may have created
 				// the dir.
@@ -358,20 +374,7 @@ func (me *Master) replayFileModifications(
 			}
 
 		}
-		if info.Deletion() && delFileHashes[info.Path] != "" {
-			dest := fmt.Sprintf("%s/.termite-deltmp%x",
-				me.options.WritableRoot, RandomBytes(8))
-			if err := os.Rename(name, dest); err != nil {
-				log.Fatal("os.Rename:", err)
-			}
-			newFiles[delFileHashes[info.Path]] = append(newFiles[delFileHashes[info.Path]], dest)
-		} else if info.Deletion() {
-			if err := os.Remove(name); err != nil {
-				log.Fatal("os.Remove:", err)
-			}
-		}
-
-		if info.Hash == "" && info.FileInfo != nil && !info.FileInfo.IsSymlink() {
+		if info.Hash == "" && !info.FileInfo.IsSymlink() {
 			if err := os.Chtimes(name, info.FileInfo.Atime_ns, info.FileInfo.Mtime_ns); err != nil {
 				log.Fatal("os.Chtimes", err)
 			}
@@ -380,13 +383,11 @@ func (me *Master) replayFileModifications(
 			}
 		}
 
-		if info.FileInfo != nil {
-			// Reread FileInfo, since some filesystems (eg. ext3) do
-			// not have nanosecond timestamps.
-			//
-			// TODO - test this.
-			info.FileInfo, _ = os.Lstat(name)
-		}
+		// Reread FileInfo, since some filesystems (eg. ext3) do
+		// not have nanosecond timestamps.
+		//
+		// TODO - test this.
+		info.FileInfo, _ = os.Lstat(name)
 	}
 
 	me.attributes.Update(infos)
