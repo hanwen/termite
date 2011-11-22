@@ -370,7 +370,7 @@ func (me *Master) replayFileModifications(
 				log.Fatal("os.Remove:", err)
 			}
 		}
-		
+
 		if info.Hash == "" && info.FileInfo != nil && !info.FileInfo.IsSymlink() {
 			if err := os.Chtimes(name, info.FileInfo.Atime_ns, info.FileInfo.Mtime_ns); err != nil {
 				log.Fatal("os.Chtimes", err)
@@ -413,7 +413,7 @@ func (me *Master) replay(fset attr.FileSet) {
 	for _, info := range fset.Files {
 		if info.Deletion() {
 			a := me.attributes.Get(info.Path)
-			if !a.Deletion() {
+			if !a.Deletion() && a.Hash != "" {
 				req.DelFileHashes[info.Path] = a.Hash
 				haveHashes[a.Hash]++
 			}
