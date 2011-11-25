@@ -542,13 +542,16 @@ func (me *memNode) Truncate(file fuse.File, size uint64, context *fuse.Context) 
 	defer me.mutex.Unlock()
 	me.promote()
 	if file != nil {
-		return file.Truncate(size)
+		code = file.Truncate(size)
+	} else {
+		code = fuse.ToStatus(os.Truncate(me.backing, int64(size)))
 	}
 
-	me.info.Size = int64(size)
-	err := os.Truncate(me.backing, int64(size))
-	me.touch()
-	return fuse.ToStatus(err)
+	if code.Ok() {
+		me.info.Size = int64(size)
+		me.touch()
+	}
+	return code
 }
 
 func (me *memNode) Utimens(file fuse.File, atime uint64, mtime uint64, context *fuse.Context) (code fuse.Status) {

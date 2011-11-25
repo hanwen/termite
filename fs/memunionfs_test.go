@@ -947,3 +947,21 @@ func TestMemUnionResetRename(t *testing.T) {
 	clearInodes(reset)
 	testEq(t, fuse.OsFileInfos(reset), fuse.OsFileInfos(before), true)
 }
+
+func TestMemUnionFsTruncateOpen(t *testing.T) {
+	wd, _, clean := setupMemUfs(t)
+	defer clean()
+
+	fn := wd+"/mnt/test"
+	f, err := os.OpenFile(fn, os.O_CREATE|os.O_WRONLY, 0644)
+	CheckSuccess(err)
+	defer f.Close()
+
+	err = f.Truncate(4096)
+	CheckSuccess(err)
+	fi, err := os.Lstat(fn)
+	CheckSuccess(err)
+	if fi.Size != 4096 {
+		t.Errorf("Size should be 4096 after Truncate: %d", fi.Size)
+	}
+}
