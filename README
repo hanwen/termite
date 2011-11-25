@@ -10,19 +10,21 @@ CAVEATS
 Work in progress.
 
 
-COMPILE
+COMPILE/INSTALL
 
-Use the following recipe
+* Compiling:
 
   git clone git://github.com/hanwen/go-fuse.git
   git clone git://github.com/hanwen/termite.git
   cd go-fuse && sh all.bash
   cd termite && sh all.bash
 
-I do not goinstall go-fuse, since I develop go-fuse in tandem with
-termite, but with some tweaks to the Makefile it should work.
+* Install:
 
-Some other tools need patching/upgrading too.
+  ln -s ${TERMITE_DIR}/termite-make  ~/bin/
+  ln -s ${TERMITE_DIR}/bin/shell-wrapper/shell-wrapper ~/bin/
+
+* Make needs to be patched to use termite's shell wrapper:
 
   # Add MAKE_SHELL variable to make.
   wget http://ftp.gnu.org/gnu/make/make-3.82.tar.bz2
@@ -30,7 +32,17 @@ Some other tools need patching/upgrading too.
   cd make-3.82 && patch -p1 < ../termite/patches/make-*patch
   ./configure && make && make install
 
+* Coreutils before 8.0 has buggy directory traversal, making 'rm -rf' flaky.
+
   # Upgrade coreutils to 8.0 or later to have working "rm -rf".
+
+* Set resource limits: add the following to your /etc/security/limits.conf
+
+  root  soft    nofile       5000
+  root  hard    nofile       5000
+  *  soft    nofile       5000
+  *  hard    nofile       5000
+
 
 OVERVIEW
 
@@ -84,10 +96,6 @@ RUNNING
   ${TERMITE_DIR}/bin/coordinator/coordinator &
   sudo ${TERMITE_DIR}/bin/worker/worker -jobs 4 -coordinator localhost:1233
 
-  # Run distributed build
-  ln -s ${TERMITE_DIR}/termite-make  ~/bin/
-  ln -s ${TERMITE_DIR}/bin/shell-wrapper/shell-wrapper ~/bin/
-
   cd ${PROJECT}
   ${TERMITE_DIR}/bin/master/master -jobs 4 \
     -secret ${TERMITE_DIR}/secret.txt &
@@ -118,7 +126,7 @@ SECURITY
 * Worker and master must trust each other, for the following reasons:
 
   - workers can request all publicly readable files from the master.
-    
+
   - workers can cause the master to run arbitrary binaries as the user
     compiling.
 
@@ -130,7 +138,7 @@ SECURITY
 * Wrapper and master run as the same user and use IPC unix domain
   sockets to communicate.  The socket mode is 0700.
 
-  
+
 
 CAVEATS
 
@@ -147,7 +155,7 @@ TODO (by decreasing priority)
 SUCCESSFUL COMPILES
 
 Termite timings by running master and single worker on the same
-machine.  The smaller the package, the larger the overhead. 
+machine.  The smaller the package, the larger the overhead.
 
 * coreutils 8.12 (1.6x slower, Lenovo T60, 2-core, make -j2)
 
