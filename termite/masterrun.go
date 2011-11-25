@@ -27,6 +27,7 @@ func (me *Master) MaybeRunInMaster(req *WorkRequest, rep *WorkResponse) bool {
 	return false
 }
 
+// Recursively lists names.  Returns children before the parents.
 func recurseNames(master *Master, name string) (names []string) {
 	a := master.fileServer.attributes.GetDir(name)
 
@@ -72,8 +73,18 @@ func rmMaybeMasterRun(master *Master, req *WorkRequest, rep *WorkResponse) bool 
 	fs := attr.FileSet{}
 	msgs := []string{}
 	status := 0
+	now := time.Nanoseconds()
 	if recursive {
 		for _, t := range todo {
+			parentDir, _ := SplitPath(t)
+			parent := master.attributes.Get(parentDir)
+			if parent.Deletion() {
+				continue
+			}
+
+			parent.Ctime_ns = now
+			parent.Mtime_ns = now
+			fs.Files = append(fs.Files, parent)
 			for _, n := range recurseNames(master, t) {
 				fs.Files = append(fs.Files, &attr.FileAttr{
 					Path: n,
@@ -93,11 +104,14 @@ func rmMaybeMasterRun(master *Master, req *WorkRequest, rep *WorkResponse) bool 
 				msgs = append(msgs, fmt.Sprintf("rm: is a directory: %s", p))
 				status = 1
 			default:
-				fs.Files = append(fs.Files, &attr.FileAttr{Path: p})
+				parentDir, _ := SplitPath(p)
+				parentAttr := master.attributes.Get(parentDir)
+				parentAttr.Mtime_ns = now
+				parentAttr.Ctime_ns = now
+				fs.Files = append(fs.Files, parentAttr, &attr.FileAttr{Path: p})
 			}
 		}
 	}
-	fs.Sort()
 	master.replay(fs)
 
 	rep.Stderr = strings.Join(msgs, "\n")

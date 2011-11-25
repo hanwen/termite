@@ -201,3 +201,26 @@ func TestEndToEndRmRfNoExist(t *testing.T) {
 		t.Fatalf("rm -r should remove everything: %v", fi)
 	}
 }
+
+func TestEndToEndRmParentTimestamp(t *testing.T) {
+	tc := NewTestCase(t)
+	defer tc.Clean()
+
+	err := os.MkdirAll(tc.wd+"/dir/subdir", 0755)
+	check(err)
+	rootless := strings.TrimLeft(tc.wd, "/")
+
+	now := time.Nanoseconds() - 10e9
+	err = os.Chtimes(tc.wd+"/dir", now, now)
+	check(err)
+
+	beforeNs := tc.master.fileServer.attributes.Get(rootless + "/dir").Mtime_ns
+	tc.RunSuccess(WorkRequest{
+		Argv: []string{"rm", "-rf", tc.wd + "/dir/subdir"},
+	})
+	afterNs := tc.master.fileServer.attributes.Get(rootless + "/dir").Mtime_ns
+	if afterNs <= beforeNs {
+		t.Errorf("Parent timestamp not changed after rm: before %d after %d",
+			beforeNs, afterNs)
+	}
+}
