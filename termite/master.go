@@ -491,10 +491,10 @@ L:
 	for {
 		select {
 		case <-me.quit:
-			log.Println("quit received.", me.mirrors.coordinator)
+			log.Println("quit received.")
 			break L
 		case <-ticker.C:
-			log.Println("periodic household.", me.mirrors.coordinator)
+			log.Println("periodic household.")
 			me.mirrors.periodicHouseholding()
 		}
 	}
