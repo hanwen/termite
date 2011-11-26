@@ -371,15 +371,24 @@ func (me *Coordinator) mirrorStatusHtml(w http.ResponseWriter, s MirrorStatusRes
 		fmt.Fprintf(w, "<li>%s", s)
 	}
 
+	running := 0 
+	for _, fs := range s.Fses {
+		running += len(fs.Tasks)
+	}
+	
 	fmt.Fprintf(w, "<p>%d maximum jobs, %d running, %d waiting tasks, %d unused filesystems.\n",
-		s.Granted, len(s.Running), s.WaitingTasks, s.IdleFses)
+		s.Granted, running, s.WaitingTasks, s.IdleFses)
 	if s.ShuttingDown {
 		fmt.Fprintf(w, "<p><b>shutting down</b>\n")
 	}
 
 	fmt.Fprintf(w, "<ul>\n")
-	for _, v := range s.Running {
-		fmt.Fprintf(w, "<li>%s\n", v)
+	for _, v := range s.Fses {
+		fmt.Fprintf(w, "<li>id %s: %s<ul>\n", v.Id, v.Mem)
+		for _, t := range v.Tasks {
+			fmt.Fprintf(w, "<li>%s\n", t)
+		}
+		fmt.Fprintf(w, "</ul>\n")
 	}
 	fmt.Fprintf(w, "</ul>\n")
 }

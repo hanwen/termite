@@ -1,7 +1,6 @@
 package termite
 
 import (
-	"fmt"
 	"github.com/hanwen/termite/stats"
 )
 
@@ -14,9 +13,7 @@ func (me *Mirror) Status(req *MirrorStatusRequest, rep *MirrorStatusResponse) er
 	rep.ShuttingDown = me.shuttingDown
 
 	for fs := range me.activeFses {
-		for t := range fs.tasks {
-			rep.Running = append(rep.Running, fmt.Sprintf("fs %s: %s", fs.id, t.taskInfo))
-		}
+		rep.Fses = append(rep.Fses, fs.Status())
 	}
 	rep.RpcTimings = me.rpcFs.timings.TimingMessages()
 	return nil

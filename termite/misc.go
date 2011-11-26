@@ -247,4 +247,17 @@ func (me *WorkResponse) String() string {
 		HumanTrim(me.Stdout, 1024))
 }
 
+// IntToExponent the smallest E such that 2^E >= Z.
+func IntToExponent(z int) uint {
+	x := z
+	var exp uint = 0
+	for x > 1 {
+		exp++
+		x >>= 1
+	}
 
+	if z > (1 << exp) {
+		exp++
+	}
+	return exp
+}

@@ -2,7 +2,6 @@ package termite
 
 import (
 	"fmt"
-	"github.com/hanwen/go-fuse/fuse"
 	"log"
 	"net/http"
 )
@@ -10,7 +9,7 @@ import (
 func (me *Master) sizeHistogram() (histo []int, total int) {
 	for _, f := range me.attributes.Copy().Files {
 		if f.FileInfo != nil && f.IsRegular() {
-			e := fuse.IntToExponent(int(f.Size))
+			e := IntToExponent(int(f.Size))
 			for len(histo) <= int(e) {
 				histo = append(histo, 0)
 			}

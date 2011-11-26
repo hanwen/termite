@@ -39,6 +39,15 @@ type workerFuseFs struct {
 	taskIds []int
 }
 
+func (me *workerFuseFs) Status() (s FuseFsStatus) {
+	s.Id = me.id
+	s.Mem = me.BufferPoolStats()
+	for t := range me.tasks {
+		s.Tasks = append(s.Tasks, t.taskInfo)
+	}
+	return s
+}
+
 func (me *workerFuseFs) addTask(task *WorkerTask) {
 	me.taskIds = append(me.taskIds, task.req.TaskId)
 	me.tasks[task] = true

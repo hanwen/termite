@@ -30,10 +30,16 @@ type MirrorStatusRequest struct {
 
 }
 
+type FuseFsStatus struct {
+	Id    string
+	Tasks []string
+	Mem   string
+}
+
 type MirrorStatusResponse struct {
 	Root         string
 	Granted      int
-	Running      []string
+	Fses         []FuseFsStatus
 	ShuttingDown bool
 	WaitingTasks int
 	IdleFses     int
