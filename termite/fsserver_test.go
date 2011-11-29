@@ -9,6 +9,7 @@ import (
 	"github.com/hanwen/termite/cba"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/rpc"
 	"os"
 	"path/filepath"
@@ -146,12 +147,10 @@ func newRpcFsTestCase(t *testing.T) (me *rpcFsTestCase) {
 }
 
 func (me *rpcFsTestCase) Clean() {
-	err := me.state.Unmount()
-	if err == nil {
-		os.RemoveAll(me.tmp)
-	} else {
-		panic("fuse unmount failed.")
+	if err := me.state.Unmount(); err != nil {
+		log.Panic("fuse unmount failed.", err)
 	}
+	os.RemoveAll(me.tmp)
 	me.sockL.Close()
 	me.sockR.Close()
 }

@@ -54,14 +54,13 @@ func (me *workerFuseFs) addTask(task *WorkerTask) {
 }
 
 func (me *workerFuseFs) Stop() {
-	err := me.MountState.Unmount()
-	if err != nil {
-		log.Fatal("Unmount fail:", err)
-	} else {
+	if err := me.MountState.Unmount(); err != nil {
 		// If the unmount fails, the RemoveAll will stat all
-		// of the FUSE file system.
-		os.RemoveAll(me.tmpDir)
+		// of the FUSE file system, so we have to exit.
+		log.Panic("unmount fail in workerFuseFs.Stop:", err)
 	}
+	
+	os.RemoveAll(me.tmpDir)
 }
 
 func (me *workerFuseFs) SetDebug(debug bool) {
@@ -152,7 +151,9 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string, 
 
 		code := me.rpcNodeFs.Mount(s.mountpoint, s.fs, subOpts)
 		if !code.Ok() {
-			me.MountState.Unmount()
+			if err := me.MountState.Unmount(); err != nil {
+				log.Fatal("FUSE unmount error during cleanup:", err) 
+			}
 			return nil, errors.New(fmt.Sprintf("submount error for %s: %v", s.mountpoint, code))
 		}
 	}
@@ -160,7 +161,9 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string, 
 		parent, _ := filepath.Split(me.writableRoot)
 		err := os.MkdirAll(filepath.Join(me.mount, parent), 0755)
 		if err != nil {
-			me.MountState.Unmount()
+			if err := me.MountState.Unmount(); err != nil {
+				log.Fatal("FUSE unmount error during cleanup:", err) 
+			}
 			return nil, errors.New(fmt.Sprintf("Mkdir of %q in /tmp fail: %v", parent, err))
 		}
 		// This is hackish, but we don't want rpcfs/fsserver
@@ -171,7 +174,9 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string, 
 	}
 	code := me.rpcNodeFs.Mount(me.writableRoot, me.unionFs, &mOpts)
 	if !code.Ok() {
-		me.MountState.Unmount()
+		if err := me.MountState.Unmount(); err != nil {
+			log.Fatal("FUSE unmount error during cleanup:", err) 
+		}
 		return nil, errors.New(fmt.Sprintf("submount error for %s: %v", me.writableRoot, code))
 	}
 
