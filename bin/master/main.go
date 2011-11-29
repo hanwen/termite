@@ -25,11 +25,12 @@ func main() {
 	memcache := flag.Int("filecache", 1024, "number of <32k files to cache in memory")
 	paranoia := flag.Bool("paranoia", false, "Check attribute cache.")
 	port := flag.Int("port", 1237, "http status port")
+	retry := flag.Int("retry", 3, "how often to retry faulty jobs")
 	secretFile := flag.String("secret", "secret.txt", "file containing password.")
 	socket := flag.String("socket", ".termite-socket", "socket to listen for commands")
 	srcRoot := flag.String("sourcedir", "", "root of corresponding source directory")
 	workers := flag.String("workers", "", "comma separated list of worker addresses")
-
+	
 	flag.Parse()
 
 	if *logfile != "" {
@@ -67,6 +68,7 @@ func main() {
 			Dir:      *cachedir,
 			MemCount: *memcache,
 		},
+		RetryCount: *retry,
 	}
 	master := termite.NewMaster(&opts)
 
