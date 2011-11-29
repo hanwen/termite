@@ -62,6 +62,7 @@ type WorkerStatusResponse struct {
 	ContentCacheHitRate float64
 	PhaseNames          []string
 	PhaseCounts         []int
+	MemStat             stats.MemStat
 }
 
 type Timing struct {

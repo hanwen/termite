@@ -3,6 +3,7 @@ package stats
 import (
 	"fmt"
 	"log"
+	"runtime"
 	"syscall"
 )
 
@@ -20,6 +21,38 @@ type CpuStat struct {
 	SelfSys  int64
 	ChildCpu int64
 	ChildSys int64
+}
+
+type MemCounter uint64
+
+func (mc MemCounter) String() string {
+	unit := ""
+	switch {
+	case mc > (1 << 31):
+		mc >>= 30
+		unit = "G"
+	case mc > (1 << 21):
+		mc >>= 20
+		unit = "M"
+	case mc > (1 << 11):
+		mc >>= 10
+		unit = "K"
+	}
+
+	return fmt.Sprintf("%d%s", uint64(mc), unit)
+}
+
+type MemStat struct {
+	HeapIdle   MemCounter
+	HeapInuse  MemCounter
+}
+
+func GetMemStat() *MemStat {
+	r := runtime.MemStats
+	return &MemStat{
+		MemCounter(r.HeapIdle),
+		MemCounter(r.HeapInuse),
+	}
 }
 
 func TotalCpuStat() *CpuStat {

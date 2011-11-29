@@ -355,6 +355,10 @@ func (me *Coordinator) workerHandler(w http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(w, "<p>Total CPU: %s", status.TotalCpu.Percent())
 	fmt.Fprintf(w, "<p>Content cache hit rate: %.0f %%", 100.0*status.ContentCacheHitRate)
 
+	m := status.MemStat
+	fmt.Fprintf(w, "<p>HeapIdle: %v, HeapInUse: %v",
+		m.HeapIdle, m.HeapInuse)
+
 	stats.CountStatsWriteHttp(w, status.PhaseNames, status.PhaseCounts)
 
 	for _, mirrorStatus := range status.MirrorStatus {
