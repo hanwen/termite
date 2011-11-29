@@ -56,8 +56,7 @@ func (me *workerFuseFs) addTask(task *WorkerTask) {
 func (me *workerFuseFs) Stop() {
 	err := me.MountState.Unmount()
 	if err != nil {
-		// TODO - Should be fatal?
-		log.Println("Unmount fail:", err)
+		log.Fatal("Unmount fail:", err)
 	} else {
 		// If the unmount fails, the RemoveAll will stat all
 		// of the FUSE file system.
