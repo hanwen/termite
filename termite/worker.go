@@ -260,6 +260,9 @@ func (me *Worker) Shutdown(req *ShutdownRequest, rep *ShutdownResponse) error {
 	}
 	me.shuttingDown = true
 	me.mirrors.Shutdown(req)
-	me.listener.Close()
+	go func() {
+		time.Sleep(2e6)	// sleep so we don't kill the current connection.
+		me.listener.Close()
+	}()
 	return nil
 }
