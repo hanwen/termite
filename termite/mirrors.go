@@ -70,11 +70,7 @@ func (me *WorkerMirrors) Shutdown(req *ShutdownRequest) {
 	for _, m := range me.mirrorMap {
 		m.Shutdown()
 	}
-	log.Println("Asked all mirrors to shut down.")
-	for len(me.mirrorMap) > 0 {
-		log.Println("Live mirror count:", len(me.mirrorMap))
-		me.cond.Wait()
-	}
+	me.mirrorMap = map[string]*Mirror{}
 	log.Println("All mirrors have shut down.")
 }
 

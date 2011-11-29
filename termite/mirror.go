@@ -57,6 +57,7 @@ func (me *Mirror) serveRpc() {
 	server.Register(me)
 	server.ServeConn(me.rpcConn)
 	me.Shutdown()
+	me.daemon.DropMirror(me)
 }
 
 func (me *Mirror) Shutdown() {
@@ -81,8 +82,6 @@ func (me *Mirror) Shutdown() {
 		me.cond.Wait()
 	}
 	me.rpcConn.Close()
-
-	go me.daemon.DropMirror(me)
 }
 
 func (me *Mirror) runningCount() int {
