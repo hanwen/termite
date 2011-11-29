@@ -99,7 +99,7 @@ func NewTestCase(t *testing.T) *testCase {
 	go func() {
 		masterOpts := MasterOptions{
 			WritableRoot:  me.wd,
-			RetryCount:    3,
+			RetryCount:    2,
 			Secret:        me.secret,
 			MaxJobs:       1,
 			Coordinator:   coordinatorAddr.String(),
@@ -565,7 +565,7 @@ func TestEndToEndKillChild(t *testing.T) {
 	time.Sleep(0.5e9)
 	// force shutdown.
 	tc.master.mirrors.dropConnections()
-	time.Sleep(0.5e9)
+	time.Sleep(0.6e9)
 	<-complete
 }
 
