@@ -147,6 +147,10 @@ CAVEATS
 
 TODO (by decreasing priority)
 
+* Make coordinator robust against worker shutdown.
+* Make worker robust against shutdown.
+* Make master retry if worker fails.
+* Restart if we go over the memory limit.
 * In-memory file writing.
 * Compile linux kernel
 * Security review for the connection scheme.
