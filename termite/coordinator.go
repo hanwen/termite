@@ -166,10 +166,10 @@ func (me *Coordinator) killAll(restart bool) error {
 	addrs := me.workerAddresses()
 	done := make(chan error, len(addrs))
 	for _, w := range addrs {
-		go func() {
+		go func(w string) {
 			err := me.killWorker(w, restart)
 			done <- err
-		}()
+		}(w)
 	}
 
 	errs := []error{}
@@ -371,11 +371,11 @@ func (me *Coordinator) mirrorStatusHtml(w http.ResponseWriter, s MirrorStatusRes
 		fmt.Fprintf(w, "<li>%s", s)
 	}
 
-	running := 0 
+	running := 0
 	for _, fs := range s.Fses {
 		running += len(fs.Tasks)
 	}
-	
+
 	fmt.Fprintf(w, "<p>%d maximum jobs, %d running, %d waiting tasks, %d unused filesystems.\n",
 		s.Granted, running, s.WaitingTasks, s.IdleFses)
 	if s.ShuttingDown {
