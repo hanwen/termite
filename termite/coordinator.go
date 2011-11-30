@@ -200,7 +200,7 @@ func (me *Coordinator) killWorker(addr string, restart bool) error {
 func (me *Coordinator) killAllHandler(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	fmt.Fprintf(w, "<p>%s in progress", req.URL.Path)
-	err := me.killAll(req.URL.Path == "restartall")
+	err := me.killAll(req.URL.Path == "/restartall")
 	if err != nil {
 		fmt.Fprintf(w, "error: %v", err)
 	}
@@ -220,7 +220,7 @@ func (me *Coordinator) killHandler(w http.ResponseWriter, req *http.Request) {
 	defer conn.Close()
 
 	w.Header().Set("Content-Type", "text/html")
-	restart := req.URL.Path == "restart"
+	restart := req.URL.Path == "/restart"
 	fmt.Fprintf(w, "<html><head><title>Termite worker status</title></head>")
 	fmt.Fprintf(w, "<body><h1>Status %s</h1>", addr)
 	defer fmt.Fprintf(w, "</body></html>")
