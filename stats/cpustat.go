@@ -47,6 +47,10 @@ type MemStat struct {
 	HeapInuse  MemCounter
 }
 
+func (m *MemStat) Total() uint64 {
+	return uint64(m.HeapIdle + m.HeapInuse)
+}
+
 func GetMemStat() *MemStat {
 	r := runtime.MemStats
 	return &MemStat{
