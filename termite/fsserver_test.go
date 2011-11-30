@@ -120,7 +120,7 @@ func newRpcFsTestCase(t *testing.T) (me *rpcFsTestCase) {
 	me.server = NewFsServer(me.attr, me.cache)
 
 	var err error
-	me.sockL, me.sockR, err = fuse.Socketpair("unix")
+	me.sockL, me.sockR, err = unixSocketpair()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,7 +136,8 @@ func newRpcFsTestCase(t *testing.T) (me *rpcFsTestCase) {
 	cache := cba.NewContentCache(&cOpts)
 	me.rpcFs = NewRpcFs(rpcClient, cache)
 	me.rpcFs.id = "rpcfs_test"
-	me.state, _, err = fuse.MountPathFileSystem(me.mnt, me.rpcFs, nil)
+	nfs := fuse.NewPathNodeFs(me.rpcFs, nil)
+	me.state, _, err = fuse.MountNodeFileSystem(me.mnt, nfs, nil)
 	me.state.Debug = fuse.VerboseTest()
 	if err != nil {
 		t.Fatal("Mount", err)

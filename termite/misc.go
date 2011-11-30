@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -260,4 +261,16 @@ func IntToExponent(z int) uint {
 		exp++
 	}
 	return exp
+}
+
+func unixSocketpair() (l *os.File, r *os.File, err error) {
+	fd, err := syscall.Socketpair(syscall.AF_UNIX, syscall.SOCK_STREAM, 0)
+	
+	if err != nil {
+		return nil, nil, os.NewSyscallError("socketpair",
+			err.(syscall.Errno))
+	}
+	l = os.NewFile(fd[0], "socketpair-half1")
+	r = os.NewFile(fd[1], "socketpair-half2")
+	return
 }

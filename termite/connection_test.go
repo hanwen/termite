@@ -2,7 +2,6 @@ package termite
 
 import (
 	"fmt"
-	"github.com/hanwen/go-fuse/fuse"
 	"io"
 	"math/rand"
 	"net"
@@ -65,8 +64,8 @@ func (me *dummyConn) SetWriteTimeout(nsec int64) error {
 }
 
 func TestPendingConnection(t *testing.T) {
-	a1, b1, _ := fuse.Socketpair("unix")
-	a2, b2, _ := fuse.Socketpair("unix")
+	a1, b1, _ := unixSocketpair()
+	a2, b2, _ := unixSocketpair()
 	defer a1.Close()
 	defer a2.Close()
 	defer b1.Close()
