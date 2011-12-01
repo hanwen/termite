@@ -42,6 +42,8 @@ func main() {
 	logfile := flag.String("logfile", "", "Output log file to use.")
 	paranoia := flag.Bool("paranoia", false, "Check attribute cache.")
 	cpus := flag.Int("cpus", 1, "Number of CPUs to use.")
+	heap := flag.Int("heap-size", 0, "Maximum heap size in MB.")
+
 	flag.Parse()
 	if os.Geteuid() != 0 {
 		log.Fatal("This program must run as root")
@@ -73,6 +75,7 @@ func main() {
 			Dir:      *cachedir,
 			MemCount: *memcache,
 		},
+		HeapLimit: uint64(*heap) * (1<<20),
 	}
 	if os.Geteuid() == 0 {
 		nobody, err := user.Lookup(*userFlag)

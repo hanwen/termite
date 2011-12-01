@@ -56,31 +56,37 @@ func (me *Mirror) serveRpc() {
 	server := rpc.NewServer()
 	server.Register(me)
 	server.ServeConn(me.rpcConn)
-	me.Shutdown()
+	me.Shutdown(true)
 	me.daemon.DropMirror(me)
 }
 
-func (me *Mirror) Shutdown() {
+func (me *Mirror) Shutdown(aggressive bool) {
 	me.fsMutex.Lock()
 	defer me.fsMutex.Unlock()
 	if me.shuttingDown {
 		return
 	}
 	me.shuttingDown = true
-	me.rpcFs.Close()
+
 	for fs := range me.activeFses {
-		for t := range fs.tasks {
-			t.Kill()
-		}
 		if len(fs.tasks) == 0 {
 			fs.Stop()
 			delete(me.activeFses, fs)
 		}
 	}
 
+	if aggressive {
+		me.rpcFs.Close()
+		for fs := range me.activeFses {
+			for t := range fs.tasks {
+				t.Kill()
+			}
+		}
+	}
 	for len(me.activeFses) > 0 {
 		me.cond.Wait()
 	}
+
 	me.rpcConn.Close()
 }
 

@@ -52,6 +52,10 @@ type WorkerOptions struct {
 	// Delay between contacting the coordinator for making reports.
 	ReportInterval float64
 	LogFileName    string
+
+	// If set, we restart once the heap usage passes this
+	// threshold.
+	HeapLimit      uint64
 }
 
 func NewWorker(options *WorkerOptions) *Worker {
@@ -79,15 +83,23 @@ func NewWorker(options *WorkerOptions) *Worker {
 	return me
 }
 
-func (me *Worker) PeriodicReport(coordinator string, port int) {
-	if coordinator == "" {
-		log.Println("No coordinator - not doing period reports.")
-		return
-	}
+func (me *Worker) PeriodicHouseholding(coordinator string, port int) {
 	for !me.shuttingDown {
-		me.report(coordinator, port)
 		c := time.After(int64(me.options.ReportInterval * 1e9))
 		<-c
+
+		if coordinator != "" {
+			me.report(coordinator, port)
+		}
+
+		if me.options.HeapLimit > 0 {
+			heap := stats.GetMemStat().Total()
+			if heap > me.options.HeapLimit {
+				log.Println("Exceeded heap limit. Restarting...")
+				// TODO - use aggressive = false.
+				me.shutdown(true, true)
+			}
+		}
 	}
 }
 
@@ -152,7 +164,7 @@ func (me *Worker) RunWorkerServer(port int, coordinator string) {
 	_, portString, _ := net.SplitHostPort(me.listener.Addr().String())
 
 	fmt.Sscanf(portString, "%d", &port)
-	go me.PeriodicReport(coordinator, port)
+	go me.PeriodicHouseholding(coordinator, port)
 
 	for {
 		conn, err := me.listener.Accept()
@@ -255,14 +267,18 @@ func (me *Worker) DropMirror(mirror *Mirror) {
 }
 
 func (me *Worker) Shutdown(req *ShutdownRequest, rep *ShutdownResponse) error {
-	if req.Restart {
+	me.shutdown(req.Restart, true)
+	return nil
+}
+
+func (me *Worker) shutdown(restart bool, aggressive bool) {
+	if restart {
 		me.mustRestart = true
 	}
 	me.shuttingDown = true
-	me.mirrors.Shutdown(req)
+	me.mirrors.shutdown(aggressive)
 	go func() {
 		time.Sleep(2e6)	// sleep so we don't kill the current connection.
 		me.listener.Close()
 	}()
-	return nil
 }

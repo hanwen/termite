@@ -62,13 +62,13 @@ func (me *WorkerMirrors) DropMirror(mirror *Mirror) {
 	runtime.GC()
 }
 
-func (me *WorkerMirrors) Shutdown(req *ShutdownRequest) {
+func (me *WorkerMirrors) shutdown(aggressive bool) {
 	log.Println("Received Shutdown.")
 	me.mirrorMapMutex.Lock()
 	defer me.mirrorMapMutex.Unlock()
 
 	for _, m := range me.mirrorMap {
-		m.Shutdown()
+		m.Shutdown(aggressive)
 	}
 	me.mirrorMap = map[string]*Mirror{}
 	log.Println("All mirrors have shut down.")
