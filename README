@@ -148,11 +148,11 @@ CAVEATS
 TODO (by decreasing priority)
 
 * Make coordinator robust against worker shutdown.
-* Make worker robust against shutdown.
-* Make master retry if worker fails.
-* Restart if we go over the memory limit.
-* In-memory file writing.
+* Cache hashes in xattrs.
+* Make master->coordinator RPC block in coordinator so master can
+  learn of developments instantaneously.
 * Compile linux kernel
+* In-memory file writing.
 * Security review for the connection scheme.
 * Better connection scheme? Use exp/ssh, tls?
 
