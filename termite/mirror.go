@@ -29,6 +29,7 @@ type Mirror struct {
 	nextFsId     int
 	activeFses   map[*workerFuseFs]bool
 	shuttingDown bool
+	killed       bool
 }
 
 func NewMirror(daemon *Worker, rpcConn, revConn net.Conn) *Mirror {
@@ -67,7 +68,10 @@ func (me *Mirror) Shutdown(aggressive bool) {
 		return
 	}
 	me.shuttingDown = true
-
+	if aggressive {
+		me.killed = true
+	}
+	
 	for fs := range me.activeFses {
 		if len(fs.tasks) == 0 {
 			fs.Stop()
@@ -206,6 +210,10 @@ func (me *Mirror) Run(req *WorkRequest, rep *WorkResponse) error {
 	log.Println(rep)
 	rep.WorkerId = fmt.Sprintf("%s: %s", Hostname, me.daemon.listener.Addr().String())
 	me.daemon.stats.Exit("run")
+
+	if me.killed {
+		return fmt.Errorf("killed worker %s", me.daemon.listener.Addr().String())
+	}
 	return nil
 }
 
