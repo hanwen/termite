@@ -353,7 +353,7 @@ func (me *Master) replayFileModifications(infos []*attr.FileAttr, delFileHashes 
 				// some other process may have created
 				// the dir.
 				fi, _ := os.Lstat(name)
-				if fi == nil && !fi.IsDir() {
+				if fi == nil || !fi.IsDir() {
 					log.Fatal("os.Mkdir", err)
 				}
 			}
