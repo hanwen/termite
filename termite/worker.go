@@ -85,9 +85,6 @@ func NewWorker(options *WorkerOptions) *Worker {
 
 func (me *Worker) PeriodicHouseholding(coordinator string, port int) {
 	for !me.shuttingDown {
-		c := time.After(int64(me.options.ReportInterval * 1e9))
-		<-c
-
 		if coordinator != "" {
 			me.report(coordinator, port)
 		}
@@ -100,6 +97,9 @@ func (me *Worker) PeriodicHouseholding(coordinator string, port int) {
 				me.shutdown(true, true)
 			}
 		}
+		
+		c := time.After(int64(me.options.ReportInterval * 1e9))
+		<-c
 	}
 }
 
