@@ -196,12 +196,14 @@ func (me *workerFuseFs) update(attrs []*attr.FileAttr) {
 		if attr.Deletion() {
 			updates[path] = &fs.Result{}
 		} else {
-			updates[path] = &fs.Result{
-				FileInfo: attr.FileInfo,
+			r := fs.Result{
 				Original: "",
 				Backing:  "",
 				Link:     attr.Link,
+				Attr: 	  &fuse.Attr{},
 			}
+			r.Attr.FromFileInfo(attr.FileInfo)
+			updates[path] = &r
 		}
 	}
 	me.unionFs.Update(updates)

@@ -199,7 +199,7 @@ func TestMemUnionFsDelete(t *testing.T) {
 	}
 
 	r := ufs.Reap()
-	if r["file"] == nil || r["file"].FileInfo != nil {
+	if r["file"] == nil || r["file"].Attr != nil {
 		t.Errorf("expect 1 deletion reap result: %v", r)
 	}
 }
@@ -330,7 +330,7 @@ func TestMemUnionFsMkdirPromote(t *testing.T) {
 	CheckSuccess(err)
 
 	r := ufs.Reap()
-	if r["subdir/subdir2/dir3"] == nil || r["subdir/subdir2/dir3"].FileInfo.Mode&fuse.S_IFDIR == 0 {
+	if r["subdir/subdir2/dir3"] == nil || r["subdir/subdir2/dir3"].Attr.Mode&fuse.S_IFDIR == 0 {
 		t.Errorf("expect 1 file reap result: %v", r)
 	}
 }
@@ -592,10 +592,14 @@ func TestMemUnionFsUpdate(t *testing.T) {
 		t.Fatal("symlink should not exist", fi)
 	}
 
-	roF2, err := os.Lstat(wd + "/ro/file2")
+	roF2fi, err := os.Lstat(wd + "/ro/file2")
 	CheckSuccess(err)
+	roF2 := &fuse.Attr{}
+	roF2.FromFileInfo(roF2fi)
 	roSymlinkFi, err := os.Lstat(wd + "/ro/symlink")
 	CheckSuccess(err)
+	roSymlink := &fuse.Attr{}
+	roSymlink.FromFileInfo(roSymlinkFi)
 
 	updates := map[string]*Result{
 		"file1": &Result{
@@ -605,7 +609,7 @@ func TestMemUnionFsUpdate(t *testing.T) {
 			roF2, "", "", "",
 		},
 		"symlink": &Result{
-			roSymlinkFi, "", "", "target",
+			roSymlink, "", "", "target",
 		},
 	}
 
@@ -618,7 +622,7 @@ func TestMemUnionFsUpdate(t *testing.T) {
 
 	fi, err = os.Lstat(wd + "/mnt/file2")
 	CheckSuccess(err)
-	if roF2.Mtime_ns != fi.Mtime_ns {
+	if roF2.Mtimens() != fi.Mtime_ns {
 		t.Fatalf("file2 attribute mismatch: got %v want %v", fi, roF2)
 	}
 
@@ -757,7 +761,7 @@ func TestMemUnionFsRenameDirBasic(t *testing.T) {
 	}
 
 	r := ufs.Reap()
-	if r["dir"] == nil || r["dir"].FileInfo != nil || r["renamed/subdir"] == nil || !r["renamed/subdir"].FileInfo.IsDirectory() {
+	if r["dir"] == nil || r["dir"].Attr != nil || r["renamed/subdir"] == nil || !r["renamed/subdir"].Attr.IsDirectory() {
 		t.Errorf("Reap should del dir, and add renamed/subdir: %v", r)
 	}
 
@@ -781,7 +785,7 @@ func TestMemUnionFsRenameDirAllSourcesGone(t *testing.T) {
 	CheckSuccess(err)
 
 	r := ufs.Reap()
-	if r["dir"] == nil || r["dir"].FileInfo != nil || r["dir/file.txt"] == nil || r["dir/file.txt"].FileInfo != nil {
+	if r["dir"] == nil || r["dir"].Attr != nil || r["dir/file.txt"] == nil || r["dir/file.txt"].Attr != nil {
 		t.Errorf("Expected 2 deletion entries in %v", r)
 	}
 }

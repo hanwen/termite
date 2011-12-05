@@ -188,11 +188,11 @@ func (me *RpcFs) OpenDir(name string, context *fuse.Context) (chan fuse.DirEntry
 
 type rpcFsFile struct {
 	fuse.File
-	os.FileInfo
+	fuse.Attr
 }
 
-func (me *rpcFsFile) GetAttr() (*os.FileInfo, fuse.Status) {
-	return &me.FileInfo, fuse.OK
+func (me *rpcFsFile) GetAttr() (*fuse.Attr, fuse.Status) {
+	return &me.Attr, fuse.OK
 }
 
 func (me *rpcFsFile) String() string {
@@ -217,18 +217,22 @@ func (me *RpcFs) Open(name string, flags uint32, context *fuse.Context) (fuse.Fi
 	}
 
 	if contents := me.cache.ContentsIfLoaded(a.Hash); contents != nil {
+		fa := fuse.Attr{}
+		fa.FromFileInfo(a.FileInfo)
 		return &fuse.WithFlags{
 			File: &rpcFsFile{
 				fuse.NewDataFile(contents),
-				*a.FileInfo,
+				fa,
 			},
 			FuseFlags: fuse.FOPEN_KEEP_CACHE,
 		}, fuse.OK
 	}
+	fa := fuse.Attr{}
+	fa.FromFileInfo(a.FileInfo)
 	return &fuse.WithFlags{
 		File: &rpcFsFile{
 			&LazyLoopbackFile{Name: me.cache.Path(a.Hash)},
-			*a.FileInfo,
+			fa,
 		},
 		FuseFlags: fuse.FOPEN_KEEP_CACHE,
 	}, fuse.OK
@@ -251,7 +255,7 @@ func (me *RpcFs) Readlink(name string, context *fuse.Context) (string, fuse.Stat
 	return a.Link, fuse.OK
 }
 
-func (me *RpcFs) GetAttr(name string, context *fuse.Context) (*os.FileInfo, fuse.Status) {
+func (me *RpcFs) GetAttr(name string, context *fuse.Context) (*fuse.Attr, fuse.Status) {
 	r := me.attr.Get(name)
 	if r == nil {
 		return nil, fuse.ENOENT
@@ -259,7 +263,13 @@ func (me *RpcFs) GetAttr(name string, context *fuse.Context) (*os.FileInfo, fuse
 	if r.Hash != "" {
 		go me.FetchHash(r)
 	}
-	return r.FileInfo, r.Status()
+	a := &fuse.Attr{}
+	if r.FileInfo != nil {
+		a.FromFileInfo(r.FileInfo)
+	} else {
+		a = nil
+	}
+	return a, r.Status()
 }
 
 func (me *RpcFs) Access(name string, mode uint32, context *fuse.Context) (code fuse.Status) {

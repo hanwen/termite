@@ -56,7 +56,7 @@ func SplitPath(name string) (dir, base string) {
 	return dir, base
 }
 
-func (me *ProcFs) GetAttr(name string, context *fuse.Context) (*os.FileInfo, fuse.Status) {
+func (me *ProcFs) GetAttr(name string, context *fuse.Context) (*fuse.Attr, fuse.Status) {
 	dir, base := SplitPath(name)
 	if name != "" && dir == "" && !isNum(name) && me.AllowedRootFiles != nil {
 		if _, ok := me.AllowedRootFiles[base]; !ok {
@@ -71,7 +71,7 @@ func (me *ProcFs) GetAttr(name string, context *fuse.Context) (*os.FileInfo, fus
 	if fi != nil && fi.IsRegular() && fi.Size == 0 {
 		p := me.LoopbackFileSystem.GetPath(name)
 		content, _ := ioutil.ReadFile(p)
-		fi.Size = int64(len(content))
+		fi.Size = uint64(len(content))
 	}
 	return fi, code
 }

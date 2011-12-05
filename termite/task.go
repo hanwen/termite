@@ -134,7 +134,9 @@ func (me *Mirror) fillReply(ufs *fs.MemUnionFs) *attr.FileSet {
 			Path: filepath.Join(wrRoot, path),
 		}
 
-		f.FileInfo = v.FileInfo
+		if v.Attr != nil {
+			f.FileInfo = v.Attr.ToFileInfo()
+		}
 		f.Link = v.Link
 		if f.FileInfo != nil && f.FileInfo.IsRegular() {
 			contentPath := filepath.Join(wrRoot, v.Original)

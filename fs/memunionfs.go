@@ -43,11 +43,11 @@ type memNode struct {
 	original string
 	changed  bool
 	link     string
-	info     os.FileInfo
+	info     fuse.Attr
 }
 
 type Result struct {
-	*os.FileInfo
+	*fuse.Attr
 	Original string
 	Backing  string
 	Link     string
@@ -145,7 +145,7 @@ func (me *MemUnionFs) Update(results map[string]*Result) {
 	del := []string{}
 	add := []string{}
 	for k, v := range results {
-		if v.FileInfo != nil {
+		if v.Attr != nil {
 			add = append(add, k)
 		} else {
 			del = append(del, k)
@@ -185,7 +185,7 @@ func (me *MemUnionFs) Update(results map[string]*Result) {
 		mn.changed = false
 
 		r := results[n]
-		mn.info = *r.FileInfo
+		mn.info = *r.Attr
 		mn.link = r.Link
 	}
 	me.mutex.Unlock()
@@ -214,9 +214,7 @@ func (me *MemUnionFs) newNode(isdir bool) *memNode {
 		mutex: &me.mutex,
 	}
 	now := time.Nanoseconds()
-	n.info.Mtime_ns = now
-	n.info.Atime_ns = now
-	n.info.Ctime_ns = now
+	n.info.SetTimes(now, now, now)
 	return n
 }
 
@@ -243,12 +241,12 @@ func (me *memNode) StatFs() *fuse.StatfsOut {
 
 func (me *memNode) touch() {
 	me.changed = true
-	me.info.Mtime_ns = time.Nanoseconds()
+	me.info.SetTimes(-1, time.Nanoseconds(), -1)
 }
 
 func (me *memNode) ctouch() {
 	me.changed = true
-	me.info.Ctime_ns = time.Nanoseconds()
+	me.info.SetTimes(-1, -1, time.Nanoseconds())
 }
 
 func (me *memNode) newNode(isdir bool) *memNode {
@@ -263,14 +261,14 @@ func (me *memNode) Readlink(c *fuse.Context) ([]byte, fuse.Status) {
 	return []byte(me.link), fuse.OK
 }
 
-func (me *memNode) Lookup(name string, context *fuse.Context) (fi *os.FileInfo, node fuse.FsNode, code fuse.Status) {
+func (me *memNode) Lookup(name string, context *fuse.Context) (fi *fuse.Attr, node fuse.FsNode, code fuse.Status) {
 	me.mutex.RLock()
 	defer me.mutex.RUnlock()
 	return me.lookup(name, context)
 }
 
 // Must run with mutex held.
-func (me *memNode) lookup(name string, context *fuse.Context) (fi *os.FileInfo, node fuse.FsNode, code fuse.Status) {
+func (me *memNode) lookup(name string, context *fuse.Context) (fi *fuse.Attr, node fuse.FsNode, code fuse.Status) {
 	if me.original == "" && me != me.fs.root {
 		return nil, nil, fuse.ENOENT
 	}
@@ -295,7 +293,7 @@ func (me *memNode) lookup(name string, context *fuse.Context) (fi *os.FileInfo, 
 	return fi, child, fuse.OK
 }
 
-func (me *memNode) Mkdir(name string, mode uint32, context *fuse.Context) (fi *os.FileInfo, newNode fuse.FsNode, code fuse.Status) {
+func (me *memNode) Mkdir(name string, mode uint32, context *fuse.Context) (fi *fuse.Attr, newNode fuse.FsNode, code fuse.Status) {
 	me.mutex.Lock()
 	defer me.mutex.Unlock()
 
@@ -327,7 +325,7 @@ func (me *memNode) Rmdir(name string, context *fuse.Context) (code fuse.Status) 
 	return me.Unlink(name, context)
 }
 
-func (me *memNode) Symlink(name string, content string, context *fuse.Context) (fi *os.FileInfo, newNode fuse.FsNode, code fuse.Status) {
+func (me *memNode) Symlink(name string, content string, context *fuse.Context) (fi *fuse.Attr, newNode fuse.FsNode, code fuse.Status) {
 	me.mutex.Lock()
 	defer me.mutex.Unlock()
 	n := me.newNode(false)
@@ -392,7 +390,7 @@ func (me *memNode) markChanged() {
 	}
 }
 
-func (me *memNode) Link(name string, existing fuse.FsNode, context *fuse.Context) (fi *os.FileInfo, newNode fuse.FsNode, code fuse.Status) {
+func (me *memNode) Link(name string, existing fuse.FsNode, context *fuse.Context) (fi *fuse.Attr, newNode fuse.FsNode, code fuse.Status) {
 	me.Inode().AddChild(name, existing.Inode())
 	fi, code = existing.GetAttr(nil, context)
 
@@ -402,7 +400,7 @@ func (me *memNode) Link(name string, existing fuse.FsNode, context *fuse.Context
 	return fi, existing, code
 }
 
-func (me *memNode) Create(name string, flags uint32, mode uint32, context *fuse.Context) (file fuse.File, fi *os.FileInfo, newNode fuse.FsNode, code fuse.Status) {
+func (me *memNode) Create(name string, flags uint32, mode uint32, context *fuse.Context) (file fuse.File, fi *fuse.Attr, newNode fuse.FsNode, code fuse.Status) {
 	me.mutex.Lock()
 	defer me.mutex.Unlock()
 
@@ -517,8 +515,8 @@ func (me *memNode) Open(flags uint32, context *fuse.Context) (file fuse.File, co
 	return me.newFile(file, false), fuse.OK
 }
 
-func (me *memNode) GetAttr(file fuse.File, context *fuse.Context) (fi *os.FileInfo, code fuse.Status) {
-	var sz int64
+func (me *memNode) GetAttr(file fuse.File, context *fuse.Context) (fi *fuse.Attr, code fuse.Status) {
+	var sz uint64
 	if file != nil {
 		fi, code := file.GetAttr()
 		if code.Ok() {
@@ -548,18 +546,17 @@ func (me *memNode) Truncate(file fuse.File, size uint64, context *fuse.Context) 
 	}
 
 	if code.Ok() {
-		me.info.Size = int64(size)
+		me.info.Size = size
 		me.touch()
 	}
 	return code
 }
 
-func (me *memNode) Utimens(file fuse.File, atime uint64, mtime uint64, context *fuse.Context) (code fuse.Status) {
+func (me *memNode) Utimens(file fuse.File, atime int64, mtime int64, context *fuse.Context) (code fuse.Status) {
 	me.mutex.Lock()
 	defer me.mutex.Unlock()
-	me.info.Atime_ns = int64(atime)
-	me.info.Mtime_ns = int64(mtime)
-	me.ctouch()
+	me.info.SetTimes(atime, mtime, time.Nanoseconds())
+	me.changed = true
 	return fuse.OK
 }
 
@@ -580,8 +577,8 @@ func (me *memNode) Chown(file fuse.File, uid uint32, gid uint32, context *fuse.C
 	me.mutex.Lock()
 	defer me.mutex.Unlock()
 
-	me.info.Uid = int(uid)
-	me.info.Gid = int(gid)
+	me.info.Uid = uid
+	me.info.Gid = gid
 	me.ctouch()
 	return fuse.OK
 }
@@ -617,7 +614,7 @@ func (me *memNode) reap(path string, results map[string]*Result) {
 	if me.changed {
 		info := me.info
 		results[path] = &Result{
-			FileInfo: &info,
+			Attr: &info,
 			Link:     me.link,
 			Backing:  me.backing,
 			Original: me.original,
