@@ -330,7 +330,7 @@ func (me *Coordinator) workerHandler(w http.ResponseWriter, req *http.Request) {
 	addr, conn, err := me.getHost(req)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "<html><head><title>Termite worker error</title></head>")
+		fmt.Fprintf(w, "<html><head><title>Termite worker status</title></head>")
 		fmt.Fprintf(w, "<body>Error: %s</body></html>", err.Error())
 		return
 	}
