@@ -98,7 +98,6 @@ func TestMakeUnescape(t *testing.T) {
 	}
 }
 
-
 func TestIntToExponent(t *testing.T) {
 	e := IntToExponent(1)
 	if e != 0 {

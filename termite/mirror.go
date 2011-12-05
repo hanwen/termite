@@ -71,7 +71,7 @@ func (me *Mirror) Shutdown(aggressive bool) {
 	if aggressive {
 		me.killed = true
 	}
-	
+
 	for fs := range me.activeFses {
 		if len(fs.tasks) == 0 {
 			fs.Stop()

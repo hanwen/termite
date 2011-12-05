@@ -614,7 +614,7 @@ func (me *memNode) reap(path string, results map[string]*Result) {
 	if me.changed {
 		info := me.info
 		results[path] = &Result{
-			Attr: &info,
+			Attr:     &info,
 			Link:     me.link,
 			Backing:  me.backing,
 			Original: me.original,

@@ -956,7 +956,7 @@ func TestMemUnionFsTruncateOpen(t *testing.T) {
 	wd, _, clean := setupMemUfs(t)
 	defer clean()
 
-	fn := wd+"/mnt/test"
+	fn := wd + "/mnt/test"
 	f, err := os.OpenFile(fn, os.O_CREATE|os.O_WRONLY, 0644)
 	CheckSuccess(err)
 	defer f.Close()

@@ -75,7 +75,7 @@ func main() {
 			Dir:      *cachedir,
 			MemCount: *memcache,
 		},
-		HeapLimit: uint64(*heap) * (1<<20),
+		HeapLimit: uint64(*heap) * (1 << 20),
 	}
 	if os.Geteuid() == 0 {
 		nobody, err := user.Lookup(*userFlag)

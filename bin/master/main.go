@@ -30,7 +30,7 @@ func main() {
 	socket := flag.String("socket", ".termite-socket", "socket to listen for commands")
 	srcRoot := flag.String("sourcedir", "", "root of corresponding source directory")
 	workers := flag.String("workers", "", "comma separated list of worker addresses")
-	
+
 	flag.Parse()
 
 	if *logfile != "" {

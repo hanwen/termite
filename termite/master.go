@@ -55,8 +55,8 @@ type replayRequest struct {
 
 	// Path => Hash
 	DelFileHashes map[string]string
-	Files    []*attr.FileAttr
-	Done     chan int
+	Files         []*attr.FileAttr
+	Done          chan int
 }
 
 func (me *Master) uncachedGetAttr(name string) (rep *attr.FileAttr) {
@@ -328,8 +328,7 @@ func (me *Master) run(req *WorkRequest, rep *WorkResponse) (err error) {
 	return err
 }
 
-func (me *Master) replayFileModifications(
-	infos []*attr.FileAttr, delFileHashes map[string]string, newFiles map[string][]string) {
+func (me *Master) replayFileModifications(infos []*attr.FileAttr, delFileHashes map[string]string, newFiles map[string][]string) {
 	for _, info := range infos {
 		name := "/" + info.Path
 		if info.Deletion() {

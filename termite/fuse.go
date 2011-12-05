@@ -59,7 +59,7 @@ func (me *workerFuseFs) Stop() {
 		// of the FUSE file system, so we have to exit.
 		log.Panic("unmount fail in workerFuseFs.Stop:", err)
 	}
-	
+
 	os.RemoveAll(me.tmpDir)
 }
 
@@ -152,7 +152,7 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string, 
 		code := me.rpcNodeFs.Mount(s.mountpoint, s.fs, subOpts)
 		if !code.Ok() {
 			if err := me.MountState.Unmount(); err != nil {
-				log.Fatal("FUSE unmount error during cleanup:", err) 
+				log.Fatal("FUSE unmount error during cleanup:", err)
 			}
 			return nil, errors.New(fmt.Sprintf("submount error for %s: %v", s.mountpoint, code))
 		}
@@ -162,7 +162,7 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string, 
 		err := os.MkdirAll(filepath.Join(me.mount, parent), 0755)
 		if err != nil {
 			if err := me.MountState.Unmount(); err != nil {
-				log.Fatal("FUSE unmount error during cleanup:", err) 
+				log.Fatal("FUSE unmount error during cleanup:", err)
 			}
 			return nil, errors.New(fmt.Sprintf("Mkdir of %q in /tmp fail: %v", parent, err))
 		}
@@ -175,7 +175,7 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string, 
 	code := me.rpcNodeFs.Mount(me.writableRoot, me.unionFs, &mOpts)
 	if !code.Ok() {
 		if err := me.MountState.Unmount(); err != nil {
-			log.Fatal("FUSE unmount error during cleanup:", err) 
+			log.Fatal("FUSE unmount error during cleanup:", err)
 		}
 		return nil, errors.New(fmt.Sprintf("submount error for %s: %v", me.writableRoot, code))
 	}
@@ -200,7 +200,7 @@ func (me *workerFuseFs) update(attrs []*attr.FileAttr) {
 				Original: "",
 				Backing:  "",
 				Link:     attr.Link,
-				Attr: 	  &fuse.Attr{},
+				Attr:     &fuse.Attr{},
 			}
 			r.Attr.FromFileInfo(attr.FileInfo)
 			updates[path] = &r

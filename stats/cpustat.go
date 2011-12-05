@@ -43,8 +43,8 @@ func (mc MemCounter) String() string {
 }
 
 type MemStat struct {
-	HeapIdle   MemCounter
-	HeapInuse  MemCounter
+	HeapIdle  MemCounter
+	HeapInuse MemCounter
 }
 
 func (m *MemStat) Total() uint64 {

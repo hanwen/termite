@@ -265,7 +265,7 @@ func IntToExponent(z int) uint {
 
 func unixSocketpair() (l *os.File, r *os.File, err error) {
 	fd, err := syscall.Socketpair(syscall.AF_UNIX, syscall.SOCK_STREAM, 0)
-	
+
 	if err != nil {
 		return nil, nil, os.NewSyscallError("socketpair",
 			err.(syscall.Errno))

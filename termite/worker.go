@@ -55,7 +55,7 @@ type WorkerOptions struct {
 
 	// If set, we restart once the heap usage passes this
 	// threshold.
-	HeapLimit      uint64
+	HeapLimit uint64
 }
 
 func NewWorker(options *WorkerOptions) *Worker {
@@ -97,7 +97,7 @@ func (me *Worker) PeriodicHouseholding(coordinator string, port int) {
 				me.shutdown(true, true)
 			}
 		}
-		
+
 		c := time.After(int64(me.options.ReportInterval * 1e9))
 		<-c
 	}
@@ -278,7 +278,7 @@ func (me *Worker) shutdown(restart bool, aggressive bool) {
 	me.shuttingDown = true
 	me.mirrors.shutdown(aggressive)
 	go func() {
-		time.Sleep(2e6)	// sleep so we don't kill the current connection.
+		time.Sleep(2e6) // sleep so we don't kill the current connection.
 		me.listener.Close()
 	}()
 }
