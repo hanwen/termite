@@ -12,7 +12,7 @@ import (
 func md5(c []byte) string {
 	h := md5pkg.New()
 	h.Write(c)
-	return string(h.Sum())
+	return string(h.Sum(nil))
 }
 
 func check(err error) {
@@ -108,7 +108,7 @@ func TestContentCacheStream(t *testing.T) {
 
 	h := crypto.MD5.New()
 	h.Write(content)
-	checksum := string(h.Sum())
+	checksum := string(h.Sum(nil))
 
 	savedSum := tc.cache.Save(content)
 	if string(savedSum) != string(md5(content)) {

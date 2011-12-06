@@ -11,10 +11,11 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 )
 
 // TODO - this file is a mess. Clean it up.
-const _TIMEOUT = 10e9
+const _TIMEOUT = 10 * time.Second
 
 var socketRpc *rpc.Client
 var topDir string

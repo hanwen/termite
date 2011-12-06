@@ -28,7 +28,7 @@ type Registered struct {
 
 type WorkerRegistration struct {
 	Registration
-	LastReported int64
+	LastReported time.Time
 }
 
 // Coordinator is the registration service for termite.  Workers
@@ -65,8 +65,8 @@ func (me *Coordinator) Register(req *Registration, rep *int) error {
 	me.mutex.Lock()
 	defer me.mutex.Unlock()
 
-	w := &WorkerRegistration{*req, 0}
-	w.LastReported = time.Seconds()
+	w := &WorkerRegistration{Registration: *req}
+	w.LastReported = time.Now()
 	me.workers[w.Address] = w
 	return nil
 }
@@ -94,7 +94,7 @@ func (me *Coordinator) List(req *int, rep *Registered) error {
 }
 
 func (me *Coordinator) checkReachable() {
-	now := time.Seconds()
+	now := time.Now()
 
 	addrs := me.workerAddresses()
 
@@ -110,7 +110,7 @@ func (me *Coordinator) checkReachable() {
 
 	me.mutex.Lock()
 	for _, a := range toDelete {
-		if me.workers[a].LastReported < now {
+		if now.After(me.workers[a].LastReported) {
 			delete(me.workers, a)
 		}
 	}

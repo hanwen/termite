@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 func main() {
@@ -61,8 +62,8 @@ func main() {
 		SrcRoot:      *srcRoot,
 		WritableRoot: root,
 		Paranoia:     *paranoia,
-		Period:       *houseHoldPeriod,
-		KeepAlive:    *keepAlive,
+		Period:       time.Duration(*houseHoldPeriod * float64(time.Second)),
+		KeepAlive:    time.Duration(*keepAlive * float64(time.Second)),
 		FetchAll:     *fetchAll,
 		ContentCacheOptions: cba.ContentCacheOptions{
 			Dir:      *cachedir,
@@ -85,7 +86,7 @@ func absSocket(sock string) (root, absSock string) {
 	}
 
 	fi, err := os.Stat(absSock)
-	if fi != nil && fi.IsSocket() {
+	if fi != nil && fi.Mode() & os.ModeSocket != 0 {
 		conn, _ := net.Dial("unix", absSock)
 		if conn != nil {
 			conn.Close()

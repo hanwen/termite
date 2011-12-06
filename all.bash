@@ -6,7 +6,7 @@ rm -f termite/version.gen.go
 
 for target in "clean" ""
 do
-  for d in termite \
+  for d in stats attr cba fs termite \
       bin/coordinator \
       bin/worker bin/master bin/shell-wrapper ; \
   do

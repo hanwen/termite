@@ -113,7 +113,7 @@ func newRpcFsTestCase(t *testing.T) (me *rpcFsTestCase) {
 	me.cache = cba.NewContentCache(&copts)
 	me.attr = attr.NewAttributeCache(
 		func(n string) *attr.FileAttr { return me.getattr(n) },
-		func(n string) *os.FileInfo {
+		func(n string) *fuse.Attr {
 			return attr.TestStat(t, filepath.Join(me.orig, n))
 		})
 	me.attr.Paranoia = true
@@ -176,7 +176,7 @@ func TestRpcFsReadDirCache(t *testing.T) {
 
 	seen := false
 	for _, v := range entries {
-		if v.Name == "file.txt" {
+		if v.Name() == "file.txt" {
 			seen = true
 		}
 	}
@@ -190,7 +190,7 @@ func TestRpcFsReadDirCache(t *testing.T) {
 		err = ioutil.WriteFile(me.orig+"/subdir/unstatted.txt", []byte("somethingelse"), 0644)
 		check(err)
 		after, _ := os.Lstat(me.orig + "/subdir")
-		if before.Mtime_ns != after.Mtime_ns {
+		if !before.ModTime().Equal(after.ModTime()) {
 			break
 		}
 		time.Sleep(10e6)
@@ -231,7 +231,7 @@ func TestRpcFsBasic(t *testing.T) {
 	}
 
 	fi, err := os.Lstat(me.mnt + "/subdir")
-	if fi == nil || !fi.IsDirectory() {
+	if fi == nil || !fi.IsDir() {
 		t.Fatal("subdir stat", fi, err)
 	}
 

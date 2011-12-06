@@ -9,18 +9,18 @@ var _ = log.Println
 
 type PeriodicSampler struct {
 	curr        int
-	dtNs        int64
+	dt          time.Duration
 	samples     []interface{}
 	measureFunc func() interface{}
 
 	stop bool
 }
 
-func NewPeriodicSampler(period float64, samples int, measure func() interface{}) *PeriodicSampler {
+func NewPeriodicSampler(period time.Duration, samples int, measure func() interface{}) *PeriodicSampler {
 	me := &PeriodicSampler{
 		samples:     make([]interface{}, samples),
 		measureFunc: measure,
-		dtNs:        int64(period * 1e9),
+		dt:        period,
 	}
 	go me.sample()
 	return me
@@ -35,7 +35,7 @@ func (me *PeriodicSampler) sample() {
 
 		me.curr = (me.curr + 1) % len(me.samples)
 		me.samples[me.curr] = m
-		time.Sleep(me.dtNs)
+		time.Sleep(me.dt)
 	}
 }
 

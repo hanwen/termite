@@ -20,7 +20,7 @@ func serveBin(name string) func(w http.ResponseWriter, req *http.Request) {
 			filepath.Join(d, name),
 			filepath.Join(d, fmt.Sprintf("../%s/%s", name, name)),
 		} {
-			if fi, _ := os.Lstat(n); fi != nil && fi.IsRegular() {
+			if fi, _ := os.Lstat(n); fi != nil && !fi.IsDir() {
 				http.ServeFile(w, req, n)
 			}
 		}

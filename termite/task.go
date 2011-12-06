@@ -135,10 +135,10 @@ func (me *Mirror) fillReply(ufs *fs.MemUnionFs) *attr.FileSet {
 		}
 
 		if v.Attr != nil {
-			f.FileInfo = v.Attr.ToFileInfo()
+			f.Attr = v.Attr
 		}
 		f.Link = v.Link
-		if f.FileInfo != nil && f.FileInfo.IsRegular() {
+		if !f.Deletion() && f.IsRegular() {
 			contentPath := filepath.Join(wrRoot, v.Original)
 			if v.Original != "" && v.Original != contentPath {
 				fa := me.rpcFs.attr.Get(contentPath)

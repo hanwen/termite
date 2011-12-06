@@ -1,7 +1,7 @@
 package attr
 
 import (
-	"os"
+	"github.com/hanwen/go-fuse/fuse"
 	"syscall"
 	"testing"
 )
@@ -9,7 +9,7 @@ import (
 func TestFileSet(t *testing.T) {
 	fs := []*FileAttr{
 		&FileAttr{Path: "b",
-			FileInfo: &os.FileInfo{
+			Attr: &fuse.Attr{
 				Mode: syscall.S_IFREG | 0644,
 			},
 		},

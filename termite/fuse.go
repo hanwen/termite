@@ -12,6 +12,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 type workerFuseFs struct {
@@ -104,7 +105,7 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string, 
 	}
 
 	me.rpcNodeFs = fuse.NewPathNodeFs(rpcFs, nil)
-	ttl := 30.0
+	ttl := 30 * time.Second
 	mOpts := fuse.FileSystemOptions{
 		EntryTimeout:    ttl,
 		AttrTimeout:     ttl,
@@ -202,7 +203,8 @@ func (me *workerFuseFs) update(attrs []*attr.FileAttr) {
 				Link:     attr.Link,
 				Attr:     &fuse.Attr{},
 			}
-			r.Attr.FromFileInfo(attr.FileInfo)
+			a := *attr.Attr
+			r.Attr = &a
 			updates[path] = &r
 		}
 	}

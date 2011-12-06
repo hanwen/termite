@@ -101,7 +101,7 @@ func (me *MemUnionFs) Reap() map[string]*Result {
 			continue
 		}
 		m[name] = &Result{}
-		if !fi.IsDirectory() {
+		if !fi.IsDir() {
 			continue
 		}
 
@@ -213,8 +213,8 @@ func (me *MemUnionFs) newNode(isdir bool) *memNode {
 		fs:    me,
 		mutex: &me.mutex,
 	}
-	now := time.Nanoseconds()
-	n.info.SetTimes(now, now, now)
+	now := time.Now()
+	n.info.SetTimes(&now, &now, &now)
 	return n
 }
 
@@ -241,12 +241,14 @@ func (me *memNode) StatFs() *fuse.StatfsOut {
 
 func (me *memNode) touch() {
 	me.changed = true
-	me.info.SetTimes(-1, time.Nanoseconds(), -1)
+	now := time.Now()
+	me.info.SetTimes(nil, &now, nil)
 }
 
 func (me *memNode) ctouch() {
 	me.changed = true
-	me.info.SetTimes(-1, -1, time.Nanoseconds())
+	now := time.Now()
+	me.info.SetTimes(nil, nil, &now)
 }
 
 func (me *memNode) newNode(isdir bool) *memNode {
@@ -555,7 +557,7 @@ func (me *memNode) Truncate(file fuse.File, size uint64, context *fuse.Context) 
 func (me *memNode) Utimens(file fuse.File, atime int64, mtime int64, context *fuse.Context) (code fuse.Status) {
 	me.mutex.Lock()
 	defer me.mutex.Unlock()
-	me.info.SetTimes(atime, mtime, time.Nanoseconds())
+	me.info.SetNs(atime, mtime, time.Now().UnixNano())
 	me.changed = true
 	return fuse.OK
 }

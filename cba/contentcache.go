@@ -139,7 +139,7 @@ func NewHashWriter(dir string, hashfunc crypto.Hash) *HashWriter {
 }
 
 func (me *HashWriter) Sum() string {
-	return string(me.hasher.Sum())
+	return string(me.hasher.Sum(nil))
 }
 
 func (me *HashWriter) Write(p []byte) (n int, err error) {
@@ -199,7 +199,7 @@ func (me *ContentCache) DestructiveSavePath(path string) (hash string, err error
 	h := me.Options.Hash.New()
 
 	var content []byte
-	if before.Size < me.Options.MemMaxSize {
+	if before.Size() < me.Options.MemMaxSize {
 		content, err = ioutil.ReadAll(f)
 		if err != nil {
 			return "", err
@@ -210,7 +210,7 @@ func (me *ContentCache) DestructiveSavePath(path string) (hash string, err error
 		io.Copy(h, f)
 	}
 
-	s := string(h.Sum())
+	s := string(h.Sum(nil))
 	if me.HasHash(s) {
 		os.Remove(path)
 		return s, nil
@@ -230,8 +230,8 @@ func (me *ContentCache) DestructiveSavePath(path string) (hash string, err error
 	}
 	f.Chmod(0444)
 	after, _ := f.Stat()
-	if after.Mtime_ns != before.Mtime_ns || after.Size != before.Size {
-		log.Fatal("File changed during save", OsFileInfo(*before), OsFileInfo(*after))
+	if !after.ModTime().Equal(before.ModTime()) || after.Size() != before.Size() {
+		log.Fatal("File changed during save", before, after)
 	}
 	return s, nil
 }
@@ -245,7 +245,7 @@ func (me *ContentCache) SavePath(path string) (hash string) {
 	defer f.Close()
 
 	fi, _ := f.Stat()
-	return me.SaveStream(f, fi.Size)
+	return me.SaveStream(f, fi.Size())
 }
 
 // FaultIn loads the data from disk into the memory cache.
@@ -349,7 +349,7 @@ func (me *ContentCache) Fetch(fetcher func(start, end int) ([]byte, error)) (str
 	}
 
 	output.Close()
-	saved := string(output.hasher.Sum())
+	saved := string(output.hasher.Sum(nil))
 	me.mutex.Lock()
 	defer me.mutex.Unlock()
 	me.have[saved] = true

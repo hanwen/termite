@@ -751,7 +751,7 @@ func TestMemUnionFsRenameDirBasic(t *testing.T) {
 		t.Fatalf("%s/mnt/dir should have disappeared: %v", wd, fi)
 	}
 
-	if fi, _ := os.Lstat(wd + "/mnt/renamed"); fi == nil || !fi.IsDirectory() {
+	if fi, _ := os.Lstat(wd + "/mnt/renamed"); fi == nil || !fi.IsDir() {
 		t.Fatalf("%s/mnt/renamed should be directory: %v", wd, fi)
 	}
 
@@ -761,7 +761,7 @@ func TestMemUnionFsRenameDirBasic(t *testing.T) {
 	}
 
 	r := ufs.Reap()
-	if r["dir"] == nil || r["dir"].Attr != nil || r["renamed/subdir"] == nil || !r["renamed/subdir"].Attr.IsDirectory() {
+	if r["dir"] == nil || r["dir"].Attr != nil || r["renamed/subdir"] == nil || !r["renamed/subdir"].Attr.IsDir() {
 		t.Errorf("Reap should del dir, and add renamed/subdir: %v", r)
 	}
 
@@ -821,7 +821,7 @@ func TestMemUnionFsRenameDirWithDeletions(t *testing.T) {
 		t.Fatalf("%s/mnt/dir should have disappeared: %v", wd, fi)
 	}
 
-	if fi, _ := os.Lstat(wd + "/mnt/renamed"); fi == nil || !fi.IsDirectory() {
+	if fi, _ := os.Lstat(wd + "/mnt/renamed"); fi == nil || !fi.IsDir() {
 		t.Fatalf("%s/mnt/renamed should be directory: %v", wd, fi)
 	}
 

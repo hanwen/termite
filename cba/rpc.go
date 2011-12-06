@@ -2,7 +2,6 @@ package cba
 
 import (
 	"fmt"
-	"github.com/hanwen/go-fuse/fuse"
 )
 
 type ContentRequest struct {
@@ -18,5 +17,3 @@ type ContentResponse struct {
 	Chunk []byte
 }
 
-type OsFileInfo fuse.OsFileInfo
-type OsFileInfos fuse.OsFileInfos

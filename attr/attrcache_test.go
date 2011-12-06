@@ -26,7 +26,7 @@ func TestAttrCacheNil(t *testing.T) {
 		func(n string) *FileAttr {
 			return nil
 		},
-		func(n string) *os.FileInfo {
+		func(n string) *fuse.Attr {
 			return nil
 		})
 
@@ -45,7 +45,7 @@ func attrCacheTestCase(t *testing.T) (*AttributeCache, string, func()) {
 		func(n string) *FileAttr {
 			return TestGetattr(t, filepath.Join(dir, n))
 		},
-		func(n string) *os.FileInfo {
+		func(n string) *fuse.Attr {
 			return TestStat(t, filepath.Join(dir, n))
 		})
 	return ac, dir, func() {
@@ -77,7 +77,7 @@ func TestAttrCache(t *testing.T) {
 
 	upd := FileAttr{
 		Path:     "unknown/file",
-		FileInfo: &os.FileInfo{Mode: fuse.S_IFLNK | 0666},
+		Attr: &fuse.Attr{Mode: fuse.S_IFLNK | 0666},
 		Link:     "target",
 	}
 
@@ -87,14 +87,15 @@ func TestAttrCache(t *testing.T) {
 	}
 
 	fi, _ := os.Lstat(dir + "/file")
-
+	lastC := fuse.ToAttr(fi).ChangeTime()
+	
 	// Make sure timestamps change.
 	for {
 		newFi, _ := os.Lstat(dir + "/file")
-		if newFi.Ctime_ns != fi.Ctime_ns {
+		if !lastC.Equal(fuse.ToAttr(newFi).ChangeTime()) {
 			break
 		}
-		time.Sleep(15e6)
+		time.Sleep(15*time.Millisecond)
 		err = os.Chmod(dir+"/file", 0666)
 		check(err)
 	}
@@ -130,7 +131,7 @@ func TestAttrCacheRefresh(t *testing.T) {
 	for {
 		newFi, err := os.Lstat(dir)
 		check(err)
-		if newFi.Ctime_ns != d.Ctime_ns {
+		if !fuse.ToAttr(newFi).ChangeTime().Equal(d.ChangeTime()) {
 			break
 		}
 		err = os.Mkdir(dir+fmt.Sprintf("/d%d", i), 0755)
@@ -162,7 +163,7 @@ func (me *testClient) Send(attrs []*FileAttr) error {
 	for _, a := range attrs {
 		me.attrs = append(me.attrs, a.Copy(true))
 		if strings.Contains(a.Path, "delay") {
-			time.Sleep(a.Size * 1e6)
+			time.Sleep(time.Duration(a.Size) * time.Millisecond)
 		}
 	}
 	return nil
@@ -180,7 +181,7 @@ func TestAttrCacheClientBasic(t *testing.T) {
 
 	fa1 := FileAttr{
 		Path:     "f1",
-		FileInfo: &os.FileInfo{Mode: syscall.S_IFREG | 0644},
+		Attr: &fuse.Attr{Mode: syscall.S_IFREG | 0644},
 	}
 	fs := FileSet{
 		Files: []*FileAttr{&fa1},
@@ -229,12 +230,12 @@ func TestAttrCacheClientWait(t *testing.T) {
 	}
 
 	ac.AddClient(&cl)
-	d := int64(60)
+	d := 60
 	fa1 := FileAttr{
 		Path: fmt.Sprintf("delay%d", d),
-		FileInfo: &os.FileInfo{
+		Attr: &fuse.Attr{
 			Mode: syscall.S_IFREG | 0644,
-			Size: d,
+			Size: uint64(d),
 		},
 	}
 	fs := FileSet{Files: []*FileAttr{&fa1}}
@@ -252,7 +253,7 @@ func TestAttrCacheClientWait(t *testing.T) {
 	<-start
 	ac.Queue(fs2)
 
-	time.Sleep(d / 2 * 1e6)
+	time.Sleep(time.Duration(d) * time.Millisecond/2)
 	err2 := ac.Send(&cl)
 	check(err2)
 	done <- 2
@@ -288,11 +289,11 @@ func TestAttrCacheIncompleteDir(t *testing.T) {
 	ac.AddClient(&cl)
 
 	root := FileAttr{
-		FileInfo: &os.FileInfo{
+		Attr: &fuse.Attr{
 			Mode: syscall.S_IFDIR | 0644,
 		},
-		NameModeMap: map[string]FileMode{
-			"a": FileMode(syscall.S_IFDIR),
+		NameModeMap: map[string]fuse.FileMode{
+			"a": fuse.FileMode(syscall.S_IFDIR),
 		},
 		Path: "",
 	}
@@ -302,15 +303,15 @@ func TestAttrCacheIncompleteDir(t *testing.T) {
 
 	// timestamp update.
 	dir := FileAttr{
-		FileInfo: &os.FileInfo{
+		Attr: &fuse.Attr{
 			Mode:     syscall.S_IFDIR | 0755,
-			Ctime_ns: 100,
+			Ctimensec: 100,
 		},
 		Path: "a",
 	}
 	// entry update.
 	child := FileAttr{
-		FileInfo: &os.FileInfo{
+		Attr: &fuse.Attr{
 			Mode: syscall.S_IFREG | 0644,
 		},
 		Path: "a/file.txt",

@@ -56,17 +56,17 @@ func (me *RpcFs) innerFetch(start, end int, hash string) ([]byte, error) {
 		End:   end,
 	}
 	rep := &cba.ContentResponse{}
-	startT := time.Nanoseconds()
+	startT := time.Now()
 	err := me.client.Call("FsServer.FileContent", req, rep)
-	dt := time.Nanoseconds() - startT
-	me.timings.Log("FsServer.FileContent", dt)
-	me.timings.LogN("FsServer.FileContentBytes", int64(len(rep.Chunk)), dt)
+	dt := time.Now().Sub(startT)
+	me.timings.Log("FsServer.FileContent", int64(dt))
+	me.timings.LogN("FsServer.FileContentBytes", int64(len(rep.Chunk)), int64(dt))
 	return rep.Chunk, err
 }
 
 func (me *RpcFs) FetchHash(a *attr.FileAttr) error {
 	e := me.FetchHashOnce(a)
-	if e == nil && a.Size < me.cache.Options.MemMaxSize {
+	if e == nil && a.Size < uint64(me.cache.Options.MemMaxSize) {
 		me.cache.FaultIn(a.Hash)
 	}
 	return e
@@ -113,11 +113,11 @@ func (me *RpcFs) fetchAttr(n string) *attr.FileAttr {
 		Name:   n,
 		Origin: me.id,
 	}
-	start := time.Nanoseconds()
+	start := time.Now()
 	rep := &AttrResponse{}
 	err := me.client.Call("FsServer.GetAttr", req, rep)
-	dt := time.Nanoseconds() - start
-	me.timings.Log("FsServer.GetAttr", dt)
+	dt := time.Now().Sub(start)
+	me.timings.Log("FsServer.GetAttr", int64(dt))
 	if err != nil {
 		// fatal?
 		log.Println("GetAttr error:", err)
@@ -137,7 +137,7 @@ func (me *RpcFs) fetchAttr(n string) *attr.FileAttr {
 
 func (me *RpcFs) considerSaveLocal(a *attr.FileAttr) {
 	absPath := a.Path
-	if a.Deletion() || !a.FileInfo.IsRegular() {
+	if a.Deletion() || !a.IsRegular() {
 		return
 	}
 	found := false
@@ -154,7 +154,7 @@ func (me *RpcFs) considerSaveLocal(a *attr.FileAttr) {
 	if fi == nil {
 		return
 	}
-	if attr.EncodeFileInfo(*fi) != attr.EncodeFileInfo(*a.FileInfo) {
+	if attr.EncodeFileInfo(*fuse.ToAttr(fi)) != attr.EncodeFileInfo(*a.Attr) {
 		return
 	}
 }
@@ -171,7 +171,7 @@ func (me *RpcFs) OpenDir(name string, context *fuse.Context) (chan fuse.DirEntry
 	if r.Deletion() {
 		return nil, fuse.ENOENT
 	}
-	if !r.FileInfo.IsDirectory() {
+	if !r.IsDir() {
 		return nil, fuse.EINVAL
 	}
 
@@ -217,8 +217,7 @@ func (me *RpcFs) Open(name string, flags uint32, context *fuse.Context) (fuse.Fi
 	}
 
 	if contents := me.cache.ContentsIfLoaded(a.Hash); contents != nil {
-		fa := fuse.Attr{}
-		fa.FromFileInfo(a.FileInfo)
+		fa := *a.Attr
 		return &fuse.WithFlags{
 			File: &rpcFsFile{
 				fuse.NewDataFile(contents),
@@ -227,8 +226,7 @@ func (me *RpcFs) Open(name string, flags uint32, context *fuse.Context) (fuse.Fi
 			FuseFlags: fuse.FOPEN_KEEP_CACHE,
 		}, fuse.OK
 	}
-	fa := fuse.Attr{}
-	fa.FromFileInfo(a.FileInfo)
+	fa := *a.Attr
 	return &fuse.WithFlags{
 		File: &rpcFsFile{
 			&LazyLoopbackFile{Name: me.cache.Path(a.Hash)},
@@ -247,7 +245,7 @@ func (me *RpcFs) Readlink(name string, context *fuse.Context) (string, fuse.Stat
 	if a.Deletion() {
 		return "", fuse.ENOENT
 	}
-	if !a.FileInfo.IsSymlink() {
+	if !a.IsSymlink() {
 		return "", fuse.EINVAL
 	}
 
@@ -264,8 +262,8 @@ func (me *RpcFs) GetAttr(name string, context *fuse.Context) (*fuse.Attr, fuse.S
 		go me.FetchHash(r)
 	}
 	a := &fuse.Attr{}
-	if r.FileInfo != nil {
-		a.FromFileInfo(r.FileInfo)
+	if !r.Deletion() {
+		a = r.Attr
 	} else {
 		a = nil
 	}

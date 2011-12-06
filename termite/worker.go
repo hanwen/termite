@@ -50,7 +50,7 @@ type WorkerOptions struct {
 	ReapCount int
 
 	// Delay between contacting the coordinator for making reports.
-	ReportInterval float64
+	ReportInterval time.Duration
 	LogFileName    string
 
 	// If set, we restart once the heap usage passes this
@@ -63,7 +63,7 @@ func NewWorker(options *WorkerOptions) *Worker {
 		options.ReapCount = 4
 	}
 	if options.ReportInterval == 0 {
-		options.ReportInterval = 60.0
+		options.ReportInterval = 60 * time.Second
 	}
 	copied := *options
 
@@ -98,7 +98,7 @@ func (me *Worker) PeriodicHouseholding(coordinator string, port int) {
 			}
 		}
 
-		c := time.After(int64(me.options.ReportInterval * 1e9))
+		c := time.After(me.options.ReportInterval)
 		<-c
 	}
 }

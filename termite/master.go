@@ -2,6 +2,7 @@ package termite
 
 import (
 	"fmt"
+	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/termite/attr"
 	"github.com/hanwen/termite/cba"
 	"io/ioutil"
@@ -45,8 +46,8 @@ type MasterOptions struct {
 	// On startup, fault-in all files.
 	FetchAll bool
 
-	Period    float64
-	KeepAlive float64
+	Period    time.Duration
+	KeepAlive time.Duration
 }
 
 type replayRequest struct {
@@ -66,7 +67,7 @@ func (me *Master) uncachedGetAttr(name string) (rep *attr.FileAttr) {
 
 	// We don't want to expose the master's private files to the
 	// world.
-	if !me.options.ExposePrivate && fi != nil && fi.Mode&0077 == 0 {
+	if !me.options.ExposePrivate && fi != nil && fi.Mode().Perm()&0077 == 0 {
 		log.Printf("Denied access to private file %q", name)
 		return rep
 	}
@@ -75,7 +76,7 @@ func (me *Master) uncachedGetAttr(name string) (rep *attr.FileAttr) {
 		log.Printf("Denied access to excluded file %q", name)
 		return rep
 	}
-	rep.FileInfo = fi
+	rep.Attr = fuse.ToAttr(fi)
 	if fi != nil {
 		me.fillContent(rep)
 	}
@@ -83,7 +84,7 @@ func (me *Master) uncachedGetAttr(name string) (rep *attr.FileAttr) {
 }
 
 func (me *Master) fillContent(rep *attr.FileAttr) {
-	if rep.IsSymlink() || rep.IsDirectory() {
+	if rep.IsSymlink() || rep.IsDir() {
 		rep.ReadFromFs(me.path(rep.Path), me.options.Hash)
 	} else if rep.IsRegular() {
 		fullPath := me.path(rep.Path)
@@ -91,7 +92,7 @@ func (me *Master) fillContent(rep *attr.FileAttr) {
 		if rep.Hash == "" {
 			// Typically happens if we want to open /etc/shadow as normal user.
 			log.Println("fillContent returning EPERM for", rep.Path)
-			rep.FileInfo = nil
+			rep.Attr = nil
 		}
 	}
 }
@@ -121,14 +122,14 @@ func NewMaster(options *MasterOptions) *Master {
 
 	me.mirrors = newMirrorConnections(
 		me, options.Workers, options.Coordinator, options.MaxJobs)
-	me.mirrors.keepAliveNs = int64(1e9 * options.KeepAlive)
+	me.mirrors.keepAlive = options.KeepAlive
 	me.pending = NewPendingConnections()
 	me.attributes = attr.NewAttributeCache(func(n string) *attr.FileAttr {
 		return me.uncachedGetAttr(n)
 	},
-		func(n string) *os.FileInfo {
+		func(n string) *fuse.Attr {
 			fi, _ := os.Lstat(me.path(n))
-			return fi
+			return fuse.ToAttr(fi)
 		})
 	me.fileServer = NewFsServer(me.attributes, me.cache)
 	me.fileServerRpc = rpc.NewServer()
@@ -167,8 +168,8 @@ func (me *Master) CheckPrivate() {
 		if err != nil {
 			log.Fatal("CheckPrivate:", err)
 		}
-		if fi != nil && fi.Mode&0077 == 0 {
-			log.Fatalf("Error: dir %q is mode %o.", d, fi.Mode&07777)
+		if fi != nil && fi.Mode().Perm()&0077 == 0 {
+			log.Fatalf("Error: dir %q is mode %o.", d, fi.Mode().Perm())
 		}
 		d, _ = SplitPath(d)
 	}
@@ -347,12 +348,12 @@ func (me *Master) replayFileModifications(infos []*attr.FileAttr, delFileHashes 
 			continue
 		}
 
-		if info.FileInfo.IsDirectory() {
-			if err := os.Mkdir(name, info.FileInfo.Mode&07777); err != nil {
+		if info.IsDir() {
+			if err := os.Mkdir(name, info.Mode&07777); err != nil {
 				// some other process may have created
 				// the dir.
 				fi, _ := os.Lstat(name)
-				if fi == nil && !fi.IsDirectory() {
+				if fi == nil && !fi.IsDir() {
 					log.Fatal("os.Mkdir", err)
 				}
 			}
@@ -373,11 +374,11 @@ func (me *Master) replayFileModifications(infos []*attr.FileAttr, delFileHashes 
 			}
 
 		}
-		if info.Hash == "" && !info.FileInfo.IsSymlink() {
-			if err := os.Chtimes(name, info.FileInfo.Atime_ns, info.FileInfo.Mtime_ns); err != nil {
+		if info.Hash == "" && !info.IsSymlink() {
+			if err := os.Chtimes(name, info.AccessTime(), info.ModTime()); err != nil {
 				log.Fatal("os.Chtimes", err)
 			}
-			if err := os.Chmod(name, info.FileInfo.Mode&07777); err != nil {
+			if err := os.Chmod(name, info.Mode&07777); err != nil {
 				log.Fatal("os.Chmod", err)
 			}
 		}
@@ -386,7 +387,8 @@ func (me *Master) replayFileModifications(infos []*attr.FileAttr, delFileHashes 
 		// not have nanosecond timestamps.
 		//
 		// TODO - test this.
-		info.FileInfo, _ = os.Lstat(name)
+		fi, _ := os.Lstat(name)
+		info.Attr = fuse.ToAttr(fi)
 	}
 
 	me.attributes.Update(infos)
@@ -450,7 +452,7 @@ func (me *Master) replay(fset attr.FileSet) {
 			log.Fatal("f.Write", err)
 		}
 
-		err = f.Chmod(info.FileInfo.Mode & 07777)
+		err = f.Chmod(info.Attr.Mode & 07777)
 		if err != nil {
 			log.Fatal("f.Chmod", err)
 		}
@@ -458,7 +460,7 @@ func (me *Master) replay(fset attr.FileSet) {
 		if err != nil {
 			log.Fatal("f.Close", err)
 		}
-		err = os.Chtimes(f.Name(), info.FileInfo.Atime_ns, info.FileInfo.Mtime_ns)
+		err = os.Chtimes(f.Name(), info.AccessTime(), info.ModTime())
 		if err != nil {
 			log.Fatal("Chtimes", err)
 		}
@@ -484,7 +486,7 @@ func (me *Master) fetchAll(path string) {
 
 func (me *Master) waitForExit() {
 	me.mirrors.refreshWorkers()
-	ticker := time.NewTicker(int64(1e9 * me.options.Period))
+	ticker := time.NewTicker(me.options.Period)
 
 L:
 	for {

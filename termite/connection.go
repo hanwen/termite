@@ -41,7 +41,7 @@ func sign(conn net.Conn, challenge []byte, secret []byte, local bool) []byte {
 		connSignature = fmt.Sprintf("%v-%v", r, l)
 	}
 	h.Write([]byte(connSignature))
-	return h.Sum()
+	return h.Sum(nil)
 }
 
 // Symmetrical authentication using HMAC-SHA1.
@@ -240,12 +240,12 @@ func DialTypedConnection(addr string, id string, secret []byte) (net.Conn, error
 	return conn, nil
 }
 
-func OpenSocketConnection(socket string, channel string, timeout int64) net.Conn {
-	delay := int64(0)
+func OpenSocketConnection(socket string, channel string, timeout time.Duration) net.Conn {
+	delay := time.Duration(0)
 	conn, err := net.Dial("unix", socket)
 	for try := 0; err != nil && delay < timeout; try++ {
-		delay = int64(1.5+0.5*rand.Float64()*float64(delay)) + 0.02e9
-		time.Sleep(int64(delay))
+		delay = time.Duration(1.5+0.5*rand.Float64()*float64(delay)) + 20 * time.Nanosecond
+		time.Sleep(delay)
 		conn, err = net.Dial("unix", socket)
 		continue
 	}
@@ -271,7 +271,7 @@ func FindSocket() string {
 		for dir != "" && dir != "/" {
 			cand := filepath.Join(dir, _SOCKET)
 			fi, _ := os.Lstat(cand)
-			if fi != nil && fi.IsSocket() {
+			if fi != nil && fi.Mode() & os.ModeSocket != 0 {
 				socket = cand
 				break
 			}

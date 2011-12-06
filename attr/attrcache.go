@@ -2,8 +2,8 @@ package attr
 
 import (
 	"fmt"
+	"github.com/hanwen/go-fuse/fuse"	
 	"log"
-	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -18,7 +18,7 @@ type AttributeCache struct {
 	cond       *sync.Cond
 	busy       map[string]bool
 	getter     func(name string) *FileAttr
-	statter    func(name string) *os.FileInfo
+	statter    func(name string) *fuse.Attr
 
 	clients       map[string]*attrCachePending
 	nextFileSetId int
@@ -113,7 +113,7 @@ func (me *AttributeCache) Queue(fs FileSet) {
 }
 
 func NewAttributeCache(getter func(n string) *FileAttr,
-	statter func(n string) *os.FileInfo) *AttributeCache {
+	statter func(n string) *fuse.Attr) *AttributeCache {
 	me := &AttributeCache{
 		attributes: make(map[string]*FileAttr),
 		busy:       map[string]bool{},
@@ -152,7 +152,7 @@ func (me *AttributeCache) verify() {
 		if v.Deletion() {
 			log.Panicf("Attribute cache may not contain deletions %q", k)
 		}
-		if v.IsDirectory() && v.NameModeMap == nil {
+		if v.IsDir() && v.NameModeMap == nil {
 			log.Panicf("dir has no NameModeMap %q", k)
 		}
 		for childName, mode := range v.NameModeMap {
@@ -229,7 +229,7 @@ func (me *AttributeCache) unsafeGet(name string, withdir bool) (rep *FileAttr) {
 	if name != "" {
 		dir, base := SplitPath(name)
 		dirAttr := me.unsafeGet(dir, true)
-		if dirAttr.Deletion() || !dirAttr.IsDirectory() || dirAttr.NameModeMap[base] == 0 {
+		if dirAttr.Deletion() || !dirAttr.IsDir() || dirAttr.NameModeMap[base] == 0 {
 			return &FileAttr{Path: name}
 		}
 	}
@@ -296,7 +296,7 @@ func (me *AttributeCache) update(files []*FileAttr) {
 			if r.Deletion() {
 				delete(dirAttr.NameModeMap, basename)
 			} else {
-				dirAttr.NameModeMap[basename] = FileMode(r.Mode &^ 07777)
+				dirAttr.NameModeMap[basename] = fuse.FileMode(r.Mode &^ 07777)
 			}
 		}
 
@@ -306,7 +306,7 @@ func (me *AttributeCache) update(files []*FileAttr) {
 		}
 
 		old := attributes[r.Path]
-		if old == nil && r.IsDirectory() && r.NameModeMap == nil {
+		if old == nil && r.IsDir() && r.NameModeMap == nil {
 			// This is a metadata update only. If it does
 			// not come with contents, we can't use it to
 			// short-cut deletion queries.
@@ -347,7 +347,7 @@ func (me *AttributeCache) Refresh(prefix string) FileSet {
 		}
 
 		// TODO - does this handle symlinks corrrectly?
-		if fi != nil && attr.FileInfo != nil && EncodeFileInfo(*attr.FileInfo) != EncodeFileInfo(*fi) {
+		if fi != nil && attr.Attr != nil && EncodeFileInfo(*attr.Attr) != EncodeFileInfo(*fi) {
 			newEnt := me.getter(key)
 			newEnt.Path = key
 			updated = append(updated, newEnt)

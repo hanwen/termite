@@ -16,7 +16,7 @@ import (
 )
 
 func init() {
-	rand.Seed(time.Nanoseconds() ^ (int64(os.Getpid()) << 32))
+	rand.Seed(time.Now().UnixNano() ^ (int64(os.Getpid()) << 32))
 }
 
 // TODO - move into fuse
@@ -37,7 +37,7 @@ func RandomBytes(n int) []byte {
 func md5str(s string) string {
 	h := crypto.MD5.New()
 	io.WriteString(h, s)
-	return string(h.Sum())
+	return string(h.Sum(nil))
 }
 
 func Version() string {

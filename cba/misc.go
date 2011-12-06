@@ -17,17 +17,17 @@ func ReadHexDatabase(d string) map[string]bool {
 	}
 
 	for _, e := range entries {
-		if !hexRe.MatchString(e.Name) || !e.IsDirectory() {
+		if !hexRe.MatchString(e.Name()) || !e.IsDir() {
 			continue
 		}
 
-		sub, _ := ioutil.ReadDir(filepath.Join(d, e.Name))
+		sub, _ := ioutil.ReadDir(filepath.Join(d, e.Name()))
 		for _, s := range sub {
-			if !hexRe.MatchString(s.Name) || !s.IsRegular() {
+			if !hexRe.MatchString(s.Name()) || s.IsDir() {
 				continue
 			}
 
-			hex := e.Name + s.Name
+			hex := e.Name() + s.Name()
 			bin := make([]byte, len(hex)/2)
 			n, err := fmt.Sscanf(hex, "%x", &bin)
 			if n != 1 {
