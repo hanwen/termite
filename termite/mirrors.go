@@ -62,23 +62,35 @@ func (me *WorkerMirrors) DropMirror(mirror *Mirror) {
 	runtime.GC()
 }
 
-func (me *WorkerMirrors) shutdown(aggressive bool) {
-	log.Println("Received Shutdown.")
+func (me *WorkerMirrors) mirrors() (result []*Mirror) {
 	me.mirrorMapMutex.Lock()
 	defer me.mirrorMapMutex.Unlock()
-
 	for _, m := range me.mirrorMap {
-		m.Shutdown(aggressive)
+		result = append(result, m)
 	}
+	return
+}
+
+func (me *WorkerMirrors) shutdown(aggressive bool) {
+	log.Println("Received Shutdown.")
+
+	wg := sync.WaitGroup{}
+	mirrors := me.mirrors()
+	wg.Add(len(mirrors))
+	for _, m := range mirrors {
+		go func(m *Mirror) {
+			m.Shutdown(aggressive)
+			wg.Done()
+		}(m)
+	}
+
+	wg.Wait()
 	me.mirrorMap = map[string]*Mirror{}
 	log.Println("All mirrors have shut down.")
 }
 
 func (me *WorkerMirrors) Status(req *WorkerStatusRequest, rep *WorkerStatusResponse) {
-	me.mirrorMapMutex.Lock()
-	defer me.mirrorMapMutex.Unlock()
-
-	for _, mirror := range me.mirrorMap {
+	for _, mirror := range me.mirrors() {
 		mRep := MirrorStatusResponse{}
 		mReq := MirrorStatusRequest{}
 		mirror.Status(&mReq, &mRep)
