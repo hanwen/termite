@@ -65,16 +65,24 @@ type WorkerOptions struct {
 	// If set, we restart once the heap usage passes this
 	// threshold.
 	HeapLimit uint64
+
+	// How long to wait between the last task exit, and shutting
+	// down the server.
+	LameDuckPeriod time.Duration
 }
 
 func NewWorker(options *WorkerOptions) *Worker {
+	copied := *options
+	options = &copied
 	if options.ReapCount == 0 {
 		options.ReapCount = 4
 	}
 	if options.ReportInterval == 0 {
 		options.ReportInterval = 60 * time.Second
 	}
-	copied := *options
+	if options.LameDuckPeriod == 0 {
+		options.LameDuckPeriod = 5 * time.Second
+	}
 
 	cache := cba.NewContentCache(&options.ContentCacheOptions)
 
@@ -283,7 +291,11 @@ func (me *Worker) shutdown(restart bool, aggressive bool) {
 	me.accepting = false
 	go func() {
 		me.mirrors.shutdown(aggressive)
-		time.Sleep(2e6) // sleep so we don't kill the current connection.
+
+		// Sleep to give the master some time to process the restults.
+		if !aggressive {
+			time.Sleep(me.options.LameDuckPeriod)
+		}
 		me.listener.Close()
 	}()
 }
