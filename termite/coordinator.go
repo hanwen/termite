@@ -353,6 +353,9 @@ func (me *Coordinator) workerHandler(w http.ResponseWriter, req *http.Request) {
 		addr, status.Version, status.MaxJobCount)
 	fmt.Fprintf(w, "<p><a href=\"/log?host=%s\">Worker log %s</a>\n", addr, addr)
 
+	if !status.Accepting {
+		fmt.Fprintf(w, "<b>shutting down</b>")
+	}
 	stats.CpuStatsWriteHttp(w, status.CpuStats)
 
 	fmt.Fprintf(w, "<p>Total CPU: %s", status.TotalCpu.Percent())
