@@ -5,6 +5,7 @@ import (
 	"log"
 	"runtime"
 	"syscall"
+	"time"
 )
 
 // TODO should be in syscall package.
@@ -123,7 +124,7 @@ type CpuStatSampler struct {
 
 func NewCpuStatSampler() *CpuStatSampler {
 	me := &CpuStatSampler{
-		sampler: NewPeriodicSampler(1.0, 60, sampleTime),
+		sampler: NewPeriodicSampler(time.Second, 60, sampleTime),
 	}
 	return me
 }
