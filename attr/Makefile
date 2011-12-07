@@ -4,6 +4,7 @@ include $(GOROOT)/src/Make.inc
 TARG=github.com/hanwen/termite/attr
 
 GOFILES=attrcache.go \
+	encode.go \
 	fileset.go \
 	filesetwaiter.go \
 	fileattr.go \
