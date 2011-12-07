@@ -59,13 +59,13 @@ func TestParseCommand(t *testing.T) {
 	}
 
 	succ := []Succ{
-		Succ{"echo \"a'b\"", []string{"echo", "a'b"}},
-		Succ{"\"a'b\"", []string{"a'b"}},
-		Succ{"a\\ b", []string{"a b"}},
-		Succ{"a'x y'b", []string{"ax yb"}},
-		Succ{"echo \"a[]<>*&;;\"", []string{"echo", "a[]<>*&;;"}},
-		Succ{"a   b", []string{"a", "b"}},
-		Succ{"a\\$b", []string{"a$b"}},
+		{"echo \"a'b\"", []string{"echo", "a'b"}},
+		{"\"a'b\"", []string{"a'b"}},
+		{"a\\ b", []string{"a b"}},
+		{"a'x y'b", []string{"ax yb"}},
+		{"echo \"a[]<>*&;;\"", []string{"echo", "a[]<>*&;;"}},
+		{"a   b", []string{"a", "b"}},
+		{"a\\$b", []string{"a$b"}},
 	}
 	for _, entry := range succ {
 		r := ParseCommand(entry.cmd)

@@ -72,7 +72,7 @@ func (me *MemUnionFs) Reset() {
 	me.mutex.Lock()
 	defer me.mutex.Unlock()
 	me.root.reset("")
-	for path, _ := range me.deleted {
+	for path := range me.deleted {
 		parent, base := filepath.Split(path)
 		parent = stripSlash(parent)
 
@@ -95,7 +95,7 @@ func (me *MemUnionFs) Reap() map[string]*Result {
 
 	m := map[string]*Result{}
 
-	for name, _ := range me.deleted {
+	for name := range me.deleted {
 		fi, code := me.readonly.GetAttr(name, nil)
 		if !code.Ok() {
 			continue

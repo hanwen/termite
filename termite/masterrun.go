@@ -2,8 +2,8 @@ package termite
 
 import (
 	"fmt"
-	"github.com/hanwen/termite/attr"
 	"github.com/hanwen/go-fuse/fuse"
+	"github.com/hanwen/termite/attr"
 	"log"
 	"os"
 	"path/filepath"
@@ -193,7 +193,7 @@ func mkdirEntry(rootless string) *attr.FileAttr {
 	a := &attr.FileAttr{
 		Path: rootless,
 		Attr: &fuse.Attr{
-			Mode:     syscall.S_IFDIR | 0755,
+			Mode: syscall.S_IFDIR | 0755,
 		},
 		NameModeMap: map[string]fuse.FileMode{},
 	}

@@ -42,11 +42,11 @@ type WorkerOptions struct {
 	Coordinator string
 
 	// (starting) port to listen to.
-	Port     int
+	Port int
 
 	// How many other ports try.
 	PortRetry int
-	
+
 	Paranoia bool
 	Secret   []byte
 	TempDir  string

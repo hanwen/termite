@@ -29,7 +29,6 @@ func handleStop(daemon *termite.Worker) {
 	}
 }
 
-
 func main() {
 	cachedir := flag.String("cachedir", "/var/cache/termite/worker-cache", "content cache")
 	tmpdir := flag.String("tmpdir", "/var/tmp",
@@ -46,7 +45,7 @@ func main() {
 	paranoia := flag.Bool("paranoia", false, "Check attribute cache.")
 	cpus := flag.Int("cpus", 1, "Number of CPUs to use.")
 	heap := flag.Int("heap-size", 0, "Maximum heap size in MB.")
-	cpuprofile := flag.String("profile", "", "File to write profile output to.") 
+	cpuprofile := flag.String("profile", "", "File to write profile output to.")
 	flag.Parse()
 
 	if *cpuprofile != "" {
@@ -57,7 +56,7 @@ func main() {
 		pprof.StartCPUProfile(f)
 		defer pprof.StopCPUProfile()
 	}
-	
+
 	if os.Geteuid() != 0 {
 		log.Fatal("This program must run as root")
 	}
@@ -88,10 +87,10 @@ func main() {
 			Dir:      *cachedir,
 			MemCount: *memcache,
 		},
-		HeapLimit: uint64(*heap) * (1 << 20),
+		HeapLimit:   uint64(*heap) * (1 << 20),
 		Coordinator: *coordinator,
-		Port: *port,
-		PortRetry: *portRetry,
+		Port:        *port,
+		PortRetry:   *portRetry,
 	}
 	if os.Geteuid() == 0 {
 		nobody, err := user.Lookup(*userFlag)

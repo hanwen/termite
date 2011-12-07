@@ -2,7 +2,7 @@ package attr
 
 import (
 	"fmt"
-	"github.com/hanwen/go-fuse/fuse"	
+	"github.com/hanwen/go-fuse/fuse"
 	"log"
 	"path/filepath"
 	"strings"

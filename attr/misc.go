@@ -3,7 +3,7 @@ package attr
 import (
 	"crypto"
 	"fmt"
-	"github.com/hanwen/go-fuse/fuse"	
+	"github.com/hanwen/go-fuse/fuse"
 	"os"
 	"path/filepath"
 	"strings"
@@ -37,10 +37,10 @@ func TestStat(t *testing.T, n string) *fuse.Attr {
 	return &a
 }
 
-func TestGetattr(t *testing.T, n string) (*FileAttr) {
+func TestGetattr(t *testing.T, n string) *FileAttr {
 	t.Logf("test getattr %q", n)
 	fi, _ := os.Lstat(n)
-	
+
 	var fa *fuse.Attr
 	if fi != nil {
 		fa = &fuse.Attr{}

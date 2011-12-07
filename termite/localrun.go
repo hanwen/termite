@@ -76,7 +76,7 @@ func NewLocalDecider(dir string) *localDecider {
 	}
 
 	rules := []LocalRule{
-		LocalRule{
+		{
 			// ?s = . matches \n
 			Regexp:      "(?s).*termite-make",
 			Local:       true,

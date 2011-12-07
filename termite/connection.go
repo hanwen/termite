@@ -248,7 +248,7 @@ func OpenSocketConnection(socket string, channel string, timeout time.Duration) 
 	delay := time.Duration(0)
 	conn, err := net.Dial("unix", socket)
 	for try := 0; err != nil && delay < timeout; try++ {
-		delay = time.Duration(1.5+0.5*rand.Float64()*float64(delay)) + 20 * time.Nanosecond
+		delay = time.Duration(1.5+0.5*rand.Float64()*float64(delay)) + 20*time.Nanosecond
 		time.Sleep(delay)
 		conn, err = net.Dial("unix", socket)
 		continue
@@ -275,7 +275,7 @@ func FindSocket() string {
 		for dir != "" && dir != "/" {
 			cand := filepath.Join(dir, _SOCKET)
 			fi, _ := os.Lstat(cand)
-			if fi != nil && fi.Mode() & os.ModeSocket != 0 {
+			if fi != nil && fi.Mode()&os.ModeSocket != 0 {
 				socket = cand
 				break
 			}

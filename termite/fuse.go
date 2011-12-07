@@ -88,9 +88,9 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string, 
 
 	tmpBacking := ""
 	for _, v := range []dirInit{
-		dirInit{&me.rwDir, "rw"},
-		dirInit{&me.mount, "mnt"},
-		dirInit{&tmpBacking, "tmp-backing"},
+		{&me.rwDir, "rw"},
+		{&me.mount, "mnt"},
+		{&tmpBacking, "tmp-backing"},
 	} {
 		*v.dst = filepath.Join(me.tmpDir, v.val)
 		err = os.Mkdir(*v.dst, 0700)

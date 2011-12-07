@@ -227,7 +227,7 @@ func (me *Coordinator) killHandler(w http.ResponseWriter, req *http.Request) {
 
 	killReq := ShutdownRequest{
 		Restart: restart,
-		Kill: !restart,
+		Kill:    !restart,
 	}
 	rep := ShutdownResponse{}
 	cl := rpc.NewClient(conn)

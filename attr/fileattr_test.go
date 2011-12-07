@@ -3,7 +3,7 @@ package attr
 import (
 	"crypto"
 	"crypto/md5"
-	"github.com/hanwen/go-fuse/fuse"	
+	"github.com/hanwen/go-fuse/fuse"
 	"io/ioutil"
 	"syscall"
 	"testing"

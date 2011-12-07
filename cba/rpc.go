@@ -16,4 +16,3 @@ func (me *ContentRequest) String() string {
 type ContentResponse struct {
 	Chunk []byte
 }
-

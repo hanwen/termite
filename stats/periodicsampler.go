@@ -20,7 +20,7 @@ func NewPeriodicSampler(period time.Duration, samples int, measure func() interf
 	me := &PeriodicSampler{
 		samples:     make([]interface{}, samples),
 		measureFunc: measure,
-		dt:        period,
+		dt:          period,
 	}
 	go me.sample()
 	return me

@@ -8,13 +8,13 @@ import (
 
 func TestFileSet(t *testing.T) {
 	fs := []*FileAttr{
-		&FileAttr{Path: "b",
+		{Path: "b",
 			Attr: &fuse.Attr{
 				Mode: syscall.S_IFREG | 0644,
 			},
 		},
-		&FileAttr{Path: "b"},
-		&FileAttr{Path: "a"},
+		{Path: "b"},
+		{Path: "a"},
 	}
 
 	fset := FileSet{fs}

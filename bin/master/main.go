@@ -86,7 +86,7 @@ func absSocket(sock string) (root, absSock string) {
 	}
 
 	fi, err := os.Stat(absSock)
-	if fi != nil && fi.Mode() & os.ModeSocket != 0 {
+	if fi != nil && fi.Mode()&os.ModeSocket != 0 {
 		conn, _ := net.Dial("unix", absSock)
 		if conn != nil {
 			conn.Close()

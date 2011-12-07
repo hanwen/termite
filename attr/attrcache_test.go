@@ -76,9 +76,9 @@ func TestAttrCache(t *testing.T) {
 	}
 
 	upd := FileAttr{
-		Path:     "unknown/file",
+		Path: "unknown/file",
 		Attr: &fuse.Attr{Mode: fuse.S_IFLNK | 0666},
-		Link:     "target",
+		Link: "target",
 	}
 
 	ac.Update([]*FileAttr{&upd})
@@ -88,14 +88,14 @@ func TestAttrCache(t *testing.T) {
 
 	fi, _ := os.Lstat(dir + "/file")
 	lastC := fuse.ToAttr(fi).ChangeTime()
-	
+
 	// Make sure timestamps change.
 	for {
 		newFi, _ := os.Lstat(dir + "/file")
 		if !lastC.Equal(fuse.ToAttr(newFi).ChangeTime()) {
 			break
 		}
-		time.Sleep(15*time.Millisecond)
+		time.Sleep(15 * time.Millisecond)
 		err = os.Chmod(dir+"/file", 0666)
 		check(err)
 	}
@@ -180,7 +180,7 @@ func TestAttrCacheClientBasic(t *testing.T) {
 	ac.AddClient(&cl)
 
 	fa1 := FileAttr{
-		Path:     "f1",
+		Path: "f1",
 		Attr: &fuse.Attr{Mode: syscall.S_IFREG | 0644},
 	}
 	fs := FileSet{
@@ -253,7 +253,7 @@ func TestAttrCacheClientWait(t *testing.T) {
 	<-start
 	ac.Queue(fs2)
 
-	time.Sleep(time.Duration(d) * time.Millisecond/2)
+	time.Sleep(time.Duration(d) * time.Millisecond / 2)
 	err2 := ac.Send(&cl)
 	check(err2)
 	done <- 2
@@ -304,7 +304,7 @@ func TestAttrCacheIncompleteDir(t *testing.T) {
 	// timestamp update.
 	dir := FileAttr{
 		Attr: &fuse.Attr{
-			Mode:     syscall.S_IFDIR | 0755,
+			Mode:      syscall.S_IFDIR | 0755,
 			Ctimensec: 100,
 		},
 		Path: "a",

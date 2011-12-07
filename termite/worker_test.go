@@ -82,7 +82,7 @@ func NewTestCase(t *testing.T) *testCase {
 	coordinatorAddr := me.coordinator.listener.Addr()
 	_, portString, _ := net.SplitHostPort(coordinatorAddr.String())
 	fmt.Sscanf(portString, "%d", &me.coordinatorPort)
-	
+
 	me.workerOpts = &WorkerOptions{
 		Secret:  me.secret,
 		TempDir: workerTmp,
@@ -96,7 +96,6 @@ func NewTestCase(t *testing.T) *testCase {
 
 	me.wd = me.tmp + "/wd"
 	os.MkdirAll(me.wd, 0755)
-
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -318,7 +317,7 @@ func TestEndToEndNegativeNotify(t *testing.T) {
 	newContent := []byte("new content")
 	hash := tc.master.cache.Save(newContent)
 	updated := []*attr.FileAttr{
-		&attr.FileAttr{
+		{
 			Path: tc.wd[1:] + "/output.txt",
 			Attr: &fuse.Attr{
 				Mode: fuse.S_IFREG | 0644,
@@ -413,7 +412,7 @@ func TestEndToEndModeChange(t *testing.T) {
 	fi, err := os.Lstat(tc.wd + "/file.txt")
 	check(err)
 
-	if fi.Mode() & os.ModeType != 0 || fi.Mode().Perm()&0111 == 0 {
+	if fi.Mode()&os.ModeType != 0 || fi.Mode().Perm()&0111 == 0 {
 		t.Fatalf("wd/file.txt did not change mode: %o", fi.Mode().Perm())
 	}
 }
@@ -431,14 +430,14 @@ func TestEndToEndSymlink(t *testing.T) {
 		Argv: []string{"touch", "file.txt"},
 	})
 
-	if fi, err := os.Lstat(tc.wd + "/file.txt"); err != nil || fi.Mode() & os.ModeType != 0 || fi.Size() != 0 {
+	if fi, err := os.Lstat(tc.wd + "/file.txt"); err != nil || fi.Mode()&os.ModeType != 0 || fi.Size() != 0 {
 		t.Fatalf("wd/file.txt was not created. Err: %v, fi: %v", err, fi)
 	}
 	tc.RunSuccess(WorkRequest{
 		Argv: []string{"ln", "-sf", "foo", "symlink"},
 	})
 
-	if fi, err := os.Lstat(tc.wd + "/symlink"); err != nil || fi.Mode() & os.ModeSymlink == 0 {
+	if fi, err := os.Lstat(tc.wd + "/symlink"); err != nil || fi.Mode()&os.ModeSymlink == 0 {
 		t.Errorf("should have symlink. Err %v, fi %v", err, fi)
 	}
 }
@@ -548,7 +547,7 @@ func TestEndToEndLinkReap(t *testing.T) {
 		Argv: []string{"sh", "-c", "echo hello > file.txt ; ln file.txt foo.txt"},
 	}
 	tc.RunSuccess(req)
-	if fi, err := os.Lstat(tc.wd + "/foo.txt"); err != nil || fi.Mode() & os.ModeType != 0 || fi.Size() != 6 {
+	if fi, err := os.Lstat(tc.wd + "/foo.txt"); err != nil || fi.Mode()&os.ModeType != 0 || fi.Size() != 6 {
 		t.Fatalf("wd/foo.txt was not created. Err: %v, fi: %v", err, fi)
 	}
 }

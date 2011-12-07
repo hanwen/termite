@@ -91,7 +91,7 @@ func TestEndToEndMkdirExist(t *testing.T) {
 		Argv: []string{"mkdir", "file.txt"},
 	})
 	fi, _ := os.Lstat(tc.tmp + "/wd/file.txt")
-	if fi.Mode() & os.ModeType != 0 {
+	if fi.Mode()&os.ModeType != 0 {
 		t.Fatal("Should be regular file.")
 	}
 

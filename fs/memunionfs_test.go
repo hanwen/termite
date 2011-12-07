@@ -602,13 +602,13 @@ func TestMemUnionFsUpdate(t *testing.T) {
 	roSymlink.FromFileInfo(roSymlinkFi)
 
 	updates := map[string]*Result{
-		"file1": &Result{
+		"file1": {
 			nil, "", "", "",
 		},
-		"file2": &Result{
+		"file2": {
 			roF2, "", "", "",
 		},
-		"symlink": &Result{
+		"symlink": {
 			roSymlink, "", "", "target",
 		},
 	}

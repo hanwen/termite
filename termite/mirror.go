@@ -23,13 +23,13 @@ type Mirror struct {
 
 	maxJobCount int
 
-	fsMutex      sync.Mutex
-	cond         *sync.Cond
-	waiting      int
-	nextFsId     int
-	activeFses   map[*workerFuseFs]bool
-	accepting    bool
-	killed       bool
+	fsMutex    sync.Mutex
+	cond       *sync.Cond
+	waiting    int
+	nextFsId   int
+	activeFses map[*workerFuseFs]bool
+	accepting  bool
+	killed     bool
 }
 
 func NewMirror(daemon *Worker, rpcConn, revConn net.Conn) *Mirror {

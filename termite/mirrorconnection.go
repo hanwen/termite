@@ -87,7 +87,7 @@ type mirrorConnections struct {
 	master      *Master
 	coordinator string
 
-	keepAlive    time.Duration
+	keepAlive time.Duration
 
 	wantedMaxJobs int
 
@@ -95,9 +95,9 @@ type mirrorConnections struct {
 
 	// Protects all of the below.
 	sync.Mutex
-	workers      map[string]bool
-	mirrors      map[string]*mirrorConnection
-	lastActionTime   time.Time
+	workers        map[string]bool
+	mirrors        map[string]*mirrorConnection
+	lastActionTime time.Time
 }
 
 func (me *mirrorConnections) fetchWorkers() (newMap map[string]bool) {

@@ -65,7 +65,6 @@ func TimevalToDuration(tv syscall.Timeval) time.Duration {
 	return time.Duration(ns) * time.Nanosecond
 }
 
-
 func TotalCpuStat() *CpuStat {
 	c := CpuStat{}
 	r := syscall.Rusage{}
