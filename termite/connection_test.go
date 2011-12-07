@@ -12,9 +12,9 @@ import (
 
 func TestAuthenticate(t *testing.T) {
 	secret := RandomBytes(20)
-	port := int(rand.Int31n(60000) + 1024)
+	port := int(rand.Int31n(2000) + 1024)
 
-	l := AuthenticatedListener(port, secret)
+	l := AuthenticatedListener(port, secret, 10)
 	go func() {
 		for {
 			_, err := l.Accept()

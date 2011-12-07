@@ -28,7 +28,7 @@ type Mirror struct {
 	waiting      int
 	nextFsId     int
 	activeFses   map[*workerFuseFs]bool
-	shuttingDown bool
+	accepting    bool
 	killed       bool
 }
 
@@ -39,6 +39,7 @@ func NewMirror(daemon *Worker, rpcConn, revConn net.Conn) *Mirror {
 		activeFses: map[*workerFuseFs]bool{},
 		rpcConn:    rpcConn,
 		daemon:     daemon,
+		accepting:  true,
 	}
 	mirror.cond = sync.NewCond(&mirror.fsMutex)
 	mirror.rpcFs = NewRpcFs(rpc.NewClient(revConn), daemon.contentCache)
@@ -64,10 +65,7 @@ func (me *Mirror) serveRpc() {
 func (me *Mirror) Shutdown(aggressive bool) {
 	me.fsMutex.Lock()
 	defer me.fsMutex.Unlock()
-	if me.shuttingDown {
-		return
-	}
-	me.shuttingDown = true
+	me.accepting = false
 	if aggressive {
 		me.killed = true
 	}
@@ -107,12 +105,12 @@ func (me *Mirror) newFs(t *WorkerTask) (fs *workerFuseFs, err error) {
 	defer me.fsMutex.Unlock()
 
 	me.waiting++
-	for !me.shuttingDown && me.runningCount() >= me.maxJobCount {
+	for me.accepting && me.runningCount() >= me.maxJobCount {
 		me.cond.Wait()
 	}
 	me.waiting--
 
-	if me.shuttingDown {
+	if !me.accepting {
 		return nil, errors.New("shutting down")
 	}
 
@@ -167,7 +165,7 @@ func (me *Mirror) returnFs(fs *workerFuseFs) {
 	}
 
 	fs.SetDebug(false)
-	if me.shuttingDown {
+	if !me.accepting {
 		fs.Stop()
 		delete(me.activeFses, fs)
 		me.cond.Broadcast()

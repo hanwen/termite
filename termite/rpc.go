@@ -40,7 +40,7 @@ type MirrorStatusResponse struct {
 	Root         string
 	Granted      int
 	Fses         []FuseFsStatus
-	ShuttingDown bool
+	Accepting    bool
 	WaitingTasks int
 	IdleFses     int
 	RpcTimings   []string
@@ -54,7 +54,7 @@ type WorkerStatusResponse struct {
 	MirrorStatus []MirrorStatusResponse
 	Version      string
 	MaxJobCount  int
-	ShuttingDown bool
+	Accepting    bool
 
 	// In chronological order.
 	CpuStats            []stats.CpuStat
@@ -128,6 +128,7 @@ type CreateMirrorResponse struct {
 
 type ShutdownRequest struct {
 	Restart bool
+	Kill    bool
 }
 
 type ShutdownResponse struct {

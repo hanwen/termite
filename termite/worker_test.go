@@ -53,10 +53,10 @@ func testEnv() []string {
 	}
 }
 
-func (me *testCase) StartWorker(coordinator string) {
+func (me *testCase) StartWorker() {
 	worker := NewWorker(me.workerOpts)
 	me.workers = append(me.workers, worker)
-	go worker.RunWorkerServer(0, coordinator)
+	go worker.RunWorkerServer()
 }
 
 func NewTestCase(t *testing.T) *testCase {
@@ -72,18 +72,6 @@ func NewTestCase(t *testing.T) *testCase {
 	me.startFdCount = me.fdCount()
 	workerTmp := me.tmp + "/worker-tmp"
 	os.Mkdir(workerTmp, 0700)
-	me.workerOpts = &WorkerOptions{
-		Secret:  me.secret,
-		TempDir: workerTmp,
-		ContentCacheOptions: cba.ContentCacheOptions{
-			Dir: me.tmp + "/worker-cache",
-		},
-		Jobs:           1,
-		ReportInterval: 100 * time.Millisecond,
-	}
-
-	me.wd = me.tmp + "/wd"
-	os.MkdirAll(me.wd, 0755)
 
 	me.coordinator = NewCoordinator(me.secret)
 	go me.coordinator.PeriodicCheck()
@@ -94,6 +82,22 @@ func NewTestCase(t *testing.T) *testCase {
 	coordinatorAddr := me.coordinator.listener.Addr()
 	_, portString, _ := net.SplitHostPort(coordinatorAddr.String())
 	fmt.Sscanf(portString, "%d", &me.coordinatorPort)
+	
+	me.workerOpts = &WorkerOptions{
+		Secret:  me.secret,
+		TempDir: workerTmp,
+		ContentCacheOptions: cba.ContentCacheOptions{
+			Dir: me.tmp + "/worker-cache",
+		},
+		Jobs:           1,
+		ReportInterval: 100 * time.Millisecond,
+		Coordinator:    coordinatorAddr.String(),
+	}
+
+	me.wd = me.tmp + "/wd"
+	os.MkdirAll(me.wd, 0755)
+
+
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
@@ -121,7 +125,7 @@ func NewTestCase(t *testing.T) *testCase {
 		}
 		wg.Done()
 	}()
-	me.StartWorker(coordinatorAddr.String())
+	me.StartWorker()
 	wg.Wait()
 
 	for i := 0; me.coordinator.WorkerCount() == 0 && i < 10; i++ {

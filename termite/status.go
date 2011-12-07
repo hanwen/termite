@@ -10,7 +10,7 @@ func (me *Mirror) Status(req *MirrorStatusRequest, rep *MirrorStatusResponse) er
 	rep.Root = me.writableRoot
 	rep.Granted = me.maxJobCount
 	rep.WaitingTasks = me.waiting
-	rep.ShuttingDown = me.shuttingDown
+	rep.Accepting = me.accepting
 
 	for fs := range me.activeFses {
 		rep.Fses = append(rep.Fses, fs.Status())
@@ -25,7 +25,7 @@ func (me *Worker) Status(req *WorkerStatusRequest, rep *WorkerStatusResponse) er
 	// TODO - pass WorkerOptions out.
 	rep.MaxJobCount = me.options.Jobs
 	rep.Version = Version()
-	rep.ShuttingDown = me.shuttingDown
+	rep.Accepting = me.accepting
 	rep.CpuStats = me.stats.CpuStats()
 	rep.PhaseCounts = me.stats.PhaseCounts()
 	rep.PhaseNames = me.stats.PhaseOrder

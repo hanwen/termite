@@ -28,9 +28,9 @@ type Worker struct {
 	stats        *stats.ServerStats
 
 	stopListener chan int
-	mustRestart  bool
+	canRestart   bool
 	options      *WorkerOptions
-	shuttingDown bool
+	accepting    bool
 
 	mirrors *WorkerMirrors
 }
@@ -38,6 +38,15 @@ type Worker struct {
 type WorkerOptions struct {
 	cba.ContentCacheOptions
 
+	// Address of the coordinator.
+	Coordinator string
+
+	// (starting) port to listen to.
+	Port     int
+
+	// How many other ports try.
+	PortRetry int
+	
 	Paranoia bool
 	Secret   []byte
 	TempDir  string
@@ -75,6 +84,8 @@ func NewWorker(options *WorkerOptions) *Worker {
 		rpcServer:    rpc.NewServer(),
 		stats:        stats.NewServerStats(),
 		options:      &copied,
+		accepting:    true,
+		canRestart:   true,
 	}
 	me.stats.PhaseOrder = []string{"run", "fuse", "reap"}
 	me.mirrors = NewWorkerMirrors(me)
@@ -83,18 +94,17 @@ func NewWorker(options *WorkerOptions) *Worker {
 	return me
 }
 
-func (me *Worker) PeriodicHouseholding(coordinator string, port int) {
-	for !me.shuttingDown {
-		if coordinator != "" {
-			me.report(coordinator, port)
+func (me *Worker) PeriodicHouseholding() {
+	for me.accepting {
+		if me.options.Coordinator != "" {
+			me.report()
 		}
 
 		if me.options.HeapLimit > 0 {
 			heap := stats.GetMemStat().Total()
 			if heap > me.options.HeapLimit {
 				log.Println("Exceeded heap limit. Restarting...")
-				// TODO - use aggressive = false.
-				me.shutdown(true, true)
+				me.shutdown(true, false)
 			}
 		}
 
@@ -103,8 +113,8 @@ func (me *Worker) PeriodicHouseholding(coordinator string, port int) {
 	}
 }
 
-func (me *Worker) report(coordinator string, port int) {
-	client, err := rpc.DialHTTP("tcp", coordinator)
+func (me *Worker) report() {
+	client, err := rpc.DialHTTP("tcp", me.options.Coordinator)
 	if err != nil {
 		log.Println("dialing coordinator:", err)
 		return
@@ -117,11 +127,10 @@ func (me *Worker) report(coordinator string, port int) {
 	}
 	cname = strings.TrimRight(cname, ".")
 	req := Registration{
-		Address: fmt.Sprintf("%v:%d", cname, port),
-		Name:    fmt.Sprintf("%s:%d", Hostname, port),
+		Address: fmt.Sprintf("%v:%d", cname, me.options.Port),
+		Name:    fmt.Sprintf("%s:%d", Hostname, me.options.Port),
 		Version: Version(),
 	}
-
 	rep := 0
 	err = client.Call("Coordinator.Register", &req, &rep)
 	if err != nil {
@@ -134,7 +143,7 @@ func (me *Worker) FileContent(req *cba.ContentRequest, rep *cba.ContentResponse)
 }
 
 func (me *Worker) CreateMirror(req *CreateMirrorRequest, rep *CreateMirrorResponse) error {
-	if me.shuttingDown {
+	if !me.accepting {
 		return errors.New("Worker is shutting down.")
 	}
 
@@ -159,12 +168,11 @@ func (me *Worker) serveConn(conn net.Conn) {
 	}
 }
 
-func (me *Worker) RunWorkerServer(port int, coordinator string) {
-	me.listener = AuthenticatedListener(port, me.options.Secret)
+func (me *Worker) RunWorkerServer() {
+	me.listener = AuthenticatedListener(me.options.Port, me.options.Secret, me.options.PortRetry)
 	_, portString, _ := net.SplitHostPort(me.listener.Addr().String())
-
-	fmt.Sscanf(portString, "%d", &port)
-	go me.PeriodicHouseholding(coordinator, port)
+	fmt.Sscanf(portString, "%d", &me.options.Port)
+	go me.PeriodicHouseholding()
 
 	for {
 		conn, err := me.listener.Accept()
@@ -183,10 +191,6 @@ func (me *Worker) RunWorkerServer(port int, coordinator string) {
 		if !me.pending.Accept(conn) {
 			go me.rpcServer.ServeConn(conn)
 		}
-	}
-
-	if me.mustRestart {
-		me.restart(coordinator)
 	}
 }
 
@@ -237,9 +241,9 @@ func (me *Worker) Log(req *LogRequest, rep *LogResponse) error {
 	return nil
 }
 
-func (me *Worker) restart(coord string) {
+func (me *Worker) restart() {
 	cl := http.Client{}
-	req, err := cl.Get(fmt.Sprintf("http://%s/bin/worker", coord))
+	req, err := cl.Get(fmt.Sprintf("http://%s/bin/worker", me.options.Coordinator))
 	if err != nil {
 		log.Fatal("http get error.")
 	}
@@ -267,17 +271,18 @@ func (me *Worker) DropMirror(mirror *Mirror) {
 }
 
 func (me *Worker) Shutdown(req *ShutdownRequest, rep *ShutdownResponse) error {
-	me.shutdown(req.Restart, true)
+	me.shutdown(req.Restart, req.Kill)
 	return nil
 }
 
 func (me *Worker) shutdown(restart bool, aggressive bool) {
-	if restart {
-		me.mustRestart = true
+	if restart && me.canRestart {
+		me.canRestart = false
+		me.restart()
 	}
-	me.shuttingDown = true
-	me.mirrors.shutdown(aggressive)
+	me.accepting = false
 	go func() {
+		me.mirrors.shutdown(aggressive)
 		time.Sleep(2e6) // sleep so we don't kill the current connection.
 		me.listener.Close()
 	}()

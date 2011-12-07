@@ -10,6 +10,7 @@ import (
 	"os/signal"
 	"os/user"
 	"runtime"
+	"runtime/pprof"
 	"syscall"
 )
 
@@ -28,12 +29,14 @@ func handleStop(daemon *termite.Worker) {
 	}
 }
 
+
 func main() {
 	cachedir := flag.String("cachedir", "/var/cache/termite/worker-cache", "content cache")
 	tmpdir := flag.String("tmpdir", "/var/tmp",
 		"where to create FUSE mounts; should be on same partition as cachedir.")
 	secretFile := flag.String("secret", "secret.txt", "file containing password.")
-	port := flag.Int("port", 1235, "Where to listen for work requests.")
+	port := flag.Int("port", 1232, "Start of port to try.")
+	portRetry := flag.Int("port-retry", 10, "How many other ports to try.")
 	coordinator := flag.String("coordinator", "", "Where to register the worker.")
 	jobs := flag.Int("jobs", 1, "Max number of jobs to run.")
 	reapcount := flag.Int("reap-count", 1, "Number of jobs per filesystem.")
@@ -43,8 +46,18 @@ func main() {
 	paranoia := flag.Bool("paranoia", false, "Check attribute cache.")
 	cpus := flag.Int("cpus", 1, "Number of CPUs to use.")
 	heap := flag.Int("heap-size", 0, "Maximum heap size in MB.")
-
+	cpuprofile := flag.String("profile", "", "File to write profile output to.") 
 	flag.Parse()
+
+	if *cpuprofile != "" {
+		f, err := os.Create(*cpuprofile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
+	}
+	
 	if os.Geteuid() != 0 {
 		log.Fatal("This program must run as root")
 	}
@@ -76,6 +89,9 @@ func main() {
 			MemCount: *memcache,
 		},
 		HeapLimit: uint64(*heap) * (1 << 20),
+		Coordinator: *coordinator,
+		Port: *port,
+		PortRetry: *portRetry,
 	}
 	if os.Geteuid() == 0 {
 		nobody, err := user.Lookup(*userFlag)
@@ -91,5 +107,5 @@ func main() {
 	}
 	log.Printf("%s on %d CPUs", termite.Version(), runtime.GOMAXPROCS(0))
 	go handleStop(daemon)
-	daemon.RunWorkerServer(*port, *coordinator)
+	daemon.RunWorkerServer()
 }

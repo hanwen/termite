@@ -16,7 +16,7 @@ import (
 func main() {
 	home := os.Getenv("HOME")
 	cachedir := flag.String("cachedir", filepath.Join(home, ".cache", "termite-master"), "content cache")
-	coordinator := flag.String("coordinator", "localhost:1233", "address of coordinator. Overrides -workers")
+	coordinator := flag.String("coordinator", "localhost:1230", "address of coordinator. Overrides -workers")
 	exclude := flag.String("exclude", "usr/lib/locale/locale-archive,sys,proc,dev,selinux,cgroup", "prefixes to not export.")
 	fetchAll := flag.Bool("fetch-all", true, "Fetch all files on startup.")
 	houseHoldPeriod := flag.Float64("time.household", 60.0, "how often to do house hold tasks.")
@@ -25,7 +25,7 @@ func main() {
 	logfile := flag.String("logfile", "", "where to send log output.")
 	memcache := flag.Int("filecache", 1024, "number of <32k files to cache in memory")
 	paranoia := flag.Bool("paranoia", false, "Check attribute cache.")
-	port := flag.Int("port", 1237, "http status port")
+	port := flag.Int("port", 1231, "http status port")
 	retry := flag.Int("retry", 3, "how often to retry faulty jobs")
 	secretFile := flag.String("secret", "secret.txt", "file containing password.")
 	socket := flag.String("socket", ".termite-socket", "socket to listen for commands")

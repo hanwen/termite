@@ -107,16 +107,20 @@ type Listener struct {
 	secret []byte
 }
 
-func AuthenticatedListener(port int, secret []byte) net.Listener {
-	host, _ := os.Hostname()
-	_ = host
-	addr := fmt.Sprintf(":%d", port)
-	listener, err := net.Listen("tcp", addr)
-	if err != nil {
-		log.Fatal("net.Listen", err)
+func AuthenticatedListener(port int, secret []byte, retryCount int) net.Listener {
+	var err error
+	for i := 0; i <= retryCount; i++ {
+		p := port + i
+		addr := fmt.Sprintf(":%d", p)
+		listener, e := net.Listen("tcp", addr)
+		if e == nil {
+			log.Println("Listening to", listener.Addr())
+			return &Listener{listener, secret}
+		}
+		err = e
 	}
-	log.Println("Listening to", listener.Addr())
-	return &Listener{listener, secret}
+	log.Fatal("net.Listen:", err)
+	return nil
 }
 
 func (me *Listener) Accept() (net.Conn, error) {

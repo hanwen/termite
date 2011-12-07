@@ -225,7 +225,10 @@ func (me *Coordinator) killHandler(w http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(w, "<body><h1>Status %s</h1>", addr)
 	defer fmt.Fprintf(w, "</body></html>")
 
-	killReq := ShutdownRequest{Restart: restart}
+	killReq := ShutdownRequest{
+		Restart: restart,
+		Kill: !restart,
+	}
 	rep := ShutdownResponse{}
 	cl := rpc.NewClient(conn)
 	defer cl.Close()
@@ -382,7 +385,7 @@ func (me *Coordinator) mirrorStatusHtml(w http.ResponseWriter, s MirrorStatusRes
 
 	fmt.Fprintf(w, "<p>%d maximum jobs, %d running, %d waiting tasks, %d unused filesystems.\n",
 		s.Granted, running, s.WaitingTasks, s.IdleFses)
-	if s.ShuttingDown {
+	if !s.Accepting {
 		fmt.Fprintf(w, "<p><b>shutting down</b>\n")
 	}
 
