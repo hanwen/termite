@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"sync"
+	"time"
 )
 
 var _ = log.Println
@@ -65,25 +66,28 @@ func CpuStatsWriteHttp(w http.ResponseWriter, stats []CpuStat) {
 
 		chRow := ""
 		if printChild {
-			chRow = fmt.Sprintf("<td>%d</td><td>%d</td>", v.ChildCpu/1e6, v.ChildSys/1e6)
+			chRow = fmt.Sprintf("<td>%d</td><td>%d</td>",
+				v.ChildCpu/time.Millisecond, v.ChildSys/time.Millisecond)
 		}
 
 		fmt.Fprintf(w, "<tr><td>%d</td><td>%d</td>%s<td>%d</td></tr>",
-			v.SelfCpu/1e6, v.SelfSys/1e6, chRow,
-			(v.Total())/1e6)
+			v.SelfCpu/time.Millisecond, v.SelfSys/time.Millisecond, chRow,
+			(v.Total())/time.Millisecond)
 	}
 	fmt.Fprintf(w, "</table>")
 
-	fmt.Fprintf(w, "<p>CPU (last min): %d s self %d s sys", statm.SelfCpu/1e9, statm.SelfSys/1e9)
+	fmt.Fprintf(w, "<p>CPU (last min): %d s self %d s sys", statm.SelfCpu/time.Second, statm.SelfSys/time.Second)
 	if printChild {
-		fmt.Fprintf(w, " %d s child %d s sys", statm.ChildCpu/1e9, statm.ChildSys/1e9)
+		fmt.Fprintf(w, " %d s child %d s sys", statm.ChildCpu/time.Second, statm.ChildSys/time.Second)
 	}
 
 	fmt.Fprintf(w, " %.2f CPU", float64(statm.Total())/1e9/float64(len(stats)))
 	fmt.Fprintf(w, "<p>CPU (last %ds): %.2f self %.2f sys",
-		count5, float64(stat5.SelfCpu)*1e-9, float64(stat5.SelfSys)*1e-9)
+		count5, float64(stat5.SelfCpu)/float64(time.Second), float64(stat5.SelfSys)/float64(time.Second))
 	if printChild {
-		fmt.Fprintf(w, "%.2f s child %.2f s sys", float64(stat5.ChildCpu)*1e-9, float64(stat5.ChildSys)*1e-9)
+		fmt.Fprintf(w, "%.2f s child %.2f s sys",
+			float64(stat5.ChildCpu)/float64(time.Second),
+			float64(stat5.ChildSys)/float64(time.Second))
 	}
 	fmt.Fprintf(w, " %.2f CPU", float64(stat5.Total())/1e9/float64(count5))
 }

@@ -18,10 +18,10 @@ func sampleTime() interface{} {
 }
 
 type CpuStat struct {
-	SelfCpu  int64
-	SelfSys  int64
-	ChildCpu int64
-	ChildSys int64
+	SelfCpu  time.Duration
+	SelfSys  time.Duration
+	ChildCpu time.Duration
+	ChildSys time.Duration
 }
 
 type MemCounter uint64
@@ -60,6 +60,12 @@ func GetMemStat() *MemStat {
 	}
 }
 
+func TimevalToDuration(tv syscall.Timeval) time.Duration {
+	ns := syscall.TimevalToNsec(tv)
+	return time.Duration(ns) * time.Nanosecond
+}
+
+
 func TotalCpuStat() *CpuStat {
 	c := CpuStat{}
 	r := syscall.Rusage{}
@@ -69,15 +75,15 @@ func TotalCpuStat() *CpuStat {
 		return nil
 	}
 
-	c.SelfCpu = syscall.TimevalToNsec(r.Utime)
-	c.SelfSys = syscall.TimevalToNsec(r.Stime)
+	c.SelfCpu = TimevalToDuration(r.Utime)
+	c.SelfSys = TimevalToDuration(r.Stime)
 
 	err = syscall.Getrusage(RUSAGE_CHILDREN, &r)
 	if err != nil {
 		return nil
 	}
-	c.ChildCpu = syscall.TimevalToNsec(r.Utime)
-	c.ChildSys = syscall.TimevalToNsec(r.Stime)
+	c.ChildCpu = TimevalToDuration(r.Utime)
+	c.ChildSys = TimevalToDuration(r.Stime)
 
 	return &c
 }
@@ -102,7 +108,8 @@ func (me *CpuStat) Diff(x CpuStat) CpuStat {
 
 func (me *CpuStat) String() string {
 	return fmt.Sprintf("me %d ms/%d ms, child %d ms/%d ms",
-		me.SelfCpu/1e6, me.SelfSys/1e6, me.ChildCpu/1e6, me.ChildSys/1e6)
+		me.SelfCpu/time.Millisecond, me.SelfSys/time.Millisecond,
+		me.ChildCpu/time.Millisecond, me.ChildSys/time.Millisecond)
 }
 
 func (me *CpuStat) Percent() string {
@@ -114,7 +121,7 @@ func (me *CpuStat) Percent() string {
 		(100*me.SelfCpu)/t, (me.SelfSys*100)/t, (me.ChildCpu*100)/t, (me.ChildSys*100)/t)
 }
 
-func (me *CpuStat) Total() int64 {
+func (me *CpuStat) Total() time.Duration {
 	return me.SelfSys + me.SelfCpu + me.ChildSys + me.ChildCpu
 }
 
