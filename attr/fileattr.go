@@ -90,10 +90,10 @@ func (me *FileAttr) ReadFromFs(p string, hashFunc crypto.Hash) {
 		if e == nil {
 			me.NameModeMap = make(map[string]fuse.FileMode, len(d))
 			for _, v := range d {
-				m := fuse.FileMode(fuse.ToAttr(v).Mode &^ 07777)
-				if m != 0 {
-					// m == 0 may happen for fuse mounts that have died.
-					me.NameModeMap[v.Name()] = m
+				a := fuse.ToAttr(v)
+				if a != nil {
+					// attr == nil may happen for fuse mounts that have died.
+					me.NameModeMap[v.Name()] = fuse.FileMode(a.Mode &^ 07777)
 				}
 			}
 		} else {
