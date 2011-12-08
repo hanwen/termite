@@ -2,7 +2,6 @@ package attr
 
 import (
 	"crypto"
-	"fmt"
 	"github.com/hanwen/go-fuse/fuse"
 	"os"
 	"path/filepath"
@@ -15,14 +14,6 @@ func SplitPath(name string) (dir, base string) {
 	dir, base = filepath.Split(name)
 	dir = strings.TrimRight(dir, "/")
 	return dir, base
-}
-
-func EncodeFileInfo(fi fuse.Attr) string {
-	fi.Atime = 0
-	fi.Atimensec = 0
-	fi.Ino = 0
-	fi.Rdev = 0
-	return fmt.Sprintf("%v", fi)
 }
 
 // for tests:

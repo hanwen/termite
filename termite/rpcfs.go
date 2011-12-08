@@ -8,7 +8,6 @@ import (
 	"github.com/hanwen/termite/stats"
 	"log"
 	"net/rpc"
-	"os"
 	"sync"
 	"time"
 )
@@ -133,30 +132,6 @@ func (me *RpcFs) fetchAttr(n string) *attr.FileAttr {
 
 	// TODO - if we got a deletion, we should refetch the parent.
 	return wanted
-}
-
-func (me *RpcFs) considerSaveLocal(a *attr.FileAttr) {
-	absPath := a.Path
-	if a.Deletion() || !a.IsRegular() {
-		return
-	}
-	found := false
-	for _, root := range me.localRoots {
-		if HasDirPrefix(absPath, root) {
-			found = true
-		}
-	}
-	if !found {
-		return
-	}
-
-	fi, _ := os.Lstat(absPath)
-	if fi == nil {
-		return
-	}
-	if attr.EncodeFileInfo(*fuse.ToAttr(fi)) != attr.EncodeFileInfo(*a.Attr) {
-		return
-	}
 }
 
 ////////////////////////////////////////////////////////////////

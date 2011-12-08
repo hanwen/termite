@@ -31,7 +31,8 @@ func main() {
 	socket := flag.String("socket", ".termite-socket", "socket to listen for commands")
 	srcRoot := flag.String("sourcedir", "", "root of corresponding source directory")
 	workers := flag.String("workers", "", "comma separated list of worker addresses")
-
+	xattr := flag.Bool("xattr", true, "cache hashes in filesystem attribute.")
+	
 	flag.Parse()
 
 	if *logfile != "" {
@@ -70,6 +71,7 @@ func main() {
 			MemCount: *memcache,
 		},
 		RetryCount: *retry,
+		XAttrCache: *xattr,
 	}
 	master := termite.NewMaster(&opts)
 

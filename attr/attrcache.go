@@ -347,7 +347,7 @@ func (me *AttributeCache) Refresh(prefix string) FileSet {
 		}
 
 		// TODO - does this handle symlinks corrrectly?
-		if fi != nil && attr.Attr != nil && EncodeFileInfo(*attr.Attr) != EncodeFileInfo(*fi) {
+		if fi != nil && attr.Attr != nil && !FuseAttrEq(fi, attr.Attr) {
 			newEnt := me.getter(key)
 			newEnt.Path = key
 			updated = append(updated, newEnt)

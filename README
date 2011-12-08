@@ -148,7 +148,6 @@ CAVEATS
 TODO (by decreasing priority)
 
 * Make coordinator robust against worker shutdown.
-* Cache hashes in xattrs.
 * Make master->coordinator RPC block in coordinator so master can
   learn of developments instantaneously.
 * Compile linux kernel

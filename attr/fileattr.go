@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"syscall"
 )
 
 var _ = log.Printf
@@ -71,6 +72,31 @@ func (me FileAttr) Copy(withdir bool) *FileAttr {
 		a.NameModeMap = nil
 	}
 	return &a
+}
+
+const _TERM_XATTR = "user.termattr"
+
+func (a *FileAttr) WriteXAttr(p string) {
+	b, err := a.Encode()
+	if err != nil {
+		log.Panic("Encode", a, err)
+	}
+	errno := fuse.Setxattr(p, _TERM_XATTR, b, 0)
+	if errno != 0 {
+		log.Printf("Setxattr %s: code %v", p, syscall.Errno(errno))
+	}
+}
+	
+func ReadXAttr(path string) *FileAttr {
+	val, errno := fuse.GetXAttr(path, _TERM_XATTR)
+	if errno == 0 {
+		read := FileAttr{}
+		err := read.Decode(val)
+		if err == nil {
+			return &read
+		}
+	}
+	return nil
 }
 
 func (me *FileAttr) ReadFromFs(p string, hashFunc crypto.Hash) {
@@ -139,3 +165,35 @@ func (me *FileAttr) Merge(r FileAttr) {
 		}
 	}
 }
+
+func FuseAttrEq(a *fuse.Attr, b *fuse.Attr) bool {
+	return (a.Mode == b.Mode && a.Size == b.Size && a.Blocks == b.Blocks && a.Mtime == b.Mtime && a.Ctime == b.Ctime &&
+		a.Mtimensec == b.Mtimensec && a.Ctimensec == b.Ctimensec && a.Uid == b.Uid && a.Gid == b.Gid && a.Blksize == b.Blksize)
+}
+
+// Writing the attr sets the Ctime.
+func FuseAttrEqNoCtime(a *fuse.Attr, b *fuse.Attr) bool {
+	return (a.Mode == b.Mode && a.Size == b.Size && a.Blocks == b.Blocks && a.Mtime == b.Mtime && 
+		a.Mtimensec == b.Mtimensec && a.Uid == b.Uid && a.Gid == b.Gid && a.Blksize == b.Blksize)
+}
+
+func (me *FileAttr) IsFifo() bool { return me.Attr != nil && (uint32(me.Mode) & syscall.S_IFMT) == syscall.S_IFIFO }
+
+// IsChar reports whether the FileInfo describes a character special file.
+func (me *FileAttr) IsChar() bool { return me.Attr != nil &&  (uint32(me.Mode) & syscall.S_IFMT) == syscall.S_IFCHR }
+
+// IsDir reports whether the FileInfo describes a directory.
+func (me *FileAttr) IsDir() bool { return me.Attr != nil &&  (uint32(me.Mode) & syscall.S_IFMT) == syscall.S_IFDIR }
+
+// IsBlock reports whether the FileInfo describes a block special file.
+func (me *FileAttr) IsBlock() bool { return me.Attr != nil &&  (uint32(me.Mode) & syscall.S_IFMT) == syscall.S_IFBLK }
+
+// IsRegular reports whether the FileInfo describes a regular file.
+func (me *FileAttr) IsRegular() bool { return me.Attr != nil &&  (uint32(me.Mode) & syscall.S_IFMT) == syscall.S_IFREG }
+
+// IsSymlink reports whether the FileInfo describes a symbolic link.
+func (me *FileAttr) IsSymlink() bool { return me.Attr != nil &&  (uint32(me.Mode) & syscall.S_IFMT) == syscall.S_IFLNK }
+
+// IsSocket reports whether the FileInfo describes a socket.
+func (me *FileAttr) IsSocket() bool { return me.Attr != nil &&  (uint32(me.Mode) & syscall.S_IFMT) == syscall.S_IFSOCK }
+

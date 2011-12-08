@@ -10,6 +10,7 @@ import (
 	"net/rpc"
 	"os"
 	"path/filepath"
+	"sync"
 	"strings"
 	"time"
 )
@@ -48,6 +49,9 @@ type MasterOptions struct {
 
 	Period    time.Duration
 	KeepAlive time.Duration
+
+	// Cache hashes in filesystem extended attributes.
+	XAttrCache bool
 }
 
 type replayRequest struct {
@@ -77,8 +81,25 @@ func (me *Master) uncachedGetAttr(name string) (rep *attr.FileAttr) {
 		return rep
 	}
 	rep.Attr = fuse.ToAttr(fi)
+
+	// TODO - check uid/gid too.
+	xattrPossible := rep.IsRegular() && me.options.XAttrCache && rep.Mode & 0222 != 0 && (
+		(me.options.WritableRoot != "" && strings.HasPrefix(p, me.options.WritableRoot)) ||
+		(me.options.SrcRoot != "" && strings.HasPrefix(p, me.options.SrcRoot)))
+
+	if xattrPossible {
+		xattr := attr.ReadXAttr(p)
+		if xattr != nil && xattr.IsRegular() && attr.FuseAttrEqNoCtime(rep.Attr, xattr.Attr) &&
+			me.cache.HasHash(xattr.Hash) {
+			return xattr
+		}
+	}
+	
 	if fi != nil {
 		me.fillContent(rep)
+		if xattrPossible {
+			rep.WriteXAttr(p)
+		}
 	}
 	return rep
 }
@@ -175,17 +196,29 @@ func (me *Master) CheckPrivate() {
 	}
 }
 
-func (me *Master) Start(sock string) {
-	// Fetch in the background.
+// Fetch in the background.
+func (me *Master) FetchAll() {
+	wg := sync.WaitGroup{}
 	last := ""
-
-	if me.options.FetchAll {
-		for _, r := range []string{me.options.WritableRoot, me.options.SrcRoot} {
-			if last == r || r == "" {
-				continue
-			}
-			go me.fetchAll(strings.TrimLeft(r, "/"))
+	for _, r := range []string{me.options.WritableRoot, me.options.SrcRoot} {
+		if last == r || r == "" {
+			continue
 		}
+		last = r
+		wg.Add(1)
+		
+		go func(p string) {
+			me.fetchAll(strings.TrimLeft(p, "/"))
+			wg.Done()
+		}(r)
+	}
+	wg.Wait()
+	log.Println("FetchAll done")
+}
+
+func (me *Master) Start(sock string) {
+	if me.options.FetchAll {
+		me.FetchAll()
 	}
 	go localStart(me, sock)
 	me.waitForExit()
@@ -389,6 +422,9 @@ func (me *Master) replayFileModifications(infos []*attr.FileAttr, delFileHashes 
 		// TODO - test this.
 		fi, _ := os.Lstat(name)
 		info.Attr = fuse.ToAttr(fi)
+		if info.IsRegular() && me.options.XAttrCache {
+			info.WriteXAttr(name)
+		}
 	}
 
 	me.attributes.Update(infos)
