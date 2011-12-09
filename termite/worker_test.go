@@ -151,7 +151,9 @@ func (me *testCase) Clean() {
 
 	// TODO - should have explicit worker shutdown routine.
 	me.coordinator.Shutdown()
-	time.Sleep(0.1e9)
+
+	// TODO - should sleep until everything has exited.
+	time.Sleep(500 * time.Millisecond)
 	os.RemoveAll(me.tmp)
 
 	// TODO - there are still some persistent leaks here.
