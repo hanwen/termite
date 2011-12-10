@@ -138,6 +138,8 @@ func NewMaster(options *MasterOptions) *Master {
 		o.Period = 60.0
 	}
 	o.Uid = os.Getuid()
+	o.SrcRoot, _ = filepath.Abs(o.SrcRoot)
+	o.SrcRoot, _ = filepath.EvalSymlinks(o.SrcRoot)
 	me.options = &o
 	me.excluded = make(map[string]bool)
 	for _, e := range options.Excludes {
@@ -209,8 +211,10 @@ func (me *Master) FetchAll() {
 		}
 		last = r
 		wg.Add(1)
+		log.Println("Prefetch", r)
 		
 		go func(p string) {
+			log.Println("go", p)
 			me.fetchAll(strings.TrimLeft(p, "/"))
 			wg.Done()
 		}(r)
