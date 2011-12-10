@@ -85,18 +85,21 @@ func (me *Master) uncachedGetAttr(name string) (rep *attr.FileAttr) {
 	}
 	rep.Attr = fuse.ToAttr(fi)
 
+	// TODO - should have a size limit.  For small files, it is just as cheap to read the content?
+	
+	// TODO - custom encode for Attr. For ext4, small xattrs fit in the inode itself, which is faster to access.
 	xattrPossible := rep.IsRegular() && me.options.XAttrCache && rep.Uid == uint32(me.options.Uid) && rep.Mode & 0222 != 0 && (
 		(me.options.WritableRoot != "" && strings.HasPrefix(p, me.options.WritableRoot)) ||
 		(me.options.SrcRoot != "" && strings.HasPrefix(p, me.options.SrcRoot)))
 
 	if xattrPossible {
 		xattr := attr.ReadXAttr(p)
-		if xattr != nil && xattr.IsRegular() && attr.FuseAttrEqNoCtime(rep.Attr, xattr.Attr) &&
+		if xattr != nil && xattr.IsRegular() && attr.FuseAttrEqXAttr(rep.Attr, xattr.Attr) &&
 			me.cache.HasHash(xattr.Hash) {
 			return xattr
 		}
 	}
-	
+
 	if fi != nil {
 		me.fillContent(rep)
 		if xattrPossible {
