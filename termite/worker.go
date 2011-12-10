@@ -104,10 +104,7 @@ func NewWorker(options *WorkerOptions) *Worker {
 
 func (me *Worker) PeriodicHouseholding() {
 	for me.accepting {
-		if me.options.Coordinator != "" {
-			me.report()
-		}
-
+		me.Report()
 		if me.options.HeapLimit > 0 {
 			heap := stats.GetMemStat().Total()
 			if heap > me.options.HeapLimit {
@@ -121,7 +118,10 @@ func (me *Worker) PeriodicHouseholding() {
 	}
 }
 
-func (me *Worker) report() {
+func (me *Worker) Report() {
+	if me.options.Coordinator == "" {
+		return;
+	}
 	client, err := rpc.DialHTTP("tcp", me.options.Coordinator)
 	if err != nil {
 		log.Println("dialing coordinator:", err)

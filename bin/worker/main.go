@@ -20,11 +20,13 @@ func handleStop(daemon *termite.Worker) {
 	for {
 		sig := <-signal.Incoming
 		switch sig.(os.UnixSignal) {
-		case syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT, syscall.SIGHUP:
+		case syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT:
 			log.Println("got signal: ", sig)
 			req := termite.ShutdownRequest{}
 			rep := termite.ShutdownResponse{}
 			daemon.Shutdown(&req, &rep)
+		case syscall.SIGHUP:
+			daemon.Report()
 		}
 	}
 }
