@@ -29,6 +29,7 @@ type Master struct {
 	quit          chan int
 }
 
+// Immutable state and options for master. 
 type MasterOptions struct {
 	cba.ContentCacheOptions
 
@@ -52,6 +53,8 @@ type MasterOptions struct {
 
 	// Cache hashes in filesystem extended attributes.
 	XAttrCache bool
+
+	Uid  int
 }
 
 type replayRequest struct {
@@ -82,8 +85,7 @@ func (me *Master) uncachedGetAttr(name string) (rep *attr.FileAttr) {
 	}
 	rep.Attr = fuse.ToAttr(fi)
 
-	// TODO - check uid/gid too.
-	xattrPossible := rep.IsRegular() && me.options.XAttrCache && rep.Mode & 0222 != 0 && (
+	xattrPossible := rep.IsRegular() && me.options.XAttrCache && rep.Uid == uint32(me.options.Uid) && rep.Mode & 0222 != 0 && (
 		(me.options.WritableRoot != "" && strings.HasPrefix(p, me.options.WritableRoot)) ||
 		(me.options.SrcRoot != "" && strings.HasPrefix(p, me.options.SrcRoot)))
 
@@ -135,6 +137,7 @@ func NewMaster(options *MasterOptions) *Master {
 	if o.Period <= 0.0 {
 		o.Period = 60.0
 	}
+	o.Uid = os.Getuid()
 	me.options = &o
 	me.excluded = make(map[string]bool)
 	for _, e := range options.Excludes {
@@ -422,7 +425,7 @@ func (me *Master) replayFileModifications(infos []*attr.FileAttr, delFileHashes 
 		// TODO - test this.
 		fi, _ := os.Lstat(name)
 		info.Attr = fuse.ToAttr(fi)
-		if info.IsRegular() && me.options.XAttrCache {
+		if info.IsRegular() && me.options.XAttrCache && info.Uid == uint32(me.options.Uid) {
 			info.WriteXAttr(name)
 		}
 	}
