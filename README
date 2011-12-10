@@ -43,6 +43,9 @@ COMPILE/INSTALL
   *  soft    nofile       5000
   *  hard    nofile       5000
 
+* Mount the source/object directories so termite can write xattrs:
+
+  mount -o remount,user_xattr my/device my/mountpoint
 
 OVERVIEW
 
@@ -147,13 +150,12 @@ CAVEATS
 
 TODO (by decreasing priority)
 
-* Make coordinator robust against worker shutdown.
 * Make master->coordinator RPC block in coordinator so master can
   learn of developments instantaneously.
 * Compile linux kernel
-* In-memory file writing.
 * Security review for the connection scheme.
 * Better connection scheme? Use exp/ssh, tls?
+
 
 SUCCESSFUL COMPILES
 
