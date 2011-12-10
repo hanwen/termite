@@ -2,6 +2,7 @@
 include $(GOROOT)/src/Make.inc
 
 TARG=github.com/hanwen/termite/attr
+DEPS=../../go-fuse/fuse
 
 GOFILES=attrcache.go \
 	encode.go \
