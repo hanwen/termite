@@ -251,13 +251,6 @@ func FuseAttrEq(a *fuse.Attr, b *fuse.Attr) bool {
 		a.Mtimensec == b.Mtimensec && a.Ctimensec == b.Ctimensec && a.Uid == b.Uid && a.Gid == b.Gid && a.Blksize == b.Blksize)
 }
 
-// Writing the attr sets the Ctime, and takes some blocks (typically:
-// 8 512b blocks).
-func FuseAttrEqXAttr(a *fuse.Attr, b *fuse.Attr) bool {
-	return (a.Mode == b.Mode && a.Size == b.Size && a.Mtime == b.Mtime && 
-		a.Mtimensec == b.Mtimensec && a.Uid == b.Uid && a.Gid == b.Gid && a.Blksize == b.Blksize)
-}
-
 func (me *FileAttr) IsFifo() bool { return me.Attr != nil && (uint32(me.Mode) & syscall.S_IFMT) == syscall.S_IFIFO }
 
 // IsChar reports whether the FileInfo describes a character special file.
