@@ -8,6 +8,9 @@
     "Recurse": true,
     "SkipRefresh": true
 }, {
+    "Regexp": "find.*>",
+    "Local": false
+}, {
     "Regexp": "^cd [^&; ]* [&;]* find[^;&|]*",
     "Local": true,
     "Recurse": false,
