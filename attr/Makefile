@@ -5,7 +5,6 @@ TARG=github.com/hanwen/termite/attr
 DEPS=../../go-fuse/fuse
 
 GOFILES=attrcache.go \
-	encode.go \
 	fileset.go \
 	filesetwaiter.go \
 	fileattr.go \
