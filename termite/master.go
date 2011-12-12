@@ -93,10 +93,15 @@ func (me *Master) uncachedGetAttr(name string) (rep *attr.FileAttr) {
 		(me.options.SrcRoot != "" && strings.HasPrefix(p, me.options.SrcRoot)))
 
 	if xattrPossible {
-		xattr := attr.ReadXAttr(p)
-		if xattr != nil && xattr.IsRegular() && attr.FuseAttrEqXAttr(rep.Attr, xattr.Attr) &&
-			me.cache.HasHash(xattr.Hash) {
-			return xattr
+		cur := attr.EncodedAttr{}
+		cur.FromAttr(rep.Attr)
+		
+		disk := attr.EncodedAttr{}
+		diskHash := disk.ReadXAttr(p)
+
+		if diskHash != nil && cur.Eq(&disk) && me.cache.HasHash(string(diskHash)) {
+			rep.Hash = string(diskHash)
+			return rep
 		}
 	}
 
