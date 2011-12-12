@@ -10,8 +10,8 @@ import (
 	"net/rpc"
 	"os"
 	"path/filepath"
-	"sync"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -29,7 +29,7 @@ type Master struct {
 	quit          chan int
 }
 
-// Immutable state and options for master. 
+// Immutable state and options for master.
 type MasterOptions struct {
 	cba.ContentCacheOptions
 
@@ -54,7 +54,7 @@ type MasterOptions struct {
 	// Cache hashes in filesystem extended attributes.
 	XAttrCache bool
 
-	Uid  int
+	Uid int
 }
 
 type replayRequest struct {
@@ -86,16 +86,15 @@ func (me *Master) uncachedGetAttr(name string) (rep *attr.FileAttr) {
 	rep.Attr = fuse.ToAttr(fi)
 
 	// TODO - should have a size limit.  For small files, it is just as cheap to read the content?
-	
+
 	// TODO - custom encode for Attr. For ext4, small xattrs fit in the inode itself, which is faster to access.
-	xattrPossible := rep.IsRegular() && me.options.XAttrCache && rep.Uid == uint32(me.options.Uid) && rep.Mode & 0222 != 0 && (
-		(me.options.WritableRoot != "" && strings.HasPrefix(p, me.options.WritableRoot)) ||
+	xattrPossible := rep.IsRegular() && me.options.XAttrCache && rep.Uid == uint32(me.options.Uid) && rep.Mode&0222 != 0 && ((me.options.WritableRoot != "" && strings.HasPrefix(p, me.options.WritableRoot)) ||
 		(me.options.SrcRoot != "" && strings.HasPrefix(p, me.options.SrcRoot)))
 
 	if xattrPossible {
 		cur := attr.EncodedAttr{}
 		cur.FromAttr(rep.Attr)
-		
+
 		disk := attr.EncodedAttr{}
 		diskHash := disk.ReadXAttr(p)
 
@@ -220,7 +219,7 @@ func (me *Master) FetchAll() {
 		last = r
 		wg.Add(1)
 		log.Println("Prefetch", r)
-		
+
 		go func(p string) {
 			log.Println("go", p)
 			me.fetchAll(strings.TrimLeft(p, "/"))
@@ -233,7 +232,7 @@ func (me *Master) FetchAll() {
 
 func (me *Master) Start(sock string) {
 	if me.options.FetchAll {
-		me.FetchAll()
+		go me.FetchAll()
 	}
 	go localStart(me, sock)
 	me.waitForExit()
