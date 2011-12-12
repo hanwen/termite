@@ -32,7 +32,7 @@ func main() {
 	srcRoot := flag.String("sourcedir", "", "root of corresponding source directory")
 	workers := flag.String("workers", "", "comma separated list of worker addresses")
 	xattr := flag.Bool("xattr", true, "cache hashes in filesystem attribute.")
-	
+
 	flag.Parse()
 
 	if *logfile != "" {

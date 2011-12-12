@@ -120,7 +120,7 @@ func (me *Worker) PeriodicHouseholding() {
 
 func (me *Worker) Report() {
 	if me.options.Coordinator == "" {
-		return;
+		return
 	}
 	client, err := rpc.DialHTTP("tcp", me.options.Coordinator)
 	if err != nil {

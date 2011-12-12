@@ -31,12 +31,12 @@ func TestEncode(t *testing.T) {
 	e := EncodedAttr{}
 
 	a := fuse.Attr{
-		Mode: 0x11111111,
-		Nlink: 0x22222222,
-		Size: 0x333333333333,
-		Ino:  0x444444444444,
-		Mtime: 0x55555555,
-	        Mtimensec: 123456789,
+		Mode:      0x11111111,
+		Nlink:     0x22222222,
+		Size:      0x333333333333,
+		Ino:       0x444444444444,
+		Mtime:     0x55555555,
+		Mtimensec: 123456789,
 	}
 
 	e.FromAttr(&a)
@@ -52,7 +52,7 @@ func TestEncode(t *testing.T) {
 	if string(decHash) != h {
 		t.Fatalf("Decoded hash: %q != %q", decHash, h)
 	}
-	
+
 	if !dec.Eq(&e) {
 		t.Fatalf("decoded EncodedAttr got %#v != want %#v", dec, e)
 	}
