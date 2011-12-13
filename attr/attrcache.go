@@ -327,33 +327,58 @@ func (me *AttributeCache) Refresh(prefix string) FileSet {
 	me.mutex.Lock()
 	defer me.mutex.Unlock()
 
+	// TODO - how much parallelism is reasonable?
+	par := 10
+
 	if prefix != "" && prefix[0] == '/' {
 		panic("leading /")
 	}
 
-	updated := []*FileAttr{}
-	for key, attr := range me.attributes {
-		// TODO -should just do everything?
-		if !strings.HasPrefix(key, prefix) {
-			continue
-		}
+	todo := make(chan *FileAttr, 10*par)
 
-		fi := me.statter(key)
-		if fi == nil && !attr.Deletion() {
-			del := FileAttr{
-				Path: key,
+	go func() {
+		for key, attr := range me.attributes {
+			if !strings.HasPrefix(key, prefix) {
+				continue
 			}
-			updated = append(updated, &del)
+			todo <- attr
 		}
+		close(todo)
+	}()
 
-		// TODO - does this handle symlinks corrrectly?
-		if fi != nil && attr.Attr != nil && !FuseAttrEq(fi, attr.Attr) {
-			newEnt := me.getter(key)
-			newEnt.Path = key
-			updated = append(updated, newEnt)
-		}
+	updated := make(chan *FileAttr, 10*par)
+
+	wg := sync.WaitGroup{}
+	wg.Add(par)
+	for i := 0; i < par; i++ {
+		go func() {
+			for t := range todo {
+				a := me.statter(t.Path)
+				if a == nil {
+					// deletion
+					updated <- &FileAttr{
+						Path: t.Path,
+					}
+				} else if !FuseAttrEq(a, t.Attr) {
+					newEnt := me.getter(t.Path)
+					newEnt.Path = t.Path
+					updated <- newEnt
+				}
+			}
+			wg.Done()
+		}()
 	}
-	fs := FileSet{Files: updated}
+
+	go func() {
+		wg.Wait()
+		close(updated)
+	}()
+	
+	files := []*FileAttr{}
+	for t := range updated {
+		files = append(files, t)
+	}
+	fs := FileSet{Files: files}
 	fs.Sort()
 
 	me.update(fs.Files)
