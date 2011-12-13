@@ -88,7 +88,7 @@ func (me *Master) uncachedGetAttr(name string) (rep *attr.FileAttr) {
 	// TODO - should have a size limit.  For small files, it is just as cheap to read the content?
 
 	// TODO - custom encode for Attr. For ext4, small xattrs fit in the inode itself, which is faster to access.
-	xattrPossible := rep.IsRegular() && me.options.XAttrCache && rep.Uid == uint32(me.options.Uid) && rep.Mode&0222 != 0 && ((me.options.WritableRoot != "" && strings.HasPrefix(p, me.options.WritableRoot)) ||
+	xattrPossible := rep.IsRegular() && me.options.XAttrCache && rep.Uid == uint32(me.options.Uid) && ((me.options.WritableRoot != "" && strings.HasPrefix(p, me.options.WritableRoot)) ||
 		(me.options.SrcRoot != "" && strings.HasPrefix(p, me.options.SrcRoot)))
 
 	if xattrPossible {
@@ -107,7 +107,13 @@ func (me *Master) uncachedGetAttr(name string) (rep *attr.FileAttr) {
 	if fi != nil {
 		me.fillContent(rep)
 		if xattrPossible {
+			if rep.Mode&0222 == 0 {
+				os.Chmod(p, rep.Mode | 0200)
+			}
 			rep.WriteXAttr(p)
+			if rep.Mode&0222 == 0 {
+				os.Chmod(p, rep.Mode)
+			}
 		}
 	}
 	return rep
@@ -419,7 +425,6 @@ func (me *Master) replayFileModifications(infos []*attr.FileAttr, delFileHashes 
 			if err := os.Symlink(info.Link, name); err != nil {
 				log.Fatal("os.Symlink", err)
 			}
-
 		}
 		if info.Hash == "" && !info.IsSymlink() {
 			if err := os.Chtimes(name, info.AccessTime(), info.ModTime()); err != nil {
