@@ -134,7 +134,7 @@ func (me *mirrorConnections) refreshWorkers() {
 	}
 }
 
-func newMirrorConnections(m *Master, workers []string, coordinator string, maxJobs int) *mirrorConnections {
+func newMirrorConnections(m *Master, coordinator string, maxJobs int) *mirrorConnections {
 	me := &mirrorConnections{
 		master:        m,
 		wantedMaxJobs: maxJobs,
@@ -144,15 +144,6 @@ func newMirrorConnections(m *Master, workers []string, coordinator string, maxJo
 		keepAlive:     time.Minute,
 	}
 	me.refreshStats()
-
-	for _, w := range workers {
-		me.workers[w] = true
-	}
-	if coordinator != "" {
-		if workers != nil {
-			log.Println("coordinator will overwrite workers.")
-		}
-	}
 	return me
 }
 

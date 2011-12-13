@@ -34,21 +34,34 @@ type MasterOptions struct {
 	cba.ContentCacheOptions
 
 	WritableRoot  string
-	SrcRoot       string
+	SourceRoot       string
+
+	// How often a failed should be retried on another worker.
 	RetryCount    int
+
+	// List of files that should not be served
 	Excludes      []string
+
+	// If set, also serve files that have no group/other permissions
 	ExposePrivate bool
 
+	// Address of the coordinator.
 	Coordinator string
-	Workers     []string
+
 	Secret      []byte
+	
 	MaxJobs     int
+
+	// Turns on internal consistency checks. Expensive.
 	Paranoia    bool
 
 	// On startup, fault-in all files.
 	FetchAll bool
 
+	// How often to do periodic householding work.
 	Period    time.Duration
+
+	// How long to keep mirrors alive.
 	KeepAlive time.Duration
 
 	// Cache hashes in filesystem extended attributes.
@@ -97,11 +110,8 @@ func (me *Master) uncachedGetAttr(name string) (rep *attr.FileAttr) {
 	}
 	rep.Attr = fuse.ToAttr(fi)
 
-	// TODO - should have a size limit.  For small files, it is just as cheap to read the content?
-
-	// TODO - custom encode for Attr. For ext4, small xattrs fit in the inode itself, which is faster to access.
 	xattrPossible := rep.IsRegular() && me.options.XAttrCache && rep.Uid == uint32(me.options.Uid) && ((me.options.WritableRoot != "" && strings.HasPrefix(p, me.options.WritableRoot)) ||
-		(me.options.SrcRoot != "" && strings.HasPrefix(p, me.options.SrcRoot)))
+		(me.options.SourceRoot != "" && strings.HasPrefix(p, me.options.SourceRoot)))
 
 	if xattrPossible {
 		cur := attr.EncodedAttr{}
@@ -163,11 +173,10 @@ func NewMaster(options *MasterOptions) *Master {
 		o.Period = 60.0
 	}
 	o.Uid = os.Getuid()
-	o.SrcRoot, _ = filepath.Abs(o.SrcRoot)
-	o.SrcRoot, _ = filepath.EvalSymlinks(o.SrcRoot)
+	o.SourceRoot, _ = filepath.Abs(o.SourceRoot)
+	o.SourceRoot, _ = filepath.EvalSymlinks(o.SourceRoot)
 	o.Socket, _ = filepath.Abs(o.Socket)
 	o.LogFile, _ = filepath.Abs(o.LogFile)
-
 	me.options = &o
 	me.excluded = make(map[string]bool)
 	for _, e := range options.Excludes {
@@ -175,7 +184,7 @@ func NewMaster(options *MasterOptions) *Master {
 	}
 
 	me.mirrors = newMirrorConnections(
-		me, options.Workers, options.Coordinator, options.MaxJobs)
+		me, options.Coordinator, options.MaxJobs)
 	me.mirrors.keepAlive = options.KeepAlive
 	me.pending = NewPendingConnections()
 	me.attributes = attr.NewAttributeCache(func(n string) *attr.FileAttr {
@@ -233,7 +242,7 @@ func (me *Master) CheckPrivate() {
 func (me *Master) FetchAll() {
 	wg := sync.WaitGroup{}
 	last := ""
-	for _, r := range []string{me.options.WritableRoot, me.options.SrcRoot} {
+	for _, r := range []string{me.options.WritableRoot, me.options.SourceRoot} {
 		if last == r || r == "" {
 			continue
 		}

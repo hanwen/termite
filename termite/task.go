@@ -41,17 +41,17 @@ func (me *WorkerTask) Run() error {
 		return err
 	}
 
-	me.mirror.daemon.stats.Enter("fuse")
+	me.mirror.worker.stats.Enter("fuse")
 	err = me.runInFuse(fuseFs)
-	me.mirror.daemon.stats.Exit("fuse")
+	me.mirror.worker.stats.Exit("fuse")
 
 	defer me.mirror.returnFs(fuseFs)
 
-	me.mirror.daemon.stats.Enter("reap")
+	me.mirror.worker.stats.Enter("reap")
 	if me.mirror.considerReap(fuseFs, me) {
 		me.rep.FileSet, me.rep.TaskIds = me.mirror.reapFuse(fuseFs)
 	}
-	me.mirror.daemon.stats.Exit("reap")
+	me.mirror.worker.stats.Exit("reap")
 
 	return err
 }
@@ -71,8 +71,8 @@ func (me *WorkerTask) runInFuse(fuseFs *workerFuseFs) error {
 	if os.Geteuid() == 0 {
 		attr := &syscall.SysProcAttr{}
 		attr.Credential = &syscall.Credential{
-			Uid: uint32(me.mirror.daemon.options.User.Uid),
-			Gid: uint32(me.mirror.daemon.options.User.Gid),
+			Uid: uint32(me.mirror.worker.options.User.Uid),
+			Gid: uint32(me.mirror.worker.options.User.Gid),
 		}
 		attr.Chroot = fuseFs.mount
 
@@ -125,7 +125,7 @@ func (me *WorkerTask) runInFuse(fuseFs *workerFuseFs) error {
 func (me *Mirror) fillReply(ufs *fs.MemUnionFs) *attr.FileSet {
 	yield := ufs.Reap()
 	wrRoot := strings.TrimLeft(me.writableRoot, "/")
-	cache := me.daemon.contentCache
+	cache := me.worker.contentCache
 
 	files := []*attr.FileAttr{}
 	reapedHashes := map[string]string{}

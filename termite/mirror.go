@@ -13,7 +13,7 @@ import (
 
 // State associated with one master.
 type Mirror struct {
-	daemon       *Worker
+	worker       *Worker
 	rpcConn      net.Conn
 	rpcFs        *RpcFs
 	writableRoot string
@@ -32,22 +32,22 @@ type Mirror struct {
 	killed     bool
 }
 
-func NewMirror(daemon *Worker, rpcConn, revConn net.Conn) *Mirror {
+func NewMirror(worker *Worker, rpcConn, revConn net.Conn) *Mirror {
 	log.Println("Mirror for", rpcConn, revConn)
 
 	mirror := &Mirror{
 		activeFses: map[*workerFuseFs]bool{},
 		rpcConn:    rpcConn,
-		daemon:     daemon,
+		worker:     worker,
 		accepting:  true,
 	}
 	mirror.cond = sync.NewCond(&mirror.fsMutex)
-	mirror.rpcFs = NewRpcFs(rpc.NewClient(revConn), daemon.contentCache)
+	mirror.rpcFs = NewRpcFs(rpc.NewClient(revConn), worker.contentCache)
 
-	_, portString, _ := net.SplitHostPort(daemon.listener.Addr().String())
+	_, portString, _ := net.SplitHostPort(worker.listener.Addr().String())
 
 	mirror.rpcFs.id = Hostname + ":" + portString
-	mirror.rpcFs.attr.Paranoia = daemon.options.Paranoia
+	mirror.rpcFs.attr.Paranoia = worker.options.Paranoia
 	mirror.rpcFs.localRoots = []string{"/lib", "/usr"}
 
 	go mirror.serveRpc()
@@ -59,7 +59,7 @@ func (me *Mirror) serveRpc() {
 	server.Register(me)
 	server.ServeConn(me.rpcConn)
 	me.Shutdown(true)
-	me.daemon.DropMirror(me)
+	me.worker.DropMirror(me)
 }
 
 func (me *Mirror) Shutdown(aggressive bool) {
@@ -115,7 +115,7 @@ func (me *Mirror) newFs(t *WorkerTask) (fs *workerFuseFs, err error) {
 	}
 
 	for fs := range me.activeFses {
-		if !fs.reaping && len(fs.taskIds) < me.daemon.options.ReapCount {
+		if !fs.reaping && len(fs.taskIds) < me.worker.options.ReapCount {
 			fs.addTask(t)
 			return fs, nil
 		}
@@ -134,7 +134,7 @@ func (me *Mirror) newFs(t *WorkerTask) (fs *workerFuseFs, err error) {
 // Must hold lock.
 func (me *Mirror) prepareFs(fs *workerFuseFs) {
 	fs.reaping = false
-	fs.taskIds = make([]int, 0, me.daemon.options.ReapCount)
+	fs.taskIds = make([]int, 0, me.worker.options.ReapCount)
 }
 
 func (me *Mirror) considerReap(fs *workerFuseFs, task *WorkerTask) bool {
@@ -189,7 +189,7 @@ func (me *Mirror) updateFiles(attrs []*attr.FileAttr) {
 }
 
 func (me *Mirror) Run(req *WorkRequest, rep *WorkResponse) error {
-	me.daemon.stats.Enter("run")
+	me.worker.stats.Enter("run")
 	log.Print("Received request", req)
 
 	// Don't run me.updateFiles() as we don't want to issue
@@ -206,11 +206,11 @@ func (me *Mirror) Run(req *WorkRequest, rep *WorkResponse) error {
 	}
 
 	log.Println(rep)
-	rep.WorkerId = fmt.Sprintf("%s: %s", Hostname, me.daemon.listener.Addr().String())
-	me.daemon.stats.Exit("run")
+	rep.WorkerId = fmt.Sprintf("%s: %s", Hostname, me.worker.listener.Addr().String())
+	me.worker.stats.Exit("run")
 
 	if me.killed {
-		return fmt.Errorf("killed worker %s", me.daemon.listener.Addr().String())
+		return fmt.Errorf("killed worker %s", me.worker.listener.Addr().String())
 	}
 	return nil
 }
@@ -218,8 +218,8 @@ func (me *Mirror) Run(req *WorkRequest, rep *WorkResponse) error {
 const _DELETIONS = "DELETIONS"
 
 func (me *Mirror) newWorkerFuseFs() (*workerFuseFs, error) {
-	f, err := newWorkerFuseFs(me.daemon.options.TempDir, me.rpcFs, me.writableRoot,
-		me.daemon.options.User)
+	f, err := newWorkerFuseFs(me.worker.options.TempDir, me.rpcFs, me.writableRoot,
+		me.worker.options.User)
 
 	f.id = fmt.Sprintf("%d", me.nextFsId)
 	me.nextFsId++
@@ -230,7 +230,7 @@ func (me *Mirror) newWorkerFuseFs() (*workerFuseFs, error) {
 func (me *Mirror) newWorkerTask(req *WorkRequest, rep *WorkResponse) (*WorkerTask, error) {
 	var stdin net.Conn
 	if req.StdinId != "" {
-		stdin = me.daemon.pending.WaitConnection(req.StdinId)
+		stdin = me.worker.pending.WaitConnection(req.StdinId)
 	}
 	task := &WorkerTask{
 		req:       req,
@@ -243,5 +243,5 @@ func (me *Mirror) newWorkerTask(req *WorkRequest, rep *WorkResponse) (*WorkerTas
 }
 
 func (me *Mirror) FileContent(req *cba.ContentRequest, rep *cba.ContentResponse) error {
-	return me.daemon.contentCache.Serve(req, rep)
+	return me.worker.contentCache.Serve(req, rep)
 }
