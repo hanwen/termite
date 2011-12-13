@@ -55,6 +55,13 @@ type MasterOptions struct {
 	XAttrCache bool
 
 	Uid int
+
+	// The log file.  This is to ensure we don't export or hash
+	// the log file.
+	LogFile string
+
+	// Path to the socket file.
+	Socket string
 }
 
 type replayRequest struct {
@@ -70,6 +77,11 @@ type replayRequest struct {
 func (me *Master) uncachedGetAttr(name string) (rep *attr.FileAttr) {
 	rep = &attr.FileAttr{Path: name}
 	p := me.path(name)
+
+	if p == me.options.Socket || p == me.options.LogFile {
+		return rep
+	}
+
 	fi, _ := os.Lstat(p)
 
 	// We don't want to expose the master's private files to the
@@ -108,7 +120,7 @@ func (me *Master) uncachedGetAttr(name string) (rep *attr.FileAttr) {
 		me.fillContent(rep)
 		if xattrPossible {
 			if rep.Mode&0222 == 0 {
-				os.Chmod(p, rep.Mode | 0200)
+				os.Chmod(p, rep.Mode|0200)
 			}
 			rep.WriteXAttr(p)
 			if rep.Mode&0222 == 0 {
@@ -153,6 +165,9 @@ func NewMaster(options *MasterOptions) *Master {
 	o.Uid = os.Getuid()
 	o.SrcRoot, _ = filepath.Abs(o.SrcRoot)
 	o.SrcRoot, _ = filepath.EvalSymlinks(o.SrcRoot)
+	o.Socket, _ = filepath.Abs(o.Socket)
+	o.LogFile, _ = filepath.Abs(o.LogFile)
+
 	me.options = &o
 	me.excluded = make(map[string]bool)
 	for _, e := range options.Excludes {
@@ -235,11 +250,11 @@ func (me *Master) FetchAll() {
 	log.Println("FetchAll done")
 }
 
-func (me *Master) Start(sock string) {
+func (me *Master) Start() {
 	if me.options.FetchAll {
 		go me.FetchAll()
 	}
-	go localStart(me, sock)
+	go localStart(me, me.options.Socket)
 	me.waitForExit()
 }
 

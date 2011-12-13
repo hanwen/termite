@@ -54,6 +54,7 @@ func main() {
 	workerList := strings.Split(*workers, ",")
 	excludeList := strings.Split(*exclude, ",")
 	root, sock := absSocket(*socket)
+
 	opts := termite.MasterOptions{
 		Secret:       secret,
 		MaxJobs:      *jobs,
@@ -72,13 +73,15 @@ func main() {
 		},
 		RetryCount: *retry,
 		XAttrCache: *xattr,
+		LogFile:    *logfile,
+		Socket:     sock,
 	}
 	master := termite.NewMaster(&opts)
 
 	log.Println(termite.Version())
 
 	go master.ServeHTTP(*port)
-	master.Start(sock)
+	master.Start()
 }
 
 func absSocket(sock string) (root, absSock string) {
