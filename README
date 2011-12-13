@@ -43,9 +43,10 @@ COMPILE/INSTALL
   *  soft    nofile       5000
   *  hard    nofile       5000
 
-* Mount the source/object directories so termite can write xattrs:
+* Mount the source/object directories so termite can write xattrs, and
+  noatime for performance improvements:
 
-  mount -o remount,user_xattr my/device my/mountpoint
+  mount -o remount,user_xattr,noatime my/device my/mountpoint
 
 OVERVIEW
 
