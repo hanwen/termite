@@ -198,6 +198,7 @@ func (me *Coordinator) killWorker(addr string, restart bool) error {
 }
 
 func (me *Coordinator) killAllHandler(w http.ResponseWriter, req *http.Request) {
+	me.log(req)
 	w.Header().Set("Content-Type", "text/html")
 	fmt.Fprintf(w, "<p>%s in progress", req.URL.Path)
 	err := me.killAll(req.URL.Path == "/restartall")
@@ -210,6 +211,7 @@ func (me *Coordinator) killAllHandler(w http.ResponseWriter, req *http.Request) 
 }
 
 func (me *Coordinator) killHandler(w http.ResponseWriter, req *http.Request) {
+	me.log(req)
 	addr, conn, err := me.getHost(req)
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
@@ -406,6 +408,10 @@ func (me *Coordinator) mirrorStatusHtml(w http.ResponseWriter, s MirrorStatusRes
 func (me *Coordinator) Shutdown() {
 	log.Println("Coordinator shutdown.")
 	me.listener.Close()
+}
+
+func (me *Coordinator) log(req *http.Request) {
+	log.Printf("from %v: %v", req.RemoteAddr, req.URL)
 }
 
 func (me *Coordinator) ServeHTTP(port int) {
