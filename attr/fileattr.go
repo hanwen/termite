@@ -76,6 +76,9 @@ func (me FileAttr) Copy(withdir bool) *FileAttr {
 
 const _TERM_XATTR = "user.termattr"
 
+// EncodedAttr is the key that we use for file content equality. It is
+// smaller than syscall.Stat_t and similar structures so it can be
+// efficiently stored as extended attribute.
 type EncodedAttr struct {
 	Perm    uint16
 	Nlink   uint16
