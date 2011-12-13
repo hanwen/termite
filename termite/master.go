@@ -224,10 +224,9 @@ func (me *Master) FetchAll() {
 		}
 		last = r
 		wg.Add(1)
-		log.Println("Prefetch", r)
 
 		go func(p string) {
-			log.Println("go", p)
+			log.Println("Prefetch", p)
 			me.fetchAll(strings.TrimLeft(p, "/"))
 			wg.Done()
 		}(r)
