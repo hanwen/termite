@@ -287,12 +287,16 @@ func (me *Worker) shutdown(restart bool, aggressive bool) {
 	if restart && me.canRestart {
 		me.canRestart = false
 		me.restart()
+		
+		// Wait a bit, since we don't want to shutdown before
+		// the new worker is up
+		time.Sleep(2*time.Second)
 	}
 	me.accepting = false
 	go func() {
 		me.mirrors.shutdown(aggressive)
 
-		// Sleep to give the master some time to process the restults.
+		// Sleep to give the master some time to process the results.
 		if !aggressive {
 			time.Sleep(me.options.LameDuckPeriod)
 		}
