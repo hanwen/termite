@@ -40,7 +40,7 @@ func TestEncode(t *testing.T) {
 	}
 
 	e.FromAttr(&a)
-	if a.Ino != e.Ino || a.Size != e.Size {
+	if a.Size != e.Size {
 		t.Fatalf("EncodedAttr.FromAttr", e, a)
 	}
 

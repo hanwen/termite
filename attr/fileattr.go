@@ -80,22 +80,18 @@ const _TERM_XATTR = "user.termattr"
 // smaller than syscall.Stat_t and similar structures so it can be
 // efficiently stored as extended attribute.
 type EncodedAttr struct {
+	Size    uint64
+	Mtimens uint64
 	Perm    uint16
 	Nlink   uint16
-	Size    uint64
-	Ino     uint64
-	Mtimens uint64
-
-	// total: 28 bytes.
 }
 
-const sizeEncodedAttr = 28
+const sizeEncodedAttr = 20
 
 func (e *EncodedAttr) FromAttr(a *fuse.Attr) {
 	e.Perm = uint16(a.Mode & 07777)
 	e.Nlink = uint16(a.Nlink)
 	e.Size = a.Size
-	e.Ino = a.Ino
 	e.Mtimens = 1e9*a.Mtime + uint64(a.Mtimensec)
 }
 
@@ -103,7 +99,6 @@ func (e *EncodedAttr) Eq(b *EncodedAttr) bool {
 	return e.Perm == b.Perm &&
 		e.Nlink == b.Nlink &&
 		e.Size == b.Size &&
-		e.Ino == b.Ino &&
 		e.Mtimens == b.Mtimens
 }
 
@@ -121,14 +116,6 @@ func (e *EncodedAttr) Encode(h string) []byte {
 		byte(e.Size >> 40),
 		byte(e.Size >> 48),
 		byte(e.Size >> 56),
-		byte(e.Ino),
-		byte(e.Ino >> 8),
-		byte(e.Ino >> 16),
-		byte(e.Ino >> 24),
-		byte(e.Ino >> 32),
-		byte(e.Ino >> 40),
-		byte(e.Ino >> 48),
-		byte(e.Ino >> 56),
 		byte(e.Mtimens),
 		byte(e.Mtimens >> 8),
 		byte(e.Mtimens >> 16),
@@ -154,8 +141,6 @@ func (e *EncodedAttr) Decode(in []byte) (hash []byte) {
 	e.Nlink = uint16(in[0]) | uint16(in[1])<<8
 	in = in[2:]
 	e.Size = uint64(in[0]) | uint64(in[1])<<8 | uint64(in[2])<<16 | uint64(in[3])<<24 | uint64(in[4])<<32 | uint64(in[5])<<40 | uint64(in[6])<<48 | uint64(in[7])<<56
-	in = in[8:]
-	e.Ino = uint64(in[0]) | uint64(in[1])<<8 | uint64(in[2])<<16 | uint64(in[3])<<24 | uint64(in[4])<<32 | uint64(in[5])<<40 | uint64(in[6])<<48 | uint64(in[7])<<56
 	in = in[8:]
 	e.Mtimens = uint64(in[0]) | uint64(in[1])<<8 | uint64(in[2])<<16 | uint64(in[3])<<24 | uint64(in[4])<<32 | uint64(in[5])<<40 | uint64(in[6])<<48 | uint64(in[7])<<56
 	in = in[8:]
