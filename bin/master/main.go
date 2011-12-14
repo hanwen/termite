@@ -30,7 +30,6 @@ func main() {
 	secretFile := flag.String("secret", "secret.txt", "file containing password.")
 	socket := flag.String("socket", ".termite-socket", "socket to listen for commands")
 	srcRoot := flag.String("sourcedir", "", "root of corresponding source directory")
-	workers := flag.String("workers", "", "comma separated list of worker addresses")
 	xattr := flag.Bool("xattr", true, "cache hashes in filesystem attribute.")
 
 	flag.Parse()
@@ -51,7 +50,6 @@ func main() {
 		log.Fatal("ReadFile", err)
 	}
 
-	workerList := strings.Split(*workers, ",")
 	excludeList := strings.Split(*exclude, ",")
 	root, sock := absSocket(*socket)
 
@@ -59,9 +57,8 @@ func main() {
 		Secret:       secret,
 		MaxJobs:      *jobs,
 		Excludes:     excludeList,
-		Workers:      workerList,
 		Coordinator:  *coordinator,
-		SrcRoot:      *srcRoot,
+		SourceRoot:      *srcRoot,
 		WritableRoot: root,
 		Paranoia:     *paranoia,
 		Period:       time.Duration(*houseHoldPeriod * float64(time.Second)),

@@ -6,6 +6,7 @@ import (
 	"github.com/hanwen/termite/attr"
 	"github.com/hanwen/termite/cba"
 	"io/ioutil"
+	"log"
 	"net"
 	"net/http"
 	"net/rpc"
@@ -17,6 +18,7 @@ import (
 	"testing"
 	"time"
 )
+var _ = log.Println
 
 type testCase struct {
 	workers    []*Worker
@@ -97,6 +99,7 @@ func NewTestCase(t *testing.T) *testCase {
 	me.wd = me.tmp + "/wd"
 	os.MkdirAll(me.wd, 0755)
 
+	me.socket = me.wd + "/master-socket"
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
@@ -112,11 +115,11 @@ func NewTestCase(t *testing.T) *testCase {
 			ContentCacheOptions: cba.ContentCacheOptions{
 				Dir: me.tmp + "/master-cache",
 			},
+			Socket: me.socket,
 		}
 		me.master = NewMaster(&masterOpts)
-		me.socket = me.wd + "/master-socket"
-		go me.master.Start(me.socket)
-		for {
+		go me.master.Start()
+		for i := 0; i < 10; i++ {
 			if fi, _ := os.Lstat(me.socket); fi != nil {
 				break
 			}
@@ -126,7 +129,6 @@ func NewTestCase(t *testing.T) *testCase {
 	}()
 	me.StartWorker()
 	wg.Wait()
-
 	for i := 0; me.coordinator.WorkerCount() == 0 && i < 10; i++ {
 		time.Sleep(50e6)
 	}
