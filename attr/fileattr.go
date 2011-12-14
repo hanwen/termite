@@ -164,7 +164,8 @@ func (a *FileAttr) WriteXAttr(p string) {
 }
 
 func (e *EncodedAttr) ReadXAttr(path string) (hash []byte) {
-	val, errno := fuse.GetXAttr(path, _TERM_XATTR)
+	b := make([]byte, 64)
+	val, errno := fuse.GetXAttr(path, _TERM_XATTR, b)
 	if errno == 0 {
 		return e.Decode(val)
 	}
