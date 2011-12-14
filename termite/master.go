@@ -173,10 +173,17 @@ func NewMaster(options *MasterOptions) *Master {
 		o.Period = 60.0
 	}
 	o.Uid = os.Getuid()
-	o.SourceRoot, _ = filepath.Abs(o.SourceRoot)
-	o.SourceRoot, _ = filepath.EvalSymlinks(o.SourceRoot)
-	o.Socket, _ = filepath.Abs(o.Socket)
-	o.LogFile, _ = filepath.Abs(o.LogFile)
+	if o.SourceRoot != "" {
+		o.SourceRoot, _ = filepath.Abs(o.SourceRoot)
+		o.SourceRoot, _ = filepath.EvalSymlinks(o.SourceRoot)
+	}
+	if o.Socket != "" {
+		o.Socket, _ = filepath.Abs(o.Socket)
+	}
+	if o.LogFile != "" {
+		o.LogFile, _ = filepath.Abs(o.LogFile)
+	}
+
 	me.options = &o
 	me.excluded = make(map[string]bool)
 	for _, e := range options.Excludes {
