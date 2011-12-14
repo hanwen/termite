@@ -1,0 +1,26 @@
+From 9fd7e030db8e2b8d10fcce389c26325410486193 Mon Sep 17 00:00:00 2001
+From: Han-Wen Nienhuys <hanwen@google.com>
+Date: Mon, 28 Nov 2011 23:55:33 -0200
+Subject: [PATCH] Add O_TRUNC to open flags for DexOpt output.
+
+Without O_TRUNC, DexOpt cannot overwrite existing output files.
+---
+ dexopt/OptMain.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/dexopt/OptMain.c b/dexopt/OptMain.c
+index b8e5889..ab67e7f 100644
+--- a/dexopt/OptMain.c
++++ b/dexopt/OptMain.c
+@@ -367,7 +367,7 @@ static int preopt(int argc, char* const argv[])
+         goto bail;
+     }
+ 
+-    outFd = open(outName, O_RDWR | O_EXCL | O_CREAT, 0666);
++    outFd = open(outName, O_RDWR | O_EXCL | O_CREAT | O_TRUNC, 0666);
+     if (outFd < 0) {
+         perror(argv[0]);
+         goto bail;
+-- 
+1.7.3.1
+
