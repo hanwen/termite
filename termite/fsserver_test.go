@@ -4,6 +4,7 @@ package termite
 // socketpair.
 
 import (
+	"crypto"
 	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/termite/attr"
 	"github.com/hanwen/termite/cba"
@@ -16,6 +17,37 @@ import (
 	"testing"
 	"time"
 )
+
+// UGH - copy & paste.
+// for tests:
+func StatForTest(t *testing.T, n string) *fuse.Attr {
+	t.Logf("test stat %q", n)
+	f, _ := os.Lstat(n)
+	if f == nil {
+		return nil
+	}
+	a := fuse.Attr{}
+	a.FromFileInfo(f)
+	return &a
+}
+
+func GetattrForTest(t *testing.T, n string) *attr.FileAttr {
+	t.Logf("test getattr %q", n)
+	fi, _ := os.Lstat(n)
+
+	var fa *fuse.Attr
+	if fi != nil {
+		fa = &fuse.Attr{}
+		fa.FromFileInfo(fi)
+	}
+	a := attr.FileAttr{
+		Attr: fa,
+	}
+	if !a.Deletion() {
+		a.ReadFromFs(n, crypto.MD5)
+	}
+	return &a
+}
 
 func TestRpcFsFetchOnce(t *testing.T) {
 	me := newRpcFsTestCase(t)
@@ -88,7 +120,7 @@ type rpcFsTestCase struct {
 
 func (me *rpcFsTestCase) getattr(n string) *attr.FileAttr {
 	p := filepath.Join(me.orig, n)
-	a := attr.TestGetattr(me.tester, p)
+	a := GetattrForTest(me.tester, p)
 	if a.Hash != "" {
 		me.cache.SavePath(p)
 	}
@@ -114,7 +146,7 @@ func newRpcFsTestCase(t *testing.T) (me *rpcFsTestCase) {
 	me.attr = attr.NewAttributeCache(
 		func(n string) *attr.FileAttr { return me.getattr(n) },
 		func(n string) *fuse.Attr {
-			return attr.TestStat(t, filepath.Join(me.orig, n))
+			return StatForTest(t, filepath.Join(me.orig, n))
 		})
 	me.attr.Paranoia = true
 	me.server = NewFsServer(me.attr, me.cache)

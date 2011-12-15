@@ -43,10 +43,10 @@ func attrCacheTestCase(t *testing.T) (*AttributeCache, string, func()) {
 
 	ac := NewAttributeCache(
 		func(n string) *FileAttr {
-			return TestGetattr(t, filepath.Join(dir, n))
+			return GetattrForTest(t, filepath.Join(dir, n))
 		},
 		func(n string) *fuse.Attr {
-			return TestStat(t, filepath.Join(dir, n))
+			return StatForTest(t, filepath.Join(dir, n))
 		})
 	return ac, dir, func() {
 		os.RemoveAll(dir)
