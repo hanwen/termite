@@ -1,0 +1,22 @@
+From 37af5370c8dd8de0891a79947a0930118c90454a Mon Sep 17 00:00:00 2001
+From: Han-Wen Nienhuys <hanwen@google.com>
+Date: Thu, 15 Dec 2011 14:13:32 -0800
+Subject: [PATCH] add missing #!/bin/sh line.
+
+---
+ core/find-jdk-tools-jar.sh |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
+
+diff --git a/core/find-jdk-tools-jar.sh b/core/find-jdk-tools-jar.sh
+index e1278c3..f32256a 100755
+--- a/core/find-jdk-tools-jar.sh
++++ b/core/find-jdk-tools-jar.sh
+@@ -1,3 +1,5 @@
++#!/bin/bash
++
+ if [ "x$ANDROID_JAVA_HOME" != x ] && [ -e "$ANDROID_JAVA_HOME/lib/tools.jar" ] ; then
+     echo $ANDROID_JAVA_HOME/lib/tools.jar
+ else
+-- 
+1.7.0.4
+
