@@ -19,7 +19,7 @@ var _ = sha1.New
 
 // Content based addressing cache.
 type ContentCache struct {
-	// Should not change option values after initalizing. 
+	// Should not change option values after initalizing.
 	Options *ContentCacheOptions
 
 	mutex         sync.Mutex
@@ -53,9 +53,13 @@ func NewContentCache(options *ContentCacheOptions) *ContentCache {
 		}
 	}
 
+	log.Println("reading hex database", options.Dir)
+	db := ReadHexDatabase(options.Dir)
+	log.Println("done reading.")
+
 	c := &ContentCache{
 		Options:  options,
-		have:     ReadHexDatabase(options.Dir),
+		have:     db,
 		faulting: make(map[string]bool),
 	}
 	if options.MemCount > 0 {
