@@ -8,6 +8,11 @@
     "Recurse": true,
     "SkipRefresh": true
 }, {
+    "Regexp": "find.*2> /dev/null",
+    "Local": true,
+    "Recurse": false,
+    "SkipRefresh": true
+}, {
     "Regexp": "find.*>",
     "Local": false
 }, {
