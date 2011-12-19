@@ -247,22 +247,22 @@ func (me *mirrorConnections) pick() (*mirrorConnection, error) {
 		}
 	}
 
-	j := len(me.mirrors)
-	if me.availableJobs() == 0 {
-		// All workers full: schedule on a random one.
-		j = rand.Intn(j)
+	maxAvail := -1e9
+	var maxAvailMirror *mirrorConnection
+	for _, v := range me.mirrors {
+		if v.availableJobs > 0 {
+			v.availableJobs--
+			return v, nil
+		}
+		l := float64(v.availableJobs) / float64(v.maxJobs)
+		if l > maxAvail {
+			maxAvailMirror = v
+			maxAvail = l
+		}
 	}
 
-	var found *mirrorConnection
-	for _, v := range me.mirrors {
-		if j <= 0 || v.availableJobs > 0 {
-			found = v
-			break
-		}
-		j--
-	}
-	found.availableJobs--
-	return found, nil
+	maxAvailMirror.availableJobs--
+	return maxAvailMirror, nil
 }
 
 func (me *mirrorConnections) drop(mc *mirrorConnection, err error) {
