@@ -496,6 +496,7 @@ func (me *Master) replayFileModifications(infos []*attr.FileAttr, delFileHashes 
 }
 
 func (me *Master) replay(fset attr.FileSet) {
+	// TODO - make a .termitetmp for replayed files.
 	req := replayRequest{
 		make(map[string][]string),
 		make(map[string]string),
