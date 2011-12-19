@@ -34,8 +34,6 @@ COMPILE/INSTALL
 
 * Coreutils before 8.0 has buggy directory traversal, making 'rm -rf' flaky.
 
-  # Upgrade coreutils to 8.0 or later to have working "rm -rf".
-
 * Set resource limits: add the following to your /etc/security/limits.conf
 
   root  soft    nofile       5000
@@ -125,8 +123,6 @@ SECURITY
   HMAC-SHA1 to authenticate the connection.  See
   https://github.com/hanwen/termite/blob/master/termite/connection.go
   for details.
-
-  If this connection scheme gets broken,
 
 * Worker and master must trust each other, for the following reasons:
 
