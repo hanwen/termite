@@ -3,11 +3,12 @@ package stats
 import (
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestRpcTimingString(t *testing.T) {
 	timing := RpcTiming{
-		N: 1, Ns: 500e6,
+		N: 1, Duration: 500 * time.Millisecond,
 	}
 
 	s := timing.String()

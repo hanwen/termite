@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 	"sync"
+	"time"
 )
 
 type TimerStats struct {
@@ -12,12 +13,12 @@ type TimerStats struct {
 }
 
 type RpcTiming struct {
-	N  int64
-	Ns int64
+	N int64
+	time.Duration
 }
 
 func (me *RpcTiming) String() string {
-	avg := me.Ns / me.N
+	avg := int64(me.Duration) / me.N
 
 	unit := "ns"
 	div := int64(1)
@@ -68,11 +69,11 @@ func (me *TimerStats) Timings() map[string]*RpcTiming {
 	return result
 }
 
-func (me *TimerStats) Log(name string, dt int64) {
+func (me *TimerStats) Log(name string, dt time.Duration) {
 	me.LogN(name, 1, dt)
 }
 
-func (me *TimerStats) LogN(name string, n int64, dt int64) {
+func (me *TimerStats) LogN(name string, n int64, dt time.Duration) {
 	me.mu.Lock()
 	defer me.mu.Unlock()
 	timing := me.timings[name]
@@ -82,5 +83,5 @@ func (me *TimerStats) LogN(name string, n int64, dt int64) {
 	}
 
 	timing.N += n
-	timing.Ns += dt
+	timing.Duration += dt
 }

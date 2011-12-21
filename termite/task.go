@@ -157,8 +157,8 @@ func (me *Mirror) fillReply(ufs *fs.MemUnionFs) *attr.FileSet {
 					start := time.Now()
 					f.Hash, err = cache.DestructiveSavePath(v.Backing)
 					dt := time.Now().Sub(start)
-					timings.Log("ContentCache.DestructiveSavePath", int64(dt))
-					timings.LogN("ContentCache.DestructiveSavePathBytes", int64(f.Size), int64(dt))
+					timings.Log("ContentCache.DestructiveSavePath", dt)
+					timings.LogN("ContentCache.DestructiveSavePathBytes", int64(f.Size), dt)
 
 				}
 				if err != nil {

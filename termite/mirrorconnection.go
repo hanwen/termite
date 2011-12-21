@@ -58,8 +58,8 @@ func (me *mirrorConnection) replay(fset attr.FileSet) error {
 				})
 			dt := time.Now().Sub(start)
 
-			me.master.stats.Log("ContentCache.Fetch", int64(dt))
-			me.master.stats.LogN("ContentCache.FetchBytes", int64(info.Size), int64(dt))
+			me.master.stats.Log("ContentCache.Fetch", dt)
+			me.master.stats.LogN("ContentCache.FetchBytes", int64(info.Size), dt)
 
 			if err == nil && saved != info.Hash {
 				log.Fatalf("mirrorConnection.replay: fetch corruption got %x want %x", saved, info.Hash)

@@ -152,8 +152,8 @@ func (me *Master) fillContent(rep *attr.FileAttr) {
 		rep.Hash = me.cache.SavePath(fullPath)
 		dt := time.Now().Sub(start)
 
-		me.stats.Log("ContentCache.SavePath", int64(dt))
-		me.stats.LogN("ContentCache.SavePathBytes", int64(rep.Size), int64(dt))
+		me.stats.Log("ContentCache.SavePath", dt)
+		me.stats.LogN("ContentCache.SavePathBytes", int64(rep.Size), dt)
 
 		if rep.Hash == "" {
 			// Typically happens if we want to open /etc/shadow as normal user.

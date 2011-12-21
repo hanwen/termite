@@ -58,8 +58,8 @@ func (me *RpcFs) innerFetch(start, end int, hash string) ([]byte, error) {
 	startT := time.Now()
 	err := me.client.Call("FsServer.FileContent", req, rep)
 	dt := time.Now().Sub(startT)
-	me.timings.Log("FsServer.FileContent(RpcFs)", int64(dt))
-	me.timings.LogN("FsServer.FileContentBytes(RpcFs)", int64(len(rep.Chunk)), int64(dt))
+	me.timings.Log("FsServer.FileContent", dt)
+	me.timings.LogN("FsServer.FileContentBytes", int64(len(rep.Chunk)), dt)
 	return rep.Chunk, err
 }
 
@@ -92,8 +92,8 @@ func (me *RpcFs) FetchHashOnce(a *attr.FileAttr) error {
 		})
 
 	dt := time.Now().Sub(start)
-	me.timings.Log("Cache.FetchFile", int64(dt))
-	me.timings.LogN("Cache.FetchFileBytes", int64(a.Size), int64(dt))
+	me.timings.Log("Cache.FetchFile", dt)
+	me.timings.LogN("Cache.FetchFileBytes", int64(a.Size), dt)
 
 	if err == nil && saved != h {
 		log.Fatalf("RpcFs.FetchHashOnce: fetch corruption got %x want %x", saved, h)
@@ -123,7 +123,7 @@ func (me *RpcFs) fetchAttr(n string) *attr.FileAttr {
 	rep := &AttrResponse{}
 	err := me.client.Call("FsServer.GetAttr", req, rep)
 	dt := time.Now().Sub(start)
-	me.timings.Log("FsServer.GetAttr(RpcFS)", int64(dt))
+	me.timings.Log("FsServer.GetAttr", dt)
 	if err != nil {
 		// fatal?
 		log.Println("GetAttr error:", err)
