@@ -220,7 +220,9 @@ const _DELETIONS = "DELETIONS"
 func (me *Mirror) newWorkerFuseFs() (*workerFuseFs, error) {
 	f, err := newWorkerFuseFs(me.worker.options.TempDir, me.rpcFs, me.writableRoot,
 		me.worker.options.User)
-
+	if err != nil {
+		return nil, err
+	}
 	f.id = fmt.Sprintf("%d", me.nextFsId)
 	me.nextFsId++
 
