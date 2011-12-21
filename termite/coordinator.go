@@ -110,7 +110,8 @@ func (me *Coordinator) checkReachable() {
 
 	me.mutex.Lock()
 	for _, a := range toDelete {
-		if now.After(me.workers[a].LastReported) {
+		w := me.workers[a]
+		if w != nil && now.After(w.LastReported) {
 			delete(me.workers, a)
 		}
 	}
