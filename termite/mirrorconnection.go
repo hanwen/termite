@@ -51,10 +51,16 @@ func (me *mirrorConnection) replay(fset attr.FileSet) error {
 	// leave the FS in a half-finished state.
 	for _, info := range fset.Files {
 		if info.Hash != "" && !me.master.cache.HasHash(info.Hash) {
+			start := time.Now()
 			saved, err := me.master.cache.Fetch(
 				func(start, end int) ([]byte, error) {
 					return me.innerFetch(start, end, info.Hash)
 				})
+			dt := time.Now().Sub(start)
+
+			me.master.stats.Log("ContentCache.Fetch", int64(dt))
+			me.master.stats.LogN("ContentCache.FetchBytes", int64(info.Size), int64(dt))
+
 			if err == nil && saved != info.Hash {
 				log.Fatalf("mirrorConnection.replay: fetch corruption got %x want %x", saved, info.Hash)
 			}

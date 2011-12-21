@@ -58,10 +58,11 @@ func TestRpcFsFetchOnce(t *testing.T) {
 	ioutil.ReadFile(me.mnt + "/file.txt")
 
 	stats := me.server.stats.Timings()
-	if stats == nil || stats["FsServer.FileContent"] == nil {
-		t.Fatalf("Stats missing: %v", stats)
+	key := "FsServer.FileContent"
+	if stats == nil || stats[key] == nil {
+		t.Fatalf("Stats %q missing: %v", key, stats)
 	}
-	if stats["FsServer.FileContent"].N > 1 {
+	if stats[key].N > 1 {
 		t.Errorf("File content was served more than once.")
 	}
 }

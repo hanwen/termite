@@ -53,6 +53,9 @@ func (me *Master) statusHandler(w http.ResponseWriter, req *http.Request) {
 	for _, msg := range me.fileServer.stats.TimingMessages() {
 		fmt.Fprintf(w, "<li>%s", msg)
 	}
+	for _, msg := range me.stats.TimingMessages() {
+		fmt.Fprintf(w, "<li>%s", msg)
+	}
 	fmt.Fprintf(w, "</ul>")
 	me.mirrors.stats.WriteHttp(w)
 

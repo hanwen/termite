@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/rpc"
 	"sync"
+	"time"
 )
 
 // State associated with one master.
@@ -245,5 +246,11 @@ func (me *Mirror) newWorkerTask(req *WorkRequest, rep *WorkResponse) (*WorkerTas
 }
 
 func (me *Mirror) FileContent(req *cba.ContentRequest, rep *cba.ContentResponse) error {
-	return me.worker.contentCache.Serve(req, rep)
+	start := time.Now()
+	err := me.worker.contentCache.Serve(req, rep)
+	dt := time.Now().Sub(start)
+	me.rpcFs.timings.Log("Mirror.FileContent", int64(dt))
+	me.rpcFs.timings.LogN("Mirror.FileContentBytes", int64(len(rep.Chunk)), int64(dt))
+
+	return err
 }

@@ -5,6 +5,7 @@ import (
 	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/termite/attr"
 	"github.com/hanwen/termite/cba"
+	"github.com/hanwen/termite/stats"
 	"io/ioutil"
 	"log"
 	"net/rpc"
@@ -27,20 +28,21 @@ type Master struct {
 	options       *MasterOptions
 	replayChannel chan *replayRequest
 	quit          chan int
+	stats         *stats.TimerStats
 }
 
 // Immutable state and options for master.
 type MasterOptions struct {
 	cba.ContentCacheOptions
 
-	WritableRoot  string
-	SourceRoot       string
+	WritableRoot string
+	SourceRoot   string
 
 	// How often a failed should be retried on another worker.
-	RetryCount    int
+	RetryCount int
 
 	// List of files that should not be served
-	Excludes      []string
+	Excludes []string
 
 	// If set, also serve files that have no group/other permissions
 	ExposePrivate bool
@@ -48,18 +50,18 @@ type MasterOptions struct {
 	// Address of the coordinator.
 	Coordinator string
 
-	Secret      []byte
-	
-	MaxJobs     int
+	Secret []byte
+
+	MaxJobs int
 
 	// Turns on internal consistency checks. Expensive.
-	Paranoia    bool
+	Paranoia bool
 
 	// On startup, fault-in all files.
 	FetchAll bool
 
 	// How often to do periodic householding work.
-	Period    time.Duration
+	Period time.Duration
 
 	// How long to keep mirrors alive.
 	KeepAlive time.Duration
@@ -146,7 +148,13 @@ func (me *Master) fillContent(rep *attr.FileAttr) {
 		rep.ReadFromFs(me.path(rep.Path), me.options.Hash)
 	} else if rep.IsRegular() {
 		fullPath := me.path(rep.Path)
+		start := time.Now()
 		rep.Hash = me.cache.SavePath(fullPath)
+		dt := time.Now().Sub(start)
+
+		me.stats.Log("ContentCache.SavePath", int64(dt))
+		me.stats.LogN("ContentCache.SavePathBytes", int64(rep.Size), int64(dt))
+
 		if rep.Hash == "" {
 			// Typically happens if we want to open /etc/shadow as normal user.
 			log.Println("fillContent returning EPERM for", rep.Path)
@@ -167,6 +175,7 @@ func NewMaster(options *MasterOptions) *Master {
 		taskIds:       make(chan int, 100),
 		replayChannel: make(chan *replayRequest, 1),
 		quit:          make(chan int, 0),
+		stats:         stats.NewTimerStats(),
 	}
 	o := *options
 	if o.Period <= 0.0 {

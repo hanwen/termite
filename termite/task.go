@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+	"time"
 )
 
 type WorkerTask struct {
@@ -151,7 +152,14 @@ func (me *Mirror) fillReply(ufs *fs.MemUnionFs) *attr.FileSet {
 				f.Hash = reapedHashes[v.Backing]
 				var err error
 				if f.Hash == "" {
+					timings := me.rpcFs.timings
+
+					start := time.Now()
 					f.Hash, err = cache.DestructiveSavePath(v.Backing)
+					dt := time.Now().Sub(start)
+					timings.Log("ContentCache.DestructiveSavePath", int64(dt))
+					timings.LogN("ContentCache.DestructiveSavePathBytes", int64(f.Size), int64(dt))
+
 				}
 				if err != nil {
 					log.Fatalf("DestructiveSavePath fail %q: %v", v.Backing, err)
