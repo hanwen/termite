@@ -84,6 +84,11 @@ func NewWorker(options *WorkerOptions) *Worker {
 		options.LameDuckPeriod = 5 * time.Second
 	}
 
+	if fi, _ := os.Stat(options.TempDir); fi == nil || !fi.IsDir() {
+		log.Fatalf("directory %s does not exist, or is not a dir", options.TempDir)
+	}
+	// TODO - check that we can do renames from temp to cache.
+
 	cache := cba.NewContentCache(&options.ContentCacheOptions)
 
 	me := &Worker{
@@ -287,10 +292,10 @@ func (me *Worker) shutdown(restart bool, aggressive bool) {
 	if restart && me.canRestart {
 		me.canRestart = false
 		me.restart()
-		
+
 		// Wait a bit, since we don't want to shutdown before
 		// the new worker is up
-		time.Sleep(2*time.Second)
+		time.Sleep(2 * time.Second)
 	}
 	me.accepting = false
 	go func() {
