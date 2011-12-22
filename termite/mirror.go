@@ -8,7 +8,6 @@ import (
 	"net"
 	"net/rpc"
 	"sync"
-	"time"
 )
 
 // State associated with one master.
