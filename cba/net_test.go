@@ -36,12 +36,15 @@ func (tc *netTestCase) Clean() {
 	os.RemoveAll(tc.tmp)
 }
 
-func newNetTestCase(t *testing.T) *netTestCase {
+func newNetTestCase(t *testing.T, cache bool) *netTestCase {
 	me := &netTestCase{}
 	me.tmp, _ = ioutil.TempDir("", "term-cba")
 	
 	optS := ContentCacheOptions{
 		Dir: me.tmp + "/server",
+	}
+	if cache {
+		optS.MemCount = 100
 	}
 	me.server = NewContentCache(&optS)
 	
@@ -60,8 +63,8 @@ func newNetTestCase(t *testing.T) *netTestCase {
 }
 
 
-func TestNet(t *testing.T) {
-	tc := newNetTestCase(t)
+func runTestNet(t *testing.T, cache bool) {
+	tc := newNetTestCase(t, cache)
 	defer tc.Clean()
 	
 	b := bytes.NewBufferString("hello")
@@ -86,3 +89,12 @@ func TestNet(t *testing.T) {
 		t.Errorf("after close, fetch should return error: succ=%v", success)
 	}
 }
+
+func TestNet(t *testing.T) {
+	runTestNet(t, false)
+}
+
+func TestNetCache(t *testing.T) {
+	runTestNet(t, true)
+}
+

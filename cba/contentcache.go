@@ -306,12 +306,14 @@ func (me *ContentCache) saveViaMemory(content []byte) (hash string) {
 
 func (me *ContentCache) SaveStream(input io.Reader, size int64) (hash string) {
 	if size < me.Options.MemMaxSize {
-		b, err := ioutil.ReadAll(input)
-		if int64(len(b)) != size {
-			log.Panicf("SaveStream: short read: %v %v", len(b), err)
+		r := make([]byte, size)
+		n, err := io.ReadAtLeast(input, r, int(size))
+		if n != int(size) || err != nil {
+			log.Panicf("SaveStream: short read: %v %v", n, err)
 		}
 
-		return me.saveViaMemory(b)
+		r = r[:n]
+		return me.saveViaMemory(r)
 	}
 
 	dup := me.NewHashWriter()
