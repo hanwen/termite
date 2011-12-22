@@ -93,6 +93,14 @@ func (c *ContentCache) ServeOne(conn io.ReadWriteCloser) (err error) {
 		return nil
 	}
 
+	if c := c.ContentsIfLoaded(request); c != nil {
+		s := int64(len(c))
+		if err := binary.Write(conn, order, s); err != nil {
+			return err
+		}
+		return binary.Write(conn, order, c)
+	}
+
 	p := c.Path(request)
 	f, err := os.Open(p)
 	if err != nil {
@@ -105,7 +113,6 @@ func (c *ContentCache) ServeOne(conn io.ReadWriteCloser) (err error) {
 		return err
 	}
 	s := int64(fi.Size())
-
 	if err := binary.Write(conn, order, s); err != nil {
 		return err
 	}
