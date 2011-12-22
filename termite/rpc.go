@@ -114,7 +114,9 @@ type CreateMirrorRequest struct {
 	// Ids of connections to use for RPC
 	RpcId    string
 	RevRpcId string
-
+	ContentId string
+	RevContentId string
+	
 	// The writable root for the mirror.
 	WritableRoot string
 

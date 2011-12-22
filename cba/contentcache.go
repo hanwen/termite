@@ -73,6 +73,10 @@ func NewContentCache(options *ContentCacheOptions) *ContentCache {
 	return c
 }
 
+func (me *ContentCache) HashType() crypto.Hash {
+	return me.Options.Hash
+}
+
 func (me *ContentCache) MemoryHitRate() float64 {
 	if me.memoryTries == 0 {
 		return 0.0
@@ -323,68 +327,3 @@ func (me *ContentCache) SaveStream(input io.Reader, size int64) (hash string) {
 	return hash
 }
 
-func (me *ContentCache) Fetch(fetcher func(start, end int) ([]byte, error)) (string, error) {
-	chunkSize := 1 << 18
-
-	var output *HashWriter
-	written := 0
-	for {
-		content, err := fetcher(written, written+chunkSize)
-		if err != nil {
-			log.Println("FileContent error:", err)
-			return "", err
-		}
-
-		if len(content) < chunkSize && written == 0 {
-			saved := me.Save(content)
-			return saved, nil
-		} else if output == nil {
-			output = me.NewHashWriter()
-		}
-
-		n, err := output.Write(content)
-		written += n
-		if err != nil {
-			return "", err
-		}
-		if len(content) < chunkSize {
-			break
-		}
-	}
-
-	output.Close()
-	saved := string(output.hasher.Sum(nil))
-	me.mutex.Lock()
-	defer me.mutex.Unlock()
-	me.have[saved] = true
-	return saved, nil
-}
-
-func (me *ContentCache) ServeChunk(start, end int, hash string) ([]byte, error) {
-	if c := me.ContentsIfLoaded(hash); c != nil {
-		if end > len(c) {
-			end = len(c)
-		}
-		return c[start:end], nil
-	}
-
-	f, err := os.Open(me.Path(hash))
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	chunk := make([]byte, end-start)
-	n, err := f.ReadAt(chunk, int64(start))
-	chunk = chunk[:n]
-
-	if err == io.EOF {
-		err = nil
-	}
-	return chunk, err
-}
-
-func (me *ContentCache) Serve(req *ContentRequest, rep *ContentResponse) (err error) {
-	rep.Chunk, err = me.ServeChunk(req.Start, req.End, req.Hash)
-	return err
-}

@@ -8,6 +8,7 @@ import (
 	"github.com/hanwen/termite/stats"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/rpc"
 	"os"
 	"path/filepath"
@@ -284,6 +285,13 @@ func (me *Master) Start() {
 }
 
 func (me *Master) createMirror(addr string, jobs int) (*mirrorConnection, error) {
+	closeMe := []net.Conn{}
+	defer func() {
+		for _, c := range closeMe {
+			c.Close()
+		}
+	}()
+	
 	secret := me.options.Secret
 	conn, err := DialTypedConnection(addr, RPC_CHANNEL, secret)
 	if err != nil {
@@ -296,17 +304,34 @@ func (me *Master) createMirror(addr string, jobs int) (*mirrorConnection, error)
 	if err != nil {
 		return nil, err
 	}
+	closeMe = append(closeMe, rpcConn)
 
 	revId := ConnectionId()
 	revConn, err := DialTypedConnection(addr, revId, secret)
 	if err != nil {
-		rpcConn.Close()
 		return nil, err
 	}
+	closeMe = append(closeMe, revConn)
 
+	contentId  := ConnectionId()
+	contentConn, err := DialTypedConnection(addr, contentId, secret)
+	if err != nil {
+		return nil, err
+	}
+	closeMe = append(closeMe, contentConn)
+
+	revContentId := ConnectionId()
+	revContentConn, err := DialTypedConnection(addr, revContentId, secret)
+	if err != nil {
+		return nil, err
+	}
+	closeMe = append(closeMe, revContentConn)
+	
 	req := CreateMirrorRequest{
 		RpcId:        rpcId,
 		RevRpcId:     revId,
+		ContentId:    contentId,
+		RevContentId: revContentId,
 		WritableRoot: me.options.WritableRoot,
 		MaxJobCount:  jobs,
 	}
@@ -316,18 +341,19 @@ func (me *Master) createMirror(addr string, jobs int) (*mirrorConnection, error)
 	cl.Close()
 
 	if err != nil {
-		revConn.Close()
-		rpcConn.Close()
 		return nil, err
 	}
+	closeMe = nil
 
 	go me.fileServerRpc.ServeConn(revConn)
-
+	go me.cache.ServeConn(revContentConn)
+	
 	mc := &mirrorConnection{
 		master:            me,
 		rpcClient:         rpc.NewClient(rpcConn),
+		contentClient:     me.cache.NewClient(contentConn),
 		reverseConnection: revConn,
-		connection:        rpcConn,
+		reverseContentConn: revContentConn,
 		maxJobs:           rep.GrantedJobCount,
 		availableJobs:     rep.GrantedJobCount,
 	}
@@ -351,7 +377,7 @@ func (me *Master) runOnMirror(mirror *mirrorConnection, req *WorkRequest, rep *W
 	// Tunnel stdin.
 	if req.StdinId != "" {
 		inputConn := me.pending.WaitConnection(req.StdinId)
-		destInputConn, err := DialTypedConnection(mirror.connection.RemoteAddr().String(),
+		destInputConn, err := DialTypedConnection(mirror.reverseConnection.RemoteAddr().String(),
 			req.StdinId, me.options.Secret)
 		if err != nil {
 			return err

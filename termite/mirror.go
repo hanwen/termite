@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/hanwen/termite/attr"
-	"github.com/hanwen/termite/cba"
 	"log"
 	"net"
 	"net/rpc"
@@ -16,6 +15,9 @@ import (
 type Mirror struct {
 	worker       *Worker
 	rpcConn      net.Conn
+	contentConn  net.Conn
+	revContentConn net.Conn
+	
 	rpcFs        *RpcFs
 	writableRoot string
 
@@ -33,17 +35,20 @@ type Mirror struct {
 	killed     bool
 }
 
-func NewMirror(worker *Worker, rpcConn, revConn net.Conn) *Mirror {
-	log.Println("Mirror for", rpcConn, revConn)
+func NewMirror(worker *Worker, rpcConn, revConn, contentConn, revContentConn net.Conn) *Mirror {
+	log.Println("Mirror for", rpcConn)
 
 	mirror := &Mirror{
 		activeFses: map[*workerFuseFs]bool{},
 		rpcConn:    rpcConn,
+		contentConn: contentConn,
+		revContentConn: revContentConn,
 		worker:     worker,
 		accepting:  true,
 	}
+	
 	mirror.cond = sync.NewCond(&mirror.fsMutex)
-	mirror.rpcFs = NewRpcFs(rpc.NewClient(revConn), worker.contentCache)
+	mirror.rpcFs = NewRpcFs(rpc.NewClient(revConn), worker.contentCache, revContentConn)
 
 	_, portString, _ := net.SplitHostPort(worker.listener.Addr().String())
 
@@ -58,7 +63,16 @@ func NewMirror(worker *Worker, rpcConn, revConn net.Conn) *Mirror {
 func (me *Mirror) serveRpc() {
 	server := rpc.NewServer()
 	server.Register(me)
-	server.ServeConn(me.rpcConn)
+	done := make(chan int, 2)
+	go func() {
+		server.ServeConn(me.rpcConn)
+		done <- 1
+	}()
+	go func() {
+		me.worker.contentCache.ServeConn(me.contentConn)
+		done <- 1
+	}()
+	<-done
 	me.Shutdown(true)
 	me.worker.DropMirror(me)
 }
@@ -91,6 +105,7 @@ func (me *Mirror) Shutdown(aggressive bool) {
 	}
 
 	me.rpcConn.Close()
+	me.contentConn.Close()
 }
 
 func (me *Mirror) runningCount() int {
@@ -245,12 +260,3 @@ func (me *Mirror) newWorkerTask(req *WorkRequest, rep *WorkResponse) (*WorkerTas
 	return task, nil
 }
 
-func (me *Mirror) FileContent(req *cba.ContentRequest, rep *cba.ContentResponse) error {
-	start := time.Now()
-	err := me.worker.contentCache.Serve(req, rep)
-	dt := time.Now().Sub(start)
-	me.rpcFs.timings.Log("Mirror.FileContent", dt)
-	me.rpcFs.timings.LogN("Mirror.FileContentBytes", int64(len(rep.Chunk)), dt)
-
-	return err
-}

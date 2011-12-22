@@ -25,7 +25,7 @@ func NewWorkerMirrors(w *Worker) *WorkerMirrors {
 	return me
 }
 
-func (me *WorkerMirrors) getMirror(rpcConn, revConn net.Conn, reserveCount int) (*Mirror, error) {
+func (me *WorkerMirrors) getMirror(rpcConn, revConn, contentConn, revContentConn net.Conn, reserveCount int) (*Mirror, error) {
 	if reserveCount <= 0 {
 		return nil, errors.New("must ask positive jobcount")
 	}
@@ -44,7 +44,7 @@ func (me *WorkerMirrors) getMirror(rpcConn, revConn net.Conn, reserveCount int) 
 		reserveCount = remaining
 	}
 
-	mirror := NewMirror(me.worker, rpcConn, revConn)
+	mirror := NewMirror(me.worker, rpcConn, revConn, contentConn, revContentConn)
 	mirror.maxJobCount = reserveCount
 	key := fmt.Sprintf("%v", rpcConn.RemoteAddr())
 	me.mirrorMap[key] = mirror

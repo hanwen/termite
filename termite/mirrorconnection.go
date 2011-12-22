@@ -18,11 +18,12 @@ import (
 type mirrorConnection struct {
 	workerAddr string // key in map.
 	rpcClient  *rpc.Client
-	connection net.Conn
-
+	contentClient *cba.Client
+	
 	// For serving the Fileserver.
 	reverseConnection net.Conn
-
+	reverseContentConn net.Conn
+	
 	// Protected by mirrorConnections.Mutex.
 	maxJobs       int
 	availableJobs int
@@ -35,34 +36,18 @@ func (me *mirrorConnection) Id() string {
 	return me.workerAddr
 }
 
-func (me *mirrorConnection) innerFetch(start, end int, hash string) ([]byte, error) {
-	req := &cba.ContentRequest{
-		Hash:  hash,
-		Start: start,
-		End:   end,
-	}
-	rep := &cba.ContentResponse{}
-	err := me.rpcClient.Call("Mirror.FileContent", req, rep)
-	return rep.Chunk, err
-}
-
 func (me *mirrorConnection) replay(fset attr.FileSet) error {
 	// Must get data before we modify the file-system, so we don't
 	// leave the FS in a half-finished state.
 	for _, info := range fset.Files {
 		if info.Hash != "" && !me.master.cache.HasHash(info.Hash) {
 			start := time.Now()
-			saved, err := me.master.cache.Fetch(
-				func(start, end int) ([]byte, error) {
-					return me.innerFetch(start, end, info.Hash)
-				})
+			got, err := me.contentClient.Fetch(info.Hash)
 			dt := time.Now().Sub(start)
-
 			me.master.stats.Log("ContentCache.Fetch", dt)
 			me.master.stats.LogN("ContentCache.FetchBytes", int64(info.Size), dt)
-
-			if err == nil && saved != info.Hash {
-				log.Fatalf("mirrorConnection.replay: fetch corruption got %x want %x", saved, info.Hash)
+			if !got && err == nil {
+				log.Fatalf("mirrorConnection.replay: fetch corruption remote does not have file %x", info.Hash)
 			}
 			if err != nil {
 				return err
@@ -208,8 +193,9 @@ func (me *mirrorConnections) maybeDropConnections() {
 func (me *mirrorConnections) dropConnections() {
 	for _, mc := range me.mirrors {
 		mc.rpcClient.Close()
-		mc.connection.Close()
+		mc.contentClient.Close()
 		mc.reverseConnection.Close()
+		mc.reverseContentConn.Close()
 		me.master.attributes.RmClient(mc)
 	}
 	me.mirrors = make(map[string]*mirrorConnection)
@@ -277,8 +263,10 @@ func (me *mirrorConnections) drop(mc *mirrorConnection, err error) {
 	me.Mutex.Lock()
 	defer me.Mutex.Unlock()
 	log.Printf("Dropping mirror %s. Reason: %s", mc.workerAddr, err)
-	mc.connection.Close()
+	mc.rpcClient.Close()
+	mc.contentClient.Close()
 	mc.reverseConnection.Close()
+	mc.reverseContentConn.Close()
 	delete(me.mirrors, mc.workerAddr)
 	delete(me.workers, mc.workerAddr)
 }

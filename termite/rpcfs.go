@@ -6,6 +6,7 @@ import (
 	"github.com/hanwen/termite/attr"
 	"github.com/hanwen/termite/cba"
 	"github.com/hanwen/termite/stats"
+	"io"
 	"log"
 	"net/rpc"
 	"sync"
@@ -16,6 +17,7 @@ type RpcFs struct {
 	fuse.DefaultFileSystem
 	cache  *cba.ContentCache
 	client *rpc.Client
+	contentClient *cba.Client
 
 	// Roots that we should try to fetch locally.
 	localRoots []string
@@ -30,10 +32,13 @@ type RpcFs struct {
 	fetching map[string]bool
 }
 
-func NewRpcFs(server *rpc.Client, cache *cba.ContentCache) *RpcFs {
-	me := &RpcFs{}
-	me.client = server
-	me.timings = stats.NewTimerStats()
+func NewRpcFs(server *rpc.Client, cache *cba.ContentCache, contentConn io.ReadWriteCloser) *RpcFs {
+	me := &RpcFs{
+		client: server,
+		contentClient: cache.NewClient(contentConn),
+		timings: stats.NewTimerStats(),
+	}
+	
 	me.attr = attr.NewAttributeCache(
 		func(n string) *attr.FileAttr {
 			return me.fetchAttr(n)
@@ -46,21 +51,7 @@ func NewRpcFs(server *rpc.Client, cache *cba.ContentCache) *RpcFs {
 
 func (me *RpcFs) Close() {
 	me.client.Close()
-}
-
-func (me *RpcFs) innerFetch(start, end int, hash string) ([]byte, error) {
-	req := &cba.ContentRequest{
-		Hash:  hash,
-		Start: start,
-		End:   end,
-	}
-	rep := &cba.ContentResponse{}
-	startT := time.Now()
-	err := me.client.Call("FsServer.FileContent", req, rep)
-	dt := time.Now().Sub(startT)
-	me.timings.Log("FsServer.FileContent", dt)
-	me.timings.LogN("FsServer.FileContentBytes", int64(len(rep.Chunk)), dt)
-	return rep.Chunk, err
+	me.contentClient.Close()
 }
 
 func (me *RpcFs) FetchHash(a *attr.FileAttr) error {
@@ -81,22 +72,19 @@ func (me *RpcFs) FetchHashOnce(a *attr.FileAttr) error {
 	if me.cache.HasHash(h) {
 		return nil
 	}
+	// TODO - necessary?  The contentClient already serializes.
 	me.fetching[h] = true
 	me.mutex.Unlock()
+	
 	log.Printf("Fetching contents for file %s: %x", a.Path, h)
-
 	start := time.Now()
-	saved, err := me.cache.Fetch(
-		func(s, e int) ([]byte, error) {
-			return me.innerFetch(s, e, a.Hash)
-		})
-
+	got, err := me.contentClient.Fetch(a.Hash)
 	dt := time.Now().Sub(start)
 	me.timings.Log("Cache.FetchFile", dt)
 	me.timings.LogN("Cache.FetchFileBytes", int64(a.Size), dt)
 
-	if err == nil && saved != h {
-		log.Fatalf("RpcFs.FetchHashOnce: fetch corruption got %x want %x", saved, h)
+	if !got && err == nil {
+		log.Fatalf("RpcFs.FetchHashOnce: server did not have hash %x", a.Hash)
 	}
 
 	me.mutex.Lock()

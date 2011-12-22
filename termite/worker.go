@@ -151,10 +151,6 @@ func (me *Worker) Report() {
 	}
 }
 
-func (me *Worker) FileContent(req *cba.ContentRequest, rep *cba.ContentResponse) error {
-	return me.contentCache.Serve(req, rep)
-}
-
 func (me *Worker) CreateMirror(req *CreateMirrorRequest, rep *CreateMirrorResponse) error {
 	if !me.accepting {
 		return errors.New("Worker is shutting down.")
@@ -162,23 +158,20 @@ func (me *Worker) CreateMirror(req *CreateMirrorRequest, rep *CreateMirrorRespon
 
 	rpcConn := me.pending.WaitConnection(req.RpcId)
 	revConn := me.pending.WaitConnection(req.RevRpcId)
-	mirror, err := me.mirrors.getMirror(rpcConn, revConn, req.MaxJobCount)
+	contentConn := me.pending.WaitConnection(req.ContentId)
+	revContentConn := me.pending.WaitConnection(req.RevContentId)
+	mirror, err := me.mirrors.getMirror(rpcConn, revConn, contentConn, revContentConn, req.MaxJobCount)
 	if err != nil {
 		rpcConn.Close()
 		revConn.Close()
+		contentConn.Close()
+		revContentConn.Close()
 		return err
 	}
 	mirror.writableRoot = req.WritableRoot
 
 	rep.GrantedJobCount = mirror.maxJobCount
 	return nil
-}
-
-func (me *Worker) serveConn(conn net.Conn) {
-	log.Println("Authenticated connection from", conn.RemoteAddr())
-	if !me.pending.Accept(conn) {
-		go me.rpcServer.ServeConn(conn)
-	}
 }
 
 func (me *Worker) RunWorkerServer() {
