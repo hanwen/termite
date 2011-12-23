@@ -125,25 +125,22 @@ func (me *ContentCache) Path(hash string) string {
 	return HashPath(me.Options.Dir, hash)
 }
 
-func (me *ContentCache) NewHashWriter() *HashWriter {
-	return NewHashWriter(me.Options.Dir, me.Options.Hash)
-}
-
-type HashWriter struct {
-	hasher hash.Hash
-	dest   *os.File
-}
-
-func NewHashWriter(dir string, hashfunc crypto.Hash) *HashWriter {
-	me := &HashWriter{}
-	tmp, err := ioutil.TempFile(dir, ".hashtemp")
+func (store *ContentCache) NewHashWriter() *HashWriter {
+	me := &HashWriter{cache: store}
+	tmp, err := ioutil.TempFile(store.Options.Dir, ".hashtemp")
 	if err != nil {
 		log.Panic("NewHashWriter: ", err)
 	}
 
 	me.dest = tmp
-	me.hasher = hashfunc.New()
+	me.hasher = store.Options.Hash.New()
 	return me
+}
+
+type HashWriter struct {
+	hasher hash.Hash
+	dest   *os.File
+	cache *ContentCache
 }
 
 func (me *HashWriter) Sum() string {
@@ -190,6 +187,11 @@ func (me *HashWriter) Close() error {
 	if err != nil {
 		log.Fatal("Rename failed", err)
 	}
+
+	me.cache.mutex.Lock()
+	defer me.cache.mutex.Unlock()
+	me.cache.have[sum] = true
+	
 	return err
 }
 
@@ -294,10 +296,6 @@ func (me *ContentCache) saveViaMemory(content []byte) (hash string) {
 		return ""
 	}
 	hash = writer.Sum()
-
-	me.mutex.Lock()
-	defer me.mutex.Unlock()
-	me.have[hash] = true
 	if me.inMemoryCache != nil {
 		me.inMemoryCache.Add(hash, content)
 	}
@@ -318,14 +316,10 @@ func (me *ContentCache) SaveStream(input io.Reader, size int64) (hash string) {
 
 	dup := me.NewHashWriter()
 	err := dup.CopyClose(input, size)
+
 	if err != nil {
 		return ""
 	}
-	hash = dup.Sum()
-
-	me.mutex.Lock()
-	defer me.mutex.Unlock()
-	me.have[hash] = true
-	return hash
+	
+	return dup.Sum()
 }
-

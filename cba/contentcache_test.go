@@ -43,6 +43,27 @@ func (me *ccTestCase) Clean() {
 	os.RemoveAll(me.dir)
 }
 
+func TestHashWriter(t *testing.T) {
+	tc := newCcTestCase()
+	defer tc.Clean()
+
+	content := []byte("hello")
+
+	h := tc.cache.NewHashWriter()
+	h.Write(content)
+	h.Close()
+
+	want := string(md5(content))
+
+	saved := h.Sum()
+	if saved != want {
+		t.Fatalf("mismatch got %x want %x", saved, want)
+	}
+	if !tc.cache.HasHash(want) {
+		t.Fatal("TestHashWriter: store does not have path")
+	}
+}
+
 func TestContentCache(t *testing.T) {
 	tc := newCcTestCase()
 	defer tc.Clean()
@@ -56,7 +77,7 @@ func TestContentCache(t *testing.T) {
 
 	savedSum := tc.cache.SavePath(f.Name())
 	if savedSum != checksum {
-		t.Fatal("mismatch", savedSum, checksum)
+		t.Fatalf("mismatch got %x want %x", savedSum, checksum)
 	}
 	if !tc.cache.HasHash(checksum) {
 		t.Fatal("path gone")
@@ -93,8 +114,9 @@ func TestContentCacheDestructiveSave(t *testing.T) {
 
 	saved, err = tc.cache.DestructiveSavePath(fn)
 	check(err)
-	if saved == "" || saved != md5(content) {
-		t.Error("mismatch")
+	want := md5(content)
+	if saved == "" || saved != want {
+		t.Error("mismatch got %x want %x", saved, want)
 	}
 	if fi, _ := os.Lstat(fn); fi != nil {
 		t.Error("should have disappeared", fi)
@@ -109,10 +131,11 @@ func TestContentCacheStream(t *testing.T) {
 	h := crypto.MD5.New()
 	h.Write(content)
 	checksum := string(h.Sum(nil))
-
 	savedSum := tc.cache.Save(content)
-	if string(savedSum) != string(md5(content)) {
-		t.Fatal("mismatch")
+	got := string(savedSum)
+	want := string(md5(content))
+	if got != want {
+		t.Fatalf("mismatch %x %x", got, want)
 	}
 	if !tc.cache.HasHash(checksum) {
 		t.Fatal("path gone")
