@@ -50,10 +50,10 @@ func (me *Master) statusHandler(w http.ResponseWriter, req *http.Request) {
 
 	fmt.Fprintf(w, "<p>ContentCache memory hit rate: %.0f %%", 100.0*me.cache.MemoryHitRate())
 	fmt.Fprintf(w, "<ul>")
-	for _, msg := range me.fileServer.stats.TimingMessages() {
-		fmt.Fprintf(w, "<li>%s", msg)
-	}
-	for _, msg := range me.stats.TimingMessages() {
+	msgs := me.fileServer.stats.TimingMessages()
+	msgs = append(msgs, me.cache.TimingMessages()...)
+	
+	for _, msg := range msgs {
 		fmt.Fprintf(w, "<li>%s", msg)
 	}
 	fmt.Fprintf(w, "</ul>")

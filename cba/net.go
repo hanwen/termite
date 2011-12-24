@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/rpc"
 	"os"
+	"time"
 )
 
 // Client is a thread-safe interface to fetching over a connection.
@@ -75,6 +76,26 @@ func (st *Store) ServeChunk(req *Request, rep *Response) (err error) {
 }
 
 func (c *Client) Fetch(want string) (bool, error) {
+	start := time.Now()
+	succ, size, err := c.fetch(want)
+	dt := time.Now().Sub(start)
+	c.store.timings.Log("ContentStore.Fetch", dt)
+	c.store.timings.LogN("ContentStore.FetchBytes", int64(size), dt)
+	return succ, err
+}
+
+
+func (c *Client) fetchChunk(req *Request, rep *Response) (error) {
+	start := time.Now()
+	err := c.client.Call("Server.ServeChunk", req, rep)
+	dt := time.Now().Sub(start)
+	c.store.timings.Log("ContentStore.FetchChunk", dt)
+	c.store.timings.LogN("ContentStore.FetchChunkBytes", int64(rep.Size), dt)
+	return err
+}
+
+
+func (c *Client) fetch(want string) (bool, int, error) {
 	chunkSize := 1 << 18
 	buf := make([]byte, chunkSize)
 
@@ -83,16 +104,15 @@ func (c *Client) Fetch(want string) (bool, error) {
 
 	var saved string
 	for {
-
 		req := &Request{
 			Hash:  want,
 			Start: written,
 			End:   written + chunkSize,
 		}
 		rep := &Response{Chunk: buf}
-		err := c.client.Call("Server.ServeChunk", req, rep)
+		err := c.fetchChunk(req, rep)
 		if err != nil || !rep.Have {
-			return false, err
+			return false, 0, err
 		}
 
 		// is this a bug in the rpc package?
@@ -109,7 +129,7 @@ func (c *Client) Fetch(want string) (bool, error) {
 		n, err := output.Write(content)
 		written += n
 		if err != nil {
-			return false, err
+			return false, 0, err
 		}
 		if len(content) < chunkSize {
 			break
@@ -122,5 +142,5 @@ func (c *Client) Fetch(want string) (bool, error) {
 	if want != saved {
 		log.Fatalf("file corruption: got %x want %x", saved, want)
 	}
-	return true, nil
+	return true, written, nil
 }

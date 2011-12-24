@@ -5,6 +5,7 @@ import (
 	md5pkg "crypto/md5"
 	"crypto/sha1"
 	"fmt"
+	"github.com/hanwen/termite/stats"
 	"hash"
 	"io"
 	"io/ioutil"
@@ -12,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 )
 
 var _ = md5pkg.New
@@ -27,7 +29,7 @@ type Store struct {
 	faulting      map[string]bool
 	have          map[string]bool
 	inMemoryCache *LruCache
-
+	timings       *stats.TimerStats
 	memoryTries int
 	memoryHits  int
 }
@@ -61,6 +63,7 @@ func NewStore(options *StoreOptions) *Store {
 		Options:  options,
 		have:     db,
 		faulting: make(map[string]bool),
+		timings:       stats.NewTimerStats(),
 	}
 	if options.MemCount > 0 {
 		c.inMemoryCache = NewLruCache(options.MemCount)
@@ -127,6 +130,8 @@ func (st *Store) Path(hash string) string {
 
 func (store *Store) NewHashWriter() *HashWriter {
 	st := &HashWriter{cache: store}
+
+	st.start = time.Now()
 	tmp, err := ioutil.TempFile(store.Options.Dir, ".hashtemp")
 	if err != nil {
 		log.Panic("NewHashWriter: ", err)
@@ -138,9 +143,11 @@ func (store *Store) NewHashWriter() *HashWriter {
 }
 
 type HashWriter struct {
+	start time.Time
 	hasher hash.Hash
 	dest   *os.File
 	cache  *Store
+	size   int
 }
 
 func (st *HashWriter) Sum() string {
@@ -150,6 +157,7 @@ func (st *HashWriter) Sum() string {
 func (st *HashWriter) Write(p []byte) (n int, err error) {
 	n, err = st.dest.Write(p)
 	st.hasher.Write(p[:n])
+	st.size += n
 	return n, err
 }
 
@@ -189,15 +197,25 @@ func (st *HashWriter) Close() error {
 	}
 
 	st.cache.mutex.Lock()
-	defer st.cache.mutex.Unlock()
 	st.cache.have[sum] = true
+	st.cache.mutex.Unlock()
+
+	dt := time.Now().Sub(st.start)
+
+	st.cache.timings.Log("ContentStore.Save", dt)
+	st.cache.timings.LogN("ContentStore.SaveBytes", int64(st.size), dt)
 
 	return err
 }
 
 const _BUFSIZE = 32 * 1024
 
+func (st *Store) TimingMessages() []string {
+	return st.timings.TimingMessages()
+}
+
 func (st *Store) DestructiveSavePath(path string) (hash string, err error) {
+	start := time.Now()
 	var f *os.File
 	f, err = os.Open(path)
 	if err != nil {
@@ -209,15 +227,17 @@ func (st *Store) DestructiveSavePath(path string) (hash string, err error) {
 	h := st.Options.Hash.New()
 
 	var content []byte
+	var size int
 	if before.Size() < st.Options.MemMaxSize {
 		content, err = ioutil.ReadAll(f)
 		if err != nil {
 			return "", err
 		}
 
-		h.Write(content)
+		size, _ = h.Write(content)
 	} else {
-		io.Copy(h, f)
+		sz, _ := io.Copy(h, f)
+		size = int(sz)
 	}
 
 	s := string(h.Sum(nil))
@@ -243,6 +263,12 @@ func (st *Store) DestructiveSavePath(path string) (hash string, err error) {
 	if !after.ModTime().Equal(before.ModTime()) || after.Size() != before.Size() {
 		log.Fatal("File changed during save", before, after)
 	}
+
+	dt := time.Now().Sub(start)
+
+	st.timings.Log("ContentStore.DestructiveSave", dt)
+	st.timings.LogN("ContentStore.DestructiveSaveBytes", int64(size), dt)
+	
 	return s, nil
 }
 

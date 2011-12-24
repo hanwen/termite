@@ -38,7 +38,6 @@ func NewRpcFs(server *rpc.Client, cache *cba.Store, contentConn io.ReadWriteClos
 		contentClient: cache.NewClient(contentConn),
 		timings:       stats.NewTimerStats(),
 	}
-
 	me.attr = attr.NewAttributeCache(
 		func(n string) *attr.FileAttr {
 			return me.fetchAttr(n)
@@ -77,11 +76,7 @@ func (me *RpcFs) FetchHashOnce(a *attr.FileAttr) error {
 	me.mutex.Unlock()
 
 	log.Printf("Fetching contents for file %s: %x", a.Path, h)
-	start := time.Now()
 	got, err := me.contentClient.Fetch(a.Hash)
-	dt := time.Now().Sub(start)
-	me.timings.Log("Cache.FetchFile", dt)
-	me.timings.LogN("Cache.FetchFileBytes", int64(a.Size), dt)
 
 	if !got && err == nil {
 		log.Fatalf("RpcFs.FetchHashOnce: server did not have hash %x", a.Hash)

@@ -5,7 +5,6 @@ import (
 	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/termite/attr"
 	"github.com/hanwen/termite/cba"
-	"github.com/hanwen/termite/stats"
 	"io/ioutil"
 	"log"
 	"net"
@@ -29,7 +28,6 @@ type Master struct {
 	options       *MasterOptions
 	replayChannel chan *replayRequest
 	quit          chan int
-	stats         *stats.TimerStats
 }
 
 // Immutable state and options for master.
@@ -149,13 +147,7 @@ func (me *Master) fillContent(rep *attr.FileAttr) {
 		rep.ReadFromFs(me.path(rep.Path), me.options.Hash)
 	} else if rep.IsRegular() {
 		fullPath := me.path(rep.Path)
-		start := time.Now()
 		rep.Hash = me.cache.SavePath(fullPath)
-		dt := time.Now().Sub(start)
-
-		me.stats.Log("Store.SavePath", dt)
-		me.stats.LogN("Store.SavePathBytes", int64(rep.Size), dt)
-
 		if rep.Hash == "" {
 			// Typically happens if we want to open /etc/shadow as normal user.
 			log.Println("fillContent returning EPERM for", rep.Path)
@@ -176,7 +168,6 @@ func NewMaster(options *MasterOptions) *Master {
 		taskIds:       make(chan int, 100),
 		replayChannel: make(chan *replayRequest, 1),
 		quit:          make(chan int, 0),
-		stats:         stats.NewTimerStats(),
 	}
 	o := *options
 	if o.Period <= 0.0 {
