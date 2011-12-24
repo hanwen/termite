@@ -2,10 +2,10 @@ package cba
 
 import (
 	"encoding/binary"
-	"fmt"
+	"log"
 	"os"
 	"io"
-	"sync"
+	"net/rpc"
 )
 
 var order = binary.BigEndian
@@ -13,111 +13,120 @@ var order = binary.BigEndian
 // Client is a thread-safe interface to fetching over a connection.
 type Client struct {
 	cache *ContentCache
-	conn  io.ReadWriteCloser
-	mu sync.Mutex
+	client *rpc.Client
 }
 
 func (cache *ContentCache) NewClient(conn io.ReadWriteCloser) *Client {
 	return &Client{
-		conn: conn,
-		cache: cache,
+	cache: cache,
+	client: rpc.NewClient(conn),
 	}
 }
 
 func (c *Client) Close() {
-	c.conn.Close()
+	c.client.Close()
 }
 
-func (c *Client) Fetch(want string) (bool, error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	
-	// For some reason, we can't binary.Write string.
-	wantBytes := []byte(want)
-	
-	err := binary.Write(c.conn, order, wantBytes)
-	if err != nil {
-		return false, err
-	}
 
-	var have byte
-	if err := binary.Read(c.conn, order, &have); err != nil || have == 0 {
-		return false, err
-	}
-	
-	var size int64
-	if err := binary.Read(c.conn, order, &size); err != nil {
-		return false, err
-	}
-	
-	// TODO - SaveStream should return error
-	got := c.cache.SaveStream(c.conn, size)
-	if got == "" {
-		return false, fmt.Errorf("SaveStream returned empty")
-	}
-
-	if got != want {
-		return false, fmt.Errorf("Mismatch got %x want %x", got, want)
-	}
-
-	return true, nil
+func (c *ContentCache) ServeConn(conn io.ReadWriteCloser) {
+	s := Server{c}
+	rpcServer := rpc.NewServer()
+	rpcServer.Register(&s)
+	rpcServer.ServeConn(conn)
+	conn.Close()
 }
 
-func (c *ContentCache) ServeConn(conn io.ReadWriteCloser) (err error) {
-	for {
-		err = c.ServeOne(conn)
-		if err != nil {
-			break
-		}
-	}
-	return err
+type Server struct {
+	cache *ContentCache
 }
 
-func (c *ContentCache) ServeOne(conn io.ReadWriteCloser) (err error) {
-	reqBytes := make([]byte, c.Options.Hash.Size())
-	if err := binary.Read(conn, order, reqBytes); err != nil {
-		return err
-	}
-	request := string(reqBytes)
+func (s *Server) ServeChunk(req *Request, rep *Response) (err error) {
+	e := s.cache.ServeChunk(req, rep)
+	return e
+}
 
-	has := byte(0)
-	if c.HasHash(string(request)) {
-		has = 1
-	}
-
-	if err := binary.Write(conn, order, has); err != nil {
-		return err
-	}
-		
-	if has == 0 {
+func (me *ContentCache) ServeChunk(req *Request, rep *Response) (err error) {
+	if !me.HasHash(req.Hash) {
+		rep.Have = false
 		return nil
 	}
 
-	if c := c.ContentsIfLoaded(request); c != nil {
-		s := int64(len(c))
-		if err := binary.Write(conn, order, s); err != nil {
-			return err
+	rep.Have = true
+	if c := me.ContentsIfLoaded(req.Hash); c != nil {
+		if req.End > len(c) {
+			req.End = len(c)
 		}
-		return binary.Write(conn, order, c)
+		rep.Chunk = c[req.Start:req.End]
+		rep.Size = len(c)
+		return nil
 	}
 
-	p := c.Path(request)
-	f, err := os.Open(p)
+	f, err := os.Open(me.Path(req.Hash))
 	if err != nil {
 		return err
 	}
 	defer f.Close()
 
-	fi, err := f.Stat()
-	if err != nil {
-		return err
+	rep.Chunk = make([]byte, req.End-req.Start)
+	n, err := f.ReadAt(rep.Chunk, int64(req.Start))
+	rep.Chunk = rep.Chunk[:n]
+	rep.Size = n
+	
+	if err == io.EOF {
+		err = nil
 	}
-	s := int64(fi.Size())
-	if err := binary.Write(conn, order, s); err != nil {
-		return err
-	}
-
-	// TODO - use splice here.
-	_, err = io.CopyN(conn, f, s)
 	return err
 }
+ 
+func (c *Client) Fetch(want string) (bool, error) {
+	chunkSize := 1 << 18
+	buf := make([]byte, chunkSize)
+
+	var output *HashWriter
+	written := 0
+
+	var saved string
+	for {
+		
+		req := &Request{
+		Hash:  want,
+		Start: written,
+		End:   written+chunkSize,
+		}
+		rep := &Response{Chunk: buf}
+		err := c.client.Call("Server.ServeChunk", req, rep)
+		if err != nil || !rep.Have {
+			return false, err
+		}
+
+		// is this a bug in the rpc package?
+		content := rep.Chunk[:rep.Size]
+
+		if len(content) < chunkSize && written == 0 {
+			saved = c.cache.Save(content)
+			break
+		} else if output == nil {
+			output = c.cache.NewHashWriter()
+			defer output.Close()
+		}
+
+		n, err := output.Write(content)
+		written += n
+		if err != nil {
+			return false, err
+		}
+		if len(content) < chunkSize {
+			break
+		}
+	}
+	if output != nil {
+		output.Close()
+		saved = string(output.Sum())
+	}
+	if want != saved {
+		log.Fatalf("file corruption: got %x want %x", saved, want)
+	}
+	return true, nil
+}
+
+

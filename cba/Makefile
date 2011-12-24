@@ -6,7 +6,8 @@ TARG=github.com/hanwen/termite/cba
 GOFILES=lrucache.go \
 	contentcache.go \
 	misc.go \
-	net.go
+	net.go \
+	rpc.go
 
 include $(GOROOT)/src/Make.pkg
 
