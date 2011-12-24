@@ -159,7 +159,6 @@ func (me *Mirror) fillReply(ufs *fs.MemUnionFs) *attr.FileSet {
 					dt := time.Now().Sub(start)
 					timings.Log("Store.DestructiveSavePath", dt)
 					timings.LogN("Store.DestructiveSavePathBytes", int64(f.Size), dt)
-
 				}
 				if err != nil {
 					log.Fatalf("DestructiveSavePath fail %q: %v", v.Backing, err)

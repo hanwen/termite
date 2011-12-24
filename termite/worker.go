@@ -21,11 +21,11 @@ import (
 var _ = log.Println
 
 type Worker struct {
-	listener     net.Listener
-	rpcServer    *rpc.Server
-	content *cba.Store
-	pending      *PendingConnections
-	stats        *stats.ServerStats
+	listener  net.Listener
+	rpcServer *rpc.Server
+	content   *cba.Store
+	pending   *PendingConnections
+	stats     *stats.ServerStats
 
 	stopListener chan int
 	canRestart   bool
@@ -92,13 +92,13 @@ func NewWorker(options *WorkerOptions) *Worker {
 	cache := cba.NewStore(&options.StoreOptions)
 
 	me := &Worker{
-		content: cache,
-		pending:      NewPendingConnections(),
-		rpcServer:    rpc.NewServer(),
-		stats:        stats.NewServerStats(),
-		options:      &copied,
-		accepting:    true,
-		canRestart:   true,
+		content:    cache,
+		pending:    NewPendingConnections(),
+		rpcServer:  rpc.NewServer(),
+		stats:      stats.NewServerStats(),
+		options:    &copied,
+		accepting:  true,
+		canRestart: true,
 	}
 	me.stats.PhaseOrder = []string{"run", "fuse", "reap"}
 	me.mirrors = NewWorkerMirrors(me)

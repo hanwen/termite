@@ -9,16 +9,16 @@ import (
 )
 
 type FsServer struct {
-	content *cba.Store
-	attributes   *attr.AttributeCache
-	stats        *stats.TimerStats
+	content    *cba.Store
+	attributes *attr.AttributeCache
+	stats      *stats.TimerStats
 }
 
 func NewFsServer(a *attr.AttributeCache, cache *cba.Store) *FsServer {
 	me := &FsServer{
-		content: cache,
-		attributes:   a,
-		stats:        stats.NewTimerStats(),
+		content:    cache,
+		attributes: a,
+		stats:      stats.NewTimerStats(),
 	}
 
 	return me

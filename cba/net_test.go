@@ -4,16 +4,16 @@ import (
 	"bytes"
 	"io"
 	"io/ioutil"
-	"testing"
 	"os"
 	"syscall"
+	"testing"
 )
 
 type netTestCase struct {
-	tmp string
+	tmp                 string
 	server, clientStore *Store
-	sockS, sockC io.ReadWriteCloser
-	client *Client
+	sockS, sockC        io.ReadWriteCloser
+	client              *Client
 }
 
 // TODO - cut & paste.
@@ -38,7 +38,7 @@ func (tc *netTestCase) Clean() {
 func newNetTestCase(t *testing.T, cache bool) *netTestCase {
 	me := &netTestCase{}
 	me.tmp, _ = ioutil.TempDir("", "term-cba")
-	
+
 	optS := StoreOptions{
 		Dir: me.tmp + "/server",
 	}
@@ -46,7 +46,7 @@ func newNetTestCase(t *testing.T, cache bool) *netTestCase {
 		optS.MemCount = 100
 	}
 	me.server = NewStore(&optS)
-	
+
 	optC := optS
 	optC.Dir = me.tmp + "/client"
 	me.clientStore = NewStore(&optC)
@@ -58,14 +58,13 @@ func newNetTestCase(t *testing.T, cache bool) *netTestCase {
 
 	go me.server.ServeConn(me.sockS)
 	me.client = me.clientStore.NewClient(me.sockC)
-	return me 
+	return me
 }
-
 
 func runTestNet(t *testing.T, store bool) {
 	tc := newNetTestCase(t, store)
 	defer tc.Clean()
-	
+
 	b := bytes.NewBufferString("hello")
 	l := b.Len()
 	hash := tc.server.SaveStream(b, int64(l))
@@ -74,11 +73,11 @@ func runTestNet(t *testing.T, store bool) {
 	if success, err := tc.client.Fetch(different); success || err != nil {
 		t.Errorf("non-existent fetch should return false without error: %v %v", success, err)
 	}
-	
+
 	if success, err := tc.client.Fetch(hash); !success || err != nil {
 		t.Fatalf("unexpected error: Fetch: %v,%v", success, err)
 	}
-	
+
 	if !tc.clientStore.HasHash(hash) {
 		t.Errorf("after fetch, the hash should be there")
 	}
@@ -96,4 +95,3 @@ func TestNet(t *testing.T) {
 func TestNetCache(t *testing.T) {
 	runTestNet(t, true)
 }
-

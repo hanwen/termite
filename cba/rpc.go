@@ -16,4 +16,3 @@ type Response struct {
 	Have  bool
 	Chunk []byte
 }
-

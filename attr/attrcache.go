@@ -373,7 +373,7 @@ func (me *AttributeCache) Refresh(prefix string) FileSet {
 		wg.Wait()
 		close(updated)
 	}()
-	
+
 	files := []*FileAttr{}
 	for t := range updated {
 		files = append(files, t)

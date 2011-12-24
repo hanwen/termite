@@ -15,8 +15,8 @@ import (
 
 type RpcFs struct {
 	fuse.DefaultFileSystem
-	cache  *cba.Store
-	client *rpc.Client
+	cache         *cba.Store
+	client        *rpc.Client
 	contentClient *cba.Client
 
 	// Roots that we should try to fetch locally.
@@ -34,11 +34,11 @@ type RpcFs struct {
 
 func NewRpcFs(server *rpc.Client, cache *cba.Store, contentConn io.ReadWriteCloser) *RpcFs {
 	me := &RpcFs{
-		client: server,
+		client:        server,
 		contentClient: cache.NewClient(contentConn),
-		timings: stats.NewTimerStats(),
+		timings:       stats.NewTimerStats(),
 	}
-	
+
 	me.attr = attr.NewAttributeCache(
 		func(n string) *attr.FileAttr {
 			return me.fetchAttr(n)
@@ -75,7 +75,7 @@ func (me *RpcFs) FetchHashOnce(a *attr.FileAttr) error {
 	// TODO - necessary?  The contentClient already serializes.
 	me.fetching[h] = true
 	me.mutex.Unlock()
-	
+
 	log.Printf("Fetching contents for file %s: %x", a.Path, h)
 	start := time.Now()
 	got, err := me.contentClient.Fetch(a.Hash)

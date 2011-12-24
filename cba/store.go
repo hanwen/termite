@@ -140,7 +140,7 @@ func (store *Store) NewHashWriter() *HashWriter {
 type HashWriter struct {
 	hasher hash.Hash
 	dest   *os.File
-	cache *Store
+	cache  *Store
 }
 
 func (st *HashWriter) Sum() string {
@@ -191,7 +191,7 @@ func (st *HashWriter) Close() error {
 	st.cache.mutex.Lock()
 	defer st.cache.mutex.Unlock()
 	st.cache.have[sum] = true
-	
+
 	return err
 }
 
@@ -320,6 +320,6 @@ func (st *Store) SaveStream(input io.Reader, size int64) (hash string) {
 	if err != nil {
 		return ""
 	}
-	
+
 	return dup.Sum()
 }

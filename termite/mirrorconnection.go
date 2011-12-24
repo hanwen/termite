@@ -16,14 +16,14 @@ import (
 )
 
 type mirrorConnection struct {
-	workerAddr string // key in map.
-	rpcClient  *rpc.Client
+	workerAddr    string // key in map.
+	rpcClient     *rpc.Client
 	contentClient *cba.Client
-	
+
 	// For serving the Fileserver.
-	reverseConnection net.Conn
+	reverseConnection  net.Conn
 	reverseContentConn net.Conn
-	
+
 	// Protected by mirrorConnections.Mutex.
 	maxJobs       int
 	availableJobs int

@@ -1,29 +1,28 @@
 package cba
 
 import (
-	"log"
-	"os"
 	"io"
+	"log"
 	"net/rpc"
+	"os"
 )
 
 // Client is a thread-safe interface to fetching over a connection.
 type Client struct {
-	store *Store
+	store  *Store
 	client *rpc.Client
 }
 
 func (store *Store) NewClient(conn io.ReadWriteCloser) *Client {
 	return &Client{
-	store: store,
-	client: rpc.NewClient(conn),
+		store:  store,
+		client: rpc.NewClient(conn),
 	}
 }
 
 func (c *Client) Close() {
 	c.client.Close()
 }
-
 
 func (c *Store) ServeConn(conn io.ReadWriteCloser) {
 	s := Server{c}
@@ -68,13 +67,13 @@ func (st *Store) ServeChunk(req *Request, rep *Response) (err error) {
 	n, err := f.ReadAt(rep.Chunk, int64(req.Start))
 	rep.Chunk = rep.Chunk[:n]
 	rep.Size = n
-	
+
 	if err == io.EOF {
 		err = nil
 	}
 	return err
 }
- 
+
 func (c *Client) Fetch(want string) (bool, error) {
 	chunkSize := 1 << 18
 	buf := make([]byte, chunkSize)
@@ -84,11 +83,11 @@ func (c *Client) Fetch(want string) (bool, error) {
 
 	var saved string
 	for {
-		
+
 		req := &Request{
-		Hash:  want,
-		Start: written,
-		End:   written+chunkSize,
+			Hash:  want,
+			Start: written,
+			End:   written + chunkSize,
 		}
 		rep := &Response{Chunk: buf}
 		err := c.client.Call("Server.ServeChunk", req, rep)
@@ -125,5 +124,3 @@ func (c *Client) Fetch(want string) (bool, error) {
 	}
 	return true, nil
 }
-
-

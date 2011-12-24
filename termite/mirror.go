@@ -12,11 +12,11 @@ import (
 
 // State associated with one master.
 type Mirror struct {
-	worker       *Worker
-	rpcConn      net.Conn
-	contentConn  net.Conn
+	worker         *Worker
+	rpcConn        net.Conn
+	contentConn    net.Conn
 	revContentConn net.Conn
-	
+
 	rpcFs        *RpcFs
 	writableRoot string
 
@@ -38,14 +38,14 @@ func NewMirror(worker *Worker, rpcConn, revConn, contentConn, revContentConn net
 	log.Println("Mirror for", rpcConn)
 
 	mirror := &Mirror{
-		activeFses: map[*workerFuseFs]bool{},
-		rpcConn:    rpcConn,
-		contentConn: contentConn,
+		activeFses:     map[*workerFuseFs]bool{},
+		rpcConn:        rpcConn,
+		contentConn:    contentConn,
 		revContentConn: revContentConn,
-		worker:     worker,
-		accepting:  true,
+		worker:         worker,
+		accepting:      true,
 	}
-	
+
 	mirror.cond = sync.NewCond(&mirror.fsMutex)
 	mirror.rpcFs = NewRpcFs(rpc.NewClient(revConn), worker.content, revContentConn)
 
@@ -258,4 +258,3 @@ func (me *Mirror) newWorkerTask(req *WorkRequest, rep *WorkResponse) (*WorkerTas
 	}
 	return task, nil
 }
-

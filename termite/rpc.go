@@ -23,11 +23,9 @@ type UpdateRequest struct {
 }
 
 type UpdateResponse struct {
-
 }
 
 type MirrorStatusRequest struct {
-
 }
 
 type FuseFsStatus struct {
@@ -47,7 +45,6 @@ type MirrorStatusResponse struct {
 }
 
 type WorkerStatusRequest struct {
-
 }
 
 type WorkerStatusResponse struct {
@@ -112,11 +109,11 @@ func (me *WorkRequest) Summary() string {
 
 type CreateMirrorRequest struct {
 	// Ids of connections to use for RPC
-	RpcId    string
-	RevRpcId string
-	ContentId string
+	RpcId        string
+	RevRpcId     string
+	ContentId    string
 	RevContentId string
-	
+
 	// The writable root for the mirror.
 	WritableRoot string
 
@@ -134,7 +131,6 @@ type ShutdownRequest struct {
 }
 
 type ShutdownResponse struct {
-
 }
 
 type LogRequest struct {

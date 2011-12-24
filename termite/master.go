@@ -291,7 +291,7 @@ func (me *Master) createMirror(addr string, jobs int) (*mirrorConnection, error)
 			c.Close()
 		}
 	}()
-	
+
 	secret := me.options.Secret
 	conn, err := DialTypedConnection(addr, RPC_CHANNEL, secret)
 	if err != nil {
@@ -313,7 +313,7 @@ func (me *Master) createMirror(addr string, jobs int) (*mirrorConnection, error)
 	}
 	closeMe = append(closeMe, revConn)
 
-	contentId  := ConnectionId()
+	contentId := ConnectionId()
 	contentConn, err := DialTypedConnection(addr, contentId, secret)
 	if err != nil {
 		return nil, err
@@ -326,7 +326,7 @@ func (me *Master) createMirror(addr string, jobs int) (*mirrorConnection, error)
 		return nil, err
 	}
 	closeMe = append(closeMe, revContentConn)
-	
+
 	req := CreateMirrorRequest{
 		RpcId:        rpcId,
 		RevRpcId:     revId,
@@ -347,15 +347,15 @@ func (me *Master) createMirror(addr string, jobs int) (*mirrorConnection, error)
 
 	go me.fileServerRpc.ServeConn(revConn)
 	go me.cache.ServeConn(revContentConn)
-	
+
 	mc := &mirrorConnection{
-		master:            me,
-		rpcClient:         rpc.NewClient(rpcConn),
-		contentClient:     me.cache.NewClient(contentConn),
-		reverseConnection: revConn,
+		master:             me,
+		rpcClient:          rpc.NewClient(rpcConn),
+		contentClient:      me.cache.NewClient(contentConn),
+		reverseConnection:  revConn,
 		reverseContentConn: revContentConn,
-		maxJobs:           rep.GrantedJobCount,
-		availableJobs:     rep.GrantedJobCount,
+		maxJobs:            rep.GrantedJobCount,
+		availableJobs:      rep.GrantedJobCount,
 	}
 	mc.fileSetWaiter = attr.NewFileSetWaiter(func(fset attr.FileSet) error {
 		return mc.replay(fset)

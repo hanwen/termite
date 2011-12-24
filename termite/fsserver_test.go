@@ -115,7 +115,7 @@ type rpcFsTestCase struct {
 	rpcFs  *RpcFs
 	state  *fuse.MountState
 
-	sockL, sockR io.ReadWriteCloser
+	sockL, sockR       io.ReadWriteCloser
 	contentL, contentR io.ReadWriteCloser
 
 	tester *testing.T
