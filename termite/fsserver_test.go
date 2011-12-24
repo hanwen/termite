@@ -109,7 +109,7 @@ type rpcFsTestCase struct {
 	mnt  string
 	orig string
 
-	cache  *cba.ContentCache
+	cache  *cba.Store
 	attr   *attr.AttributeCache
 	server *FsServer
 	rpcFs  *RpcFs
@@ -141,10 +141,10 @@ func newRpcFsTestCase(t *testing.T) (me *rpcFsTestCase) {
 	os.Mkdir(me.mnt, 0700)
 	os.Mkdir(me.orig, 0700)
 
-	copts := cba.ContentCacheOptions{
+	copts := cba.StoreOptions{
 		Dir: srvCache,
 	}
-	me.cache = cba.NewContentCache(&copts)
+	me.cache = cba.NewStore(&copts)
 	me.attr = attr.NewAttributeCache(
 		func(n string) *attr.FileAttr { return me.getattr(n) },
 		func(n string) *fuse.Attr {
@@ -168,10 +168,10 @@ func newRpcFsTestCase(t *testing.T) (me *rpcFsTestCase) {
 	go rpcServer.ServeConn(me.sockL)
 	go me.cache.ServeConn(me.contentL)
 	rpcClient := rpc.NewClient(me.sockR)
-	cOpts := cba.ContentCacheOptions{
+	cOpts := cba.StoreOptions{
 		Dir: me.tmp + "/client-cache",
 	}
-	clientCache := cba.NewContentCache(&cOpts)
+	clientCache := cba.NewStore(&cOpts)
 	me.rpcFs = NewRpcFs(rpcClient, clientCache, me.contentR)
 	me.rpcFs.id = "rpcfs_test"
 	nfs := fuse.NewPathNodeFs(me.rpcFs, nil)

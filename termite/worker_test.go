@@ -88,7 +88,7 @@ func NewTestCase(t *testing.T) *testCase {
 	me.workerOpts = &WorkerOptions{
 		Secret:  me.secret,
 		TempDir: workerTmp,
-		ContentCacheOptions: cba.ContentCacheOptions{
+		StoreOptions: cba.StoreOptions{
 			Dir: me.tmp + "/worker-cache",
 		},
 		Jobs:           1,
@@ -112,7 +112,7 @@ func NewTestCase(t *testing.T) *testCase {
 			KeepAlive:     500 * time.Millisecond,
 			Period:        500 * time.Millisecond,
 			ExposePrivate: true,
-			ContentCacheOptions: cba.ContentCacheOptions{
+			StoreOptions: cba.StoreOptions{
 				Dir: me.tmp + "/master-cache",
 			},
 			Socket: me.socket,

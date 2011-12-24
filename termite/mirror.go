@@ -47,7 +47,7 @@ func NewMirror(worker *Worker, rpcConn, revConn, contentConn, revContentConn net
 	}
 	
 	mirror.cond = sync.NewCond(&mirror.fsMutex)
-	mirror.rpcFs = NewRpcFs(rpc.NewClient(revConn), worker.contentCache, revContentConn)
+	mirror.rpcFs = NewRpcFs(rpc.NewClient(revConn), worker.content, revContentConn)
 
 	_, portString, _ := net.SplitHostPort(worker.listener.Addr().String())
 
@@ -68,7 +68,7 @@ func (me *Mirror) serveRpc() {
 		done <- 1
 	}()
 	go func() {
-		me.worker.contentCache.ServeConn(me.contentConn)
+		me.worker.content.ServeConn(me.contentConn)
 		done <- 1
 	}()
 	<-done

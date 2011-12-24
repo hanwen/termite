@@ -23,7 +23,7 @@ var _ = log.Println
 type Worker struct {
 	listener     net.Listener
 	rpcServer    *rpc.Server
-	contentCache *cba.ContentCache
+	content *cba.Store
 	pending      *PendingConnections
 	stats        *stats.ServerStats
 
@@ -36,7 +36,7 @@ type Worker struct {
 }
 
 type WorkerOptions struct {
-	cba.ContentCacheOptions
+	cba.StoreOptions
 
 	// Address of the coordinator.
 	Coordinator string
@@ -89,10 +89,10 @@ func NewWorker(options *WorkerOptions) *Worker {
 	}
 	// TODO - check that we can do renames from temp to cache.
 
-	cache := cba.NewContentCache(&options.ContentCacheOptions)
+	cache := cba.NewStore(&options.StoreOptions)
 
 	me := &Worker{
-		contentCache: cache,
+		content: cache,
 		pending:      NewPendingConnections(),
 		rpcServer:    rpc.NewServer(),
 		stats:        stats.NewServerStats(),

@@ -64,7 +64,7 @@ func main() {
 		Period:       time.Duration(*houseHoldPeriod * float64(time.Second)),
 		KeepAlive:    time.Duration(*keepAlive * float64(time.Second)),
 		FetchAll:     *fetchAll,
-		ContentCacheOptions: cba.ContentCacheOptions{
+		StoreOptions: cba.StoreOptions{
 			Dir:      *cachedir,
 			MemCount: *memcache,
 		},

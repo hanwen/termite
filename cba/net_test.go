@@ -5,14 +5,13 @@ import (
 	"io"
 	"io/ioutil"
 	"testing"
-//	"github.com/hanwen/go-fuse/fuse"
 	"os"
 	"syscall"
 )
 
 type netTestCase struct {
 	tmp string
-	server, clientCache *ContentCache
+	server, clientStore *Store
 	sockS, sockC io.ReadWriteCloser
 	client *Client
 }
@@ -40,17 +39,17 @@ func newNetTestCase(t *testing.T, cache bool) *netTestCase {
 	me := &netTestCase{}
 	me.tmp, _ = ioutil.TempDir("", "term-cba")
 	
-	optS := ContentCacheOptions{
+	optS := StoreOptions{
 		Dir: me.tmp + "/server",
 	}
 	if cache {
 		optS.MemCount = 100
 	}
-	me.server = NewContentCache(&optS)
+	me.server = NewStore(&optS)
 	
 	optC := optS
 	optC.Dir = me.tmp + "/client"
-	me.clientCache = NewContentCache(&optC)
+	me.clientStore = NewStore(&optC)
 	var err error
 	me.sockS, me.sockC, err = unixSocketpair()
 	if err != nil {
@@ -58,13 +57,13 @@ func newNetTestCase(t *testing.T, cache bool) *netTestCase {
 	}
 
 	go me.server.ServeConn(me.sockS)
-	me.client = me.clientCache.NewClient(me.sockC)
+	me.client = me.clientStore.NewClient(me.sockC)
 	return me 
 }
 
 
-func runTestNet(t *testing.T, cache bool) {
-	tc := newNetTestCase(t, cache)
+func runTestNet(t *testing.T, store bool) {
+	tc := newNetTestCase(t, store)
 	defer tc.Clean()
 	
 	b := bytes.NewBufferString("hello")
@@ -80,7 +79,7 @@ func runTestNet(t *testing.T, cache bool) {
 		t.Fatalf("unexpected error: Fetch: %v,%v", success, err)
 	}
 	
-	if !tc.clientCache.HasHash(hash) {
+	if !tc.clientStore.HasHash(hash) {
 		t.Errorf("after fetch, the hash should be there")
 	}
 

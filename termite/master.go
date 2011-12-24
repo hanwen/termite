@@ -18,7 +18,7 @@ import (
 )
 
 type Master struct {
-	cache         *cba.ContentCache
+	cache         *cba.Store
 	fileServer    *FsServer
 	fileServerRpc *rpc.Server
 	excluded      map[string]bool
@@ -34,7 +34,7 @@ type Master struct {
 
 // Immutable state and options for master.
 type MasterOptions struct {
-	cba.ContentCacheOptions
+	cba.StoreOptions
 
 	WritableRoot string
 	SourceRoot   string
@@ -153,8 +153,8 @@ func (me *Master) fillContent(rep *attr.FileAttr) {
 		rep.Hash = me.cache.SavePath(fullPath)
 		dt := time.Now().Sub(start)
 
-		me.stats.Log("ContentCache.SavePath", dt)
-		me.stats.LogN("ContentCache.SavePathBytes", int64(rep.Size), dt)
+		me.stats.Log("Store.SavePath", dt)
+		me.stats.LogN("Store.SavePathBytes", int64(rep.Size), dt)
 
 		if rep.Hash == "" {
 			// Typically happens if we want to open /etc/shadow as normal user.
@@ -169,7 +169,7 @@ func (me *Master) path(n string) string {
 }
 
 func NewMaster(options *MasterOptions) *Master {
-	cache := cba.NewContentCache(&options.ContentCacheOptions)
+	cache := cba.NewStore(&options.StoreOptions)
 
 	me := &Master{
 		cache:         cache,

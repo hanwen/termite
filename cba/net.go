@@ -1,24 +1,21 @@
 package cba
 
 import (
-	"encoding/binary"
 	"log"
 	"os"
 	"io"
 	"net/rpc"
 )
 
-var order = binary.BigEndian
-
 // Client is a thread-safe interface to fetching over a connection.
 type Client struct {
-	cache *ContentCache
+	store *Store
 	client *rpc.Client
 }
 
-func (cache *ContentCache) NewClient(conn io.ReadWriteCloser) *Client {
+func (store *Store) NewClient(conn io.ReadWriteCloser) *Client {
 	return &Client{
-	cache: cache,
+	store: store,
 	client: rpc.NewClient(conn),
 	}
 }
@@ -28,7 +25,7 @@ func (c *Client) Close() {
 }
 
 
-func (c *ContentCache) ServeConn(conn io.ReadWriteCloser) {
+func (c *Store) ServeConn(conn io.ReadWriteCloser) {
 	s := Server{c}
 	rpcServer := rpc.NewServer()
 	rpcServer.Register(&s)
@@ -37,22 +34,22 @@ func (c *ContentCache) ServeConn(conn io.ReadWriteCloser) {
 }
 
 type Server struct {
-	cache *ContentCache
+	store *Store
 }
 
 func (s *Server) ServeChunk(req *Request, rep *Response) (err error) {
-	e := s.cache.ServeChunk(req, rep)
+	e := s.store.ServeChunk(req, rep)
 	return e
 }
 
-func (me *ContentCache) ServeChunk(req *Request, rep *Response) (err error) {
-	if !me.HasHash(req.Hash) {
+func (st *Store) ServeChunk(req *Request, rep *Response) (err error) {
+	if !st.HasHash(req.Hash) {
 		rep.Have = false
 		return nil
 	}
 
 	rep.Have = true
-	if c := me.ContentsIfLoaded(req.Hash); c != nil {
+	if c := st.ContentsIfLoaded(req.Hash); c != nil {
 		if req.End > len(c) {
 			req.End = len(c)
 		}
@@ -61,7 +58,7 @@ func (me *ContentCache) ServeChunk(req *Request, rep *Response) (err error) {
 		return nil
 	}
 
-	f, err := os.Open(me.Path(req.Hash))
+	f, err := os.Open(st.Path(req.Hash))
 	if err != nil {
 		return err
 	}
@@ -103,10 +100,10 @@ func (c *Client) Fetch(want string) (bool, error) {
 		content := rep.Chunk[:rep.Size]
 
 		if len(content) < chunkSize && written == 0 {
-			saved = c.cache.Save(content)
+			saved = c.store.Save(content)
 			break
 		} else if output == nil {
-			output = c.cache.NewHashWriter()
+			output = c.store.NewHashWriter()
 			defer output.Close()
 		}
 

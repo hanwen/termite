@@ -18,9 +18,9 @@ var _ = md5pkg.New
 var _ = sha1.New
 
 // Content based addressing cache.
-type ContentCache struct {
+type Store struct {
 	// Should not change option values after initalizing.
-	Options *ContentCacheOptions
+	Options *StoreOptions
 
 	mutex         sync.Mutex
 	cond          *sync.Cond
@@ -32,17 +32,17 @@ type ContentCache struct {
 	memoryHits  int
 }
 
-type ContentCacheOptions struct {
+type StoreOptions struct {
 	Hash       crypto.Hash
 	Dir        string
 	MemCount   int
 	MemMaxSize int64
 }
 
-// NewContentCache creates a content cache based in directory d.
+// NewStore creates a content cache based in directory d.
 // memorySize sets the maximum number of file contents to keep in
 // memory.
-func NewContentCache(options *ContentCacheOptions) *ContentCache {
+func NewStore(options *StoreOptions) *Store {
 	if options.Hash == 0 {
 		options.Hash = crypto.MD5
 	}
@@ -57,7 +57,7 @@ func NewContentCache(options *ContentCacheOptions) *ContentCache {
 	db := ReadHexDatabase(options.Dir)
 	log.Println("done reading.")
 
-	c := &ContentCache{
+	c := &Store{
 		Options:  options,
 		have:     db,
 		faulting: make(map[string]bool),
@@ -73,15 +73,15 @@ func NewContentCache(options *ContentCacheOptions) *ContentCache {
 	return c
 }
 
-func (me *ContentCache) HashType() crypto.Hash {
-	return me.Options.Hash
+func (st *Store) HashType() crypto.Hash {
+	return st.Options.Hash
 }
 
-func (me *ContentCache) MemoryHitRate() float64 {
-	if me.memoryTries == 0 {
+func (st *Store) MemoryHitRate() float64 {
+	if st.memoryTries == 0 {
 		return 0.0
 	}
-	return float64(me.memoryHits) / float64(me.memoryTries)
+	return float64(st.memoryHits) / float64(st.memoryTries)
 }
 
 func HashPath(dir string, hash string) string {
@@ -96,90 +96,90 @@ func HashPath(dir string, hash string) string {
 	return dst
 }
 
-func (me *ContentCache) HasHash(hash string) bool {
-	me.mutex.Lock()
-	defer me.mutex.Unlock()
+func (st *Store) HasHash(hash string) bool {
+	st.mutex.Lock()
+	defer st.mutex.Unlock()
 
-	return me.have[hash]
+	return st.have[hash]
 }
 
-func (me *ContentCache) ContentsIfLoaded(hash string) []byte {
-	me.mutex.Lock()
-	defer me.mutex.Unlock()
-	for me.faulting[hash] {
-		me.cond.Wait()
+func (st *Store) ContentsIfLoaded(hash string) []byte {
+	st.mutex.Lock()
+	defer st.mutex.Unlock()
+	for st.faulting[hash] {
+		st.cond.Wait()
 	}
-	me.memoryTries++
-	if me.inMemoryCache == nil {
+	st.memoryTries++
+	if st.inMemoryCache == nil {
 		return nil
 	}
-	c := me.inMemoryCache.Get(hash)
+	c := st.inMemoryCache.Get(hash)
 	if c != nil {
-		me.memoryHits++
+		st.memoryHits++
 		return c.([]byte)
 	}
 	return nil
 }
 
-func (me *ContentCache) Path(hash string) string {
-	return HashPath(me.Options.Dir, hash)
+func (st *Store) Path(hash string) string {
+	return HashPath(st.Options.Dir, hash)
 }
 
-func (store *ContentCache) NewHashWriter() *HashWriter {
-	me := &HashWriter{cache: store}
+func (store *Store) NewHashWriter() *HashWriter {
+	st := &HashWriter{cache: store}
 	tmp, err := ioutil.TempFile(store.Options.Dir, ".hashtemp")
 	if err != nil {
 		log.Panic("NewHashWriter: ", err)
 	}
 
-	me.dest = tmp
-	me.hasher = store.Options.Hash.New()
-	return me
+	st.dest = tmp
+	st.hasher = store.Options.Hash.New()
+	return st
 }
 
 type HashWriter struct {
 	hasher hash.Hash
 	dest   *os.File
-	cache *ContentCache
+	cache *Store
 }
 
-func (me *HashWriter) Sum() string {
-	return string(me.hasher.Sum(nil))
+func (st *HashWriter) Sum() string {
+	return string(st.hasher.Sum(nil))
 }
 
-func (me *HashWriter) Write(p []byte) (n int, err error) {
-	n, err = me.dest.Write(p)
-	me.hasher.Write(p[:n])
+func (st *HashWriter) Write(p []byte) (n int, err error) {
+	n, err = st.dest.Write(p)
+	st.hasher.Write(p[:n])
 	return n, err
 }
 
-func (me *HashWriter) WriteClose(p []byte) (err error) {
-	_, err = me.Write(p)
+func (st *HashWriter) WriteClose(p []byte) (err error) {
+	_, err = st.Write(p)
 	if err != nil {
 		return err
 	}
-	err = me.Close()
+	err = st.Close()
 	return err
 }
 
-func (me *HashWriter) CopyClose(input io.Reader, size int64) error {
-	_, err := io.CopyN(me, input, size)
+func (st *HashWriter) CopyClose(input io.Reader, size int64) error {
+	_, err := io.CopyN(st, input, size)
 	if err != nil {
 		return err
 	}
-	err = me.Close()
+	err = st.Close()
 	return err
 }
 
-func (me *HashWriter) Close() error {
-	me.dest.Chmod(0444)
-	err := me.dest.Close()
+func (st *HashWriter) Close() error {
+	st.dest.Chmod(0444)
+	err := st.dest.Close()
 	if err != nil {
 		return err
 	}
-	src := me.dest.Name()
+	src := st.dest.Name()
 	dir, _ := filepath.Split(src)
-	sum := me.Sum()
+	sum := st.Sum()
 	sumpath := HashPath(dir, sum)
 
 	log.Printf("saving hash %x\n", sum)
@@ -188,16 +188,16 @@ func (me *HashWriter) Close() error {
 		log.Fatal("Rename failed", err)
 	}
 
-	me.cache.mutex.Lock()
-	defer me.cache.mutex.Unlock()
-	me.cache.have[sum] = true
+	st.cache.mutex.Lock()
+	defer st.cache.mutex.Unlock()
+	st.cache.have[sum] = true
 	
 	return err
 }
 
 const _BUFSIZE = 32 * 1024
 
-func (me *ContentCache) DestructiveSavePath(path string) (hash string, err error) {
+func (st *Store) DestructiveSavePath(path string) (hash string, err error) {
 	var f *os.File
 	f, err = os.Open(path)
 	if err != nil {
@@ -206,10 +206,10 @@ func (me *ContentCache) DestructiveSavePath(path string) (hash string, err error
 	before, _ := f.Stat()
 	defer f.Close()
 
-	h := me.Options.Hash.New()
+	h := st.Options.Hash.New()
 
 	var content []byte
-	if before.Size() < me.Options.MemMaxSize {
+	if before.Size() < st.Options.MemMaxSize {
 		content, err = ioutil.ReadAll(f)
 		if err != nil {
 			return "", err
@@ -221,19 +221,19 @@ func (me *ContentCache) DestructiveSavePath(path string) (hash string, err error
 	}
 
 	s := string(h.Sum(nil))
-	if me.HasHash(s) {
+	if st.HasHash(s) {
 		os.Remove(path)
 		return s, nil
 	}
 
-	me.mutex.Lock()
-	me.have[s] = true
-	if content != nil && me.inMemoryCache != nil {
-		me.inMemoryCache.Add(s, content)
+	st.mutex.Lock()
+	st.have[s] = true
+	if content != nil && st.inMemoryCache != nil {
+		st.inMemoryCache.Add(s, content)
 	}
-	me.mutex.Unlock()
+	st.mutex.Unlock()
 
-	p := me.Path(s)
+	p := st.Path(s)
 	err = os.Rename(path, p)
 	if err != nil {
 		log.Fatal("Rename failed", err)
@@ -246,7 +246,7 @@ func (me *ContentCache) DestructiveSavePath(path string) (hash string, err error
 	return s, nil
 }
 
-func (me *ContentCache) SavePath(path string) (hash string) {
+func (st *Store) SavePath(path string) (hash string) {
 	f, err := os.Open(path)
 	if err != nil {
 		log.Println("SavePath:", err)
@@ -255,55 +255,55 @@ func (me *ContentCache) SavePath(path string) (hash string) {
 	defer f.Close()
 
 	fi, _ := f.Stat()
-	return me.SaveStream(f, fi.Size())
+	return st.SaveStream(f, fi.Size())
 }
 
 // FaultIn loads the data from disk into the memory cache.
-func (me *ContentCache) FaultIn(hash string) {
-	me.mutex.Lock()
-	defer me.mutex.Unlock()
-	if me.inMemoryCache == nil {
+func (st *Store) FaultIn(hash string) {
+	st.mutex.Lock()
+	defer st.mutex.Unlock()
+	if st.inMemoryCache == nil {
 		return
 	}
-	for !me.inMemoryCache.Has(hash) && me.faulting[hash] {
-		me.cond.Wait()
+	for !st.inMemoryCache.Has(hash) && st.faulting[hash] {
+		st.cond.Wait()
 	}
-	if me.inMemoryCache.Has(hash) {
+	if st.inMemoryCache.Has(hash) {
 		return
 	}
 
-	me.faulting[hash] = true
-	me.mutex.Unlock()
-	c, err := ioutil.ReadFile(me.Path(hash))
-	me.mutex.Lock()
+	st.faulting[hash] = true
+	st.mutex.Unlock()
+	c, err := ioutil.ReadFile(st.Path(hash))
+	st.mutex.Lock()
 	if err != nil {
 		log.Fatal("FaultIn:", err)
 	}
-	delete(me.faulting, hash)
-	me.inMemoryCache.Add(hash, c)
-	me.cond.Broadcast()
+	delete(st.faulting, hash)
+	st.inMemoryCache.Add(hash, c)
+	st.cond.Broadcast()
 }
 
-func (me *ContentCache) Save(content []byte) (hash string) {
-	return me.saveViaMemory(content)
+func (st *Store) Save(content []byte) (hash string) {
+	return st.saveViaMemory(content)
 }
 
-func (me *ContentCache) saveViaMemory(content []byte) (hash string) {
-	writer := me.NewHashWriter()
+func (st *Store) saveViaMemory(content []byte) (hash string) {
+	writer := st.NewHashWriter()
 	err := writer.WriteClose(content)
 	if err != nil {
 		log.Println("saveViaMemory:", err)
 		return ""
 	}
 	hash = writer.Sum()
-	if me.inMemoryCache != nil {
-		me.inMemoryCache.Add(hash, content)
+	if st.inMemoryCache != nil {
+		st.inMemoryCache.Add(hash, content)
 	}
 	return hash
 }
 
-func (me *ContentCache) SaveStream(input io.Reader, size int64) (hash string) {
-	if size < me.Options.MemMaxSize {
+func (st *Store) SaveStream(input io.Reader, size int64) (hash string) {
+	if size < st.Options.MemMaxSize {
 		r := make([]byte, size)
 		n, err := io.ReadAtLeast(input, r, int(size))
 		if n != int(size) || err != nil {
@@ -311,10 +311,10 @@ func (me *ContentCache) SaveStream(input io.Reader, size int64) (hash string) {
 		}
 
 		r = r[:n]
-		return me.saveViaMemory(r)
+		return st.saveViaMemory(r)
 	}
 
-	dup := me.NewHashWriter()
+	dup := st.NewHashWriter()
 	err := dup.CopyClose(input, size)
 
 	if err != nil {

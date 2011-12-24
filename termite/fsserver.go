@@ -9,14 +9,14 @@ import (
 )
 
 type FsServer struct {
-	contentCache *cba.ContentCache
+	content *cba.Store
 	attributes   *attr.AttributeCache
 	stats        *stats.TimerStats
 }
 
-func NewFsServer(a *attr.AttributeCache, cache *cba.ContentCache) *FsServer {
+func NewFsServer(a *attr.AttributeCache, cache *cba.Store) *FsServer {
 	me := &FsServer{
-		contentCache: cache,
+		content: cache,
 		attributes:   a,
 		stats:        stats.NewTimerStats(),
 	}
@@ -34,8 +34,8 @@ func (me *FsServer) GetAttr(req *AttrRequest, rep *AttrResponse) error {
 	a := me.attributes.GetDir(req.Name)
 	if a.Hash != "" {
 		log.Printf("GetAttr %v", a)
-		if a.Size < uint64(me.contentCache.Options.MemMaxSize) {
-			go me.contentCache.FaultIn(a.Hash)
+		if a.Size < uint64(me.content.Options.MemMaxSize) {
+			go me.content.FaultIn(a.Hash)
 		}
 	}
 	rep.Attrs = append(rep.Attrs, a)

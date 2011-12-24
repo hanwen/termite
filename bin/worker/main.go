@@ -85,7 +85,7 @@ func main() {
 		Paranoia:    *paranoia,
 		ReapCount:   *reapcount,
 		LogFileName: *logfile,
-		ContentCacheOptions: cba.ContentCacheOptions{
+		StoreOptions: cba.StoreOptions{
 			Dir:      *cachedir,
 			MemCount: *memcache,
 		},

@@ -126,7 +126,7 @@ func (me *WorkerTask) runInFuse(fuseFs *workerFuseFs) error {
 func (me *Mirror) fillReply(ufs *fs.MemUnionFs) *attr.FileSet {
 	yield := ufs.Reap()
 	wrRoot := strings.TrimLeft(me.writableRoot, "/")
-	cache := me.worker.contentCache
+	content := me.worker.content
 
 	files := []*attr.FileAttr{}
 	reapedHashes := map[string]string{}
@@ -155,10 +155,10 @@ func (me *Mirror) fillReply(ufs *fs.MemUnionFs) *attr.FileSet {
 					timings := me.rpcFs.timings
 
 					start := time.Now()
-					f.Hash, err = cache.DestructiveSavePath(v.Backing)
+					f.Hash, err = content.DestructiveSavePath(v.Backing)
 					dt := time.Now().Sub(start)
-					timings.Log("ContentCache.DestructiveSavePath", dt)
-					timings.LogN("ContentCache.DestructiveSavePathBytes", int64(f.Size), dt)
+					timings.Log("Store.DestructiveSavePath", dt)
+					timings.LogN("Store.DestructiveSavePathBytes", int64(f.Size), dt)
 
 				}
 				if err != nil {

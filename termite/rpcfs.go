@@ -15,7 +15,7 @@ import (
 
 type RpcFs struct {
 	fuse.DefaultFileSystem
-	cache  *cba.ContentCache
+	cache  *cba.Store
 	client *rpc.Client
 	contentClient *cba.Client
 
@@ -32,7 +32,7 @@ type RpcFs struct {
 	fetching map[string]bool
 }
 
-func NewRpcFs(server *rpc.Client, cache *cba.ContentCache, contentConn io.ReadWriteCloser) *RpcFs {
+func NewRpcFs(server *rpc.Client, cache *cba.Store, contentConn io.ReadWriteCloser) *RpcFs {
 	me := &RpcFs{
 		client: server,
 		contentClient: cache.NewClient(contentConn),
