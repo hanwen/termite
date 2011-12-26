@@ -40,7 +40,7 @@ func (me *mirrorConnection) replay(fset attr.FileSet) error {
 	// Must get data before we modify the file-system, so we don't
 	// leave the FS in a half-finished state.
 	for _, info := range fset.Files {
-		if info.Hash != "" && !me.master.cache.HasHash(info.Hash) {
+		if info.Hash != "" && !me.master.contentStore.HasHash(info.Hash) {
 			got, err := me.contentClient.Fetch(info.Hash)
 			if !got && err == nil {
 				log.Fatalf("mirrorConnection.replay: fetch corruption remote does not have file %x", info.Hash)

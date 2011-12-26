@@ -17,7 +17,7 @@ import (
 )
 
 type Master struct {
-	cache         *cba.Store
+	contentStore  *cba.Store
 	fileServer    *FsServer
 	fileServerRpc *rpc.Server
 	excluded      map[string]bool
@@ -121,7 +121,7 @@ func (me *Master) uncachedGetAttr(name string) (rep *attr.FileAttr) {
 		disk := attr.EncodedAttr{}
 		diskHash := disk.ReadXAttr(p)
 
-		if diskHash != nil && cur.Eq(&disk) && me.cache.HasHash(string(diskHash)) {
+		if diskHash != nil && cur.Eq(&disk) && me.contentStore.HasHash(string(diskHash)) {
 			rep.Hash = string(diskHash)
 			return rep
 		}
@@ -147,7 +147,7 @@ func (me *Master) fillContent(rep *attr.FileAttr) {
 		rep.ReadFromFs(me.path(rep.Path), me.options.Hash)
 	} else if rep.IsRegular() {
 		fullPath := me.path(rep.Path)
-		rep.Hash = me.cache.SavePath(fullPath)
+		rep.Hash = me.contentStore.SavePath(fullPath)
 		if rep.Hash == "" {
 			// Typically happens if we want to open /etc/shadow as normal user.
 			log.Println("fillContent returning EPERM for", rep.Path)
@@ -161,10 +161,10 @@ func (me *Master) path(n string) string {
 }
 
 func NewMaster(options *MasterOptions) *Master {
-	cache := cba.NewStore(&options.StoreOptions)
+	contentStore := cba.NewStore(&options.StoreOptions)
 
 	me := &Master{
-		cache:         cache,
+		contentStore:         contentStore,
 		taskIds:       make(chan int, 100),
 		replayChannel: make(chan *replayRequest, 1),
 		quit:          make(chan int, 0),
@@ -202,7 +202,7 @@ func NewMaster(options *MasterOptions) *Master {
 			fi, _ := os.Lstat(me.path(n))
 			return fuse.ToAttr(fi)
 		})
-	me.fileServer = NewFsServer(me.attributes, me.cache)
+	me.fileServer = NewFsServer(me.attributes, me.contentStore)
 	me.fileServerRpc = rpc.NewServer()
 	me.fileServerRpc.Register(me.fileServer)
 
@@ -337,12 +337,12 @@ func (me *Master) createMirror(addr string, jobs int) (*mirrorConnection, error)
 	closeMe = nil
 
 	go me.fileServerRpc.ServeConn(revConn)
-	go me.cache.ServeConn(revContentConn)
+	go me.contentStore.ServeConn(revContentConn)
 
 	mc := &mirrorConnection{
 		master:             me,
 		rpcClient:          rpc.NewClient(rpcConn),
-		contentClient:      me.cache.NewClient(contentConn),
+		contentClient:      me.contentStore.NewClient(contentConn),
 		reverseConnection:  revConn,
 		reverseContentConn: revContentConn,
 		maxJobs:            rep.GrantedJobCount,
@@ -548,11 +548,11 @@ func (me *Master) replay(fset attr.FileSet) {
 		}
 
 		req.NewFiles[info.Hash] = append(req.NewFiles[info.Hash], f.Name())
-		content := me.cache.ContentsIfLoaded(info.Hash)
+		content := me.contentStore.ContentsIfLoaded(info.Hash)
 
 		if content == nil {
 			var src *os.File
-			src, err = os.Open(me.cache.Path(info.Hash))
+			src, err = os.Open(me.contentStore.Path(info.Hash))
 			if err != nil {
 				log.Panicf("cache path missing %x", info.Hash)
 			}

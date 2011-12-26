@@ -48,9 +48,9 @@ func (me *Master) statusHandler(w http.ResponseWriter, req *http.Request) {
 		fmt.Fprintf(w, "%d%s: %d (%d %%), ", 1<<uint(e), suffix, h, (100*cum)/total)
 	}
 
-	fmt.Fprintf(w, "<p>ContentCache memory hit rate: %.0f %%", 100.0*me.cache.MemoryHitRate())
+	fmt.Fprintf(w, "<p>ContentCache memory hit rate: %.0f %%", 100.0*me.contentStore.MemoryHitRate())
 	msgs := me.fileServer.stats.TimingMessages()
-	msgs = append(msgs, me.cache.TimingMessages()...)
+	msgs = append(msgs, me.contentStore.TimingMessages()...)
 	fmt.Fprintf(w, "<ul>")
 	for _, msg := range msgs {
 		fmt.Fprintf(w, "<li>%s", msg)
@@ -67,7 +67,7 @@ func (me *Master) statusHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func (me *Master) writeThroughput(w http.ResponseWriter) {
-	throughput := me.cache.ThroughputStats()
+	throughput := me.contentStore.ThroughputStats()
 
 	if len(throughput) > 0 {
 		fmt.Fprintf(w, "<table>%s\n", throughput[0].TableHeader())

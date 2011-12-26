@@ -320,7 +320,7 @@ func TestEndToEndNegativeNotify(t *testing.T) {
 	})
 
 	newContent := []byte("new content")
-	hash := tc.master.cache.Save(newContent)
+	hash := tc.master.contentStore.Save(newContent)
 	updated := []*attr.FileAttr{
 		{
 			Path: tc.wd[1:] + "/output.txt",
