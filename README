@@ -46,7 +46,7 @@ COMPILE/INSTALL
 
   mount -o remount,user_xattr,noatime my/device my/mountpoint
 
-  
+
 OVERVIEW
 
 There are 4 binaries:
@@ -150,7 +150,6 @@ TODO (by decreasing priority)
 
 * Cache open file descriptors in cba.Store.
 * Use splice for serving file contents
-* Measure aggregate master outgoing throughput
 * Make master->coordinator RPC block in coordinator so master can
   learn of developments instantaneously.
 * Compile linux kernel
