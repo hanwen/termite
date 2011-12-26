@@ -49,8 +49,7 @@ func GetattrForTest(t *testing.T, n string) *attr.FileAttr {
 	return &a
 }
 
-// TODO - fix this test.
-func DisabledTestRpcFsFetchOnce(t *testing.T) {
+func TestRpcFsFetchOnce(t *testing.T) {
 	me := newRpcFsTestCase(t)
 	defer me.Clean()
 	ioutil.WriteFile(me.orig+"/file.txt", []byte{42}, 0644)
@@ -58,8 +57,8 @@ func DisabledTestRpcFsFetchOnce(t *testing.T) {
 
 	ioutil.ReadFile(me.mnt + "/file.txt")
 
-	stats := me.server.stats.Timings()
-	key := "FsServer.FileContent"
+	stats := me.serverStore.TimingMap()
+	key := "ContentStore.Save"
 	if stats == nil || stats[key] == nil {
 		t.Fatalf("Stats %q missing: %v", key, stats)
 	}
@@ -109,7 +108,7 @@ type rpcFsTestCase struct {
 	mnt  string
 	orig string
 
-	cache  *cba.Store
+	serverStore, clientStore  *cba.Store
 	attr   *attr.AttributeCache
 	server *FsServer
 	rpcFs  *RpcFs
@@ -125,7 +124,7 @@ func (me *rpcFsTestCase) getattr(n string) *attr.FileAttr {
 	p := filepath.Join(me.orig, n)
 	a := GetattrForTest(me.tester, p)
 	if a.Hash != "" {
-		me.cache.SavePath(p)
+		me.serverStore.SavePath(p)
 	}
 	return a
 }
@@ -144,14 +143,14 @@ func newRpcFsTestCase(t *testing.T) (me *rpcFsTestCase) {
 	copts := cba.StoreOptions{
 		Dir: srvCache,
 	}
-	me.cache = cba.NewStore(&copts)
+	me.serverStore = cba.NewStore(&copts)
 	me.attr = attr.NewAttributeCache(
 		func(n string) *attr.FileAttr { return me.getattr(n) },
 		func(n string) *fuse.Attr {
 			return StatForTest(t, filepath.Join(me.orig, n))
 		})
 	me.attr.Paranoia = true
-	me.server = NewFsServer(me.attr, me.cache)
+	me.server = NewFsServer(me.attr, me.serverStore)
 
 	var err error
 	me.sockL, me.sockR, err = unixSocketpair()
@@ -166,13 +165,13 @@ func newRpcFsTestCase(t *testing.T) (me *rpcFsTestCase) {
 	rpcServer := rpc.NewServer()
 	rpcServer.Register(me.server)
 	go rpcServer.ServeConn(me.sockL)
-	go me.cache.ServeConn(me.contentL)
+	go me.serverStore.ServeConn(me.contentL)
 	rpcClient := rpc.NewClient(me.sockR)
 	cOpts := cba.StoreOptions{
 		Dir: me.tmp + "/client-cache",
 	}
-	clientCache := cba.NewStore(&cOpts)
-	me.rpcFs = NewRpcFs(rpcClient, clientCache, me.contentR)
+	me.clientStore = cba.NewStore(&cOpts)
+	me.rpcFs = NewRpcFs(rpcClient, me.clientStore, me.contentR)
 	me.rpcFs.id = "rpcfs_test"
 	nfs := fuse.NewPathNodeFs(me.rpcFs, nil)
 	me.state, _, err = fuse.MountNodeFileSystem(me.mnt, nfs, nil)
