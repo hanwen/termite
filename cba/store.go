@@ -219,6 +219,10 @@ func (st *Store) TimingMessages() []string {
 	return st.timings.TimingMessages()
 }
 
+func (st *Store) TimingMap() map[string]*stats.RpcTiming {
+	return st.timings.Timings()
+}
+
 func (st *Store) DestructiveSavePath(path string) (hash string, err error) {
 	start := time.Now()
 	var f *os.File
