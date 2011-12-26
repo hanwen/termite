@@ -17,7 +17,7 @@ type Client struct {
 func (store *Store) NewClient(conn io.ReadWriteCloser) *Client {
 	return &Client{
 		store:  store,
-		client: rpc.NewClient(conn),
+		client: rpc.NewClientWithCodec(NewCbaCodec(conn)),
 	}
 }
 
@@ -29,7 +29,7 @@ func (c *Store) ServeConn(conn io.ReadWriteCloser) {
 	s := Server{c}
 	rpcServer := rpc.NewServer()
 	rpcServer.Register(&s)
-	rpcServer.ServeConn(conn)
+	rpcServer.ServeCodec(NewCbaCodec(conn))
 	conn.Close()
 }
 
