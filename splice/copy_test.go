@@ -1,10 +1,16 @@
-package termite
+package splice
 
 import (
 	"io/ioutil"
 	"os"
 	"testing"
 )
+
+func check(err error) {
+	if err != nil {
+		panic(err)
+	}
+}
 
 func TestCopyFile(t *testing.T) {
 	src, _ := ioutil.TempFile("", "termite")

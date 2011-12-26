@@ -5,6 +5,7 @@ import (
 	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/termite/attr"
 	"github.com/hanwen/termite/cba"
+	"github.com/hanwen/termite/splice"
 	"io/ioutil"
 	"log"
 	"net"
@@ -150,7 +151,7 @@ func (me *testCase) Clean() {
 	me.master.quit <- 1
 
 	me.coordinator.killAll(false)
-	ClearSplicePool()
+	splice.ClearSplicePool()
 
 	// TODO - should have explicit worker shutdown routine.
 	me.coordinator.Shutdown()

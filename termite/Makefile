@@ -2,12 +2,11 @@
 include $(GOROOT)/src/Make.inc
 
 TARG=github.com/hanwen/termite/termite
-DEPS=../fs ../attr ../cba ../stats
+DEPS=../fs ../attr ../cba ../stats ../splice
 
 MANUAL_GOFILES=\
 	connection.go \
 	coordinator.go \
-	copy.go \
 	fsserver.go \
 	fuse.go \
 	getopt.go \

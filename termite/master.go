@@ -5,6 +5,7 @@ import (
 	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/termite/attr"
 	"github.com/hanwen/termite/cba"
+	"github.com/hanwen/termite/splice"
 	"io/ioutil"
 	"log"
 	"net"
@@ -556,7 +557,7 @@ func (me *Master) replay(fset attr.FileSet) {
 			if err != nil {
 				log.Panicf("cache path missing %x", info.Hash)
 			}
-			err = CopyFds(f, src)
+			err = splice.CopyFds(f, src)
 		} else {
 			_, err = f.Write(content)
 		}
