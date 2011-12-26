@@ -18,6 +18,9 @@ type RpcTiming struct {
 }
 
 func (me *RpcTiming) String() string {
+	if me.N == 0 {
+		return "0 calls"
+	}
 	avg := int64(me.Duration) / me.N
 
 	unit := "ns"

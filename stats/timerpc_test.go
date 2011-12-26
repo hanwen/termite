@@ -6,6 +6,15 @@ import (
 	"time"
 )
 
+func TestRpcTimingDivZero(t *testing.T) {
+	timing := RpcTiming{
+		N: 0, Duration: 0,
+	}
+
+	// should not crash.
+	timing.String()
+}
+
 func TestRpcTimingString(t *testing.T) {
 	timing := RpcTiming{
 		N: 1, Duration: 500 * time.Millisecond,
