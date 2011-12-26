@@ -8,6 +8,8 @@ import (
 	"time"
 )
 
+const useNewTransport = false
+
 // Client is a thread-safe interface to fetching over a connection.
 type Client struct {
 	store  *Store
@@ -15,10 +17,16 @@ type Client struct {
 }
 
 func (store *Store) NewClient(conn io.ReadWriteCloser) *Client {
-	return &Client{
-		store:  store,
-		client: rpc.NewClientWithCodec(NewCbaCodec(conn)),
+	cl := &Client{
+		store: store,
 	}
+
+	if useNewTransport {
+		cl.client = rpc.NewClientWithCodec(NewCbaCodec(conn))
+	} else {
+		cl.client = rpc.NewClient(conn)
+	}
+	return cl
 }
 
 func (c *Client) Close() {
@@ -29,7 +37,11 @@ func (c *Store) ServeConn(conn io.ReadWriteCloser) {
 	s := Server{c}
 	rpcServer := rpc.NewServer()
 	rpcServer.Register(&s)
-	rpcServer.ServeCodec(NewCbaCodec(conn))
+	if useNewTransport {
+		rpcServer.ServeCodec(NewCbaCodec(conn))
+	} else {
+		rpcServer.ServeConn(conn)
+	}
 	conn.Close()
 }
 
@@ -85,8 +97,7 @@ func (c *Client) Fetch(want string) (bool, error) {
 	return succ, err
 }
 
-
-func (c *Client) fetchChunk(req *Request, rep *Response) (error) {
+func (c *Client) fetchChunk(req *Request, rep *Response) error {
 	start := time.Now()
 	err := c.client.Call("Server.ServeChunk", req, rep)
 	dt := time.Now().Sub(start)
@@ -94,7 +105,6 @@ func (c *Client) fetchChunk(req *Request, rep *Response) (error) {
 	c.store.timings.LogN("ContentStore.FetchChunkBytes", int64(rep.Size), dt)
 	return err
 }
-
 
 func (c *Client) fetch(want string) (bool, int, error) {
 	chunkSize := 1 << 18
