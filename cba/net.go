@@ -50,9 +50,13 @@ type Server struct {
 }
 
 func (s *Server) ServeChunk(req *Request, rep *Response) (err error) {
-	e := s.store.ServeChunk(req, rep)
+	start := time.Now()
+	err = s.store.ServeChunk(req, rep)
 	s.store.addThroughput(0, int64(len(rep.Chunk)))
-	return e
+	dt := time.Now().Sub(start)
+	s.store.timings.Log("ContentStore.ServeChunk", dt)
+	s.store.timings.LogN("ContentStore.ServeChunkBytes", int64(len(rep.Chunk)), dt)
+	return err
 }
 
 func (st *Store) ServeChunk(req *Request, rep *Response) (err error) {
