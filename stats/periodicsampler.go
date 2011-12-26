@@ -7,18 +7,25 @@ import (
 
 var _ = log.Println
 
+type Sample interface {
+	SubSample(Sample)
+	CopySample() Sample
+	TableHeader() string
+	TableRow() string
+}
+
 type PeriodicSampler struct {
 	curr        int
 	dt          time.Duration
-	samples     []interface{}
-	measureFunc func() interface{}
+	samples     []Sample
+	measureFunc func() Sample
 
 	stop bool
 }
 
-func NewPeriodicSampler(period time.Duration, samples int, measure func() interface{}) *PeriodicSampler {
+func NewPeriodicSampler(period time.Duration, samples int, measure func() Sample) *PeriodicSampler {
 	me := &PeriodicSampler{
-		samples:     make([]interface{}, samples),
+		samples:     make([]Sample, samples),
 		measureFunc: measure,
 		dt:          period,
 	}
@@ -40,14 +47,15 @@ func (me *PeriodicSampler) sample() {
 }
 
 func (me *PeriodicSampler) Stop() {
+	// TODO - should use synchronization to be really correct.
 	me.stop = true
 }
 
-func (me *PeriodicSampler) Values() []interface{} {
+func (me *PeriodicSampler) Values() []Sample {
 	curr := me.curr
 	l := len(me.samples)
 
-	v := make([]interface{}, 0, l)
+	v := make([]Sample, 0, l)
 	for i := (curr + 1) % l; i != curr; i = (i + 1) % l {
 		if me.samples[i] != nil {
 			v = append(v, me.samples[i])
@@ -55,3 +63,18 @@ func (me *PeriodicSampler) Values() []interface{} {
 	}
 	return v
 }
+
+func (me *PeriodicSampler) Diffs() (out []Sample) {
+	vals := me.Values()
+	var last Sample
+	for _, v := range vals {
+		c := v.CopySample()
+		if last != nil {
+			c.SubSample(last)
+			out = append(out, c)
+		}
+		last = v
+	}
+	return out
+}
+

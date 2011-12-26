@@ -1,7 +1,7 @@
 package termite
-
 import (
 	"fmt"
+	"github.com/hanwen/termite/cba"
 	"log"
 	"net/http"
 )
@@ -49,20 +49,41 @@ func (me *Master) statusHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	fmt.Fprintf(w, "<p>ContentCache memory hit rate: %.0f %%", 100.0*me.cache.MemoryHitRate())
-	fmt.Fprintf(w, "<ul>")
 	msgs := me.fileServer.stats.TimingMessages()
 	msgs = append(msgs, me.cache.TimingMessages()...)
-	
+	fmt.Fprintf(w, "<ul>")
 	for _, msg := range msgs {
 		fmt.Fprintf(w, "<li>%s", msg)
 	}
 	fmt.Fprintf(w, "</ul>")
+
 	me.mirrors.stats.WriteHttp(w)
 
+	me.writeThroughput(w)
+	
 	fmt.Fprintf(w, "<p>Master parallelism (--jobs): %d. Reserved job slots: %d",
 		me.mirrors.wantedMaxJobs, me.mirrors.maxJobs())
 	fmt.Fprintf(w, "</body></html>")
 }
+
+func (me *Master) writeThroughput(w http.ResponseWriter) {
+	throughput := me.cache.ThroughputStats()
+
+	if len(throughput) > 0 {
+		fmt.Fprintf(w, "<table>%s\n", throughput[0].TableHeader())
+		total := &cba.ThroughputSample{}
+		for i, t := range throughput {
+			if i > len(throughput)-5 {
+				fmt.Fprintf(w, "%s\n", t.TableRow())
+			}
+			total.AddSample(t)
+		}
+		fmt.Fprintf(w, "</table>")
+
+		fmt.Fprintf(w, "Last %ds: %v", len(throughput), total)
+	}
+}
+
 
 func (me *Master) ServeHTTP(port int) {
 	http.HandleFunc("/",

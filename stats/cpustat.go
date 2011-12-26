@@ -12,7 +12,7 @@ import (
 const RUSAGE_SELF = 0
 const RUSAGE_CHILDREN = -1
 
-func sampleTime() interface{} {
+func sampleTime() Sample {
 	c := TotalCpuStat()
 	return c
 }
@@ -96,13 +96,36 @@ func (me *CpuStat) Add(x CpuStat) CpuStat {
 	}
 }
 
-func (me *CpuStat) Diff(x CpuStat) CpuStat {
+func (me *CpuStat) CopySample() Sample {
+	c := *me
+	return &c
+}
+
+func (me *CpuStat) SubSample(x Sample) {
+	c := x.(*CpuStat)
+	me.SelfCpu -= c.SelfCpu
+	me.SelfSys -= c.SelfSys
+	me.ChildCpu -= c.ChildCpu
+	me.ChildSys -= c.ChildSys
+	
+}
+
+func (me *CpuStat) DiffSample(x CpuStat) CpuStat {
 	return CpuStat{
 		SelfSys:  me.SelfSys - x.SelfSys,
 		SelfCpu:  me.SelfCpu - x.SelfCpu,
 		ChildSys: me.ChildSys - x.ChildSys,
 		ChildCpu: me.ChildCpu - x.ChildCpu,
 	}
+}
+
+func (me *CpuStat) TableHeader() string {
+	return "<th>self cpu (ms)</th><th>self sys (ms)</th>%s<th><th>child cpu (ms)</th><th>child sys (ms)</th>"
+}
+
+func (me *CpuStat) TableRow() string {
+	return fmt.Sprintf("<td>%v</td><td>%v</td><td>%v</td><td>%v</td>",
+		me.SelfCpu, me.SelfSys, me.ChildCpu, me.ChildSys)
 }
 
 func (me *CpuStat) String() string {
@@ -135,15 +158,12 @@ func NewCpuStatSampler() *CpuStatSampler {
 	return me
 }
 
+
 func (me *CpuStatSampler) CpuStats() (out []CpuStat) {
-	vals := me.sampler.Values()
-	var last *CpuStat
-	for _, v := range vals {
-		s := v.(*CpuStat)
-		if last != nil {
-			out = append(out, s.Diff(*last))
-		}
-		last = s
+	diffs := me.sampler.Diffs()
+	for _, d := range diffs {
+		s := d.(*CpuStat)
+		out = append(out, *s)
 	}
 	return out
 }

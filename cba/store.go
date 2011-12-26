@@ -24,14 +24,18 @@ type Store struct {
 	// Should not change option values after initalizing.
 	Options *StoreOptions
 
+	timings       *stats.TimerStats
+	throughput    *stats.PeriodicSampler
+	
 	mutex         sync.Mutex
 	cond          *sync.Cond
 	faulting      map[string]bool
 	have          map[string]bool
 	inMemoryCache *LruCache
-	timings       *stats.TimerStats
 	memoryTries int
 	memoryHits  int
+	bytesServed stats.MemCounter
+	bytesReceived stats.MemCounter
 }
 
 type StoreOptions struct {
@@ -65,6 +69,7 @@ func NewStore(options *StoreOptions) *Store {
 		faulting: make(map[string]bool),
 		timings:       stats.NewTimerStats(),
 	}
+	c.initThroughputSampler()
 	if options.MemCount > 0 {
 		c.inMemoryCache = NewLruCache(options.MemCount)
 		if options.MemMaxSize == 0 {

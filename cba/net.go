@@ -39,6 +39,7 @@ type Server struct {
 
 func (s *Server) ServeChunk(req *Request, rep *Response) (err error) {
 	e := s.store.ServeChunk(req, rep)
+	s.store.addThroughput(0, int64(len(rep.Chunk)))
 	return e
 }
 
@@ -120,6 +121,7 @@ func (c *Client) fetch(want string) (bool, int, error) {
 
 		if len(content) < chunkSize && written == 0 {
 			saved = c.store.Save(content)
+			written = len(content)
 			break
 		} else if output == nil {
 			output = c.store.NewHashWriter()
@@ -139,6 +141,7 @@ func (c *Client) fetch(want string) (bool, int, error) {
 		output.Close()
 		saved = string(output.Sum())
 	}
+	c.store.addThroughput(int64(written), 0)
 	if want != saved {
 		log.Fatalf("file corruption: got %x want %x", saved, want)
 	}
