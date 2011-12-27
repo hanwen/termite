@@ -37,6 +37,17 @@ func (me *WorkerTask) String() string {
 
 func (me *WorkerTask) Run() error {
 	fuseFs, err := me.mirror.newFs(me)
+
+	if err == ShuttingDownError {
+		// We can't return an error, since that would cause
+		// the master to drop us directly before the other
+		// jobs finished, opening a time window where there
+		// might no worker running at all.
+		//
+		// TODO - some gentler signaling to the master?
+		select {}
+	}
+
 	if err != nil {
 		return err
 	}

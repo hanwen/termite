@@ -1,7 +1,6 @@
 package termite
 
 import (
-	"errors"
 	"fmt"
 	"github.com/hanwen/termite/attr"
 	"log"
@@ -115,18 +114,24 @@ func (me *Mirror) runningCount() int {
 	return r
 }
 
+var ShuttingDownError error
+
+func init() {
+	ShuttingDownError = fmt.Errorf("shutting down")
+}
+
 func (me *Mirror) newFs(t *WorkerTask) (fs *workerFuseFs, err error) {
 	me.fsMutex.Lock()
 	defer me.fsMutex.Unlock()
 
 	me.waiting++
-	for me.accepting && me.runningCount() >= me.maxJobCount {
+	for me.runningCount() >= me.maxJobCount {
 		me.cond.Wait()
 	}
 	me.waiting--
 
 	if !me.accepting {
-		return nil, errors.New("shutting down")
+		return nil, ShuttingDownError
 	}
 
 	for fs := range me.activeFses {
