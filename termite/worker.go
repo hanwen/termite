@@ -277,6 +277,7 @@ func (me *Worker) DropMirror(mirror *Mirror) {
 }
 
 func (me *Worker) Shutdown(req *ShutdownRequest, rep *ShutdownResponse) error {
+	log.Printf("Received Shutdown RPC: %#v", req)
 	me.shutdown(req.Restart, req.Kill)
 	return nil
 }

@@ -38,22 +38,30 @@ type WorkerRegistration struct {
 type Coordinator struct {
 	Mux *http.ServeMux
 
+	options *CoordinatorOptions
+
 	listener net.Listener
 	mutex    sync.Mutex
 	workers  map[string]*WorkerRegistration
-	secret   []byte
 }
 
-func NewCoordinator(secret []byte) *Coordinator {
+type CoordinatorOptions struct {
+	// Secret is the password for coordinator, workers and master
+	// to authenticate.
+	Secret []byte
+}
+
+func NewCoordinator(opts *CoordinatorOptions) *Coordinator {
+	o := *opts
 	return &Coordinator{
+		options: &o,
 		workers: make(map[string]*WorkerRegistration),
-		secret:  secret,
 		Mux:     http.NewServeMux(),
 	}
 }
 
 func (me *Coordinator) Register(req *Registration, rep *int) error {
-	conn, err := DialTypedConnection(req.Address, RPC_CHANNEL, me.secret)
+	conn, err := DialTypedConnection(req.Address, RPC_CHANNEL, me.options.Secret)
 	if conn != nil {
 		conn.Close()
 	}
@@ -100,7 +108,7 @@ func (me *Coordinator) checkReachable() {
 
 	var toDelete []string
 	for _, a := range addrs {
-		conn, err := DialTypedConnection(a, RPC_CHANNEL, me.secret)
+		conn, err := DialTypedConnection(a, RPC_CHANNEL, me.options.Secret)
 		if err != nil {
 			toDelete = append(toDelete, a)
 		} else {
@@ -187,7 +195,7 @@ func (me *Coordinator) killAll(restart bool) error {
 }
 
 func (me *Coordinator) killWorker(addr string, restart bool) error {
-	conn, err := DialTypedConnection(addr, RPC_CHANNEL, me.secret)
+	conn, err := DialTypedConnection(addr, RPC_CHANNEL, me.options.Secret)
 	if err == nil {
 		killReq := ShutdownRequest{Restart: restart}
 		rep := ShutdownResponse{}
@@ -252,7 +260,7 @@ func (me *Coordinator) killHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func (me *Coordinator) shutdownWorker(addr string, restart bool) error {
-	conn, err := DialTypedConnection(addr, RPC_CHANNEL, me.secret)
+	conn, err := DialTypedConnection(addr, RPC_CHANNEL, me.options.Secret)
 	if err != nil {
 		return err
 	}
@@ -293,7 +301,7 @@ func (me *Coordinator) getHost(req *http.Request) (string, net.Conn, error) {
 		return "", nil, fmt.Errorf("worker %q unknown", addr)
 	}
 
-	conn, err := DialTypedConnection(addr, RPC_CHANNEL, me.secret)
+	conn, err := DialTypedConnection(addr, RPC_CHANNEL, me.options.Secret)
 	if err != nil {
 		return "", nil, fmt.Errorf("error dialing: %v", err)
 	}

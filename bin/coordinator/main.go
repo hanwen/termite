@@ -38,7 +38,10 @@ func main() {
 		log.Fatal("ReadFile", err)
 	}
 
-	c := termite.NewCoordinator(secret)
+	opts := termite.CoordinatorOptions{
+		Secret: secret,
+	}
+	c := termite.NewCoordinator(&opts)
 	c.Mux.HandleFunc("/bin/worker", serveBin("worker"))
 	c.Mux.HandleFunc("/bin/shell-wrapper", serveBin("shell-wrapper"))
 

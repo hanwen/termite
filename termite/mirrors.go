@@ -72,8 +72,7 @@ func (me *WorkerMirrors) mirrors() (result []*Mirror) {
 }
 
 func (me *WorkerMirrors) shutdown(aggressive bool) {
-	log.Println("Received Shutdown.")
-
+	log.Printf("shutting down mirrors: aggressive=%v", aggressive)
 	wg := sync.WaitGroup{}
 	mirrors := me.mirrors()
 	wg.Add(len(mirrors))

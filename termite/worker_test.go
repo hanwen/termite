@@ -77,7 +77,10 @@ func NewTestCase(t *testing.T) *testCase {
 	workerTmp := me.tmp + "/worker-tmp"
 	os.Mkdir(workerTmp, 0700)
 
-	me.coordinator = NewCoordinator(me.secret)
+	cOpts := CoordinatorOptions{
+		Secret: me.secret,
+	}
+	me.coordinator = NewCoordinator(&cOpts)
 	go me.coordinator.PeriodicCheck()
 	go me.coordinator.ServeHTTP(0)
 	for me.coordinator.listener == nil {
