@@ -29,6 +29,7 @@ func serveBin(name string) func(w http.ResponseWriter, req *http.Request) {
 
 func main() {
 	port := flag.Int("port", 1230, "Where to listen for work requests.")
+	webPassword := flag.String("web-password", "killkillkill", "password for authorizing worker kills.")
 	secretFile := flag.String("secret", "secret.txt", "file containing password.")
 	flag.Parse()
 	log.SetPrefix("C")
@@ -39,7 +40,8 @@ func main() {
 	}
 
 	opts := termite.CoordinatorOptions{
-		Secret: secret,
+		Secret:      secret,
+		WebPassword: *webPassword,
 	}
 	c := termite.NewCoordinator(&opts)
 	c.Mux.HandleFunc("/bin/worker", serveBin("worker"))

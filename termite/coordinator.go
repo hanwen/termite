@@ -49,6 +49,10 @@ type CoordinatorOptions struct {
 	// Secret is the password for coordinator, workers and master
 	// to authenticate.
 	Secret []byte
+
+	// Password should be passed in the kill/restart URLs to make
+	// sure web scrapers don't randomly shutdown workers.
+	WebPassword string
 }
 
 func NewCoordinator(opts *CoordinatorOptions) *Coordinator {
@@ -208,6 +212,10 @@ func (me *Coordinator) killWorker(addr string, restart bool) error {
 
 func (me *Coordinator) killAllHandler(w http.ResponseWriter, req *http.Request) {
 	me.log(req)
+	if !me.checkPassword(w, req) {
+		return
+	}
+
 	w.Header().Set("Content-Type", "text/html")
 	fmt.Fprintf(w, "<p>%s in progress", req.URL.Path)
 	err := me.killAll(req.URL.Path == "/restartall")
@@ -219,8 +227,25 @@ func (me *Coordinator) killAllHandler(w http.ResponseWriter, req *http.Request) 
 	go me.checkReachable()
 }
 
+func (me *Coordinator) checkPassword(w http.ResponseWriter, req *http.Request) bool {
+	if me.options.WebPassword == "" {
+		return true
+	}
+	q := req.URL.Query()
+	pw := q["pw"]
+	if len(pw) == 0 || pw[0] != me.options.WebPassword {
+		fmt.Fprintf(w, "<html><body>unauthorized &amp;pw=PASSWORD missing or incorrect.</body></html>")
+		return false
+	}
+	return true
+}
+
 func (me *Coordinator) killHandler(w http.ResponseWriter, req *http.Request) {
 	me.log(req)
+	if !me.checkPassword(w, req) {
+		return
+	}
+
 	addr, conn, err := me.getHost(req)
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
