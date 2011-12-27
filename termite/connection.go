@@ -3,6 +3,7 @@ package termite
 import (
 	"bytes"
 	"crypto/hmac"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
@@ -12,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -142,14 +144,19 @@ func (me *Listener) Accept() (net.Conn, error) {
 // ids:
 //
 const (
-	RPC_CHANNEL = "rpc....."
-	_ID_FMT     = "id%06d"
-	HEADER_LEN  = 8
+	RPC_CHANNEL = "rpc......"
+	HEADER_LEN  = 9
 )
 
+var nextConnectionId uint64
+
 func ConnectionId() string {
-	id := rand.Intn(1e6)
-	return fmt.Sprintf(_ID_FMT, id)
+	id := atomic.AddUint64(&nextConnectionId, 1)
+	id--
+	encoded := make([]byte, 9)
+	encoded[0] = 'i'
+	binary.BigEndian.PutUint64(encoded[1:], id)
+	return string(encoded)
 }
 
 type pendingConnection struct {

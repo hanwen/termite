@@ -74,8 +74,8 @@ func TestPendingConnection(t *testing.T) {
 	conn1 := &dummyConn{b1}
 	conn2 := &dummyConn{b2}
 
-	id1 := "pqrxyzab"
-	id2 := "pqrxy111"
+	id1 := ConnectionId()
+	id2 := ConnectionId()
 
 	io.WriteString(a1, id1)
 	io.WriteString(a2, id2)
