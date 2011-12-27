@@ -133,6 +133,7 @@ func (me *WorkerTask) runInFuse(fuseFs *workerFuseFs) error {
 
 // Sorts FileAttr such deletions come reversed before additions.
 
+// TODO - rename files out of backing store, and return the FS early
 func (me *Mirror) fillReply(ufs *fs.MemUnionFs) *attr.FileSet {
 	yield := ufs.Reap()
 	wrRoot := strings.TrimLeft(me.writableRoot, "/")
