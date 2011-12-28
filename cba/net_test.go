@@ -70,11 +70,11 @@ func runTestNet(t *testing.T, store bool) {
 	hash := tc.server.SaveStream(b, int64(l))
 
 	different := hash[1:] + "x"
-	if success, err := tc.client.Fetch(different); success || err != nil {
+	if success, err := tc.client.Fetch(different, 1024); success || err != nil {
 		t.Errorf("non-existent fetch should return false without error: %v %v", success, err)
 	}
 
-	if success, err := tc.client.Fetch(hash); !success || err != nil {
+	if success, err := tc.client.Fetch(hash, 1024); !success || err != nil {
 		t.Fatalf("unexpected error: Fetch: %v,%v", success, err)
 	}
 
@@ -83,7 +83,7 @@ func runTestNet(t *testing.T, store bool) {
 	}
 
 	tc.sockC.Close()
-	if success, err := tc.client.Fetch(different); success || err == nil {
+	if success, err := tc.client.Fetch(different, 1024); success || err == nil {
 		t.Errorf("after close, fetch should return error: succ=%v", success)
 	}
 }

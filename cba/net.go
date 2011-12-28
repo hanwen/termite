@@ -92,12 +92,12 @@ func (st *Store) ServeChunk(req *Request, rep *Response) (err error) {
 	return err
 }
 
-func (c *Client) Fetch(want string) (bool, error) {
+func (c *Client) Fetch(want string, size int64) (bool, error) {
 	start := time.Now()
-	succ, size, err := c.fetch(want)
+	succ, err := c.fetch(want, size)
 	dt := time.Now().Sub(start)
 	c.store.timings.Log("ContentStore.Fetch", dt)
-	c.store.timings.LogN("ContentStore.FetchBytes", int64(size), dt)
+	c.store.timings.LogN("ContentStore.FetchBytes", size, dt)
 	return succ, err
 }
 
@@ -110,9 +110,12 @@ func (c *Client) fetchChunk(req *Request, rep *Response) error {
 	return err
 }
 
-// TODO - pass size so we alloc smaller chunks.
-func (c *Client) fetch(want string) (bool, int, error) {
+func (c *Client) fetch(want string, size int64) (bool, error) {
 	chunkSize := 1 << 18
+	if int64(chunkSize) > size+1 {
+		chunkSize = int(size + 1)
+	}
+
 	buf := make([]byte, chunkSize)
 
 	var output *HashWriter
@@ -128,7 +131,7 @@ func (c *Client) fetch(want string) (bool, int, error) {
 		rep := &Response{Chunk: buf}
 		err := c.fetchChunk(req, rep)
 		if err != nil || !rep.Have {
-			return false, 0, err
+			return false, err
 		}
 
 		// is this a bug in the rpc package?
@@ -146,7 +149,7 @@ func (c *Client) fetch(want string) (bool, int, error) {
 		n, err := output.Write(content)
 		written += n
 		if err != nil {
-			return false, 0, err
+			return false, err
 		}
 		if len(content) < chunkSize {
 			break
@@ -160,5 +163,5 @@ func (c *Client) fetch(want string) (bool, int, error) {
 	if want != saved {
 		log.Fatalf("file corruption: got %x want %x", saved, want)
 	}
-	return true, written, nil
+	return true, nil
 }

@@ -76,7 +76,7 @@ func (me *RpcFs) FetchHashOnce(a *attr.FileAttr) error {
 	me.mutex.Unlock()
 
 	log.Printf("Fetching contents for file %s: %x", a.Path, h)
-	got, err := me.contentClient.Fetch(a.Hash)
+	got, err := me.contentClient.Fetch(a.Hash, int64(a.Size))
 
 	if !got && err == nil {
 		log.Fatalf("RpcFs.FetchHashOnce: server did not have hash %x", a.Hash)
