@@ -110,6 +110,7 @@ func (c *Client) fetchChunk(req *Request, rep *Response) error {
 	return err
 }
 
+// TODO - pass size so we alloc smaller chunks.
 func (c *Client) fetch(want string) (bool, int, error) {
 	chunkSize := 1 << 18
 	buf := make([]byte, chunkSize)
