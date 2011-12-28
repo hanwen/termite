@@ -24,17 +24,17 @@ type Store struct {
 	// Should not change option values after initalizing.
 	Options *StoreOptions
 
-	timings       *stats.TimerStats
-	throughput    *stats.PeriodicSampler
-	
+	timings    *stats.TimerStats
+	throughput *stats.PeriodicSampler
+
 	mutex         sync.Mutex
 	cond          *sync.Cond
 	faulting      map[string]bool
 	have          map[string]bool
 	inMemoryCache *LruCache
-	memoryTries int
-	memoryHits  int
-	bytesServed stats.MemCounter
+	memoryTries   int
+	memoryHits    int
+	bytesServed   stats.MemCounter
 	bytesReceived stats.MemCounter
 }
 
@@ -67,7 +67,7 @@ func NewStore(options *StoreOptions) *Store {
 		Options:  options,
 		have:     db,
 		faulting: make(map[string]bool),
-		timings:       stats.NewTimerStats(),
+		timings:  stats.NewTimerStats(),
 	}
 	c.initThroughputSampler()
 	if options.MemCount > 0 {
@@ -148,7 +148,7 @@ func (store *Store) NewHashWriter() *HashWriter {
 }
 
 type HashWriter struct {
-	start time.Time
+	start  time.Time
 	hasher hash.Hash
 	dest   *os.File
 	cache  *Store
@@ -277,7 +277,8 @@ func (st *Store) DestructiveSavePath(path string) (hash string, err error) {
 
 	st.timings.Log("ContentStore.DestructiveSave", dt)
 	st.timings.LogN("ContentStore.DestructiveSaveBytes", int64(size), dt)
-	
+
+	log.Printf("Saving %s as %x destructively", path, s)
 	return s, nil
 }
 
