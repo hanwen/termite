@@ -170,10 +170,10 @@ func (me *Mirror) considerReap(fs *workerFuseFs, task *WorkerTask) bool {
 
 func (me *Mirror) reapFuse(fs *workerFuseFs) (results *attr.FileSet, taskIds []int) {
 	log.Printf("Reaping fuse FS %v", fs.id)
-	results = me.fillReply(fs.unionFs)
-	fs.unionFs.Reset()
+	ids := fs.taskIds[:]
+	results = me.fillReply(fs)
 
-	return results, fs.taskIds[:]
+	return results, ids
 }
 
 func (me *Mirror) returnFs(fs *workerFuseFs) {

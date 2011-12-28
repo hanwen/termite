@@ -210,3 +210,33 @@ func (me *workerFuseFs) update(attrs []*attr.FileAttr) {
 	}
 	me.unionFs.Update(updates)
 }
+
+func (fs *workerFuseFs) reap() (yield map[string]*fs.Result) {
+	yield = fs.unionFs.Reap()
+	backingStoreFiles := map[string]string{}
+
+	i := 0
+	for _, v := range yield {
+		if v.Backing == "" {
+			continue
+		}
+		newBacking := backingStoreFiles[v.Backing]
+		if newBacking != "" {
+			v.Backing = newBacking
+		} else {
+			newBacking = fmt.Sprintf("%s/reap%d", fs.tmpDir, i)
+			i++
+			err := os.Rename(v.Backing, newBacking)
+			if err != nil {
+				log.Panicf("reapFiles rename failed: %v", err)
+			}
+
+			backingStoreFiles[v.Backing] = newBacking
+			v.Backing = newBacking
+		}
+	}
+
+	// We saved the backing store files, so we don't need the file system anymore.
+	fs.unionFs.Reset()
+	return yield
+}

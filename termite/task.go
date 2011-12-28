@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/hanwen/termite/attr"
-	"github.com/hanwen/termite/fs"
 	"log"
 	"net"
 	"os"
@@ -56,11 +55,11 @@ func (me *WorkerTask) Run() error {
 	err = me.runInFuse(fuseFs)
 	me.mirror.worker.stats.Exit("fuse")
 
-	defer me.mirror.returnFs(fuseFs)
-
 	me.mirror.worker.stats.Enter("reap")
 	if me.mirror.considerReap(fuseFs, me) {
 		me.rep.FileSet, me.rep.TaskIds = me.mirror.reapFuse(fuseFs)
+	} else {
+		me.mirror.returnFs(fuseFs)
 	}
 	me.mirror.worker.stats.Exit("reap")
 
@@ -131,15 +130,14 @@ func (me *WorkerTask) runInFuse(fuseFs *workerFuseFs) error {
 	return err
 }
 
-// Sorts FileAttr such deletions come reversed before additions.
+// fillReply empties the unionFs and hashes files as needed.  It will
+// return the FS back the pool as soon as possible.
+func (me *Mirror) fillReply(fs *workerFuseFs) *attr.FileSet {
+	yield := fs.reap()
+	me.returnFs(fs)
 
-// TODO - rename files out of backing store, and return the FS early
-func (me *Mirror) fillReply(ufs *fs.MemUnionFs) *attr.FileSet {
-	yield := ufs.Reap()
+	files := make([]*attr.FileAttr, 0, len(yield))
 	wrRoot := strings.TrimLeft(me.writableRoot, "/")
-	content := me.worker.content
-
-	files := []*attr.FileAttr{}
 	reapedHashes := map[string]string{}
 	for path, v := range yield {
 		f := &attr.FileAttr{
@@ -160,23 +158,22 @@ func (me *Mirror) fillReply(ufs *fs.MemUnionFs) *attr.FileSet {
 				f.Hash = fa.Hash
 			}
 			if v.Backing != "" {
+				if _, ok := reapedHashes[v.Backing]; !ok {
+					var err error
+					reapedHashes[v.Backing], err = me.worker.content.DestructiveSavePath(v.Backing)
+					if err != nil {
+						log.Fatalf("DestructiveSavePath fail %v", err)
+					}
+				}
+
 				f.Hash = reapedHashes[v.Backing]
-				var err error
-				if f.Hash == "" {
-					f.Hash, err = content.DestructiveSavePath(v.Backing)
-				}
-				if err != nil {
-					log.Fatalf("DestructiveSavePath fail %q: %v", v.Backing, err)
-				} else {
-					reapedHashes[v.Backing] = f.Hash
-				}
 			}
 		}
-
 		files = append(files, f)
 	}
-	fs := attr.FileSet{Files: files}
-	fs.Sort()
 
-	return &fs
+	fset := attr.FileSet{Files: files}
+	fset.Sort()
+
+	return &fset
 }
