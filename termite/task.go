@@ -133,7 +133,7 @@ func (me *WorkerTask) runInFuse(fuseFs *workerFuseFs) error {
 // fillReply empties the unionFs and hashes files as needed.  It will
 // return the FS back the pool as soon as possible.
 func (me *Mirror) fillReply(fs *workerFuseFs) *attr.FileSet {
-	yield := fs.reap()
+	dir, yield := fs.reap()
 	me.returnFs(fs)
 
 	files := make([]*attr.FileAttr, 0, len(yield))
@@ -174,6 +174,7 @@ func (me *Mirror) fillReply(fs *workerFuseFs) *attr.FileSet {
 
 	fset := attr.FileSet{Files: files}
 	fset.Sort()
+	go os.RemoveAll(dir)
 
 	return &fset
 }
