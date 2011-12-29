@@ -158,15 +158,17 @@ func (me *Mirror) fillReply(fs *workerFuseFs) *attr.FileSet {
 				f.Hash = fa.Hash
 			}
 			if v.Backing != "" {
-				if _, ok := reapedHashes[v.Backing]; !ok {
+				h, ok := reapedHashes[v.Backing]
+				if !ok {
 					var err error
-					reapedHashes[v.Backing], err = me.worker.content.DestructiveSavePath(v.Backing)
-					if err != nil {
-						log.Fatalf("DestructiveSavePath fail %v", err)
-					}
-				}
 
-				f.Hash = reapedHashes[v.Backing]
+					h, err = me.worker.content.DestructiveSavePath(v.Backing)
+					if err != nil || h == "" {
+						log.Fatalf("DestructiveSavePath fail %v, %q", err, h)
+					}
+					reapedHashes[v.Backing] = h
+				}
+				f.Hash = h
 			}
 		}
 		files = append(files, f)
@@ -174,7 +176,10 @@ func (me *Mirror) fillReply(fs *workerFuseFs) *attr.FileSet {
 
 	fset := attr.FileSet{Files: files}
 	fset.Sort()
-	go os.RemoveAll(dir)
+	err := os.Remove(dir)
+	if err != nil {
+		log.Fatal("fillReply: Remove failed: %v", err)
+	}
 
 	return &fset
 }

@@ -230,11 +230,12 @@ func (fs *workerFuseFs) reap() (dir string, yield map[string]*fs.Result) {
 		} else {
 			newBacking = fmt.Sprintf("%s/%d", dir, i)
 			i++
+
 			err := os.Rename(v.Backing, newBacking)
 			if err != nil {
 				log.Panicf("reapFiles rename failed: %v", err)
 			}
-
+			log.Printf("created %q", newBacking)
 			backingStoreFiles[v.Backing] = newBacking
 			v.Backing = newBacking
 		}
