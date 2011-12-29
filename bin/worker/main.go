@@ -44,6 +44,7 @@ func main() {
 	userFlag := flag.String("user", "nobody", "Run as this user.")
 	memcache := flag.Int("filecache", 1024, "number of <128k files to cache in memory")
 	logfile := flag.String("logfile", "", "Output log file to use.")
+	stderrFile := flag.String("stderr", "", "File to write stderr output to.")
 	paranoia := flag.Bool("paranoia", false, "Check attribute cache.")
 	cpus := flag.Int("cpus", 1, "Number of CPUs to use.")
 	heap := flag.Int("heap-size", 0, "Maximum heap size in MB.")
@@ -76,6 +77,22 @@ func main() {
 		log.SetOutput(f)
 	} else {
 		log.SetPrefix("W")
+	}
+
+	if *stderrFile != "" {
+		stderr, err := os.OpenFile(*stderrFile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+		if err != nil {
+			log.Fatal("Could not open stderr file", err)
+		}
+		err = syscall.Close(2)
+		if err != nil {
+			log.Fatalf("close stderr: %v", err)
+		}
+		_, err = syscall.Dup(stderr.Fd())
+		if err != nil {
+			log.Fatalf("dup: %v", err)
+		}
+		stderr.Close()
 	}
 
 	opts := termite.WorkerOptions{
