@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"github.com/hanwen/termite/cba"
 	"github.com/hanwen/termite/termite"
 	"io/ioutil"
@@ -29,6 +30,26 @@ func handleStop(daemon *termite.Worker) {
 			daemon.Report()
 		}
 	}
+}
+
+func OpenUniqueLog(base string) *os.File {
+	name := base
+	i := 0
+	for {
+		fi, _ := os.Stat(name)
+		if fi == nil {
+			break
+		}
+
+		name = fmt.Sprintf("%s.%d", base, i)
+		i++
+	}
+		
+	f, err := os.OpenFile(name, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+	if err != nil {
+		log.Fatal("Could not open log file.", err)
+	}
+	return f
 }
 
 func main() {
@@ -69,10 +90,7 @@ func main() {
 	}
 
 	if *logfile != "" {
-		f, err := os.OpenFile(*logfile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
-		if err != nil {
-			log.Fatal("Could not open log file.", err)
-		}
+		f := OpenUniqueLog(*logfile)
 		log.Println("Log output to", *logfile)
 		log.SetOutput(f)
 	} else {
@@ -80,19 +98,16 @@ func main() {
 	}
 
 	if *stderrFile != "" {
-		stderr, err := os.OpenFile(*stderrFile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
-		if err != nil {
-			log.Fatal("Could not open stderr file", err)
-		}
+		f := OpenUniqueLog(*stderrFile)
 		err = syscall.Close(2)
 		if err != nil {
 			log.Fatalf("close stderr: %v", err)
 		}
-		_, err = syscall.Dup(stderr.Fd())
+		_, err = syscall.Dup(f.Fd())
 		if err != nil {
 			log.Fatalf("dup: %v", err)
 		}
-		stderr.Close()
+		f.Close()
 	}
 
 	opts := termite.WorkerOptions{
