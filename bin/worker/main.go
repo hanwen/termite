@@ -44,7 +44,7 @@ func OpenUniqueLog(base string) *os.File {
 		name = fmt.Sprintf("%s.%d", base, i)
 		i++
 	}
-		
+
 	f, err := os.OpenFile(name, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
 		log.Fatal("Could not open log file.", err)
@@ -53,6 +53,7 @@ func OpenUniqueLog(base string) *os.File {
 }
 
 func main() {
+	version := flag.Bool("version", false, "print version and exit.")
 	cachedir := flag.String("cachedir", "/var/cache/termite/worker-cache", "content cache")
 	tmpdir := flag.String("tmpdir", "/var/tmp",
 		"where to create FUSE mounts; should be on same partition as cachedir.")
@@ -71,6 +72,11 @@ func main() {
 	heap := flag.Int("heap-size", 0, "Maximum heap size in MB.")
 	cpuprofile := flag.String("profile", "", "File to write profile output to.")
 	flag.Parse()
+
+	if *version {
+		log.Println(termite.Version())
+		os.Exit(0)
+	}
 
 	if *cpuprofile != "" {
 		f, err := os.Create(*cpuprofile)
