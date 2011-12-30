@@ -333,7 +333,9 @@ func (st *Store) saveViaMemory(content []byte) (hash string) {
 	}
 	hash = writer.Sum()
 	if st.inMemoryCache != nil {
+		st.mutex.Lock()
 		st.inMemoryCache.Add(hash, content)
+		st.mutex.Unlock()
 	}
 	return hash
 }
