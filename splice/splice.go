@@ -13,65 +13,16 @@ import (
 
 var _ = log.Println
 
-type splicePair struct {
+type Pair struct {
 	r, w *os.File
 	size int
 }
 
-type splicePairPool struct {
+type pairPool struct {
 	sync.Mutex
-	unused map[*splicePair]bool
+	unused map[*Pair]bool
 }
 
-func ClearSplicePool() {
-	splicePool.clear()
-}
-
-func newSplicePairPool() *splicePairPool {
-	return &splicePairPool{
-		unused: make(map[*splicePair]bool),
-	}
-}
-
-func (me *splicePairPool) clear() {
-	me.Lock()
-	defer me.Unlock()
-	for p := range me.unused {
-		p.Close()
-	}
-	me.unused = make(map[*splicePair]bool)
-}
-
-func (me *splicePairPool) get() (p *splicePair, err error) {
-	me.Lock()
-	defer me.Unlock()
-
-	for s := range me.unused {
-		delete(me.unused, s)
-		return s, nil
-	}
-
-	return newSplicePair()
-}
-
-func (me *splicePairPool) done(p *splicePair) {
-	me.Lock()
-	defer me.Unlock()
-
-	me.unused[p] = true
-}
-
-var splicePool *splicePairPool
-var pipeMaxSize *int
-
-// From manpage on ubuntu Lucid:
-//
-// Since Linux 2.6.11, the pipe capacity is 65536 bytes.
-const defaultPipeSize = 16 * 4096
-
-func init() {
-	splicePool = newSplicePairPool()
-}
 
 func getPipeMaxSize() int {
 	if pipeMaxSize != nil {
@@ -79,7 +30,7 @@ func getPipeMaxSize() int {
 	}
 	content, err := ioutil.ReadFile("/proc/sys/fs/pipe-max-size")
 	if err != nil {
-		m := defaultPipeSize
+		m := DefaultPipeSize
 		pipeMaxSize = &m
 		return m
 	}
@@ -100,12 +51,12 @@ func fcntl(fd int, cmd int, arg int) (val int, errno syscall.Errno) {
 const F_SETPIPE_SZ = 1031
 const F_GETPIPE_SZ = 1032
 
-func (me *splicePair) MaxGrow() {
+func (me *Pair) MaxGrow() {
 	for me.Grow(2 * me.size) {
 	}
 }
 
-func (me *splicePair) Grow(n int) bool {
+func (me *Pair) Grow(n int) bool {
 	if n > getPipeMaxSize() {
 		return false
 	}
@@ -126,7 +77,7 @@ func (me *splicePair) Grow(n int) bool {
 	return true
 }
 
-func (me *splicePair) Close() error {
+func (me *Pair) Close() error {
 	err1 := me.r.Close()
 	err2 := me.w.Close()
 	if err1 != nil {
@@ -135,8 +86,29 @@ func (me *splicePair) Close() error {
 	return err2
 }
 
-func newSplicePair() (me *splicePair, err error) {
-	me = &splicePair{}
+func (p *Pair) LoadFrom(fd int, sz int) (n int, err error) {
+	if sz < p.size {
+		return 0, fmt.Errorf("LoadFrom: not enough space %d, %d",
+			sz, p.size)
+	}
+	
+	n, err = syscall.Splice(fd, nil, p.w.Fd(), nil, sz, 0)
+	if err != nil {
+		err = os.NewSyscallError("Splice load from", err)
+	}
+	return 
+}
+
+func (p *Pair) WriteTo(fd int, n int) (m int, err error) {
+	m, err = syscall.Splice(p.r.Fd(), nil, fd, nil, int(n), 0)
+	if err != nil {
+		err = os.NewSyscallError("Splice write to: ", err)
+	}
+	return
+}
+
+func newSplicePair() (me *Pair, err error) {
+	me = &Pair{}
 	me.r, me.w, err = os.Pipe()
 	if err != nil {
 		return nil, err
@@ -156,7 +128,7 @@ func newSplicePair() (me *splicePair, err error) {
 
 	me.size, errNo = fcntl(me.r.Fd(), F_GETPIPE_SZ, 0)
 	if errNo == syscall.EINVAL {
-		me.size = defaultPipeSize
+		me.size = DefaultPipeSize
 		return me, nil
 	}
 	if errNo != 0 {

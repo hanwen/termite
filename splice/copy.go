@@ -3,28 +3,27 @@ package splice
 import (
 	"io"
 	"os"
-	"syscall"
 )
 
-func SpliceCopy(dst *os.File, src *os.File, p *splicePair) (int64, error) {
+func SpliceCopy(dst *os.File, src *os.File, p *Pair) (int64, error) {
 	total := int64(0)
 
 	for {
-		n, err := syscall.Splice(src.Fd(), nil, p.w.Fd(), nil, p.size, 0)
+		n, err := p.LoadFrom(src.Fd(), p.size)
 		if err != nil {
-			return total, os.NewSyscallError("Splice", err)
+			return total, err
 		}
 		if n == 0 {
 			break
 		}
-		m, err := syscall.Splice(p.r.Fd(), nil, dst.Fd(), nil, int(n), 0)
+		m, err := p.WriteTo(dst.Fd(), n)
+		total += int64(m)
 		if err != nil {
-			return total, os.NewSyscallError("Splice", err)
+			return total, err
 		}
 		if m < n {
 			panic("m<n")
 		}
-		total += int64(m)
 		if int(n) < p.size {
 			break
 		}
