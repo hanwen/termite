@@ -9,6 +9,7 @@ GOFILES=codec.go \
 	misc.go \
 	net.go \
 	rpc.go \
+	spliceserver.go \
 	store.go \
 	throughput.go 
 
