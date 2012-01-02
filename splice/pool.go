@@ -1,4 +1,15 @@
 package splice
+import (
+	"sync"
+)
+
+var splicePool *pairPool
+
+type pairPool struct {
+	sync.Mutex
+	unused map[*Pair]bool
+	usedCount   int
+}
 
 func ClearSplicePool() {
 	splicePool.clear()
@@ -6,6 +17,10 @@ func ClearSplicePool() {
 
 func Get() (*Pair, error) {
 	return splicePool.get()
+}
+
+func Used() int {
+	return splicePool.used()
 }
 
 func Done(p *Pair) {
@@ -27,15 +42,22 @@ func (me *pairPool) clear() {
 	me.unused = make(map[*Pair]bool)
 }
 
+func (me *pairPool) used() int {
+	me.Lock()
+	defer me.Unlock()
+	return me.usedCount
+}
+
+
 func (me *pairPool) get() (p *Pair, err error) {
 	me.Lock()
 	defer me.Unlock()
 
+	me.usedCount++
 	for s := range me.unused {
 		delete(me.unused, s)
 		return s, nil
 	}
-
 	return newSplicePair()
 }
 
@@ -43,16 +65,11 @@ func (me *pairPool) done(p *Pair) {
 	me.Lock()
 	defer me.Unlock()
 
+	me.usedCount--
 	me.unused[p] = true
 }
 
-var splicePool *pairPool
-var pipeMaxSize *int
 
-// From manpage on ubuntu Lucid:
-//
-// Since Linux 2.6.11, the pipe capacity is 65536 bytes.
-const DefaultPipeSize = 16 * 4096
 
 func init() {
 	splicePool = newSplicePairPool()

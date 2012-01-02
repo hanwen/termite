@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"sync"
 	"syscall"
 )
 
@@ -18,10 +17,12 @@ type Pair struct {
 	size int
 }
 
-type pairPool struct {
-	sync.Mutex
-	unused map[*Pair]bool
-}
+var pipeMaxSize *int
+
+// From manpage on ubuntu Lucid:
+//
+// Since Linux 2.6.11, the pipe capacity is 65536 bytes.
+const DefaultPipeSize = 16 * 4096
 
 func getPipeMaxSize() int {
 	if pipeMaxSize != nil {
