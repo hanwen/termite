@@ -57,9 +57,11 @@ type WorkerStatusResponse struct {
 	CpuStats            []stats.CpuStat
 	TotalCpu            stats.CpuStat
 	ContentCacheHitRate float64
-	PhaseNames          []string
-	PhaseCounts         []int
-	MemStat             stats.MemStat
+	ContentCacheHitAge  int
+
+	PhaseNames  []string
+	PhaseCounts []int
+	MemStat     stats.MemStat
 }
 
 type Timing struct {

@@ -32,6 +32,7 @@ func (me *Worker) Status(req *WorkerStatusRequest, rep *WorkerStatusResponse) er
 	rep.PhaseNames = me.stats.PhaseOrder
 	rep.TotalCpu = *stats.TotalCpuStat()
 	rep.ContentCacheHitRate = me.content.MemoryHitRate()
+	rep.ContentCacheHitAge = me.content.MemoryHitAge()
 	rep.MemStat = *stats.GetMemStat()
 	return nil
 }

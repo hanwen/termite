@@ -395,7 +395,9 @@ func (me *Coordinator) workerHandler(w http.ResponseWriter, req *http.Request) {
 	stats.CpuStatsWriteHttp(w, status.CpuStats)
 
 	fmt.Fprintf(w, "<p>Total CPU: %s", status.TotalCpu.Percent())
-	fmt.Fprintf(w, "<p>Content cache hit rate: %.0f %%", 100.0*status.ContentCacheHitRate)
+	fmt.Fprintf(w, "<p>Content cache hit rate: %.0f %%, Age %d",
+		100.0*status.ContentCacheHitRate,
+		status.ContentCacheHitAge)
 
 	m := status.MemStat
 	fmt.Fprintf(w, "<p>HeapIdle: %v, HeapInUse: %v",

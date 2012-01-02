@@ -1,4 +1,5 @@
 package termite
+
 import (
 	"fmt"
 	"github.com/hanwen/termite/cba"
@@ -48,7 +49,9 @@ func (me *Master) statusHandler(w http.ResponseWriter, req *http.Request) {
 		fmt.Fprintf(w, "%d%s: %d (%d %%), ", 1<<uint(e), suffix, h, (100*cum)/total)
 	}
 
-	fmt.Fprintf(w, "<p>ContentCache memory hit rate: %.0f %%", 100.0*me.contentStore.MemoryHitRate())
+	fmt.Fprintf(w, "<p>ContentCache memory hit rate: %.0f %%, age %d",
+		100.0*me.contentStore.MemoryHitRate(),
+		me.contentStore.MemoryHitAge())
 	msgs := me.fileServer.stats.TimingMessages()
 	msgs = append(msgs, me.contentStore.TimingMessages()...)
 	fmt.Fprintf(w, "<ul>")
@@ -60,7 +63,7 @@ func (me *Master) statusHandler(w http.ResponseWriter, req *http.Request) {
 	me.mirrors.stats.WriteHttp(w)
 
 	me.writeThroughput(w)
-	
+
 	fmt.Fprintf(w, "<p>Master parallelism (--jobs): %d. Reserved job slots: %d",
 		me.mirrors.wantedMaxJobs, me.mirrors.maxJobs())
 	fmt.Fprintf(w, "</body></html>")
@@ -83,7 +86,6 @@ func (me *Master) writeThroughput(w http.ResponseWriter) {
 		fmt.Fprintf(w, "Last %ds: %v", len(throughput), total)
 	}
 }
-
 
 func (me *Master) ServeHTTP(port int) {
 	http.HandleFunc("/",
