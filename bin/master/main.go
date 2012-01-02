@@ -23,7 +23,7 @@ func main() {
 	jobs := flag.Int("jobs", 1, "number of jobs to run")
 	keepAlive := flag.Float64("time.keepalive", 60.0, "for how long to keep workers reserved.")
 	logfile := flag.String("logfile", "", "where to send log output.")
-	memcache := flag.Int("filecache", 1024, "number of <128k files to cache in memory")
+	memcache := flag.Int("filecache", 256, "number of <128k files to cache in memory")
 	paranoia := flag.Bool("paranoia", false, "Check attribute cache.")
 	port := flag.Int("port", 1231, "http status port")
 	retry := flag.Int("retry", 3, "how often to retry faulty jobs")

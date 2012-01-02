@@ -73,7 +73,7 @@ func NewStore(options *StoreOptions) *Store {
 	if options.MemCount > 0 {
 		c.inMemoryCache = NewLruCache(options.MemCount)
 		if options.MemMaxSize == 0 {
-			options.MemMaxSize = 128 * 1024
+			options.MemMaxSize = 64 * 1024
 		}
 	}
 
