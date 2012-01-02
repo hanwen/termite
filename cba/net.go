@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-var defaultServeSize = 64 * (1<<10)
+var defaultServeSize = 64 * (1 << 10)
 
 // Client is a thread-safe interface to fetching over a connection.
 type Client struct {
@@ -58,19 +58,30 @@ func (s *contentServer) ServeChunk(req *Request, rep *Response) (err error) {
 	return err
 }
 
+func (st *Store) TryServeChunkFromMemory(req *Request, rep *Response) bool {
+	c := st.ContentsIfLoaded(req.Hash)
+
+	if c == nil {
+		return false
+	}
+	rep.Chunk = c[req.Start:]
+	rep.Size = len(rep.Chunk)
+	rep.Last = true
+	rep.Have = true
+	return false
+}
+
 func (st *Store) ServeChunk(req *Request, rep *Response) (err error) {
 	if !st.HasHash(req.Hash) {
 		rep.Have = false
 		return nil
 	}
 
-	rep.Have = true
-	if c := st.ContentsIfLoaded(req.Hash); c != nil {
-		rep.Chunk = c[req.Start:]
-		rep.Size = len(c)
-		rep.Last = true
+	if st.TryServeChunkFromMemory(req, rep) {
 		return nil
 	}
+
+	rep.Have = true
 
 	f, err := os.Open(st.Path(req.Hash))
 	if err != nil {
@@ -78,7 +89,7 @@ func (st *Store) ServeChunk(req *Request, rep *Response) (err error) {
 	}
 	defer f.Close()
 
-	sz := defaultServeSize 
+	sz := defaultServeSize
 	rep.Chunk = make([]byte, sz)
 	n, err := f.ReadAt(rep.Chunk, int64(req.Start))
 	rep.Chunk = rep.Chunk[:n]

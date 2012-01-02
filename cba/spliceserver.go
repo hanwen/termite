@@ -1,18 +1,18 @@
 package cba
 
 import (
-	"os"
 	"github.com/hanwen/termite/splice"
 	"log"
+	"os"
 	"sync"
 	"time"
 )
 
 type ServeSplice struct {
-	pair    *splice.Pair
-	off     int64
-	size    int
-	last    bool
+	pair *splice.Pair
+	off  int64
+	size int
+	last bool
 }
 
 // Reads given file in chunkSize blocks, sending each block to the
@@ -33,7 +33,7 @@ func fill(f *os.File, chunkSize int, out chan ServeSplice) {
 		}
 
 		out <- ServeSplice{
-			off: off,
+			off:  off,
 			size: n,
 			pair: p,
 			last: n < chunkSize,
@@ -55,7 +55,7 @@ func newSpliceSequence(name string) (chan ServeSplice, error) {
 	p := make(chan ServeSplice)
 	go fill(f, splice.DefaultPipeSize, p)
 	return p, nil
-}	
+}
 
 type serverKey struct {
 	hash string
@@ -64,14 +64,14 @@ type serverKey struct {
 
 // spliceServer stores that are in progress of being served.
 type spliceServer struct {
-	store *Store
-	mu sync.Mutex
+	store   *Store
+	mu      sync.Mutex
 	pending map[serverKey][]chan ServeSplice
 }
 
 func newSpliceServer(store *Store) *spliceServer {
 	return &spliceServer{
-		store: store,
+		store:   store,
 		pending: make(map[serverKey][]chan ServeSplice),
 	}
 }
@@ -87,6 +87,10 @@ func (s *spliceServer) ServeChunk(req *Request, rep *Response) (err error) {
 
 // Get the next splice, read it into the response.
 func (s *spliceServer) serveChunk(req *Request, rep *Response) (err error) {
+	if s.store.TryServeChunkFromMemory(req, rep) {
+		return nil
+	}
+
 	if req.Start == 0 {
 		err := s.prepareServe(req.Hash)
 		if err != nil {
@@ -95,7 +99,7 @@ func (s *spliceServer) serveChunk(req *Request, rep *Response) (err error) {
 		}
 	}
 	rep.Have = true
-	
+
 	spl := s.serve(req.Hash, int64(req.Start))
 	if spl == nil {
 		return s.store.ServeChunk(req, rep)
@@ -116,7 +120,7 @@ func (s *spliceServer) serveChunk(req *Request, rep *Response) (err error) {
 func (s *spliceServer) insert(h string, off int64, ch chan ServeSplice) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	k := serverKey{h, off}
 	old := s.pending[k]
 	s.pending[k] = append(old, ch)
@@ -132,7 +136,7 @@ func (s *spliceServer) remove(h string, off int64) (out chan ServeSplice) {
 		out = old[len(old)-1]
 		s.pending[k] = old[:len(old)-1]
 	}
-	return 
+	return
 }
 
 func (s *spliceServer) prepareServe(h string) error {
@@ -153,7 +157,7 @@ func (s *spliceServer) serve(h string, off int64) *ServeSplice {
 	data := <-seq
 
 	if !data.last {
-		s.insert(h, off + int64(data.size), seq)
+		s.insert(h, off+int64(data.size), seq)
 	}
 
 	return &data
