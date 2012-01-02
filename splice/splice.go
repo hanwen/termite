@@ -23,7 +23,6 @@ type pairPool struct {
 	unused map[*Pair]bool
 }
 
-
 func getPipeMaxSize() int {
 	if pipeMaxSize != nil {
 		return *pipeMaxSize
@@ -77,6 +76,10 @@ func (me *Pair) Grow(n int) bool {
 	return true
 }
 
+func (p *Pair) Cap() int {
+	return p.size
+}
+
 func (me *Pair) Close() error {
 	err1 := me.r.Close()
 	err2 := me.w.Close()
@@ -91,7 +94,7 @@ func (p *Pair) Read(d []byte) (n int, err error) {
 }
 
 func (p *Pair) LoadFrom(fd int, sz int) (n int, err error) {
-	if sz < p.size {
+	if sz > p.size {
 		return 0, fmt.Errorf("LoadFrom: not enough space %d, %d",
 			sz, p.size)
 	}
