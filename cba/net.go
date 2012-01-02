@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-const useNewTransport = false
+var defaultServeSize = 64 * (1<<10)
 
 // Client is a thread-safe interface to fetching over a connection.
 type Client struct {
@@ -21,11 +21,7 @@ func (store *Store) NewClient(conn io.ReadWriteCloser) *Client {
 		store: store,
 	}
 
-	if useNewTransport {
-		cl.client = rpc.NewClientWithCodec(NewCbaCodec(conn))
-	} else {
-		cl.client = rpc.NewClient(conn)
-	}
+	cl.client = rpc.NewClient(conn)
 	return cl
 }
 
@@ -34,22 +30,26 @@ func (c *Client) Close() {
 }
 
 func (c *Store) ServeConn(conn io.ReadWriteCloser) {
-	s := Server{c}
+	var s Server
 	rpcServer := rpc.NewServer()
-	rpcServer.Register(&s)
-	if useNewTransport {
-		rpcServer.ServeCodec(NewCbaCodec(conn))
-	} else {
-		rpcServer.ServeConn(conn)
-	}
+	s = newSpliceServer(c)
+	rpcServer.RegisterName("Server", s)
+	rpcServer.ServeConn(conn)
 	conn.Close()
+	s.Close()
 }
 
-type Server struct {
+type Server interface {
+	ServeChunk(req *Request, rep *Response) (err error)
+	Close()
+}
+
+// Classic RPC server.
+type contentServer struct {
 	store *Store
 }
 
-func (s *Server) ServeChunk(req *Request, rep *Response) (err error) {
+func (s *contentServer) ServeChunk(req *Request, rep *Response) (err error) {
 	start := time.Now()
 	err = s.store.ServeChunk(req, rep)
 	s.store.addThroughput(0, int64(len(rep.Chunk)))
@@ -67,11 +67,9 @@ func (st *Store) ServeChunk(req *Request, rep *Response) (err error) {
 
 	rep.Have = true
 	if c := st.ContentsIfLoaded(req.Hash); c != nil {
-		if req.End > len(c) {
-			req.End = len(c)
-		}
-		rep.Chunk = c[req.Start:req.End]
+		rep.Chunk = c[req.Start:]
 		rep.Size = len(c)
+		rep.Last = true
 		return nil
 	}
 
@@ -81,13 +79,14 @@ func (st *Store) ServeChunk(req *Request, rep *Response) (err error) {
 	}
 	defer f.Close()
 
-	rep.Chunk = make([]byte, req.End-req.Start)
+	sz := defaultServeSize 
+	rep.Chunk = make([]byte, sz)
 	n, err := f.ReadAt(rep.Chunk, int64(req.Start))
 	rep.Chunk = rep.Chunk[:n]
 	rep.Size = n
-
 	if err == io.EOF {
 		err = nil
+		rep.Last = true
 	}
 	return err
 }
@@ -111,7 +110,7 @@ func (c *Client) fetchChunk(req *Request, rep *Response) error {
 }
 
 func (c *Client) fetch(want string, size int64) (bool, error) {
-	chunkSize := 1 << 18
+	chunkSize := defaultServeSize
 	if int64(chunkSize) > size+1 {
 		chunkSize = int(size + 1)
 	}
@@ -126,7 +125,6 @@ func (c *Client) fetch(want string, size int64) (bool, error) {
 		req := &Request{
 			Hash:  want,
 			Start: written,
-			End:   written + chunkSize,
 		}
 		rep := &Response{Chunk: buf}
 		err := c.fetchChunk(req, rep)
@@ -137,7 +135,7 @@ func (c *Client) fetch(want string, size int64) (bool, error) {
 		// is this a bug in the rpc package?
 		content := rep.Chunk[:rep.Size]
 
-		if len(content) < chunkSize && written == 0 {
+		if rep.Last && written == 0 {
 			saved = c.store.Save(content)
 			written = len(content)
 			break
@@ -151,7 +149,7 @@ func (c *Client) fetch(want string, size int64) (bool, error) {
 		if err != nil {
 			return false, err
 		}
-		if len(content) < chunkSize {
+		if rep.Last {
 			break
 		}
 	}

@@ -1,18 +1,21 @@
 package cba
 
-import "fmt"
+import (
+	"fmt"
+)
 
 type Request struct {
-	Hash       string
-	Start, End int
+	Hash  string
+	Start int
 }
 
 func (me *Request) String() string {
-	return fmt.Sprintf("%x [%d, %d]", me.Hash, me.Start, me.End)
+	return fmt.Sprintf("%x [%d]", me.Hash, me.Start)
 }
 
 type Response struct {
 	Size  int
 	Have  bool
+	Last  bool
 	Chunk []byte
 }
