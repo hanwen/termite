@@ -22,6 +22,11 @@ type LruCache struct {
 	lastUsedKeys []*cacheEntry
 	nextEvict    int
 
+	// Stats to give some insight if the size of the cache is
+	// right.
+	ages    int64
+	lookups int64
+
 	// the key => contents map.
 	contents map[string]*cacheEntry
 }
@@ -73,11 +78,26 @@ func (me *LruCache) Size() int {
 	return len(me.contents)
 }
 
+func (me *LruCache) AverageAge() int {
+	if me.lookups == 0 {
+		return 0
+	}
+	return int(me.ages / me.lookups)
+}
+
 func (me *LruCache) Get(key string) (val interface{}) {
 	v, ok := me.contents[key]
 	if !ok {
 		return nil
 	}
+
+	i := v.index
+	if i < me.nextEvict {
+		i += me.size
+	}
+	age := me.size - (i - me.nextEvict) - 1
+	me.ages += int64(age)
+	me.lookups++
 
 	me.swap(me.nextEvict, v.index)
 	me.nextEvict = (me.nextEvict + 1) % me.size

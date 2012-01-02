@@ -30,3 +30,31 @@ func TestLruCache(t *testing.T) {
 		t.Errorf("key 2 should have been evicted: %v", v)
 	}
 }
+
+func TestLruCacheDistance(t *testing.T) {
+	v := interface{}(1)
+	c := NewLruCache(4)
+	c.Add("1", v)
+	c.Add("2", v)
+	c.Add("3", v)
+	c.Add("4", v)
+	c.Add("5", v)
+
+	c.Get("5")
+	d := c.AverageAge()
+	if d != 0 {
+		t.Errorf("got average age %d, want 0.", d)
+	}
+
+	c = NewLruCache(4)
+	c.Add("1", v)
+	c.Add("2", v)
+	c.Add("3", v)
+	c.Add("4", v)
+
+	c.Get("1")
+	d = c.AverageAge()
+	if d != 3 {
+		t.Errorf("got average age %d, want 4.", d)
+	}
+}
