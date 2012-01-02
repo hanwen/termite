@@ -95,3 +95,20 @@ func TestNet(t *testing.T) {
 func TestNetCache(t *testing.T) {
 	runTestNet(t, true)
 }
+
+func TestNetLargeFile(t *testing.T) {
+	b := make([]byte, 257 * 1024)
+	for i, _ := range b {
+		b[i] = byte(i)
+	}
+
+	tc := newNetTestCase(t, false)
+	defer tc.Clean()
+
+	hash := tc.server.Save(b)
+
+	tc.client.Fetch(hash, int64(len(b)))
+	if !tc.clientStore.HasHash(hash) {
+		t.Errorf("after fetch, the hash should be there")
+	}
+}
