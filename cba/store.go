@@ -207,8 +207,7 @@ func (st *HashWriter) Close() error {
 
 	dt := time.Now().Sub(st.start)
 
-	st.cache.timings.Log("ContentStore.Save", dt)
-	st.cache.timings.LogN("ContentStore.SaveBytes", int64(st.size), dt)
+	st.cache.AddTiming("Save", st.size, dt)
 
 	return err
 }
@@ -275,8 +274,7 @@ func (st *Store) DestructiveSavePath(path string) (hash string, err error) {
 
 	dt := time.Now().Sub(start)
 
-	st.timings.Log("ContentStore.DestructiveSave", dt)
-	st.timings.LogN("ContentStore.DestructiveSaveBytes", int64(size), dt)
+	st.AddTiming("DestructiveSave", size, dt)
 
 	log.Printf("Saving %s as %x destructively", path, s)
 	return s, nil
@@ -360,4 +358,9 @@ func (st *Store) SaveStream(input io.Reader, size int64) (hash string) {
 	}
 
 	return dup.Sum()
+}
+
+func (st *Store) AddTiming(name string, bytes int, dt time.Duration) {
+	st.timings.Log("ContentStore." + name, dt)
+	st.timings.LogN("ContentStore." + name + "Bytes", int64(bytes), dt)
 }

@@ -81,8 +81,7 @@ func (s *spliceServer) ServeChunk(req *Request, rep *Response) (err error) {
 	err = s.serveChunk(req, rep)
 	s.store.addThroughput(0, int64(len(rep.Chunk)))
 	dt := time.Now().Sub(start)
-	s.store.timings.Log("ContentStore.ServeChunk", dt)
-	s.store.timings.LogN("ContentStore.ServeChunkBytes", int64(len(rep.Chunk)), dt)
+	s.store.AddTiming("ServeChunk", len(rep.Chunk), dt)
 	return err
 }
 

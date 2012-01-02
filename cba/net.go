@@ -54,8 +54,7 @@ func (s *contentServer) ServeChunk(req *Request, rep *Response) (err error) {
 	err = s.store.ServeChunk(req, rep)
 	s.store.addThroughput(0, int64(len(rep.Chunk)))
 	dt := time.Now().Sub(start)
-	s.store.timings.Log("ContentStore.ServeChunk", dt)
-	s.store.timings.LogN("ContentStore.ServeChunkBytes", int64(len(rep.Chunk)), dt)
+	s.store.AddTiming("ServeChunk", len(rep.Chunk), dt)
 	return err
 }
 
@@ -95,8 +94,7 @@ func (c *Client) Fetch(want string, size int64) (bool, error) {
 	start := time.Now()
 	succ, err := c.fetch(want, size)
 	dt := time.Now().Sub(start)
-	c.store.timings.Log("ContentStore.Fetch", dt)
-	c.store.timings.LogN("ContentStore.FetchBytes", size, dt)
+	c.store.AddTiming("Fetch", int(size), dt)
 	return succ, err
 }
 
@@ -104,8 +102,7 @@ func (c *Client) fetchChunk(req *Request, rep *Response) error {
 	start := time.Now()
 	err := c.client.Call("Server.ServeChunk", req, rep)
 	dt := time.Now().Sub(start)
-	c.store.timings.Log("ContentStore.FetchChunk", dt)
-	c.store.timings.LogN("ContentStore.FetchChunkBytes", int64(rep.Size), dt)
+	c.store.AddTiming("FetchChunk", rep.Size, dt)
 	return err
 }
 
