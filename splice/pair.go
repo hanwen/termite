@@ -55,23 +55,23 @@ func (p *Pair) Read(d []byte) (n int, err error) {
 	return p.r.Read(d)
 }
 
-func (p *Pair) LoadFrom(fd int, sz int) (n int, err error) {
+func (p *Pair) LoadFrom(fd int, sz int) (int, error) {
 	if sz > p.size {
 		return 0, fmt.Errorf("LoadFrom: not enough space %d, %d",
 			sz, p.size)
 	}
-	
-	n, err = syscall.Splice(fd, nil, p.w.Fd(), nil, sz, 0)
+
+	n, err := syscall.Splice(fd, nil, p.w.Fd(), nil, sz, 0)
 	if err != nil {
 		err = os.NewSyscallError("Splice load from", err)
 	}
-	return 
+	return int(n), err
 }
 
-func (p *Pair) WriteTo(fd int, n int) (m int, err error) {
-	m, err = syscall.Splice(p.r.Fd(), nil, fd, nil, int(n), 0)
+func (p *Pair) WriteTo(fd int, n int) (int, error) {
+	m, err := syscall.Splice(p.r.Fd(), nil, fd, nil, int(n), 0)
 	if err != nil {
 		err = os.NewSyscallError("Splice write to: ", err)
 	}
-	return
+	return int(m), err
 }
