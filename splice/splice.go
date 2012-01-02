@@ -86,6 +86,10 @@ func (me *Pair) Close() error {
 	return err2
 }
 
+func (p *Pair) Read(d []byte) (n int, err error) {
+	return p.r.Read(d)
+}
+
 func (p *Pair) LoadFrom(fd int, sz int) (n int, err error) {
 	if sz < p.size {
 		return 0, fmt.Errorf("LoadFrom: not enough space %d, %d",
