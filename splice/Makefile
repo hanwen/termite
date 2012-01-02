@@ -5,6 +5,7 @@ TARG=github.com/hanwen/termite/splice
 
 GOFILES=splice.go \
 	copy.go \
+	pair.go \
 	pool.go
 
 include $(GOROOT)/src/Make.pkg
