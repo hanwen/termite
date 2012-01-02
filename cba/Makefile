@@ -4,8 +4,7 @@ include $(GOROOT)/src/Make.inc
 TARG=github.com/hanwen/termite/cba
 DEPS=../stats
 
-GOFILES=codec.go \
-	lrucache.go \
+GOFILES=lrucache.go \
 	misc.go \
 	net.go \
 	rpc.go \
