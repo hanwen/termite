@@ -92,6 +92,16 @@ func (st *Store) MemoryHitRate() float64 {
 	return float64(st.memoryHits) / float64(st.memoryTries)
 }
 
+func (st *Store) MemoryHitAge() int {
+	if st.inMemoryCache == nil {
+		return 0
+	}
+
+	st.mutex.Lock()
+	defer st.mutex.Unlock()
+	return st.inMemoryCache.AverageAge()
+}
+
 func HashPath(dir string, hash string) string {
 	s := fmt.Sprintf("%x", hash)
 	prefix := s[:2]
@@ -361,6 +371,6 @@ func (st *Store) SaveStream(input io.Reader, size int64) (hash string) {
 }
 
 func (st *Store) AddTiming(name string, bytes int, dt time.Duration) {
-	st.timings.Log("ContentStore." + name, dt)
-	st.timings.LogN("ContentStore." + name + "Bytes", int64(bytes), dt)
+	st.timings.Log("ContentStore."+name, dt)
+	st.timings.LogN("ContentStore."+name+"Bytes", int64(bytes), dt)
 }
