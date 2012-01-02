@@ -2,6 +2,7 @@ package cba
 
 import (
 	"bytes"
+	"github.com/hanwen/termite/splice"
 	"io"
 	"io/ioutil"
 	"os"
@@ -10,10 +11,12 @@ import (
 )
 
 type netTestCase struct {
+	tester              *testing.T
 	tmp                 string
 	server, clientStore *Store
 	sockS, sockC        io.ReadWriteCloser
 	client              *Client
+	startSplices        int
 }
 
 // TODO - cut & paste.
@@ -33,10 +36,16 @@ func (tc *netTestCase) Clean() {
 	tc.sockS.Close()
 	tc.sockC.Close()
 	os.RemoveAll(tc.tmp)
+	if tc.startSplices != splice.Used() {
+		tc.tester.Fatalf("Splice leak before %d after %d",
+			tc.startSplices, splice.Used())
+	}
 }
 
 func newNetTestCase(t *testing.T, cache bool) *netTestCase {
 	me := &netTestCase{}
+	me.tester = t
+	me.startSplices = splice.Used()
 	me.tmp, _ = ioutil.TempDir("", "term-cba")
 
 	optS := StoreOptions{

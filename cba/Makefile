@@ -2,7 +2,7 @@
 include $(GOROOT)/src/Make.inc
 
 TARG=github.com/hanwen/termite/cba
-DEPS=../stats
+DEPS=../stats ../splice
 
 GOFILES=lrucache.go \
 	misc.go \

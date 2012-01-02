@@ -101,11 +101,11 @@ func (s *spliceServer) serveChunk(req *Request, rep *Response) (err error) {
 	if spl == nil {
 		return s.store.ServeChunk(req, rep)
 	}
+	defer splice.Done(spl.pair)
 
 	data := make([]byte, spl.size)
 	n, err := spl.pair.Read(data)
 	if err != nil {
-		splice.Done(spl.pair)
 		return s.store.ServeChunk(req, rep)
 	}
 	rep.Chunk = data[:n]
