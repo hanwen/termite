@@ -132,11 +132,11 @@ func (me *Master) uncachedGetAttr(name string) (rep *attr.FileAttr) {
 		me.fillContent(rep)
 		if xattrPossible {
 			if rep.Mode&0222 == 0 {
-				os.Chmod(p, rep.Mode|0200)
+				os.Chmod(p, os.FileMode(rep.Mode|0200))
 			}
 			rep.WriteXAttr(p)
 			if rep.Mode&0222 == 0 {
-				os.Chmod(p, rep.Mode)
+				os.Chmod(p, os.FileMode(rep.Mode))
 			}
 		}
 	}
@@ -459,7 +459,7 @@ func (me *Master) replayFileModifications(infos []*attr.FileAttr, delFileHashes 
 		}
 
 		if info.IsDir() {
-			if err := os.Mkdir(name, info.Mode&07777); err != nil {
+			if err := os.Mkdir(name, os.FileMode(info.Mode&07777)); err != nil {
 				// some other process may have created
 				// the dir.
 				fi, _ := os.Lstat(name)
@@ -487,7 +487,7 @@ func (me *Master) replayFileModifications(infos []*attr.FileAttr, delFileHashes 
 			if err := os.Chtimes(name, info.AccessTime(), info.ModTime()); err != nil {
 				log.Fatal("os.Chtimes", err)
 			}
-			if err := os.Chmod(name, info.Mode&07777); err != nil {
+			if err := os.Chmod(name, os.FileMode(info.Mode&07777)); err != nil {
 				log.Fatal("os.Chmod", err)
 			}
 		}
@@ -565,7 +565,7 @@ func (me *Master) replay(fset attr.FileSet) {
 			log.Fatal("f.Write", err)
 		}
 
-		err = f.Chmod(info.Attr.Mode & 07777)
+		err = f.Chmod(os.FileMode(info.Attr.Mode & 07777))
 		if err != nil {
 			log.Fatal("f.Chmod", err)
 		}

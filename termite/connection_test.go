@@ -55,6 +55,18 @@ func (me *dummyConn) SetTimeout(nsec int64) error {
 	return nil
 }
 
+func (me *dummyConn) SetDeadline(t time.Time) error {
+	return nil
+}
+
+func (me *dummyConn) SetReadDeadline(t time.Time) error {
+	return nil
+}
+
+func (me *dummyConn) SetWriteDeadline(t time.Time) error {
+	return nil
+}
+
 func (me *dummyConn) SetReadTimeout(nsec int64) error {
 	return nil
 }

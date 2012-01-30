@@ -3,6 +3,7 @@ package termite
 import (
 	"bytes"
 	"crypto/hmac"
+	"crypto/sha1"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -32,7 +33,7 @@ func init() {
 }
 
 func sign(conn net.Conn, challenge []byte, secret []byte, local bool) []byte {
-	h := hmac.NewSHA1(secret)
+	h := hmac.New(sha1.New, secret)
 	h.Write(challenge)
 	l := conn.LocalAddr()
 	r := conn.RemoteAddr()

@@ -40,7 +40,7 @@ func CopyFile(dstName string, srcName string, mode int) error {
 	}
 	defer src.Close()
 
-	dst, err := os.OpenFile(dstName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, uint32(mode))
+	dst, err := os.OpenFile(dstName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.FileMode(mode))
 	if err != nil {
 		return err
 	}
