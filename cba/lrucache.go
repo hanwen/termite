@@ -12,7 +12,7 @@ type cacheEntry struct {
 	index int
 }
 
-// A fixed entry count cache with FIFO eviction policy.
+// A fixed entry count cache with LRU eviction policy.
 //
 // Should be protected by a Mutex (not RWMutex) for all methods.
 type LruCache struct {
