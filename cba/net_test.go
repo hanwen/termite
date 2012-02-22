@@ -27,8 +27,8 @@ func unixSocketpair() (l *os.File, r *os.File, err error) {
 		return nil, nil, os.NewSyscallError("socketpair",
 			err.(syscall.Errno))
 	}
-	l = os.NewFile(fd[0], "socketpair-half1")
-	r = os.NewFile(fd[1], "socketpair-half2")
+	l = os.NewFile(uintptr(fd[0]), "socketpair-half1")
+	r = os.NewFile(uintptr(fd[1]), "socketpair-half2")
 	return
 }
 

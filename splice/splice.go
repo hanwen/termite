@@ -37,8 +37,8 @@ func getPipeMaxSize() int {
 }
 
 // copy & paste from syscall.
-func fcntl(fd int, cmd int, arg int) (val int, errno syscall.Errno) {
-	r0, _, e1 := syscall.Syscall(syscall.SYS_FCNTL, uintptr(fd), uintptr(cmd), uintptr(arg))
+func fcntl(fd uintptr, cmd int, arg int) (val int, errno syscall.Errno) {
+	r0, _, e1 := syscall.Syscall(syscall.SYS_FCNTL, fd, uintptr(cmd), uintptr(arg))
 	val = int(r0)
 	errno = syscall.Errno(e1)
 	return
@@ -56,7 +56,7 @@ func newSplicePair() (me *Pair, err error) {
 
 	errNo := syscall.Errno(0)
 	for _, f := range []*os.File{me.r, me.w} {
-		_, errNo = fcntl(f.Fd(), syscall.F_SETFL, os.O_NONBLOCK)
+		_, errNo = fcntl(f.Fd(), syscall.F_SETFL, syscall.O_NONBLOCK)
 		if errNo != 0 {
 			me.Close()
 			return nil, os.NewSyscallError("fcntl setfl", errNo)

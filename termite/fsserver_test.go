@@ -26,9 +26,7 @@ func StatForTest(t *testing.T, n string) *fuse.Attr {
 	if f == nil {
 		return nil
 	}
-	a := fuse.Attr{}
-	a.FromFileInfo(f)
-	return &a
+	return fuse.ToAttr(f)
 }
 
 func GetattrForTest(t *testing.T, n string) *attr.FileAttr {
@@ -37,8 +35,7 @@ func GetattrForTest(t *testing.T, n string) *attr.FileAttr {
 
 	var fa *fuse.Attr
 	if fi != nil {
-		fa = &fuse.Attr{}
-		fa.FromFileInfo(fi)
+		fa = fuse.ToAttr(fi)
 	}
 	a := attr.FileAttr{
 		Attr: fa,

@@ -53,7 +53,8 @@ func (m *MemStat) Total() uint64 {
 }
 
 func GetMemStat() *MemStat {
-	r := runtime.MemStats
+	r := runtime.MemStats{}
+	runtime.ReadMemStats(&r)
 	return &MemStat{
 		MemCounter(r.HeapIdle),
 		MemCounter(r.HeapInuse),
@@ -107,7 +108,7 @@ func (me *CpuStat) SubSample(x Sample) {
 	me.SelfSys -= c.SelfSys
 	me.ChildCpu -= c.ChildCpu
 	me.ChildSys -= c.ChildSys
-	
+
 }
 
 func (me *CpuStat) DiffSample(x CpuStat) CpuStat {

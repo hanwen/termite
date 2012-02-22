@@ -9,6 +9,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"sort"
+	"strings"
 	"syscall"
 	"testing"
 	"time"
@@ -17,7 +19,7 @@ import (
 var _ = fmt.Print
 var _ = log.Print
 
-const entryTtl = 0.1
+const entryTtl = 100 * time.Millisecond
 
 var CheckSuccess = fuse.CheckSuccess
 
@@ -69,9 +71,9 @@ func setupMemUfs(t *testing.T) (workdir string, ufs *MemUnionFs, cleanup func())
 	// We configure timeouts are smaller, so we can check for
 	// UnionFs's cache consistency.
 	opts := &fuse.FileSystemOptions{
-		EntryTimeout:    .5 * entryTtl,
-		AttrTimeout:     .5 * entryTtl,
-		NegativeTimeout: .5 * entryTtl,
+		EntryTimeout:    entryTtl/2,
+		AttrTimeout:     entryTtl/2,
+		NegativeTimeout: entryTtl/2,
 		PortableInodes:  true,
 	}
 
@@ -128,15 +130,16 @@ func TestMemUnionFsChtimes(t *testing.T) {
 	defer clean()
 
 	writeToFile(wd+"/ro/file", "a")
-	err := os.Chtimes(wd+"/ro/file", 42e9, 43e9)
+	err := os.Chtimes(wd+"/ro/file", time.Unix(42, 0), time.Unix(43, 0))
 	CheckSuccess(err)
 
-	err = os.Chtimes(wd+"/mnt/file", 82e9, 83e9)
+	err = os.Chtimes(wd+"/mnt/file", time.Unix(82, 0), time.Unix(83, 0))
 	CheckSuccess(err)
 
-	fi, err := os.Lstat(wd + "/mnt/file")
-	if fi.Atime_ns != 82e9 || fi.Mtime_ns != 83e9 {
-		t.Error("Incorrect timestamp", fi)
+	st := syscall.Stat_t{}
+	err = syscall.Lstat(wd + "/mnt/file", &st)
+	if st.Atim.Nano() != 82e9 || st.Mtim.Nano() != 83e9 {
+		t.Error("Incorrect timestamp", st)
 	}
 
 	r := ufs.Reap()
@@ -152,13 +155,14 @@ func TestMemUnionFsChmod(t *testing.T) {
 	ro_fn := wd + "/ro/file"
 	m_fn := wd + "/mnt/file"
 	writeToFile(ro_fn, "a")
-	err := os.Chmod(m_fn, 07070)
+	err := os.Chmod(m_fn, 070)
 	CheckSuccess(err)
 
-	fi, err := os.Lstat(m_fn)
+	st := syscall.Stat_t{}
+	err = syscall.Lstat(m_fn, &st)
 	CheckSuccess(err)
-	if fi.Mode&07777 != 07070 {
-		t.Errorf("Unexpected mode found: %o", fi.Mode)
+	if st.Mode&07777 != 070 {
+		t.Errorf("Unexpected mode found: %o", st.Mode)
 	}
 
 	r := ufs.Reap()
@@ -362,13 +366,16 @@ func TestMemUnionFsLink(t *testing.T) {
 	err = os.Link(wd+"/mnt/file", wd+"/mnt/linked")
 	CheckSuccess(err)
 
-	fi2, err := os.Lstat(wd + "/mnt/linked")
+	var st2 syscall.Stat_t
+	err = syscall.Lstat(wd + "/mnt/linked", &st2)
 	CheckSuccess(err)
 
-	fi1, err := os.Lstat(wd + "/mnt/file")
+	var st1 syscall.Stat_t
+	err = syscall.Lstat(wd + "/mnt/file", &st1)
 	CheckSuccess(err)
-	if fi1.Ino != fi2.Ino {
-		t.Errorf("inode numbers should be equal for linked files %v, %v", fi1.Ino, fi2.Ino)
+
+	if st1.Ino != st2.Ino {
+		t.Errorf("inode numbers should be equal for linked files %v, %v", st1.Ino, st2.Ino)
 	}
 	c, err := ioutil.ReadFile(wd + "/mnt/linked")
 	if string(c) != content {
@@ -413,16 +420,17 @@ func TestMemUnionFsCopyChmod(t *testing.T) {
 	err = os.Chmod(fn, 0755)
 	CheckSuccess(err)
 
-	fi, err := os.Lstat(fn)
+	st := syscall.Stat_t{}
+	err = syscall.Lstat(fn, &st)
 	CheckSuccess(err)
-	if fi.Mode&0111 == 0 {
-		t.Errorf("1st attr error %o", fi.Mode)
+	if st.Mode&0111 == 0 {
+		t.Errorf("1st attr error %o", st.Mode)
 	}
-	time.Sleep(entryTtl * 1.1e9)
-	fi, err = os.Lstat(fn)
+	time.Sleep(entryTtl * 11/10)
+	err = syscall.Lstat(fn, &st)
 	CheckSuccess(err)
-	if fi.Mode&0111 == 0 {
-		t.Errorf("uncached attr error %o", fi.Mode)
+	if st.Mode&0111 == 0 {
+		t.Errorf("uncached attr error %o", st.Mode)
 	}
 }
 
@@ -434,17 +442,18 @@ func TestMemUnionFsTruncateTimestamp(t *testing.T) {
 	fn := wd + "/mnt/y"
 	err := ioutil.WriteFile(fn, []byte(contents), 0644)
 	CheckSuccess(err)
-	time.Sleep(0.2e9)
+	time.Sleep(200 * time.Millisecond)
 
-	truncTs := time.Nanoseconds()
+	truncTs := time.Now().UnixNano()
 	err = os.Truncate(fn, 3)
 	CheckSuccess(err)
 
-	fi, err := os.Lstat(fn)
+	st := syscall.Stat_t{}
+	err = syscall.Lstat(fn, &st)
 	CheckSuccess(err)
 
-	if abs(truncTs-fi.Mtime_ns) > 0.1e9 {
-		t.Error("timestamp drift", truncTs, fi.Mtime_ns)
+	if abs(truncTs-st.Mtim.Nano()) > 0.1e9 {
+		t.Error("timestamp drift", truncTs, st.Mtim)
 	}
 }
 
@@ -519,8 +528,9 @@ func TestMemUnionFsDeletedGetAttr(t *testing.T) {
 	err = os.Remove(wd + "/mnt/file")
 	CheckSuccess(err)
 
-	if fi, err := f.Stat(); err != nil || !fi.IsRegular() {
-		t.Fatalf("stat returned error or non-file: %v %v", err, fi)
+	st := syscall.Stat_t{}
+	if err := syscall.Fstat(int(f.Fd()), &st); err != nil || st.Mode & syscall.S_IFREG == 0 {
+		t.Fatalf("stat returned error or non-file: %v %v", err, st)
 	}
 }
 
@@ -594,12 +604,11 @@ func TestMemUnionFsUpdate(t *testing.T) {
 
 	roF2fi, err := os.Lstat(wd + "/ro/file2")
 	CheckSuccess(err)
-	roF2 := &fuse.Attr{}
-	roF2.FromFileInfo(roF2fi)
+	roF2 := fuse.ToAttr(roF2fi)
+
 	roSymlinkFi, err := os.Lstat(wd + "/ro/symlink")
 	CheckSuccess(err)
-	roSymlink := &fuse.Attr{}
-	roSymlink.FromFileInfo(roSymlinkFi)
+	roSymlink := fuse.ToAttr(roSymlinkFi)
 
 	updates := map[string]*Result{
 		"file1": {
@@ -622,7 +631,7 @@ func TestMemUnionFsUpdate(t *testing.T) {
 
 	fi, err = os.Lstat(wd + "/mnt/file2")
 	CheckSuccess(err)
-	if roF2.Mtimens() != fi.Mtime_ns {
+	if roF2.ModTime().UnixNano() != fi.ModTime().UnixNano() {
 		t.Fatalf("file2 attribute mismatch: got %v want %v", fi, roF2)
 	}
 
@@ -687,8 +696,8 @@ func TestMemUnionFsFlushSize(t *testing.T) {
 	f.Close()
 	fi, err = os.Lstat(fn)
 	CheckSuccess(err)
-	if fi.Size != int64(n) {
-		t.Errorf("got %d from Stat().Size, want %d", fi.Size, n)
+	if fi.Size() != int64(n) {
+		t.Errorf("got %d from Stat().Size, want %d", fi.Size(), n)
 	}
 }
 
@@ -714,8 +723,8 @@ func TestMemUnionFsFlushRename(t *testing.T) {
 
 	fi, err = os.Lstat(dst)
 	CheckSuccess(err)
-	if fi.Size != int64(n) {
-		t.Errorf("got %d from Stat().Size, want %d", fi.Size, n)
+	if fi.Size() != int64(n) {
+		t.Errorf("got %d from Stat().Size, want %d", fi.Size(), n)
 	}
 }
 
@@ -732,8 +741,8 @@ func TestMemUnionFsTruncGetAttr(t *testing.T) {
 	CheckSuccess(err)
 
 	fi, err := os.Lstat(wd + "/mnt/file")
-	if fi.Size != int64(len(c)) {
-		t.Fatalf("Length mismatch got %d want %d", fi.Size, len(c))
+	if fi.Size() != int64(len(c)) {
+		t.Fatalf("Length mismatch got %d want %d", fi.Size(), len(c))
 	}
 }
 
@@ -756,7 +765,7 @@ func TestMemUnionFsRenameDirBasic(t *testing.T) {
 	}
 
 	entries, err := ioutil.ReadDir(wd + "/mnt/renamed")
-	if err != nil || len(entries) != 1 || entries[0].Name != "subdir" {
+	if err != nil || len(entries) != 1 || entries[0].Name() != "subdir" {
 		t.Errorf("readdir(%s/mnt/renamed) should have one entry: %v, err %v", wd, entries, err)
 	}
 
@@ -803,7 +812,7 @@ func TestMemUnionFsRenameDirWithDeletions(t *testing.T) {
 	err = ioutil.WriteFile(wd+"/ro/dir/subdir/file.txt", []byte{42}, 0644)
 	CheckSuccess(err)
 
-	if fi, _ := os.Lstat(wd + "/mnt/dir/subdir/file.txt"); fi == nil || !fi.IsRegular() {
+	if fi, _ := os.Lstat(wd + "/mnt/dir/subdir/file.txt"); fi == nil || fi.IsDir() {
 		t.Fatalf("%s/mnt/dir/subdir/file.txt should be file: %v", wd, fi)
 	}
 
@@ -876,10 +885,10 @@ func TestMemUnionResetAttr(t *testing.T) {
 	err := os.Chmod(wd+"/mnt/fileattr", 0606)
 	CheckSuccess(err)
 	after, _ := os.Lstat(wd + "/mnt/fileattr")
-	testEq(t, after, before, false)
+	testEq(t, printFileInfo(after), printFileInfo(before), false)
 	ufs.Reset()
 	afterReset, _ := os.Lstat(wd + "/mnt/fileattr")
-	testEq(t, afterReset, before, true)
+	testEq(t, printFileInfo(afterReset), printFileInfo(before), true)
 }
 
 func TestMemUnionResetContent(t *testing.T) {
@@ -900,21 +909,38 @@ func TestMemUnionResetDelete(t *testing.T) {
 	wd, ufs, clean := setupMemUfs(t)
 	defer clean()
 	ioutil.WriteFile(wd+"/ro/todelete", []byte{42}, 0644)
-	before, _ := os.Lstat(wd + "/mnt/todelete")
+
+	var before, after, afterReset syscall.Stat_t
+	syscall.Lstat(wd + "/mnt/todelete", &before)
 	before.Ino = 0
 	os.Remove(wd + "/mnt/todelete")
-	after, _ := os.Lstat(wd + "/mnt/todelete")
+	syscall.Lstat(wd + "/mnt/todelete", &after)
 	testEq(t, after, before, false)
 	ufs.Reset()
-	afterReset, _ := os.Lstat(wd + "/mnt/todelete")
+	syscall.Lstat(wd + "/mnt/todelete", &afterReset)
 	afterReset.Ino = 0
 	testEq(t, afterReset, before, true)
 }
 
-func clearInodes(infos []*os.FileInfo) {
+func printFileInfo(fi os.FileInfo) string {
+	return fmt.Sprintf("nm %s sz %d m %v time %v dir %v",
+		fi.Name(), fi.Size(), fi.Mode(), fi.ModTime(), fi.IsDir())
+}
+
+func serialize(infos []os.FileInfo) string {
+	names := []string{}
+	vals := map[string]os.FileInfo{}
 	for _, i := range infos {
-		i.Ino = 0
+		names = append(names, i.Name())
+		vals[i.Name()] = i
 	}
+	sort.Strings(names)
+
+	result := []string{}
+	for _, n := range names {
+		result = append(result, printFileInfo(vals[n]))
+	}
+	return strings.Join(result, ", ")
 }
 
 func TestMemUnionResetDirEntry(t *testing.T) {
@@ -923,16 +949,16 @@ func TestMemUnionResetDirEntry(t *testing.T) {
 	os.Mkdir(wd+"/ro/dir", 0755)
 	ioutil.WriteFile(wd+"/ro/dir/todelete", []byte{42}, 0644)
 	before, _ := ioutil.ReadDir(wd + "/mnt/dir")
-	clearInodes(before)
+
 	ioutil.WriteFile(wd+"/mnt/dir/newfile", []byte{42}, 0644)
 	os.Remove(wd + "/mnt/dir/todelete")
 	after, _ := ioutil.ReadDir(wd + "/mnt/dir")
-	clearInodes(after)
-	testEq(t, fuse.OsFileInfos(after), fuse.OsFileInfos(before), false)
+
+	testEq(t, serialize(after), serialize(before), false)
 	ufs.Reset()
 	reset, _ := ioutil.ReadDir(wd + "/mnt/dir")
-	clearInodes(reset)
-	testEq(t, fuse.OsFileInfos(reset), fuse.OsFileInfos(before), true)
+
+	testEq(t, serialize(reset), serialize(before), true)
 }
 
 func TestMemUnionResetRename(t *testing.T) {
@@ -941,15 +967,12 @@ func TestMemUnionResetRename(t *testing.T) {
 	os.Mkdir(wd+"/ro/dir", 0755)
 	ioutil.WriteFile(wd+"/ro/dir/movesrc", []byte{42}, 0644)
 	before, _ := ioutil.ReadDir(wd + "/mnt/dir")
-	clearInodes(before)
 	os.Rename(wd+"/mnt/dir/movesrc", wd+"/mnt/dir/dest")
 	after, _ := ioutil.ReadDir(wd + "/mnt/dir")
-	clearInodes(after)
-	testEq(t, fuse.OsFileInfos(after), fuse.OsFileInfos(before), false)
+	testEq(t, serialize(after), serialize(before), false)
 	ufs.Reset()
 	reset, _ := ioutil.ReadDir(wd + "/mnt/dir")
-	clearInodes(reset)
-	testEq(t, fuse.OsFileInfos(reset), fuse.OsFileInfos(before), true)
+	testEq(t, serialize(reset), serialize(before), true)
 }
 
 func TestMemUnionFsTruncateOpen(t *testing.T) {
@@ -965,7 +988,7 @@ func TestMemUnionFsTruncateOpen(t *testing.T) {
 	CheckSuccess(err)
 	fi, err := os.Lstat(fn)
 	CheckSuccess(err)
-	if fi.Size != 4096 {
-		t.Errorf("Size should be 4096 after Truncate: %d", fi.Size)
+	if fi.Size() != 4096 {
+		t.Errorf("Size should be 4096 after Truncate: %d", fi.Size())
 	}
 }

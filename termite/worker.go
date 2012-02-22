@@ -13,7 +13,6 @@ import (
 	"net/rpc"
 	"os"
 	"os/exec"
-	"os/user"
 	"strings"
 	"time"
 )
@@ -35,6 +34,11 @@ type Worker struct {
 	mirrors *WorkerMirrors
 }
 
+type User struct {
+	Uid int
+	Gid int
+}
+
 type WorkerOptions struct {
 	cba.StoreOptions
 
@@ -53,7 +57,7 @@ type WorkerOptions struct {
 	Jobs     int
 
 	// If set, change user to this for running.
-	User *user.User
+	User *User
 
 	// How often to reap filesystems. If 1, use 1 FS per task.
 	ReapCount int
