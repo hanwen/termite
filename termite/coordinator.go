@@ -10,6 +10,7 @@ import (
 	"net/rpc"
 	"os"
 	"sort"
+	"syscall"
 	"sync"
 	"time"
 )
@@ -506,11 +507,11 @@ func (me *Coordinator) ServeHTTP(port int) {
 		Handler: me.Mux,
 	}
 	err = httpServer.Serve(me.listener)
-	if e, ok := err.(*net.OpError); ok && e.Err == os.EINVAL {
+	if e, ok := err.(*net.OpError); ok && e.Err == syscall.EINVAL {
 		return
 	}
 
-	if err != nil && err != os.EINVAL {
+	if err != nil && err != syscall.EINVAL {
 		log.Println("httpServer.Serve:", err)
 	}
 }

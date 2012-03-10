@@ -2,9 +2,10 @@ package termite
 
 import (
 	"fmt"
+	"syscall"
+	
 	"github.com/hanwen/termite/attr"
 	"github.com/hanwen/termite/stats"
-	"os"
 )
 
 type AttrRequest struct {
@@ -70,7 +71,7 @@ type Timing struct {
 }
 
 type WorkResponse struct {
-	Exit   os.Waitmsg
+	Exit   syscall.WaitStatus
 	Stderr string
 	Stdout string
 

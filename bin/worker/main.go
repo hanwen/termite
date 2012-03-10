@@ -12,23 +12,21 @@ import (
 	"os/user"
 	"runtime"
 	"runtime/pprof"
+	"strconv"
 	"syscall"
 )
 
 var _ = log.Printf
 
 func handleStop(daemon *termite.Worker) {
-	for {
-		sig := <-signal.Incoming
-		switch sig.(os.UnixSignal) {
-		case syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT:
-			log.Println("got signal: ", sig)
-			req := termite.ShutdownRequest{Kill: true}
-			rep := termite.ShutdownResponse{}
-			daemon.Shutdown(&req, &rep)
-		case syscall.SIGHUP:
-			daemon.Report()
-		}
+	ch := make(chan os.Signal, 1)
+	
+	signal.Notify(ch, os.Interrupt, os.Kill)
+	for sig := range ch {
+		log.Println("got signal: ", sig)
+		req := termite.ShutdownRequest{Kill: true}
+		rep := termite.ShutdownResponse{}
+		daemon.Shutdown(&req, &rep)
 	}
 }
 
@@ -109,7 +107,7 @@ func main() {
 		if err != nil {
 			log.Fatalf("close stderr: %v", err)
 		}
-		_, err = syscall.Dup(f.Fd())
+		_, err = syscall.Dup(int(f.Fd()))
 		if err != nil {
 			log.Fatalf("dup: %v", err)
 		}
@@ -137,7 +135,12 @@ func main() {
 		if err != nil {
 			log.Fatalf("can't lookup %q: %v", *userFlag, err)
 		}
-		opts.User = nobody
+		uid, err := strconv.ParseInt(nobody.Uid, 10, 64)
+		gid, err := strconv.ParseInt(nobody.Gid, 10, 64)
+		opts.User = &termite.User{
+			Uid: int(uid),
+			Gid: int(gid),
+		}
 	}
 
 	daemon := termite.NewWorker(&opts)

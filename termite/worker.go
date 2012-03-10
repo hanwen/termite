@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -186,11 +187,11 @@ func (me *Worker) RunWorkerServer() {
 
 	for {
 		conn, err := me.listener.Accept()
-		if err == os.EINVAL {
+		if err == syscall.EINVAL {
 			break
 		}
 		if err != nil {
-			if e, ok := err.(*net.OpError); ok && e.Err == os.EINVAL {
+			if e, ok := err.(*net.OpError); ok && e.Err == syscall.EINVAL {
 				break
 			}
 			log.Println("me.listener", err)

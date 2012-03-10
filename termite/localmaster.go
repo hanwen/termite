@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/rpc"
 	"os"
+	"syscall"
 )
 
 // Expose functionality for the local tool to use.
@@ -68,7 +69,7 @@ func (me *LocalMaster) start(sock string) {
 	log.Println("accepting connections on", sock)
 	for {
 		conn, err := me.listener.Accept()
-		if err == os.EINVAL {
+		if err == syscall.EINVAL {
 			break
 		}
 		if err != nil {

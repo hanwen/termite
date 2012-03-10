@@ -112,9 +112,9 @@ func (me *WorkerTask) runInFuse(fuseFs *workerFuseFs) error {
 		printCmd, cmd.Dir, fuseFs.id)
 	err := cmd.Wait()
 
-	waitMsg, ok := err.(*exec.ExitError)
+	exitErr, ok := err.(*exec.ExitError)
 	if ok {
-		me.rep.Exit = *waitMsg.Waitmsg
+		me.rep.Exit = exitErr.Sys().(syscall.WaitStatus)
 		err = nil
 	}
 

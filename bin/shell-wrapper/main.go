@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sort"
+	"syscall"
 	"strings"
 	"time"
 )
@@ -170,7 +171,7 @@ func Shell() string {
 	return shell
 }
 
-func RunLocally(req *termite.WorkRequest, rule *termite.LocalRule) *os.Waitmsg {
+func RunLocally(req *termite.WorkRequest, rule *termite.LocalRule) syscall.WaitStatus {
 	env := os.Environ()
 	if !rule.Recurse {
 		env = cleanEnv(env)
@@ -183,11 +184,11 @@ func RunLocally(req *termite.WorkRequest, rule *termite.LocalRule) *os.Waitmsg {
 	if err != nil {
 		log.Fatalf("os.StartProcess() for %v: %v", req, err)
 	}
-	msg, err := proc.Wait(0)
+	msg, err := proc.Wait()
 	if err != nil {
 		log.Fatalf("proc.Wait() for %v: %v", req, err)
 	}
-	return msg
+	return msg.Sys().(syscall.WaitStatus)
 }
 
 func main() {
@@ -241,7 +242,7 @@ func main() {
 	} else {
 		req, rule = PrepareRun(*command, *directory, topDir)
 	}
-	var waitMsg *os.Waitmsg
+	var waitMsg syscall.WaitStatus
 	rep := termite.WorkResponse{}
 	if rule != nil && rule.Local {
 		waitMsg = RunLocally(req, rule)
@@ -260,14 +261,14 @@ func main() {
 		os.Stdout.Write([]byte(rep.Stdout))
 		os.Stderr.Write([]byte(rep.Stderr))
 
-		waitMsg = &rep.Exit
+		waitMsg = rep.Exit
 	}
 
-	if waitMsg.ExitStatus() != 0 {
+	if waitMsg != 0 {
 		log.Printf("Failed %s: '%q'", rep.WorkerId, *command)
 	}
 
 	// TODO - is this necessary?
 	Rpc().Close()
-	os.Exit(waitMsg.ExitStatus())
+	os.Exit(int(waitMsg))
 }

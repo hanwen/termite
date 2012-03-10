@@ -5,7 +5,6 @@ import (
 	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/termite/attr"
 	"log"
-	"os"
 	"path/filepath"
 	"strings"
 	"syscall"
@@ -114,7 +113,7 @@ func rmMaybeMasterRun(master *Master, req *WorkRequest, rep *WorkResponse) bool 
 	master.replay(fs)
 
 	rep.Stderr = strings.Join(msgs, "\n")
-	rep.Exit.WaitStatus = syscall.WaitStatus(status << 8)
+	rep.Exit = syscall.WaitStatus(status << 8)
 	return true
 }
 
@@ -183,7 +182,7 @@ func mkdirParentMasterRun(master *Master, arg string, rep *WorkResponse) {
 
 	if len(msgs) > 0 {
 		rep.Stderr = strings.Join(msgs, "\n")
-		rep.Exit.WaitStatus = 1 << 8
+		rep.Exit = 1 << 8
 	}
 }
 
@@ -207,26 +206,20 @@ func mkdirNormalMasterRun(master *Master, arg string, rep *WorkResponse) {
 	dirAttr := master.fileServer.attributes.Get(dir)
 	if dirAttr.Deletion() {
 		rep.Stderr = fmt.Sprintf("File not found: /%s", dir)
-		rep.Exit = os.Waitmsg{
-			WaitStatus: (1 << 8),
-		}
+		rep.Exit = syscall.WaitStatus(1 << 8)
 		return
 	}
 
 	if !dirAttr.IsDir() {
 		rep.Stderr = fmt.Sprintf("Is not a directory: /%s", dir)
-		rep.Exit = os.Waitmsg{
-			WaitStatus: (1 << 8),
-		}
+		rep.Exit = syscall.WaitStatus(1 << 8)
 		return
 	}
 
 	chAttr := master.fileServer.attributes.Get(rootless)
 	if !chAttr.Deletion() {
 		rep.Stderr = fmt.Sprintf("File exists: /%s", rootless)
-		rep.Exit = os.Waitmsg{
-			WaitStatus: (1 << 8),
-		}
+		rep.Exit = syscall.WaitStatus(1 << 8)
 		return
 	}
 	chAttr = mkdirEntry(rootless)
