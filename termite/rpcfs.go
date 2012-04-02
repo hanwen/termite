@@ -3,6 +3,7 @@ package termite
 import (
 	"fmt"
 	"github.com/hanwen/go-fuse/fuse"
+	"github.com/hanwen/go-fuse/raw"
 	"github.com/hanwen/termite/attr"
 	"github.com/hanwen/termite/cba"
 	"github.com/hanwen/termite/stats"
@@ -188,7 +189,7 @@ func (me *RpcFs) Open(name string, flags uint32, context *fuse.Context) (fuse.Fi
 				fuse.NewDataFile(contents),
 				fa,
 			},
-			FuseFlags: fuse.FOPEN_KEEP_CACHE,
+			FuseFlags: raw.FOPEN_KEEP_CACHE,
 		}, fuse.OK
 	}
 	fa := *a.Attr
@@ -197,7 +198,7 @@ func (me *RpcFs) Open(name string, flags uint32, context *fuse.Context) (fuse.Fi
 			&LazyLoopbackFile{Name: me.cache.Path(a.Hash)},
 			fa,
 		},
-		FuseFlags: fuse.FOPEN_KEEP_CACHE,
+		FuseFlags: raw.FOPEN_KEEP_CACHE,
 	}, fuse.OK
 }
 
@@ -236,11 +237,11 @@ func (me *RpcFs) GetAttr(name string, context *fuse.Context) (*fuse.Attr, fuse.S
 }
 
 func (me *RpcFs) Access(name string, mode uint32, context *fuse.Context) (code fuse.Status) {
-	if mode == fuse.F_OK {
+	if mode == raw.F_OK {
 		_, code := me.GetAttr(name, context)
 		return code
 	}
-	if mode&fuse.W_OK != 0 {
+	if mode&raw.W_OK != 0 {
 		return fuse.EACCES
 	}
 	return fuse.OK
