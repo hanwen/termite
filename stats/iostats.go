@@ -91,6 +91,14 @@ func TotalDiskStats() (result DiskStat, err error) {
 	}
 
 	for _, d := range ds {
+		if d.Name == "" {
+			continue
+		}
+		
+		part := d.Name[len(d.Name)-1]
+		if part >= '0' &&  part <= '9' {
+			continue
+		}
 		st.Add(d)
 	}
 	return st, nil
@@ -111,6 +119,7 @@ func AllDiskStats() (result []*DiskStat, err error) {
 		if err != nil {
 			return nil, err
 		}
+
 		result = append(result, r)
 	}
 
