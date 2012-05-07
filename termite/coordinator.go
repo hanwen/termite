@@ -393,7 +393,7 @@ func (me *Coordinator) workerHandler(w http.ResponseWriter, req *http.Request) {
 	if !status.Accepting {
 		fmt.Fprintf(w, "<b>shutting down</b>")
 	}
-	stats.CpuStatsWriteHttp(w, status.CpuStats)
+	stats.CpuStatsWriteHttp(w, status.CpuStats, status.DiskStats)
 
 	fmt.Fprintf(w, "<p>Total CPU: %s", status.TotalCpu.Percent())
 	fmt.Fprintf(w, "<p>Content cache hit rate: %.0f %%, Age %d",

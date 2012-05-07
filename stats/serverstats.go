@@ -66,7 +66,7 @@ func CpuStatsWriteHttp(w http.ResponseWriter, stats []CpuStat, disk []DiskStat) 
 	if printChild {
 		chHeader = "<th>child cpu (ms)</th><th>child sys (ms)</th>"
 	}
-	fmt.Fprintf(w, "<p><table><tr><th>self cpu (ms)</th><th>self sys (ms)</th>%s<th>total</th><th>read ops</th><th>write ops</th></tr>",
+	fmt.Fprintf(w, "<p><table><tr><th>self cpu (ms)</th><th>self sys (ms)</th>%s<th>total (ms)</th><th>read ops</th><th>write ops</th></tr>",
 		chHeader)
 	for i, v := range stats {
 		if i < len(stats)-5 {
@@ -117,7 +117,7 @@ func CountStatsWriteHttp(w http.ResponseWriter, names []string, counts []int) {
 
 func (me *ServerStats) WriteHttp(w http.ResponseWriter) {
 	cpu := me.CpuStats()
-	disk := me.DiskStatSampler.Stats()
+	disk := me.DiskStats()
 
 	l := len(cpu)
 	if len(disk) < l {

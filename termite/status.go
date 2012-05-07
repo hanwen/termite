@@ -28,6 +28,7 @@ func (me *Worker) Status(req *WorkerStatusRequest, rep *WorkerStatusResponse) er
 	rep.Version = Version()
 	rep.Accepting = me.accepting
 	rep.CpuStats = me.stats.CpuStats()
+	rep.DiskStats = me.stats.DiskStats()
 	rep.PhaseCounts = me.stats.PhaseCounts()
 	rep.PhaseNames = me.stats.PhaseOrder
 	rep.TotalCpu = *stats.TotalCpuStat()

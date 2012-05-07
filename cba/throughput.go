@@ -25,7 +25,7 @@ func (s *ThroughputSample) String() string {
 	return fmt.Sprintf("received %v, sent %v", s.received, s.served)
 }
 
-func (s *ThroughputSample) SubSample(r stats.Sample) {
+func (s *ThroughputSample) SubtractSample(r stats.Sample) {
 	t := r.(*ThroughputSample)
 	s.served -= t.served
 	s.received -= t.received

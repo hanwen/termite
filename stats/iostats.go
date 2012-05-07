@@ -163,7 +163,7 @@ func (d *diskSample) TableRow() string {
 	return fmt.Sprintf("<tr><td>%d</td><td>%d</td></tr>", d.MergedReadsCompleted, d.WritesCompleted)
 }
 
-func (s *DiskStatSampler) Stats() (out []DiskStat) {
+func (s *DiskStatSampler) DiskStats() (out []DiskStat) {
 	diffs := s.sampler.Diffs()
 	for _, d := range diffs {
 		samp := d.(*diskSample)
