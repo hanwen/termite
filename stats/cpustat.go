@@ -102,7 +102,7 @@ func (me *CpuStat) CopySample() Sample {
 	return &c
 }
 
-func (me *CpuStat) SubSample(x Sample) {
+func (me *CpuStat) SubtractSample(x Sample) {
 	c := x.(*CpuStat)
 	me.SelfCpu -= c.SelfCpu
 	me.SelfSys -= c.SelfSys

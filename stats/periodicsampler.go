@@ -8,7 +8,7 @@ import (
 var _ = log.Println
 
 type Sample interface {
-	SubSample(Sample)
+	SubtractSample(Sample)
 	CopySample() Sample
 	TableHeader() string
 	TableRow() string
@@ -70,7 +70,7 @@ func (me *PeriodicSampler) Diffs() (out []Sample) {
 	for _, v := range vals {
 		c := v.CopySample()
 		if last != nil {
-			c.SubSample(last)
+			c.SubtractSample(last)
 			out = append(out, c)
 		}
 		last = v

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"strings"
+	"time"
 )
 
 // See http://www.kernel.org/doc/Documentation/iostats.txt
@@ -41,6 +42,19 @@ func (d *DiskStat) Add(other *DiskStat) {
 	d.IOsInProgress += other.IOsInProgress
 	d.MsDoingIO += other.MsDoingIO
 	d.MsWeightedIO += other.MsWeightedIO
+}
+
+func (d *DiskStat) Sub(other *DiskStat) {
+	d.ReadsCompleted -= other.ReadsCompleted
+	d.MergedReadsCompleted -= other.MergedReadsCompleted
+	d.SectorsWritten -= other.SectorsWritten
+	d.MsSpentWriting -= other.MsSpentWriting
+	d.WritesCompleted -= other.WritesCompleted
+	d.SectorsRead -= other.SectorsRead
+	d.MsSpentReading -= other.MsSpentReading
+	d.IOsInProgress -= other.IOsInProgress
+	d.MsDoingIO -= other.MsDoingIO
+	d.MsWeightedIO -= other.MsWeightedIO
 }
 
 func parseLine(line string) (*DiskStat, error) {
@@ -101,4 +115,50 @@ func AllDiskStats() (result []*DiskStat, err error) {
 	}
 
 	return result, nil
+}
+
+type DiskStatSampler struct {
+	sampler *PeriodicSampler
+}
+
+func sampleDisk() Sample {
+	ds, _ := TotalDiskStats()
+	return &diskSample{ds}
+}
+
+func NewDiskStatSampler() *DiskStatSampler {
+	return &DiskStatSampler{
+		sampler: NewPeriodicSampler(time.Second, 60, sampleDisk),
+	}
+}
+
+type diskSample struct {
+	DiskStat
+}
+
+func (d *diskSample) SubtractSample(s Sample) {
+	other := s.(*diskSample)
+	d.Sub(&other.DiskStat)
+}
+
+func (d *diskSample) CopySample() Sample {
+	ds := *d
+	return &ds
+}
+
+func (d *diskSample) TableHeader() string {
+	return fmt.Sprintf("<tr><th>Read</th><th>Write</th></tr>")
+}
+
+func (d *diskSample) TableRow() string {
+	return fmt.Sprintf("<tr><td>%d</td><td>%d</td></tr>", d.MergedReadsCompleted, d.WritesCompleted)
+}
+
+func (s *DiskStatSampler) Stats() (out []DiskStat) {
+	diffs := s.sampler.Diffs()
+	for _, d := range diffs {
+		samp := d.(*diskSample)
+		out = append(out, samp.DiskStat)
+	}
+	return out
 }
