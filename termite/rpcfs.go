@@ -132,7 +132,7 @@ func (me *RpcFs) String() string {
 	return "RpcFs"
 }
 
-func (me *RpcFs) OpenDir(name string, context *fuse.Context) (chan fuse.DirEntry, fuse.Status) {
+func (me *RpcFs) OpenDir(name string, context *fuse.Context) ([]fuse.DirEntry, fuse.Status) {
 	r := me.attr.GetDir(name)
 	if r.Deletion() {
 		return nil, fuse.ENOENT
@@ -141,14 +141,13 @@ func (me *RpcFs) OpenDir(name string, context *fuse.Context) (chan fuse.DirEntry
 		return nil, fuse.EINVAL
 	}
 
-	c := make(chan fuse.DirEntry, len(r.NameModeMap))
+	c := make([]fuse.DirEntry, 0, len(r.NameModeMap))
 	for k, mode := range r.NameModeMap {
-		c <- fuse.DirEntry{
+		c = append(c, fuse.DirEntry{
 			Name: k,
 			Mode: uint32(mode),
-		}
+		})
 	}
-	close(c)
 	return c, fuse.OK
 }
 

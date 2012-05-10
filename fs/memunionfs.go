@@ -112,7 +112,7 @@ func (me *MemUnionFs) Reap() map[string]*Result {
 			todo = todo[:l]
 
 			s, _ := me.readonly.OpenDir(n, nil)
-			for e := range s {
+			for _, e := range s {
 				full := filepath.Join(n, e.Name)
 				m[full] = &Result{}
 				if e.Mode&fuse.S_IFDIR != 0 {
@@ -346,7 +346,7 @@ func (me *memNode) materializeSelf() {
 		return
 	}
 	s, _ := me.fs.readonly.OpenDir(me.original, nil)
-	for e := range s {
+	for _, e := range s {
 		me.lookup(e.Name, nil)
 	}
 	me.original = ""
@@ -585,14 +585,14 @@ func (me *memNode) Chown(file fuse.File, uid uint32, gid uint32, context *fuse.C
 	return fuse.OK
 }
 
-func (me *memNode) OpenDir(context *fuse.Context) (stream chan fuse.DirEntry, code fuse.Status) {
+func (me *memNode) OpenDir(context *fuse.Context) (stream []fuse.DirEntry, code fuse.Status) {
 	me.mutex.RLock()
 	defer me.mutex.RUnlock()
 	ch := map[string]uint32{}
 
 	if me.original != "" || me == me.fs.root {
 		stream, code = me.fs.readonly.OpenDir(me.original, context)
-		for e := range stream {
+		for _, e := range stream {
 			fn := filepath.Join(me.original, e.Name)
 			if !me.fs.deleted[fn] {
 				ch[e.Name] = e.Mode
@@ -604,11 +604,10 @@ func (me *memNode) OpenDir(context *fuse.Context) (stream chan fuse.DirEntry, co
 		ch[k] = n.FsNode().(*memNode).info.Mode
 	}
 
-	stream = make(chan fuse.DirEntry, len(ch))
+	stream = make([]fuse.DirEntry, 0, len(ch))
 	for k, v := range ch {
-		stream <- fuse.DirEntry{Name: k, Mode: v}
+		stream = append(stream, fuse.DirEntry{Name: k, Mode: v})
 	}
-	close(stream)
 	return stream, fuse.OK
 }
 
