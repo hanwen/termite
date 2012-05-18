@@ -63,12 +63,12 @@ func (me *LazyLoopbackFile) Write(w *fuse.WriteIn, s []byte) (uint32, fuse.Statu
 	return 0, fuse.EPERM
 }
 
-func (me *LazyLoopbackFile) GetAttr() (*fuse.Attr, fuse.Status) {
+func (me *LazyLoopbackFile) GetAttr(a *fuse.Attr) fuse.Status {
 	f, s := me.file()
 	if s.Ok() {
-		return f.GetAttr()
+		return f.GetAttr(a)
 	}
-	return nil, s
+	return s
 }
 
 func (me *LazyLoopbackFile) Utimens(atimeNs int64, mtimeNs int64) fuse.Status {

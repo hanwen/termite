@@ -448,12 +448,13 @@ func (me *memNodeFile) Flush() fuse.Status {
 	code := me.File.Flush()
 	if me.writable {
 		// TODO - should this be in Release?
-		fi, _ := me.File.GetAttr()
+		var a fuse.Attr
+		me.File.GetAttr(&a)
 
 		me.node.mutex.Lock()
 		defer me.node.mutex.Unlock()
-		me.node.info.Size = fi.Size
-		me.node.info.Blocks = fi.Blocks
+		me.node.info.Size = a.Size
+		me.node.info.Blocks = a.Blocks
 	}
 	return code
 }
@@ -520,11 +521,11 @@ func (me *memNode) Open(flags uint32, context *fuse.Context) (file fuse.File, co
 func (me *memNode) GetAttr(out *fuse.Attr, file fuse.File, context *fuse.Context) (code fuse.Status) {
 	var sz uint64
 	if file != nil {
-		fi, code := file.GetAttr()
+		code := file.GetAttr(out)
 		if code.Ok() {
-			sz = fi.Size
+			sz = out.Size
 		} else {
-			msg := fmt.Sprintf("File.GetAttr(%s) = %v, %v", file.String(), fi, code)
+			msg := fmt.Sprintf("File.GetAttr(%s) = %v, %v", file.String(), out, code)
 			panic(msg)
 		}
 	}

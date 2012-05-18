@@ -156,8 +156,9 @@ type rpcFsFile struct {
 	fuse.Attr
 }
 
-func (me *rpcFsFile) GetAttr() (*fuse.Attr, fuse.Status) {
-	return &me.Attr, fuse.OK
+func (me *rpcFsFile) GetAttr(a *fuse.Attr) fuse.Status {
+	*a = me.Attr
+	return fuse.OK
 }
 
 func (me *rpcFsFile) String() string {
