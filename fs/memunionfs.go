@@ -263,27 +263,28 @@ func (me *memNode) Readlink(c *fuse.Context) ([]byte, fuse.Status) {
 	return []byte(me.link), fuse.OK
 }
 
-func (me *memNode) Lookup(name string, context *fuse.Context) (fi *fuse.Attr, node fuse.FsNode, code fuse.Status) {
+func (me *memNode) Lookup(out *fuse.Attr, name string, context *fuse.Context) (node fuse.FsNode, code fuse.Status) {
 	me.mutex.RLock()
 	defer me.mutex.RUnlock()
-	return me.lookup(name, context)
+	return me.lookup(out, name, context)
 }
 
 // Must run with mutex held.
-func (me *memNode) lookup(name string, context *fuse.Context) (fi *fuse.Attr, node fuse.FsNode, code fuse.Status) {
+func (me *memNode) lookup(out *fuse.Attr, name string, context *fuse.Context) (node fuse.FsNode, code fuse.Status) {
 	if me.original == "" && me != me.fs.root {
-		return nil, nil, fuse.ENOENT
+		return nil, fuse.ENOENT
 	}
 
 	fn := filepath.Join(me.original, name)
 	if _, del := me.fs.deleted[fn]; del {
-		return nil, nil, fuse.ENOENT
+		return nil, fuse.ENOENT
 	}
-	fi, code = me.fs.readonly.GetAttr(fn, context)
+	fi, code := me.fs.readonly.GetAttr(fn, context)
 	if !code.Ok() {
-		return nil, nil, code
+		return nil, code
 	}
 
+	*out = *fi
 	child := me.newNode(fi.Mode&fuse.S_IFDIR != 0)
 	child.info = *fi
 	child.original = fn
@@ -292,10 +293,10 @@ func (me *memNode) lookup(name string, context *fuse.Context) (fi *fuse.Attr, no
 	}
 	me.Inode().AddChild(name, child.Inode())
 
-	return fi, child, fuse.OK
+	return child, fuse.OK
 }
 
-func (me *memNode) Mkdir(name string, mode uint32, context *fuse.Context) (fi *fuse.Attr, newNode fuse.FsNode, code fuse.Status) {
+func (me *memNode) Mkdir(name string, mode uint32, context *fuse.Context) (newNode fuse.FsNode, code fuse.Status) {
 	me.mutex.Lock()
 	defer me.mutex.Unlock()
 
@@ -304,7 +305,7 @@ func (me *memNode) Mkdir(name string, mode uint32, context *fuse.Context) (fi *f
 	n.info.Mode = mode | fuse.S_IFDIR
 	me.Inode().AddChild(name, n.Inode())
 	me.touch()
-	return &n.info, n, fuse.OK
+	return n, fuse.OK
 }
 
 func (me *memNode) Unlink(name string, context *fuse.Context) (code fuse.Status) {
@@ -327,7 +328,7 @@ func (me *memNode) Rmdir(name string, context *fuse.Context) (code fuse.Status) 
 	return me.Unlink(name, context)
 }
 
-func (me *memNode) Symlink(name string, content string, context *fuse.Context) (fi *fuse.Attr, newNode fuse.FsNode, code fuse.Status) {
+func (me *memNode) Symlink(name string, content string, context *fuse.Context) (newNode fuse.FsNode, code fuse.Status) {
 	me.mutex.Lock()
 	defer me.mutex.Unlock()
 	n := me.newNode(false)
@@ -336,7 +337,7 @@ func (me *memNode) Symlink(name string, content string, context *fuse.Context) (
 	n.changed = true
 	me.Inode().AddChild(name, n.Inode())
 	me.touch()
-	return &n.info, n, fuse.OK
+	return n, fuse.OK
 }
 
 // Expand the original fs as a tree.
@@ -346,8 +347,9 @@ func (me *memNode) materializeSelf() {
 		return
 	}
 	s, _ := me.fs.readonly.OpenDir(me.original, nil)
+	a := fuse.Attr{}
 	for _, e := range s {
-		me.lookup(e.Name, nil)
+		me.lookup(&a, e.Name, nil)
 	}
 	me.original = ""
 }
@@ -392,17 +394,15 @@ func (me *memNode) markChanged() {
 	}
 }
 
-func (me *memNode) Link(name string, existing fuse.FsNode, context *fuse.Context) (fi *fuse.Attr, newNode fuse.FsNode, code fuse.Status) {
+func (me *memNode) Link(name string, existing fuse.FsNode, context *fuse.Context) (newNode fuse.FsNode, code fuse.Status) {
 	me.Inode().AddChild(name, existing.Inode())
-	fi, code = existing.GetAttr(nil, context)
-
 	me.mutex.Lock()
 	defer me.mutex.Unlock()
 	me.touch()
-	return fi, existing, code
+	return existing, code
 }
 
-func (me *memNode) Create(name string, flags uint32, mode uint32, context *fuse.Context) (file fuse.File, fi *fuse.Attr, newNode fuse.FsNode, code fuse.Status) {
+func (me *memNode) Create(name string, flags uint32, mode uint32, context *fuse.Context) (file fuse.File, newNode fuse.FsNode, code fuse.Status) {
 	me.mutex.Lock()
 	defer me.mutex.Unlock()
 
@@ -413,12 +413,12 @@ func (me *memNode) Create(name string, flags uint32, mode uint32, context *fuse.
 	f, err := os.Create(n.backing)
 	if err != nil {
 		log.Printf("Backing store error %q: %v", n.backing, err)
-		return nil, nil, nil, fuse.ToStatus(err)
+		return nil, nil, fuse.ToStatus(err)
 	}
 	me.Inode().AddChild(name, n.Inode())
 	me.touch()
 	me.fs.openWritable++
-	return n.newFile(&fuse.LoopbackFile{File: f}, true), &n.info, n, fuse.OK
+	return n.newFile(&fuse.LoopbackFile{File: f}, true), n, fuse.OK
 }
 
 type memNodeFile struct {
@@ -517,7 +517,7 @@ func (me *memNode) Open(flags uint32, context *fuse.Context) (file fuse.File, co
 	return me.newFile(file, false), fuse.OK
 }
 
-func (me *memNode) GetAttr(file fuse.File, context *fuse.Context) (fi *fuse.Attr, code fuse.Status) {
+func (me *memNode) GetAttr(out *fuse.Attr, file fuse.File, context *fuse.Context) (code fuse.Status) {
 	var sz uint64
 	if file != nil {
 		fi, code := file.GetAttr()
@@ -530,11 +530,11 @@ func (me *memNode) GetAttr(file fuse.File, context *fuse.Context) (fi *fuse.Attr
 	}
 	me.mutex.RLock()
 	defer me.mutex.RUnlock()
-	info := me.info
+	*out = me.info
 	if file != nil {
-		info.Size = sz
+		out.Size = sz
 	}
-	return &info, fuse.OK
+	return fuse.OK
 }
 
 func (me *memNode) Truncate(file fuse.File, size uint64, context *fuse.Context) (code fuse.Status) {
