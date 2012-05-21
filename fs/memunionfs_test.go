@@ -66,7 +66,10 @@ func setupMemUfs(t *testing.T) (workdir string, ufs *MemUnionFs, cleanup func())
 	fuse.CheckSuccess(err)
 
 	roFs := fuse.NewLoopbackFileSystem(wd + "/ro")
-	memFs := NewMemUnionFs(wd+"/backing", roFs)
+	memFs, err := NewMemUnionFs(wd+"/backing", roFs)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// We configure timeouts are smaller, so we can check for
 	// UnionFs's cache consistency.

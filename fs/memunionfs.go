@@ -218,16 +218,25 @@ func (me *MemUnionFs) newNode(isdir bool) *memNode {
 	return n
 }
 
-func NewMemUnionFs(backingStore string, roFs fuse.FileSystem) *MemUnionFs {
-	me := &MemUnionFs{}
-	me.deleted = make(map[string]bool)
-	me.backingStore = backingStore
-	me.readonly = roFs
+// NewMemUnionFs instantiates a new union file system.  Calling this
+// will access the root of the supplied R/O filesystem.
+func NewMemUnionFs(backingStore string, roFs fuse.FileSystem) (*MemUnionFs, error) {
+	me := &MemUnionFs{
+		deleted: make(map[string]bool),
+		backingStore: backingStore,
+		readonly: roFs,
+	}
+
 	me.root = me.newNode(true)
-	me.root.info.Mode = fuse.S_IFDIR | 0755
+	fi, code := roFs.GetAttr("", nil)
+	if !code.Ok() {
+		return nil, fmt.Errorf("GetAttr(\"\") for R/O returned %v", code)
+	}
+
+	me.root.info = *fi
 	me.cond = sync.NewCond(&me.mutex)
 
-	return me
+	return me, nil
 }
 
 func (me *memNode) Deletable() bool {
@@ -279,6 +288,7 @@ func (me *memNode) lookup(out *fuse.Attr, name string, context *fuse.Context) (n
 	if _, del := me.fs.deleted[fn]; del {
 		return nil, fuse.ENOENT
 	}
+
 	fi, code := me.fs.readonly.GetAttr(fn, context)
 	if !code.Ok() {
 		return nil, code

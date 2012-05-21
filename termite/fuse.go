@@ -123,8 +123,11 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string, 
 	}
 	go me.MountState.Loop()
 
-	me.unionFs = fs.NewMemUnionFs(
+	me.unionFs, err = fs.NewMemUnionFs(
 		me.rwDir, &fuse.PrefixFileSystem{rpcFs, me.writableRoot})
+	if err != nil {
+		return nil, err
+	}
 
 	me.procFs = fs.NewProcFs()
 	me.procFs.StripPrefix = me.mount
