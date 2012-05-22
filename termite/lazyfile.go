@@ -43,10 +43,10 @@ func (me *LazyLoopbackFile) String() string {
 	return fmt.Sprintf("LazyLoopbackFile(%s)", me.Name)
 }
 
-func (me *LazyLoopbackFile) Read(r *fuse.ReadIn, bp fuse.BufferPool) ([]byte, fuse.Status) {
+func (me *LazyLoopbackFile) Read(buf []byte, off int64) ([]byte, fuse.Status) {
 	f, s := me.file()
 	if s.Ok() {
-		return f.Read(r, bp)
+		return f.Read(buf, off)
 	}
 	return nil, s
 }
@@ -59,7 +59,7 @@ func (me *LazyLoopbackFile) Release() {
 	}
 }
 
-func (me *LazyLoopbackFile) Write(w *fuse.WriteIn, s []byte) (uint32, fuse.Status) {
+func (me *LazyLoopbackFile) Write(s []byte, off int64) (uint32, fuse.Status) {
 	return 0, fuse.EPERM
 }
 
