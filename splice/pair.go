@@ -2,7 +2,6 @@ package splice
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"syscall"
 )
@@ -18,20 +17,18 @@ func (p *Pair) MaxGrow() {
 }
 
 func (p *Pair) Grow(n int) bool {
-	if n > getPipeMaxSize() {
+	if !resizable {
+		return false
+	}
+	if n > maxPipeSize {
 		return false
 	}
 	if n <= p.size {
 		return true
 	}
-	newsize := p.size
-	for newsize < n {
-		newsize *= 2
-	}
 
-	newsize, errNo := fcntl(p.r.Fd(), F_SETPIPE_SZ, newsize)
+	newsize, errNo := fcntl(p.r.Fd(), F_SETPIPE_SZ, n)
 	if errNo != 0 {
-		log.Println(os.NewSyscallError("fnct", errNo))
 		return false
 	}
 	p.size = newsize

@@ -49,8 +49,8 @@ func TestSpliceCopy(t *testing.T) {
 	dst, err := ioutil.TempFile("", "termite")
 	check(err)
 
-	if getPipeMaxSize()%4096 != 0 || getPipeMaxSize() < 4096 {
-		t.Error("pipe size should be page size multiple", pipeMaxSize)
+	if maxPipeSize%4096 != 0 || maxPipeSize < 4096 {
+		t.Error("pipe size should be page size multiple", maxPipeSize)
 	}
 	pool := newSplicePairPool()
 	p, err := pool.get()
