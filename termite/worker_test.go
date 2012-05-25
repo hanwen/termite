@@ -3,9 +3,9 @@ package termite
 import (
 	"fmt"
 	"github.com/hanwen/go-fuse/fuse"
+	"github.com/hanwen/go-fuse/splice"
 	"github.com/hanwen/termite/attr"
 	"github.com/hanwen/termite/cba"
-	"github.com/hanwen/termite/splice"
 	"io/ioutil"
 	"log"
 	"net"

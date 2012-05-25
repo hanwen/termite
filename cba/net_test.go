@@ -2,7 +2,7 @@ package cba
 
 import (
 	"bytes"
-	"github.com/hanwen/termite/splice"
+	"github.com/hanwen/go-fuse/splice"
 	"io"
 	"io/ioutil"
 	"os"

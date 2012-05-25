@@ -1,7 +1,7 @@
 package cba
 
 import (
-	"github.com/hanwen/termite/splice"
+	"github.com/hanwen/go-fuse/splice"
 	"log"
 	"os"
 	"sync"
