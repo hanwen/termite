@@ -6,7 +6,7 @@ rm -f termite/version.gen.go
 
 for target in "clean" "install"
 do
-  for d in stats splice attr cba fs termite \
+  for d in stats attr cba fs termite \
       bin/coordinator \
       bin/worker bin/master bin/shell-wrapper ; \
   do
@@ -14,7 +14,7 @@ do
   done
 done
 
-for d in stats splice attr cba termite
+for d in stats attr cba termite
 do
   (cd $d && go test . )
 done
