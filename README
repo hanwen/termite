@@ -152,7 +152,6 @@ TODO (by decreasing priority)
 * Use splice for serving file contents
 * Make master->coordinator RPC block in coordinator so master can
   learn of developments instantaneously.
-* Compile linux kernel
 * Security review for the connection scheme.
 * Better connection scheme? Use exp/ssh, tls?
 

@@ -32,6 +32,7 @@ type Worker struct {
 	options      *WorkerOptions
 	accepting    bool
 
+	httpStatusPort     int 
 	mirrors *WorkerMirrors
 }
 
@@ -128,6 +129,17 @@ func (me *Worker) PeriodicHouseholding() {
 	}
 }
 
+var cname string
+func init() {
+	var err error
+	cname, err = net.LookupCNAME(Hostname)
+	if err != nil {
+		log.Println("cname", err)
+		return
+	}
+	cname = strings.TrimRight(cname, ".")
+}
+
 func (me *Worker) Report() {
 	if me.options.Coordinator == "" {
 		return
@@ -138,16 +150,11 @@ func (me *Worker) Report() {
 		return
 	}
 
-	cname, err := net.LookupCNAME(Hostname)
-	if err != nil {
-		log.Println("cname", err)
-		return
-	}
-	cname = strings.TrimRight(cname, ".")
 	req := Registration{
 		Address: fmt.Sprintf("%v:%d", cname, me.options.Port),
 		Name:    fmt.Sprintf("%s:%d", Hostname, me.options.Port),
 		Version: Version(),
+		HttpStatusPort: me.httpStatusPort,
 	}
 	rep := 0
 	err = client.Call("Coordinator.Register", &req, &rep)
@@ -184,6 +191,7 @@ func (me *Worker) RunWorkerServer() {
 	_, portString, _ := net.SplitHostPort(me.listener.Addr().String())
 	fmt.Sscanf(portString, "%d", &me.options.Port)
 	go me.PeriodicHouseholding()
+	go me.serveStatus()
 
 	for {
 		conn, err := me.listener.Accept()
@@ -237,8 +245,6 @@ func (me *Worker) Log(req *LogRequest, rep *LogResponse) error {
 			req.Size = size - req.Off
 		}
 	}
-
-	log.Printf("Sending log: %v", req)
 	_, err = f.Seek(req.Off, req.Whence)
 	if err != nil {
 		return err

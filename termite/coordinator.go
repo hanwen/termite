@@ -3,12 +3,11 @@ package termite
 import (
 	"errors"
 	"fmt"
-	"github.com/hanwen/termite/stats"
+	"io"
 	"log"
 	"net"
 	"net/http"
 	"net/rpc"
-	"os"
 	"sort"
 	"syscall"
 	"sync"
@@ -21,6 +20,7 @@ type Registration struct {
 	Address string
 	Name    string
 	Version string
+	HttpStatusPort int
 }
 
 type Registered struct {
@@ -159,8 +159,11 @@ func (me *Coordinator) rootHandler(w http.ResponseWriter, req *http.Request) {
 
 	for _, k := range keys {
 		worker := me.workers[k]
-		fmt.Fprintf(w, "<li><a href=\"worker?host=%s\">address <tt>%s</tt>, host <tt>%s</tt></a>",
-			worker.Address, worker.Address, worker.Name)
+		addr := worker.Address
+		fmt.Fprintf(w, "<li><a href=\"worker?host=%s\">address <tt>%s</tt>, host <tt>%s</tt></a>"+
+			" (<a href=\"/workerkill?host=%s\">Kill</a>, \n" +
+			"<a href=\"/restart?host=%s\">Restart</a>)\n", 
+			addr, addr, worker.Name, addr, addr)
 	}
 	fmt.Fprintf(w, "</ul>")
 
@@ -247,13 +250,18 @@ func (me *Coordinator) killHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	addr, conn, err := me.getHost(req)
+	addr, err := me.getHost(req)
+	var conn net.Conn
+	if err == nil {
+		conn, err = DialTypedConnection(addr, RPC_CHANNEL, me.options.Secret)
+	}
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		fmt.Fprintf(w, "<html><head><title>Termite worker error</title></head>")
 		fmt.Fprintf(w, "<body>Error: %s</body></html>", err.Error())
 		return
 	}
+
 	defer conn.Close()
 
 	w.Header().Set("Content-Type", "text/html")
@@ -309,65 +317,39 @@ func (me *Coordinator) workerAddresses() (out []string) {
 	return out
 }
 
-func (me *Coordinator) haveWorker(addr string) bool {
+func (me *Coordinator) getWorker(addr string) *WorkerRegistration {
 	me.mutex.Lock()
 	defer me.mutex.Unlock()
-	_, ok := me.workers[addr]
-	return ok
+	return me.workers[addr]
 }
 
-func (me *Coordinator) getHost(req *http.Request) (string, net.Conn, error) {
+func (me *Coordinator) getHost(req *http.Request) (string, error) {
 	q := req.URL.Query()
 	vs, ok := q["host"]
 	if !ok || len(vs) == 0 {
-		return "", nil, fmt.Errorf("query param 'host' missing")
+		return "", fmt.Errorf("query param 'host' missing")
 	}
 	addr := string(vs[0])
-	if !me.haveWorker(addr) {
-		return "", nil, fmt.Errorf("worker %q unknown", addr)
+	if me.getWorker(addr) == nil {
+		return "", fmt.Errorf("worker %q unknown", addr)
 	}
 
-	conn, err := DialTypedConnection(addr, RPC_CHANNEL, me.options.Secret)
-	if err != nil {
-		return "", nil, fmt.Errorf("error dialing: %v", err)
-	}
-
-	return addr, conn, nil
-}
-
-func (me *Coordinator) logHandler(w http.ResponseWriter, req *http.Request) {
-	_, conn, err := me.getHost(req)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "<html><head><title>Termite worker error</title></head>")
-		fmt.Fprintf(w, "<body>Error: %s</body></html>", err.Error())
-		return
-	}
-	sz := int64(500 * 1024)
-	sizeStr, ok := req.URL.Query()["size"]
-	if ok {
-		fmt.Scanf(sizeStr[0], "%d", &sz)
-	}
-
-	logReq := LogRequest{Whence: os.SEEK_END, Off: -sz, Size: sz}
-	logRep := LogResponse{}
-	client := rpc.NewClient(conn)
-	err = client.Call("Worker.Log", &logReq, &logRep)
-	client.Close()
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "<html><head><title>Termite worker error</title></head>")
-		fmt.Fprintf(w, "<body>Error: %s</body></html>", err.Error())
-		return
-	}
-
-	w.Header().Set("Content-Type", "text/plain")
-	w.Write(logRep.Data)
-	return
+	return addr, nil
 }
 
 func (me *Coordinator) workerHandler(w http.ResponseWriter, req *http.Request) {
-	addr, conn, err := me.getHost(req)
+	addr, err := me.getHost(req)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "<html><head><title>Termite worker status</title></head>")
+		fmt.Fprintf(w, "<body>Error: %s</body></html>", err.Error())
+		return
+	}
+	workerData := me.getWorker(addr)
+	host, _, _ := net.SplitHostPort(addr)
+	resp, err := http.Get(fmt.Sprintf("http://%s:%d/%s?%s", host, workerData.HttpStatusPort,
+	req.URL.Path, req.URL.RawQuery))
+
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(w, "<html><head><title>Termite worker status</title></head>")
@@ -375,71 +357,8 @@ func (me *Coordinator) workerHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	statusReq := WorkerStatusRequest{}
-	status := WorkerStatusResponse{}
-
-	client := rpc.NewClient(conn)
-	err = client.Call("Worker.Status", &statusReq, &status)
-	client.Close()
-	if err != nil {
-		fmt.Fprintf(w, "<p><tt>RPC error: %v<tt>\n", err)
-		return
-	}
-
-	fmt.Fprintf(w, "<p>Worker %s<p>Version %s<p>Jobs %d\n",
-		addr, status.Version, status.MaxJobCount)
-	fmt.Fprintf(w, "<p><a href=\"/log?host=%s\">Worker log %s</a>\n", addr, addr)
-
-	if !status.Accepting {
-		fmt.Fprintf(w, "<b>shutting down</b>")
-	}
-	stats.CpuStatsWriteHttp(w, status.CpuStats, status.DiskStats)
-
-	fmt.Fprintf(w, "<p>Total CPU: %s", status.TotalCpu.Percent())
-	fmt.Fprintf(w, "<p>Content cache hit rate: %.0f %%, Age %d",
-		100.0*status.ContentCacheHitRate,
-		status.ContentCacheHitAge)
-
-	m := status.MemStat
-	fmt.Fprintf(w, "<p>HeapIdle: %v, HeapInUse: %v",
-		m.HeapIdle, m.HeapInuse)
-
-	stats.CountStatsWriteHttp(w, status.PhaseNames, status.PhaseCounts)
-
-	for _, mirrorStatus := range status.MirrorStatus {
-		me.mirrorStatusHtml(w, mirrorStatus)
-	}
-	fmt.Fprintf(w, "<p><a href=\"/workerkill?host=%s\">Kill worker %s</a>\n", addr, addr)
-	fmt.Fprintf(w, "<p><a href=\"/restart?host=%s\">Restart worker %s</a>\n", addr, addr)
-	conn.Close()
-}
-
-func (me *Coordinator) mirrorStatusHtml(w http.ResponseWriter, s MirrorStatusResponse) {
-	fmt.Fprintf(w, "<h2>Mirror %s</h2>", s.Root)
-	for _, s := range s.RpcTimings {
-		fmt.Fprintf(w, "<li>%s", s)
-	}
-
-	running := 0
-	for _, fs := range s.Fses {
-		running += len(fs.Tasks)
-	}
-
-	fmt.Fprintf(w, "<p>%d maximum jobs, %d running, %d waiting tasks, %d unused filesystems.\n",
-		s.Granted, running, s.WaitingTasks, s.IdleFses)
-	if !s.Accepting {
-		fmt.Fprintf(w, "<p><b>shutting down</b>\n")
-	}
-
-	fmt.Fprintf(w, "<ul>\n")
-	for _, v := range s.Fses {
-		fmt.Fprintf(w, "<li>id %s: %s<ul>\n", v.Id, v.Mem)
-		for _, t := range v.Tasks {
-			fmt.Fprintf(w, "<li>%s\n", t)
-		}
-		fmt.Fprintf(w, "</ul>\n")
-	}
-	fmt.Fprintf(w, "</ul>\n")
+	io.Copy(w, resp.Body)
+	resp.Body.Close()
 }
 
 func (me *Coordinator) Shutdown() {
@@ -462,7 +381,7 @@ func (me *Coordinator) ServeHTTP(port int) {
 		})
 	me.Mux.HandleFunc("/log",
 		func(w http.ResponseWriter, req *http.Request) {
-			me.logHandler(w, req)
+			me.workerHandler(w, req)
 		})
 	me.Mux.HandleFunc("/shutdown",
 		func(w http.ResponseWriter, req *http.Request) {
