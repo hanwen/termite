@@ -11,7 +11,6 @@ import (
 	"os/signal"
 	"os/user"
 	"runtime"
-	"runtime/pprof"
 	"strconv"
 	"syscall"
 )
@@ -68,21 +67,11 @@ func main() {
 	paranoia := flag.Bool("paranoia", false, "Check attribute cache.")
 	cpus := flag.Int("cpus", 1, "Number of CPUs to use.")
 	heap := flag.Int("heap-size", 0, "Maximum heap size in MB.")
-	cpuprofile := flag.String("profile", "", "File to write profile output to.")
 	flag.Parse()
 
 	if *version {
 		log.Println(termite.Version())
 		os.Exit(0)
-	}
-
-	if *cpuprofile != "" {
-		f, err := os.Create(*cpuprofile)
-		if err != nil {
-			log.Fatal(err)
-		}
-		pprof.StartCPUProfile(f)
-		defer pprof.StopCPUProfile()
 	}
 
 	if os.Geteuid() != 0 {
