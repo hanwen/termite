@@ -43,8 +43,8 @@ func serveStatus(worker *Worker, w http.ResponseWriter, r *http.Request) {
 	}
 
 	addr := fmt.Sprintf("%s:%d", cname, worker.listener.Addr().(*net.TCPAddr).Port)
-	fmt.Fprintf(w, "<p>Worker %s<p>Version %s<p>Jobs %d\n",
-		addr, status.Version, status.MaxJobCount)
+	fmt.Fprintf(w, "<p>Worker %s (<a href=\"http://%s:%d\">status</a>)<p>Version %s<p>Jobs %d\n",
+		addr, cname, worker.httpStatusPort, status.Version, status.MaxJobCount)
 	fmt.Fprintf(w, "<p><a href=\"/log?host=%s\">Worker log %s</a>\n", addr, addr)
 
 	if !status.Accepting {
