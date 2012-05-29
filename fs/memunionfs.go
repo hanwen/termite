@@ -2,7 +2,6 @@ package fs
 
 import (
 	"fmt"
-	"github.com/hanwen/go-fuse/fuse"
 	"log"
 	"os"
 	"path/filepath"
@@ -10,7 +9,9 @@ import (
 	"strings"
 	"sync"
 	"time"
-)
+	
+	"github.com/hanwen/go-fuse/fuse"
+	"github.com/hanwen/termite/fastpath")
 
 var _ = log.Println
 
@@ -52,6 +53,7 @@ type Result struct {
 	Backing  string
 	Link     string
 }
+
 
 func (me *MemUnionFs) OnMount(conn *fuse.FileSystemConnector) {
 	me.connector = conn
@@ -113,7 +115,7 @@ func (me *MemUnionFs) Reap() map[string]*Result {
 
 			s, _ := me.readonly.OpenDir(n, nil)
 			for _, e := range s {
-				full := filepath.Join(n, e.Name)
+				full := fastpath.Join(n, e.Name)
 				m[full] = &Result{}
 				if e.Mode&fuse.S_IFDIR != 0 {
 					todo = append(todo, full)
@@ -137,7 +139,7 @@ func (me *MemUnionFs) clearBackingStore() {
 		return
 	}
 	for _, n := range names {
-		os.Remove(filepath.Join(me.backingStore, n))
+		os.Remove(fastpath.Join(me.backingStore, n))
 	}
 }
 
@@ -284,7 +286,7 @@ func (me *memNode) lookup(out *fuse.Attr, name string, context *fuse.Context) (n
 		return nil, fuse.ENOENT
 	}
 
-	fn := filepath.Join(me.original, name)
+	fn := fastpath.Join(me.original, name)
 	if _, del := me.fs.deleted[fn]; del {
 		return nil, fuse.ENOENT
 	}
@@ -323,7 +325,7 @@ func (me *memNode) Unlink(name string, context *fuse.Context) (code fuse.Status)
 	defer me.mutex.Unlock()
 
 	if me.original != "" || me == me.fs.root {
-		me.fs.deleted[filepath.Join(me.original, name)] = true
+		me.fs.deleted[fastpath.Join(me.original, name)] = true
 	}
 	ch := me.Inode().RmChild(name)
 	if ch == nil {
@@ -382,7 +384,7 @@ func (me *memNode) Rename(oldName string, newParent fuse.FsNode, newName string,
 	}
 
 	if me.original != "" || me == me.fs.root {
-		me.fs.deleted[filepath.Join(me.original, oldName)] = true
+		me.fs.deleted[fastpath.Join(me.original, oldName)] = true
 	}
 
 	childNode := ch.FsNode().(*memNode)
@@ -604,7 +606,7 @@ func (me *memNode) OpenDir(context *fuse.Context) (stream []fuse.DirEntry, code 
 	if me.original != "" || me == me.fs.root {
 		stream, code = me.fs.readonly.OpenDir(me.original, context)
 		for _, e := range stream {
-			fn := filepath.Join(me.original, e.Name)
+			fn := fastpath.Join(me.original, e.Name)
 			if !me.fs.deleted[fn] {
 				ch[e.Name] = e.Mode
 			}
@@ -634,14 +636,14 @@ func (me *memNode) reap(path string, results map[string]*Result) {
 	}
 
 	for n, ch := range me.Inode().FsChildren() {
-		p := filepath.Join(path, n)
+		p := fastpath.Join(path, n)
 		ch.FsNode().(*memNode).reap(p, results)
 	}
 }
 
 func (me *memNode) reset(path string) (entryNotify bool) {
 	for n, ch := range me.Inode().FsChildren() {
-		p := filepath.Join(path, n)
+		p := fastpath.Join(path, n)
 		mn := ch.FsNode().(*memNode)
 		if mn.reset(p) {
 			me.Inode().RmChild(n)

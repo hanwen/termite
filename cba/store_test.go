@@ -2,6 +2,7 @@ package cba
 
 import (
 	"bytes"
+	"fmt"
 	"crypto"
 	md5pkg "crypto/md5"
 	"io/ioutil"
@@ -176,5 +177,16 @@ func TestStoreStreamReturnContent(t *testing.T) {
 	hash = tc.store.SavePath(f.Name())
 	if tc.store.inMemoryCache.Has(hash) {
 		t.Errorf("should not have key %x %v", hash, tc.store.inMemoryCache.Get(hash))
+	}
+}
+
+func TestHashPath(t *testing.T) {
+	h := string([]byte{1, 2, 3, 20, 255})
+	hex := fmt.Sprintf("%x", h)
+	want := "d/" + hex[:2] + "/" + hex[2:]
+
+	got := HashPath("d", h)
+	if want != got {
+		t.Errorf("got %q want %q", got, want)
 	}
 }

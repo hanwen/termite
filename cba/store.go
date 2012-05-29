@@ -4,8 +4,6 @@ import (
 	"crypto"
 	md5pkg "crypto/md5"
 	"crypto/sha1"
-	"fmt"
-	"github.com/hanwen/termite/stats"
 	"hash"
 	"io"
 	"io/ioutil"
@@ -14,6 +12,9 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/hanwen/termite/fastpath"
+	"github.com/hanwen/termite/stats"
 )
 
 var _ = md5pkg.New
@@ -102,16 +103,31 @@ func (st *Store) MemoryHitAge() int {
 	return st.inMemoryCache.AverageAge()
 }
 
+func hexDigit(b byte) byte {
+	if b < 10 {
+		return byte('0' + b)
+	}
+	return b + 'a' - 10
+}
+
 func HashPath(dir string, hash string) string {
-	s := fmt.Sprintf("%x", hash)
-	prefix := s[:2]
-	name := s[2:]
-	dst := filepath.Join(dir, prefix, name)
-	prefixDir, _ := filepath.Split(dst)
+	hex := make([]byte, 2*len(hash)+1)
+	j := 0
+	for i := 0; i < len(hash); i++ {
+		hex[j] = hexDigit(hash[i] >> 4)
+		hex[j+1] = hexDigit(hash[i] & 0x0f)
+		j += 2
+
+		if i == 0 {
+			hex[j] = '/'
+			j++
+		}
+	}
+	prefixDir := fastpath.Join(dir, string(hex[:2]))
 	if err := os.MkdirAll(prefixDir, 0700); err != nil {
 		log.Fatal("MkdirAll error:", err)
 	}
-	return dst
+	return fastpath.Join(prefixDir, string(hex[2:]))
 }
 
 func (st *Store) HasHash(hash string) bool {

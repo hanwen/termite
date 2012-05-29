@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/hanwen/termite/attr"
+	"github.com/hanwen/termite/fastpath"
 	"log"
 	"net"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"syscall"
 )
@@ -89,8 +89,8 @@ func (me *WorkerTask) runInFuse(fuseFs *workerFuseFs) error {
 		cmd.SysProcAttr = attr
 		cmd.Dir = me.req.Dir
 	} else {
-		cmd.Path = filepath.Join(fuseFs.mount, me.req.Binary)
-		cmd.Dir = filepath.Join(fuseFs.mount, me.req.Dir)
+		cmd.Path = fastpath.Join(fuseFs.mount, me.req.Binary)
+		cmd.Dir = fastpath.Join(fuseFs.mount, me.req.Dir)
 	}
 
 	cmd.Env = me.req.Env
@@ -141,7 +141,7 @@ func (me *Mirror) fillReply(fs *workerFuseFs) *attr.FileSet {
 	reapedHashes := map[string]string{}
 	for path, v := range yield {
 		f := &attr.FileAttr{
-			Path: filepath.Join(wrRoot, path),
+			Path: fastpath.Join(wrRoot, path),
 		}
 
 		if v.Attr != nil {
@@ -149,7 +149,7 @@ func (me *Mirror) fillReply(fs *workerFuseFs) *attr.FileSet {
 		}
 		f.Link = v.Link
 		if !f.Deletion() && f.IsRegular() {
-			contentPath := filepath.Join(wrRoot, v.Original)
+			contentPath := fastpath.Join(wrRoot, v.Original)
 			if v.Original != "" && v.Original != contentPath {
 				fa := me.rpcFs.attr.Get(contentPath)
 				if fa.Hash == "" {

@@ -995,3 +995,4 @@ func TestMemUnionFsTruncateOpen(t *testing.T) {
 		t.Errorf("Size should be 4096 after Truncate: %d", fi.Size())
 	}
 }
+

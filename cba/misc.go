@@ -6,6 +6,8 @@ import (
 	"log"
 	"path/filepath"
 	"regexp"
+
+	"github.com/hanwen/termite/fastpath"
 )
 
 func ReadHexDatabase(d string) map[string]bool {
@@ -21,7 +23,7 @@ func ReadHexDatabase(d string) map[string]bool {
 			continue
 		}
 
-		sub, _ := ioutil.ReadDir(filepath.Join(d, e.Name()))
+		sub, _ := ioutil.ReadDir(fastpath.Join(d, e.Name()))
 		for _, s := range sub {
 			if !hexRe.MatchString(s.Name()) || s.IsDir() {
 				continue
