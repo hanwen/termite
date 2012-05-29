@@ -598,7 +598,7 @@ func (me *Master) fetchAll(path string) {
 }
 
 func (me *Master) waitForExit() {
-	me.mirrors.refreshWorkers()
+	go me.mirrors.refreshWorkers()
 	ticker := time.NewTicker(me.options.Period)
 
 L:

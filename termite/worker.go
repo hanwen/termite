@@ -150,13 +150,13 @@ func (me *Worker) Report() {
 		return
 	}
 
-	req := Registration{
+	req := RegistrationRequest{
 		Address: fmt.Sprintf("%v:%d", cname, me.options.Port),
 		Name:    fmt.Sprintf("%s:%d", Hostname, me.options.Port),
 		Version: Version(),
 		HttpStatusPort: me.httpStatusPort,
 	}
-	rep := 0
+	rep := Empty{}
 	err = client.Call("Coordinator.Register", &req, &rep)
 	if err != nil {
 		log.Println("coordinator rpc error:", err)

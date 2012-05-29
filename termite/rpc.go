@@ -8,6 +8,8 @@ import (
 	"github.com/hanwen/termite/stats"
 )
 
+type Empty struct {}
+
 type AttrRequest struct {
 	Name string
 

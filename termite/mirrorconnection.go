@@ -87,37 +87,44 @@ type mirrorConnections struct {
 	lastActionTime time.Time
 }
 
-func (me *mirrorConnections) fetchWorkers() (newMap map[string]bool) {
+func (me *mirrorConnections) fetchWorkers(last *time.Time) (newMap map[string]bool, err error) {
 	newMap = map[string]bool{}
 	client, err := rpc.DialHTTP("tcp", me.coordinator)
 	if err != nil {
 		log.Println("fetchWorkers: dialing coordinator:", err)
-		return newMap
+		return nil, err
 	}
 	defer client.Close()
-	req := 0
-	rep := Registered{}
+	req := ListRequest{Latest: *last}
+	rep := ListResponse{}
 	err = client.Call("Coordinator.List", &req, &rep)
 	if err != nil {
 		log.Println("coordinator rpc error:", err)
-		return newMap
+		return nil, err
 	}
-
+	
 	for _, v := range rep.Registrations {
 		newMap[v.Address] = true
 	}
 	if len(newMap) == 0 {
 		log.Println("coordinator has no workers for us.")
 	}
-	return newMap
+	*last = rep.LastChange
+	return newMap, nil
 }
 
 func (me *mirrorConnections) refreshWorkers() {
-	newWorkers := me.fetchWorkers()
-	if len(newWorkers) > 0 {
+	last := time.Unix(0, 0)
+	for {
+		newWorkers, err := me.fetchWorkers(&last)
+		if err != nil {
+			time.Sleep(10*time.Second)
+			continue
+		}
+		log.Printf("Got %d workers %v", len(newWorkers), last)
 		me.Mutex.Lock()
-		defer me.Mutex.Unlock()
 		me.workers = newWorkers
+		me.Mutex.Unlock()
 	}
 }
 
@@ -140,7 +147,6 @@ func (me *mirrorConnections) refreshStats() {
 }
 
 func (me *mirrorConnections) periodicHouseholding() {
-	me.refreshWorkers()
 	me.maybeDropConnections()
 }
 
@@ -222,9 +228,6 @@ func (me *mirrorConnections) pick() (*mirrorConnection, error) {
 	defer me.Mutex.Unlock()
 
 	if me.availableJobs() <= 0 {
-		if len(me.workers) == 0 {
-			me.workers = me.fetchWorkers()
-		}
 		me.tryConnect()
 
 		if me.maxJobs() == 0 {
