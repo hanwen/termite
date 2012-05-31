@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"path/filepath"
 	"regexp"
 
 	"github.com/hanwen/termite/fastpath"
