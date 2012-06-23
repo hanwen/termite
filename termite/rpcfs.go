@@ -10,7 +10,6 @@ import (
 	"io"
 	"log"
 	"net/rpc"
-	"sync"
 	"time"
 )
 
@@ -23,12 +22,6 @@ type RpcFs struct {
 	timings    *stats.TimerStats
 	attr       *attr.AttributeCache
 	id         string
-
-	// Below code is used to make sure we only fetch each hash
-	// once.
-	mutex    sync.Mutex
-	cond     *sync.Cond
-	fetching map[string]bool
 }
 
 func NewRpcFs(server *rpc.Client, cache *cba.Store, contentConn io.ReadWriteCloser) *RpcFs {
@@ -41,8 +34,6 @@ func NewRpcFs(server *rpc.Client, cache *cba.Store, contentConn io.ReadWriteClos
 		func(n string) *attr.FileAttr {
 			return me.fetchAttr(n)
 		}, nil)
-	me.cond = sync.NewCond(&me.mutex)
-	me.fetching = map[string]bool{}
 	me.cache = cache
 	return me
 }
@@ -53,38 +44,14 @@ func (me *RpcFs) Close() {
 }
 
 func (me *RpcFs) FetchHash(a *attr.FileAttr) error {
-	e := me.FetchHashOnce(a)
+	got, e := me.contentClient.FetchOnce(a.Hash, int64(a.Size))
+	if e == nil && !got {
+		log.Fatalf("Did not have hash %x for %s", a.Hash, a.Path)
+	}
 	if e == nil && a.Size < uint64(me.cache.Options.MemMaxSize) {
 		me.cache.FaultIn(a.Hash)
 	}
 	return e
-}
-
-func (me *RpcFs) FetchHashOnce(a *attr.FileAttr) error {
-	me.mutex.Lock()
-	defer me.mutex.Unlock()
-	h := a.Hash
-	for !me.cache.HasHash(h) && me.fetching[h] {
-		me.cond.Wait()
-	}
-	if me.cache.HasHash(h) {
-		return nil
-	}
-	// TODO - necessary?  The contentClient already serializes.
-	me.fetching[h] = true
-	me.mutex.Unlock()
-
-	log.Printf("Fetching contents for file %s: %x", a.Path, h)
-	got, err := me.contentClient.Fetch(a.Hash, int64(a.Size))
-
-	if !got && err == nil {
-		log.Fatalf("RpcFs.FetchHashOnce: server did not have hash %x", a.Hash)
-	}
-
-	me.mutex.Lock()
-	delete(me.fetching, h)
-	me.cond.Broadcast()
-	return err
 }
 
 func (me *RpcFs) Update(req *UpdateRequest, resp *UpdateResponse) error {
