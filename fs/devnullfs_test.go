@@ -1,10 +1,11 @@
 package fs
 
 import (
-	"github.com/hanwen/go-fuse/fuse"
 	"io/ioutil"
 	"os"
 	"testing"
+	
+	"github.com/hanwen/go-fuse/fuse"
 )
 
 func setupDevNullFs() (wd string, clean func()) {

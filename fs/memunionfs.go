@@ -9,9 +9,10 @@ import (
 	"strings"
 	"sync"
 	"time"
-	
+
 	"github.com/hanwen/go-fuse/fuse"
-	"github.com/hanwen/termite/fastpath")
+	"github.com/hanwen/termite/fastpath"
+)
 
 var _ = log.Println
 
@@ -53,7 +54,6 @@ type Result struct {
 	Backing  string
 	Link     string
 }
-
 
 func (me *MemUnionFs) OnMount(conn *fuse.FileSystemConnector) {
 	me.connector = conn
@@ -224,9 +224,9 @@ func (me *MemUnionFs) newNode(isdir bool) *memNode {
 // will access the root of the supplied R/O filesystem.
 func NewMemUnionFs(backingStore string, roFs fuse.FileSystem) (*MemUnionFs, error) {
 	me := &MemUnionFs{
-		deleted: make(map[string]bool),
+		deleted:      make(map[string]bool),
 		backingStore: backingStore,
-		readonly: roFs,
+		readonly:     roFs,
 	}
 
 	me.root = me.newNode(true)

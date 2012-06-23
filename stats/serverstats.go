@@ -20,8 +20,8 @@ type ServerStats struct {
 
 func NewServerStats() *ServerStats {
 	return &ServerStats{
-		phaseCounts:    map[string]int{},
-		CpuStatSampler: NewCpuStatSampler(),
+		phaseCounts:     map[string]int{},
+		CpuStatSampler:  NewCpuStatSampler(),
 		DiskStatSampler: NewDiskStatSampler(),
 	}
 }
@@ -48,7 +48,7 @@ func CpuStatsWriteHttp(w http.ResponseWriter, stats []CpuStat, disk []DiskStat) 
 
 	diskm := DiskStat{}
 	disk5 := DiskStat{}
-	
+
 	count5 := int64(0)
 	for i, v := range stats {
 		statm = statm.Add(v)
@@ -82,7 +82,7 @@ func CpuStatsWriteHttp(w http.ResponseWriter, stats []CpuStat, disk []DiskStat) 
 		fmt.Fprintf(w, "<tr><td>%d</td><td>%d</td>%s<td>%d</td><td>%d</td><td>%d</td></tr>",
 			v.SelfCpu/time.Millisecond, v.SelfSys/time.Millisecond, chRow,
 			(v.Total())/time.Millisecond,
-			disk[i].ReadsCompleted, 
+			disk[i].ReadsCompleted,
 			disk[i].WritesCompleted)
 	}
 	fmt.Fprintf(w, "</table>")
@@ -104,7 +104,7 @@ func CpuStatsWriteHttp(w http.ResponseWriter, stats []CpuStat, disk []DiskStat) 
 	fmt.Fprintf(w, "<p>Disk (last %ds): Read %.2f/s Write %.2f/s",
 		count5,
 		float64(disk5.MergedReadsCompleted)/(float64(count5)*float64(time.Second)),
-		float64(disk5.WritesCompleted)/(float64(5) * float64(time.Second)))
+		float64(disk5.WritesCompleted)/(float64(5)*float64(time.Second)))
 }
 
 func CountStatsWriteHttp(w http.ResponseWriter, names []string, counts []int) {

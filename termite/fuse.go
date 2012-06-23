@@ -3,15 +3,16 @@ package termite
 import (
 	"errors"
 	"fmt"
-	"github.com/hanwen/go-fuse/fuse"
-	"github.com/hanwen/termite/attr"
-	"github.com/hanwen/termite/fs"
 	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/hanwen/go-fuse/fuse"
+	"github.com/hanwen/termite/attr"
+	"github.com/hanwen/termite/fs"
 )
 
 type workerFuseFs struct {

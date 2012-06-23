@@ -3,9 +3,6 @@ package termite
 import (
 	"errors"
 	"fmt"
-	"github.com/hanwen/termite/attr"
-	"github.com/hanwen/termite/cba"
-	"github.com/hanwen/termite/stats"
 	"log"
 	"math/rand"
 	"net"
@@ -13,6 +10,10 @@ import (
 	"strings"
 	"sync"
 	"time"
+	
+	"github.com/hanwen/termite/attr"
+	"github.com/hanwen/termite/cba"
+	"github.com/hanwen/termite/stats"
 )
 
 type mirrorConnection struct {
@@ -102,7 +103,7 @@ func (me *mirrorConnections) fetchWorkers(last *time.Time) (newMap map[string]bo
 		log.Println("coordinator rpc error:", err)
 		return nil, err
 	}
-	
+
 	for _, v := range rep.Registrations {
 		newMap[v.Address] = true
 	}
@@ -118,7 +119,7 @@ func (me *mirrorConnections) refreshWorkers() {
 	for {
 		newWorkers, err := me.fetchWorkers(&last)
 		if err != nil {
-			time.Sleep(10*time.Second)
+			time.Sleep(10 * time.Second)
 			continue
 		}
 		log.Printf("Got %d workers %v", len(newWorkers), last)

@@ -3,14 +3,15 @@ package termite
 import (
 	"bytes"
 	"fmt"
-	"github.com/hanwen/termite/attr"
-	"github.com/hanwen/termite/fastpath"
 	"log"
 	"net"
 	"os"
 	"os/exec"
 	"strings"
 	"syscall"
+
+	"github.com/hanwen/termite/attr"
+	"github.com/hanwen/termite/fastpath"
 )
 
 type WorkerTask struct {

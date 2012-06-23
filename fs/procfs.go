@@ -2,13 +2,14 @@ package fs
 
 import (
 	"fmt"
-	"github.com/hanwen/go-fuse/fuse"
 	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
 	"unicode"
+	
+	"github.com/hanwen/go-fuse/fuse"
 )
 
 var _ = log.Println

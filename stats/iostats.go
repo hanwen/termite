@@ -94,9 +94,9 @@ func TotalDiskStats() (result DiskStat, err error) {
 		if d.Name == "" {
 			continue
 		}
-		
+
 		part := d.Name[len(d.Name)-1]
-		if part >= '0' &&  part <= '9' {
+		if part >= '0' && part <= '9' {
 			continue
 		}
 		st.Add(d)

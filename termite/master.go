@@ -2,10 +2,6 @@ package termite
 
 import (
 	"fmt"
-	"github.com/hanwen/go-fuse/fuse"
-	"github.com/hanwen/go-fuse/splice"
-	"github.com/hanwen/termite/attr"
-	"github.com/hanwen/termite/cba"
 	"io/ioutil"
 	"log"
 	"net"
@@ -15,6 +11,11 @@ import (
 	"strings"
 	"sync"
 	"time"
+	
+	"github.com/hanwen/go-fuse/fuse"
+	"github.com/hanwen/go-fuse/splice"
+	"github.com/hanwen/termite/attr"
+	"github.com/hanwen/termite/cba"
 )
 
 type Master struct {
@@ -165,7 +166,7 @@ func NewMaster(options *MasterOptions) *Master {
 	contentStore := cba.NewStore(&options.StoreOptions)
 
 	me := &Master{
-		contentStore:         contentStore,
+		contentStore:  contentStore,
 		taskIds:       make(chan int, 100),
 		replayChannel: make(chan *replayRequest, 1),
 		quit:          make(chan int, 0),

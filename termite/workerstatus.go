@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"net/http/pprof"
 	"os"
-	
+
 	"github.com/hanwen/termite/stats"
 )
 
@@ -112,12 +112,12 @@ func (w *Worker) serveStatus() {
 	mux.HandleFunc("/log", func(wr http.ResponseWriter, r *http.Request) {
 		serveLog(w, wr, r)
 	})
-			
+
 	mux.Handle("/debug/pprof/", http.HandlerFunc(pprof.Index))
 	mux.Handle("/debug/pprof/cmdline", http.HandlerFunc(pprof.Cmdline))
-    	mux.Handle("/debug/pprof/profile", http.HandlerFunc(pprof.Profile))
+	mux.Handle("/debug/pprof/profile", http.HandlerFunc(pprof.Profile))
 	mux.Handle("/debug/pprof/symbol", http.HandlerFunc(pprof.Symbol))
-	
+
 	err = http.Serve(l, mux)
 	if err != nil {
 		log.Println("status serve:", err)

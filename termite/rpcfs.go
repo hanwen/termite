@@ -2,24 +2,25 @@ package termite
 
 import (
 	"fmt"
+	"io"
+	"log"
+
 	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/go-fuse/raw"
 	"github.com/hanwen/termite/attr"
 	"github.com/hanwen/termite/cba"
 	"github.com/hanwen/termite/stats"
-	"io"
-	"log"
 )
 
 type RpcFs struct {
 	fuse.DefaultFileSystem
 	cache         *cba.Store
-	attrClient     *attr.Client
+	attrClient    *attr.Client
 	contentClient *cba.Client
 
-	timings    *stats.TimerStats
-	attr       *attr.AttributeCache
-	id         string
+	timings *stats.TimerStats
+	attr    *attr.AttributeCache
+	id      string
 }
 
 func NewRpcFs(attrClient *attr.Client, cache *cba.Store, contentConn io.ReadWriteCloser) *RpcFs {
@@ -28,7 +29,7 @@ func NewRpcFs(attrClient *attr.Client, cache *cba.Store, contentConn io.ReadWrit
 		contentClient: cache.NewClient(contentConn),
 		timings:       stats.NewTimerStats(),
 	}
-	
+
 	me.attr = attr.NewAttributeCache(
 		func(n string) *attr.FileAttr {
 			a := attr.FileAttr{}
@@ -38,7 +39,7 @@ func NewRpcFs(attrClient *attr.Client, cache *cba.Store, contentConn io.ReadWrit
 				return nil
 			}
 			return &a
-	}, nil)
+		}, nil)
 	me.cache = cache
 	return me
 }

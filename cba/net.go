@@ -9,7 +9,6 @@ import (
 
 var defaultServeSize = 64 * (1 << 10)
 
-
 func (c *Store) ServeConn(conn io.ReadWriteCloser) {
 	var s Server
 	rpcServer := rpc.NewServer()

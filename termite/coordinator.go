@@ -15,9 +15,9 @@ import (
 var _ = log.Println
 
 type Registration struct {
-	Address string
-	Name    string
-	Version string
+	Address        string
+	Name           string
+	Version        string
 	HttpStatusPort int
 }
 
@@ -31,7 +31,7 @@ type ListRequest struct {
 
 type ListResponse struct {
 	Registrations []Registration
-	LastChange time.Time
+	LastChange    time.Time
 }
 
 type WorkerRegistration struct {
@@ -50,9 +50,9 @@ type Coordinator struct {
 
 	listener net.Listener
 
-	mutex    sync.Mutex
-	cond     *sync.Cond
-	workers  map[string]*WorkerRegistration
+	mutex      sync.Mutex
+	cond       *sync.Cond
+	workers    map[string]*WorkerRegistration
 	lastChange time.Time
 }
 
@@ -111,7 +111,7 @@ func (me *Coordinator) List(req *ListRequest, rep *ListResponse) error {
 	for !me.lastChange.After(req.Latest) {
 		me.cond.Wait()
 	}
-	
+
 	keys := []string{}
 	for k := range me.workers {
 		keys = append(keys, k)
@@ -143,7 +143,7 @@ func (me *Coordinator) checkReachable() {
 	if len(toDelete) == 0 {
 		return
 	}
-	
+
 	me.mutex.Lock()
 	for _, a := range toDelete {
 		w := me.workers[a]

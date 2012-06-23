@@ -26,7 +26,6 @@ func (me *Coordinator) getHost(req *http.Request) (string, error) {
 	return addr, nil
 }
 
-
 func (me *Coordinator) workerHandler(w http.ResponseWriter, req *http.Request) {
 	addr, err := me.getHost(req)
 	if err != nil {
@@ -38,7 +37,7 @@ func (me *Coordinator) workerHandler(w http.ResponseWriter, req *http.Request) {
 	workerData := me.getWorker(addr)
 	host, _, _ := net.SplitHostPort(addr)
 	resp, err := http.Get(fmt.Sprintf("http://%s:%d/%s?%s", host, workerData.HttpStatusPort,
-	req.URL.Path, req.URL.RawQuery))
+		req.URL.Path, req.URL.RawQuery))
 
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -50,7 +49,6 @@ func (me *Coordinator) workerHandler(w http.ResponseWriter, req *http.Request) {
 	io.Copy(w, resp.Body)
 	resp.Body.Close()
 }
-
 
 func (me *Coordinator) ServeHTTP(port int) {
 	me.Mux.HandleFunc("/",
@@ -116,7 +114,6 @@ func (me *Coordinator) ServeHTTP(port int) {
 		log.Println("httpServer.Serve:", err)
 	}
 }
-
 
 func (me *Coordinator) killAllHandler(w http.ResponseWriter, req *http.Request) {
 	me.log(req)
@@ -197,7 +194,6 @@ func (me *Coordinator) killHandler(w http.ResponseWriter, req *http.Request) {
 	go me.checkReachable()
 }
 
-
 func (me *Coordinator) rootHandler(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	me.mutex.Lock()
@@ -218,8 +214,8 @@ func (me *Coordinator) rootHandler(w http.ResponseWriter, req *http.Request) {
 		worker := me.workers[k]
 		addr := worker.Address
 		fmt.Fprintf(w, "<li><a href=\"worker?host=%s\">address <tt>%s</tt>, host <tt>%s</tt></a>"+
-			" (<a href=\"/workerkill?host=%s\">Kill</a>, \n" +
-			"<a href=\"/restart?host=%s\">Restart</a>)\n", 
+			" (<a href=\"/workerkill?host=%s\">Kill</a>, \n"+
+			"<a href=\"/restart?host=%s\">Restart</a>)\n",
 			addr, addr, worker.Name, addr, addr)
 	}
 	fmt.Fprintf(w, "</ul>")

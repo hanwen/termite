@@ -32,8 +32,8 @@ type Worker struct {
 	options      *WorkerOptions
 	accepting    bool
 
-	httpStatusPort     int 
-	mirrors *WorkerMirrors
+	httpStatusPort int
+	mirrors        *WorkerMirrors
 }
 
 type User struct {
@@ -130,6 +130,7 @@ func (me *Worker) PeriodicHouseholding() {
 }
 
 var cname string
+
 func init() {
 	var err error
 	cname, err = net.LookupCNAME(Hostname)
@@ -151,9 +152,9 @@ func (me *Worker) Report() {
 	}
 
 	req := RegistrationRequest{
-		Address: fmt.Sprintf("%v:%d", cname, me.options.Port),
-		Name:    fmt.Sprintf("%s:%d", Hostname, me.options.Port),
-		Version: Version(),
+		Address:        fmt.Sprintf("%v:%d", cname, me.options.Port),
+		Name:           fmt.Sprintf("%s:%d", Hostname, me.options.Port),
+		Version:        Version(),
 		HttpStatusPort: me.httpStatusPort,
 	}
 	rep := Empty{}

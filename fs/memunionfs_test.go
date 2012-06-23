@@ -2,7 +2,6 @@ package fs
 
 import (
 	"fmt"
-	"github.com/hanwen/go-fuse/fuse"
 	"io/ioutil"
 	"log"
 	"os"
@@ -14,6 +13,8 @@ import (
 	"syscall"
 	"testing"
 	"time"
+	
+	"github.com/hanwen/go-fuse/fuse"
 )
 
 var _ = fmt.Print
@@ -74,9 +75,9 @@ func setupMemUfs(t *testing.T) (workdir string, ufs *MemUnionFs, cleanup func())
 	// We configure timeouts are smaller, so we can check for
 	// UnionFs's cache consistency.
 	opts := &fuse.FileSystemOptions{
-		EntryTimeout:    entryTtl/2,
-		AttrTimeout:     entryTtl/2,
-		NegativeTimeout: entryTtl/2,
+		EntryTimeout:    entryTtl / 2,
+		AttrTimeout:     entryTtl / 2,
+		NegativeTimeout: entryTtl / 2,
 		PortableInodes:  true,
 	}
 
@@ -140,7 +141,7 @@ func TestMemUnionFsChtimes(t *testing.T) {
 	CheckSuccess(err)
 
 	st := syscall.Stat_t{}
-	err = syscall.Lstat(wd + "/mnt/file", &st)
+	err = syscall.Lstat(wd+"/mnt/file", &st)
 	if st.Atim.Nano() != 82e9 || st.Mtim.Nano() != 83e9 {
 		t.Error("Incorrect timestamp", st)
 	}
@@ -370,11 +371,11 @@ func TestMemUnionFsLink(t *testing.T) {
 	CheckSuccess(err)
 
 	var st2 syscall.Stat_t
-	err = syscall.Lstat(wd + "/mnt/linked", &st2)
+	err = syscall.Lstat(wd+"/mnt/linked", &st2)
 	CheckSuccess(err)
 
 	var st1 syscall.Stat_t
-	err = syscall.Lstat(wd + "/mnt/file", &st1)
+	err = syscall.Lstat(wd+"/mnt/file", &st1)
 	CheckSuccess(err)
 
 	if st1.Ino != st2.Ino {
@@ -429,7 +430,7 @@ func TestMemUnionFsCopyChmod(t *testing.T) {
 	if st.Mode&0111 == 0 {
 		t.Errorf("1st attr error %o", st.Mode)
 	}
-	time.Sleep(entryTtl * 11/10)
+	time.Sleep(entryTtl * 11 / 10)
 	err = syscall.Lstat(fn, &st)
 	CheckSuccess(err)
 	if st.Mode&0111 == 0 {
@@ -532,7 +533,7 @@ func TestMemUnionFsDeletedGetAttr(t *testing.T) {
 	CheckSuccess(err)
 
 	st := syscall.Stat_t{}
-	if err := syscall.Fstat(int(f.Fd()), &st); err != nil || st.Mode & syscall.S_IFREG == 0 {
+	if err := syscall.Fstat(int(f.Fd()), &st); err != nil || st.Mode&syscall.S_IFREG == 0 {
 		t.Fatalf("stat returned error or non-file: %v %v", err, st)
 	}
 }
@@ -914,13 +915,13 @@ func TestMemUnionResetDelete(t *testing.T) {
 	ioutil.WriteFile(wd+"/ro/todelete", []byte{42}, 0644)
 
 	var before, after, afterReset syscall.Stat_t
-	syscall.Lstat(wd + "/mnt/todelete", &before)
+	syscall.Lstat(wd+"/mnt/todelete", &before)
 	before.Ino = 0
 	os.Remove(wd + "/mnt/todelete")
-	syscall.Lstat(wd + "/mnt/todelete", &after)
+	syscall.Lstat(wd+"/mnt/todelete", &after)
 	testEq(t, after, before, false)
 	ufs.Reset()
-	syscall.Lstat(wd + "/mnt/todelete", &afterReset)
+	syscall.Lstat(wd+"/mnt/todelete", &afterReset)
 	afterReset.Ino = 0
 	testEq(t, afterReset, before, true)
 }
@@ -995,4 +996,3 @@ func TestMemUnionFsTruncateOpen(t *testing.T) {
 		t.Errorf("Size should be 4096 after Truncate: %d", fi.Size())
 	}
 }
-

@@ -2,10 +2,11 @@ package termite
 
 import (
 	"fmt"
-	"github.com/hanwen/termite/cba"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
+	
+	"github.com/hanwen/termite/cba"
 )
 
 func (me *Master) sizeHistogram() (histo []int, total int) {

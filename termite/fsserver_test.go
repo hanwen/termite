@@ -5,9 +5,6 @@ package termite
 
 import (
 	"crypto"
-	"github.com/hanwen/go-fuse/fuse"
-	"github.com/hanwen/termite/attr"
-	"github.com/hanwen/termite/cba"
 	"io"
 	"io/ioutil"
 	"log"
@@ -16,6 +13,10 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+	
+	"github.com/hanwen/go-fuse/fuse"
+	"github.com/hanwen/termite/attr"
+	"github.com/hanwen/termite/cba"
 )
 
 // UGH - copy & paste.
@@ -51,11 +52,11 @@ type rpcFsTestCase struct {
 	mnt  string
 	orig string
 
-	serverStore, clientStore  *cba.Store
-	attr   *attr.AttributeCache
-	server *attr.Server
-	rpcFs  *RpcFs
-	state  *fuse.MountState
+	serverStore, clientStore *cba.Store
+	attr                     *attr.AttributeCache
+	server                   *attr.Server
+	rpcFs                    *RpcFs
+	state                    *fuse.MountState
 
 	sockL, sockR       io.ReadWriteCloser
 	contentL, contentR io.ReadWriteCloser

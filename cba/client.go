@@ -1,4 +1,5 @@
 package cba
+
 import (
 	"io"
 	"log"
@@ -21,7 +22,7 @@ type Client struct {
 
 func (store *Store) NewClient(conn io.ReadWriteCloser) *Client {
 	cl := &Client{
-		store: store,
+		store:    store,
 		fetching: map[string]bool{},
 	}
 	cl.cond = sync.NewCond(&cl.mutex)
@@ -51,7 +52,7 @@ func (c *Client) FetchOnce(want string, size int64) (bool, error) {
 	c.mutex.Lock()
 	delete(c.fetching, want)
 	c.cond.Broadcast()
-	
+
 	return got, err
 }
 

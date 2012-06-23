@@ -3,13 +3,12 @@ package termite
 import (
 	"fmt"
 	"syscall"
-	
+
 	"github.com/hanwen/termite/attr"
 	"github.com/hanwen/termite/stats"
 )
 
-type Empty struct {}
-
+type Empty struct{}
 
 type UpdateRequest struct {
 	Files []*attr.FileAttr

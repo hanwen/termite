@@ -2,9 +2,9 @@ package cba
 
 import (
 	"bytes"
-	"fmt"
 	"crypto"
 	md5pkg "crypto/md5"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"

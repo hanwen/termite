@@ -2,11 +2,12 @@ package termite
 
 import (
 	"fmt"
-	"github.com/hanwen/termite/attr"
 	"log"
 	"net"
 	"net/rpc"
 	"sync"
+
+	"github.com/hanwen/termite/attr"
 )
 
 // State associated with one master.

@@ -1,11 +1,12 @@
 package cba
 
 import (
-	"github.com/hanwen/go-fuse/splice"
 	"log"
 	"os"
 	"sync"
 	"time"
+	
+	"github.com/hanwen/go-fuse/splice"
 )
 
 type ServeSplice struct {

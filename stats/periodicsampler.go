@@ -77,4 +77,3 @@ func (me *PeriodicSampler) Diffs() (out []Sample) {
 	}
 	return out
 }
-

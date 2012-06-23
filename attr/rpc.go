@@ -5,10 +5,10 @@ import (
 	"log"
 	"net/rpc"
 	"time"
-	
+
 	"github.com/hanwen/termite/stats"
 )
-	
+
 type AttrRequest struct {
 	Name string
 
@@ -28,8 +28,8 @@ type Client struct {
 
 func NewClient(c io.ReadWriteCloser, id string) *Client {
 	return &Client{
-		client: rpc.NewClient(c),
-		id: id,
+		client:  rpc.NewClient(c),
+		id:      id,
 		timings: stats.NewTimerStats(),
 	}
 }

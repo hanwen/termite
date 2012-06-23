@@ -2,9 +2,10 @@ package attr
 
 import (
 	"crypto"
-	"github.com/hanwen/go-fuse/fuse"
 	"os"
 	"testing"
+
+	"github.com/hanwen/go-fuse/fuse"
 )
 
 // for tests:

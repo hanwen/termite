@@ -2,11 +2,12 @@ package attr
 
 import (
 	"fmt"
-	"github.com/hanwen/go-fuse/fuse"
 	"log"
 	"path/filepath"
 	"strings"
 	"sync"
+
+	"github.com/hanwen/go-fuse/fuse"
 )
 
 // A in-memory cache of attributes.

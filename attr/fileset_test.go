@@ -1,9 +1,10 @@
 package attr
 
 import (
-	"github.com/hanwen/go-fuse/fuse"
 	"syscall"
 	"testing"
+
+	"github.com/hanwen/go-fuse/fuse"
 )
 
 func TestFileSet(t *testing.T) {

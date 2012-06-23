@@ -2,10 +2,6 @@ package termite
 
 import (
 	"fmt"
-	"github.com/hanwen/go-fuse/fuse"
-	"github.com/hanwen/go-fuse/splice"
-	"github.com/hanwen/termite/attr"
-	"github.com/hanwen/termite/cba"
 	"io/ioutil"
 	"log"
 	"net"
@@ -18,6 +14,11 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/hanwen/go-fuse/fuse"
+	"github.com/hanwen/go-fuse/splice"
+	"github.com/hanwen/termite/attr"
+	"github.com/hanwen/termite/cba"
 )
 
 var _ = log.Println

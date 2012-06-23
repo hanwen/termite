@@ -2,12 +2,13 @@ package termite
 
 import (
 	"fmt"
-	"github.com/hanwen/termite/attr"
 	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/hanwen/termite/attr"
 )
 
 func TestEndToEndMkdirCleanPath(t *testing.T) {

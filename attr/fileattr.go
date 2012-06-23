@@ -3,11 +3,12 @@ package attr
 import (
 	"crypto"
 	"fmt"
-	"github.com/hanwen/go-fuse/fuse"
 	"io/ioutil"
 	"log"
 	"os"
 	"syscall"
+
+	"github.com/hanwen/go-fuse/fuse"
 )
 
 var _ = log.Printf

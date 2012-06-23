@@ -2,12 +2,13 @@ package cba
 
 import (
 	"bytes"
-	"github.com/hanwen/go-fuse/splice"
 	"io"
 	"io/ioutil"
 	"os"
 	"syscall"
 	"testing"
+
+	"github.com/hanwen/go-fuse/splice"
 )
 
 type netTestCase struct {
@@ -106,7 +107,7 @@ func TestNetCache(t *testing.T) {
 }
 
 func TestNetLargeFile(t *testing.T) {
-	b := make([]byte, 257 * 1024)
+	b := make([]byte, 257*1024)
 	for i, _ := range b {
 		b[i] = byte(i)
 	}

@@ -159,7 +159,6 @@ func NewCpuStatSampler() *CpuStatSampler {
 	return me
 }
 
-
 func (me *CpuStatSampler) CpuStats() (out []CpuStat) {
 	diffs := me.sampler.Diffs()
 	for _, d := range diffs {

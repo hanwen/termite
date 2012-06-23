@@ -3,10 +3,11 @@ package attr
 import (
 	"crypto"
 	"crypto/md5"
-	"github.com/hanwen/go-fuse/fuse"
 	"io/ioutil"
 	"syscall"
 	"testing"
+
+	"github.com/hanwen/go-fuse/fuse"
 )
 
 var _ = md5.New

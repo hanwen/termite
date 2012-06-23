@@ -3,7 +3,6 @@ package termite
 import (
 	"crypto"
 	"fmt"
-	"github.com/hanwen/go-fuse/fuse"
 	"io"
 	"log"
 	"math/rand"
@@ -13,6 +12,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+	
+	"github.com/hanwen/go-fuse/fuse"
 )
 
 func init() {

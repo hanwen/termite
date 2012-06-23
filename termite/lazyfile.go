@@ -2,10 +2,11 @@ package termite
 
 import (
 	"fmt"
-	"github.com/hanwen/go-fuse/fuse"
 	"log"
 	"os"
 	"sync"
+
+	"github.com/hanwen/go-fuse/fuse"
 )
 
 var _ = log.Println

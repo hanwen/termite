@@ -2,7 +2,6 @@ package attr
 
 import (
 	"fmt"
-	"github.com/hanwen/go-fuse/fuse"
 	"io/ioutil"
 	"log"
 	"os"
@@ -11,6 +10,8 @@ import (
 	"syscall"
 	"testing"
 	"time"
+	
+	"github.com/hanwen/go-fuse/fuse"
 )
 
 var _ = log.Printf

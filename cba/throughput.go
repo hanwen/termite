@@ -2,13 +2,14 @@ package cba
 
 import (
 	"fmt"
-	"github.com/hanwen/termite/stats"
 	"time"
+
+	"github.com/hanwen/termite/stats"
 )
 
 func (st *Store) initThroughputSampler() {
 	st.throughput = stats.NewPeriodicSampler(time.Second, 60, func() stats.Sample {
-		return &ThroughputSample{received: st.bytesReceived, served: st.bytesServed} 
+		return &ThroughputSample{received: st.bytesReceived, served: st.bytesServed}
 	})
 }
 
@@ -55,4 +56,3 @@ func (st *Store) addThroughput(received, served int64) {
 	st.bytesReceived += stats.MemCounter(received)
 	st.bytesServed += stats.MemCounter(served)
 }
-
