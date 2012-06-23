@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/hanwen/termite/termite"
 	"log"
 	"net/rpc"
 	"os"
@@ -13,6 +12,9 @@ import (
 	"syscall"
 	"strings"
 	"time"
+
+	"github.com/hanwen/termite/attr"
+	"github.com/hanwen/termite/termite"
 )
 
 // TODO - this file is a mess. Clean it up.
@@ -142,8 +144,8 @@ func Inspect(files []string) {
 			p = filepath.Join(wd, p)
 		}
 		p = p[1:]
-		req := termite.AttrRequest{Name: p}
-		rep := termite.AttrResponse{}
+		req := attr.AttrRequest{Name: p}
+		rep := attr.AttrResponse{}
 		err := Rpc().Call("LocalMaster.InspectFile", &req, &rep)
 		if err != nil {
 			log.Fatal("LocalMaster.InspectFile: ", err)
