@@ -257,7 +257,7 @@ func (me *mirrorConnections) pick() (*mirrorConnection, error) {
 }
 
 func (me *mirrorConnections) drop(mc *mirrorConnection, err error) {
-	me.master.fileServer.attributes.RmClient(mc)
+	me.master.attributes.RmClient(mc)
 
 	me.Mutex.Lock()
 	defer me.Mutex.Unlock()
@@ -324,7 +324,7 @@ func (me *mirrorConnections) tryConnect() {
 			}
 			mc.workerAddr = addr
 			me.mirrors[addr] = mc
-			me.master.fileServer.attributes.AddClient(mc)
+			me.master.attributes.AddClient(mc)
 		}
 	}
 }

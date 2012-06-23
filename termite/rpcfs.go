@@ -9,14 +9,12 @@ import (
 	"github.com/hanwen/termite/stats"
 	"io"
 	"log"
-	"net/rpc"
-	"time"
 )
 
 type RpcFs struct {
 	fuse.DefaultFileSystem
 	cache         *cba.Store
-	client        *rpc.Client
+	attrClient     *attr.Client
 	contentClient *cba.Client
 
 	timings    *stats.TimerStats
@@ -24,22 +22,29 @@ type RpcFs struct {
 	id         string
 }
 
-func NewRpcFs(server *rpc.Client, cache *cba.Store, contentConn io.ReadWriteCloser) *RpcFs {
+func NewRpcFs(attrClient *attr.Client, cache *cba.Store, contentConn io.ReadWriteCloser) *RpcFs {
 	me := &RpcFs{
-		client:        server,
+		attrClient:    attrClient,
 		contentClient: cache.NewClient(contentConn),
 		timings:       stats.NewTimerStats(),
 	}
+	
 	me.attr = attr.NewAttributeCache(
 		func(n string) *attr.FileAttr {
-			return me.fetchAttr(n)
-		}, nil)
+			a := attr.FileAttr{}
+			err := attrClient.GetAttr(n, &a)
+			if err != nil {
+				log.Printf("GetAttr %s: %v", n, err)
+				return nil
+			}
+			return &a
+	}, nil)
 	me.cache = cache
 	return me
 }
 
 func (me *RpcFs) Close() {
-	me.client.Close()
+	me.attrClient.Close()
 	me.contentClient.Close()
 }
 
@@ -61,33 +66,6 @@ func (me *RpcFs) Update(req *UpdateRequest, resp *UpdateResponse) error {
 
 func (me *RpcFs) updateFiles(files []*attr.FileAttr) {
 	me.attr.Update(files)
-}
-
-func (me *RpcFs) fetchAttr(n string) *attr.FileAttr {
-	req := &AttrRequest{
-		Name:   n,
-		Origin: me.id,
-	}
-	start := time.Now()
-	rep := &AttrResponse{}
-	err := me.client.Call("FsServer.GetAttr", req, rep)
-	dt := time.Now().Sub(start)
-	me.timings.Log("FsServer.GetAttr", dt)
-	if err != nil {
-		// fatal?
-		log.Println("GetAttr error:", err)
-		return nil
-	}
-
-	var wanted *attr.FileAttr
-	for _, attr := range rep.Attrs {
-		if attr.Path == n {
-			wanted = attr
-		}
-	}
-
-	// TODO - if we got a deletion, we should refetch the parent.
-	return wanted
 }
 
 ////////////////////////////////////////////////////////////////

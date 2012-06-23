@@ -19,7 +19,7 @@ import (
 
 type Master struct {
 	contentStore  *cba.Store
-	fileServer    *FsServer
+	fileServer    *attr.Server
 	fileServerRpc *rpc.Server
 	excluded      map[string]bool
 	attributes    *attr.AttributeCache
@@ -203,7 +203,7 @@ func NewMaster(options *MasterOptions) *Master {
 			fi, _ := os.Lstat(me.path(n))
 			return fuse.ToAttr(fi)
 		})
-	me.fileServer = NewFsServer(me.attributes, me.contentStore)
+	me.fileServer = attr.NewServer(me.attributes)
 	me.fileServerRpc = rpc.NewServer()
 	me.fileServerRpc.Register(me.fileServer)
 
@@ -358,7 +358,7 @@ func (me *Master) createMirror(addr string, jobs int) (*mirrorConnection, error)
 
 func (me *Master) runOnMirror(mirror *mirrorConnection, req *WorkRequest, rep *WorkResponse) error {
 	me.mirrors.stats.Enter("send")
-	err := me.fileServer.attributes.Send(mirror)
+	err := me.attributes.Send(mirror)
 	me.mirrors.stats.Exit("send")
 	if err != nil {
 		return err
@@ -579,7 +579,7 @@ func (me *Master) replay(fset attr.FileSet) {
 		}
 	}
 
-	me.fileServer.attributes.Queue(fset)
+	me.attributes.Queue(fset)
 
 	me.replayChannel <- &req
 	<-req.Done

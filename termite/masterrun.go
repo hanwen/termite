@@ -29,7 +29,7 @@ func (me *Master) MaybeRunInMaster(req *WorkRequest, rep *WorkResponse) bool {
 
 // Recursively lists names.  Returns children before the parents.
 func recurseNames(master *Master, name string) (names []string) {
-	a := master.fileServer.attributes.GetDir(name)
+	a := master.attributes.GetDir(name)
 
 	for n, m := range a.NameModeMap {
 		if m.IsDir() {
@@ -92,7 +92,7 @@ func rmMaybeMasterRun(master *Master, req *WorkRequest, rep *WorkResponse) bool 
 		}
 	} else {
 		for _, p := range todo {
-			a := master.fileServer.attributes.GetDir(p)
+			a := master.attributes.GetDir(p)
 			switch {
 			case a.Deletion():
 				if !force {
@@ -160,7 +160,7 @@ func mkdirParentMasterRun(master *Master, arg string, rep *WorkResponse) {
 	for i := range components {
 		p := strings.Join(components[:i+1], "/")
 
-		dirAttr := master.fileServer.attributes.Get(p)
+		dirAttr := master.attributes.Get(p)
 		if dirAttr.Deletion() {
 			entry := mkdirEntry(p)
 			m := entry.ModTime()
@@ -203,7 +203,7 @@ func mkdirEntry(rootless string) *attr.FileAttr {
 func mkdirNormalMasterRun(master *Master, arg string, rep *WorkResponse) {
 	rootless := strings.TrimLeft(arg, "/")
 	dir, _ := SplitPath(rootless)
-	dirAttr := master.fileServer.attributes.Get(dir)
+	dirAttr := master.attributes.Get(dir)
 	if dirAttr.Deletion() {
 		rep.Stderr = fmt.Sprintf("File not found: /%s", dir)
 		rep.Exit = syscall.WaitStatus(1 << 8)
@@ -216,7 +216,7 @@ func mkdirNormalMasterRun(master *Master, arg string, rep *WorkResponse) {
 		return
 	}
 
-	chAttr := master.fileServer.attributes.Get(rootless)
+	chAttr := master.attributes.Get(rootless)
 	if !chAttr.Deletion() {
 		rep.Stderr = fmt.Sprintf("File exists: /%s", rootless)
 		rep.Exit = syscall.WaitStatus(1 << 8)

@@ -46,60 +46,6 @@ func GetattrForTest(t *testing.T, n string) *attr.FileAttr {
 	return &a
 }
 
-func TestRpcFsFetchOnce(t *testing.T) {
-	me := newRpcFsTestCase(t)
-	defer me.Clean()
-	ioutil.WriteFile(me.orig+"/file.txt", []byte{42}, 0644)
-	me.attr.Refresh("")
-
-	ioutil.ReadFile(me.mnt + "/file.txt")
-
-	stats := me.serverStore.TimingMap()
-	key := "ContentStore.Save"
-	if stats == nil || stats[key] == nil {
-		t.Fatalf("Stats %q missing: %v", key, stats)
-	}
-	if stats[key].N > 1 {
-		t.Errorf("File content was served more than once.")
-	}
-}
-
-func TestFsServerCache(t *testing.T) {
-	me := newRpcFsTestCase(t)
-	defer me.Clean()
-
-	content := "hello"
-	err := ioutil.WriteFile(me.orig+"/file.txt", []byte(content), 0644)
-	me.attr.Refresh("")
-	c := me.attr.Copy().Files
-	if len(c) > 0 {
-		t.Errorf("cache not empty? %#v", c)
-	}
-
-	os.Lstat(me.mnt + "/file.txt")
-	c = me.attr.Copy().Files
-	if len(c) != 2 {
-		t.Errorf("cache should have 2 entries, got %#v", c)
-	}
-	name := "file.txt"
-	ok := me.server.attributes.Have(name)
-	if !ok {
-		t.Errorf("no entry for %q", name)
-	}
-
-	newName := me.orig + "/new.txt"
-	err = os.Rename(me.orig+"/file.txt", newName)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	me.attr.Refresh("")
-	ok = me.server.attributes.Have(name)
-	if ok {
-		t.Errorf("after rename: entry for %q unexpected", name)
-	}
-}
-
 type rpcFsTestCase struct {
 	tmp  string
 	mnt  string
@@ -107,7 +53,7 @@ type rpcFsTestCase struct {
 
 	serverStore, clientStore  *cba.Store
 	attr   *attr.AttributeCache
-	server *FsServer
+	server *attr.Server
 	rpcFs  *RpcFs
 	state  *fuse.MountState
 
@@ -147,7 +93,7 @@ func newRpcFsTestCase(t *testing.T) (me *rpcFsTestCase) {
 			return StatForTest(t, filepath.Join(me.orig, n))
 		})
 	me.attr.Paranoia = true
-	me.server = NewFsServer(me.attr, me.serverStore)
+	me.server = attr.NewServer(me.attr)
 
 	var err error
 	me.sockL, me.sockR, err = unixSocketpair()
@@ -163,12 +109,12 @@ func newRpcFsTestCase(t *testing.T) (me *rpcFsTestCase) {
 	rpcServer.Register(me.server)
 	go rpcServer.ServeConn(me.sockL)
 	go me.serverStore.ServeConn(me.contentL)
-	rpcClient := rpc.NewClient(me.sockR)
 	cOpts := cba.StoreOptions{
 		Dir: me.tmp + "/client-cache",
 	}
 	me.clientStore = cba.NewStore(&cOpts)
-	me.rpcFs = NewRpcFs(rpcClient, me.clientStore, me.contentR)
+	attrClient := attr.NewClient(me.sockR, "id")
+	me.rpcFs = NewRpcFs(attrClient, me.clientStore, me.contentR)
 	me.rpcFs.id = "rpcfs_test"
 	nfs := fuse.NewPathNodeFs(me.rpcFs, nil)
 	me.state, _, err = fuse.MountNodeFileSystem(me.mnt, nfs, nil)
@@ -280,7 +226,7 @@ func TestRpcFsBasic(t *testing.T) {
 	}
 
 	// This test implementation detail - should be separate?
-	a := me.server.attributes.Get("file.txt")
+	a := me.attr.Get("file.txt")
 	if a == nil || a.Hash == "" || string(a.Hash) != string(md5str(content)) {
 		t.Errorf("cache error %v (%x)", a)
 	}
@@ -292,8 +238,62 @@ func TestRpcFsBasic(t *testing.T) {
 	check(err)
 
 	me.attr.Refresh("")
-	a = me.server.attributes.Get("file.txt")
+	a = me.attr.Get("file.txt")
 	if a == nil || a.Hash == "" || a.Hash != md5str(newcontent) {
 		t.Errorf("refreshAttributeCache: cache error got %v, want %x", a, md5str(newcontent))
+	}
+}
+
+func TestRpcFsFetchOnce(t *testing.T) {
+	me := newRpcFsTestCase(t)
+	defer me.Clean()
+	ioutil.WriteFile(me.orig+"/file.txt", []byte{42}, 0644)
+	me.attr.Refresh("")
+
+	ioutil.ReadFile(me.mnt + "/file.txt")
+
+	stats := me.serverStore.TimingMap()
+	key := "ContentStore.Save"
+	if stats == nil || stats[key] == nil {
+		t.Fatalf("Stats %q missing: %v", key, stats)
+	}
+	if stats[key].N > 1 {
+		t.Errorf("File content was served more than once.")
+	}
+}
+
+func TestFsServerCache(t *testing.T) {
+	me := newRpcFsTestCase(t)
+	defer me.Clean()
+
+	content := "hello"
+	err := ioutil.WriteFile(me.orig+"/file.txt", []byte(content), 0644)
+	me.attr.Refresh("")
+	c := me.attr.Copy().Files
+	if len(c) > 0 {
+		t.Errorf("cache not empty? %#v", c)
+	}
+
+	os.Lstat(me.mnt + "/file.txt")
+	c = me.attr.Copy().Files
+	if len(c) != 2 {
+		t.Errorf("cache should have 2 entries, got %#v", c)
+	}
+	name := "file.txt"
+	ok := me.attr.Have(name)
+	if !ok {
+		t.Errorf("no entry for %q", name)
+	}
+
+	newName := me.orig + "/new.txt"
+	err = os.Rename(me.orig+"/file.txt", newName)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	me.attr.Refresh("")
+	ok = me.attr.Have(name)
+	if ok {
+		t.Errorf("after rename: entry for %q unexpected", name)
 	}
 }

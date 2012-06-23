@@ -30,7 +30,7 @@ func TestEndToEndMkdirParentTimestamp(t *testing.T) {
 		Argv: []string{"mkdir", "-p", tc.wd + "/dir"},
 	})
 	rootless := strings.TrimLeft(tc.wd, "/")
-	beforeTime := tc.master.fileServer.attributes.Get(rootless + "/dir").ChangeTime()
+	beforeTime := tc.master.attributes.Get(rootless + "/dir").ChangeTime()
 	var after *attr.FileAttr
 	for i := 0; ; i++ {
 		time.Sleep(10e6)
@@ -38,13 +38,13 @@ func TestEndToEndMkdirParentTimestamp(t *testing.T) {
 		tc.RunSuccess(WorkRequest{
 			Argv: []string{"mkdir", "-p", subdir},
 		})
-		after = tc.master.fileServer.attributes.Get(strings.TrimLeft(subdir, "/"))
+		after = tc.master.attributes.Get(strings.TrimLeft(subdir, "/"))
 		if !after.ChangeTime().Equal(beforeTime) {
 			break
 		}
 	}
 
-	afterDir := tc.master.fileServer.attributes.Get(rootless + "/dir")
+	afterDir := tc.master.attributes.Get(rootless + "/dir")
 	if afterDir.ChangeTime().Equal(beforeTime) {
 		t.Errorf("Forgot to update parent timestamps")
 	}
@@ -58,7 +58,7 @@ func TestEndToEndMkdirNoParentTimestamp(t *testing.T) {
 		Argv: []string{"mkdir", "-p", tc.wd + "/dir"},
 	})
 	rootless := strings.TrimLeft(tc.wd, "/")
-	beforeTime := tc.master.fileServer.attributes.Get(rootless + "/dir").ChangeTime()
+	beforeTime := tc.master.attributes.Get(rootless + "/dir").ChangeTime()
 	var after *attr.FileAttr
 	for i := 0; ; i++ {
 		time.Sleep(10e6)
@@ -66,13 +66,13 @@ func TestEndToEndMkdirNoParentTimestamp(t *testing.T) {
 		tc.RunSuccess(WorkRequest{
 			Argv: []string{"mkdir", subdir},
 		})
-		after = tc.master.fileServer.attributes.Get(strings.TrimLeft(subdir, "/"))
+		after = tc.master.attributes.Get(strings.TrimLeft(subdir, "/"))
 		if !after.ChangeTime().Equal(beforeTime) {
 			break
 		}
 	}
 
-	afterDir := tc.master.fileServer.attributes.Get(rootless + "/dir")
+	afterDir := tc.master.attributes.Get(rootless + "/dir")
 	if afterDir.ChangeTime().Equal(beforeTime) {
 		t.Errorf("Forgot to update parent timestamps")
 	}
@@ -95,7 +95,7 @@ func TestEndToEndMkdirExist(t *testing.T) {
 		t.Fatal("Should be regular file.")
 	}
 
-	fa := tc.master.fileServer.attributes.Get(
+	fa := tc.master.attributes.Get(
 		strings.TrimLeft(tc.tmp+"/wd/file.txt", "/"))
 	if fa == nil || fa.Deletion() || !fa.IsRegular() {
 		t.Fatal("Attrcache out of sync", fa)
@@ -214,11 +214,11 @@ func TestEndToEndRmParentTimestamp(t *testing.T) {
 	err = os.Chtimes(tc.wd+"/dir", now, now)
 	check(err)
 
-	beforeTime := tc.master.fileServer.attributes.Get(rootless + "/dir").ModTime()
+	beforeTime := tc.master.attributes.Get(rootless + "/dir").ModTime()
 	tc.RunSuccess(WorkRequest{
 		Argv: []string{"rm", "-rf", tc.wd + "/dir/subdir"},
 	})
-	afterTime := tc.master.fileServer.attributes.Get(rootless + "/dir").ModTime()
+	afterTime := tc.master.attributes.Get(rootless + "/dir").ModTime()
 	if beforeTime.After(afterTime) {
 		t.Errorf("Parent timestamp not changed after rm: before %d after %d",
 			beforeTime, afterTime)

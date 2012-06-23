@@ -7,6 +7,8 @@ import (
 	"net/rpc"
 	"os"
 	"syscall"
+
+	"github.com/hanwen/termite/attr"
 )
 
 // Expose functionality for the local tool to use.
@@ -49,7 +51,7 @@ func (me *LocalMaster) RefreshAttributeCache(input *int, output *int) error {
 	return nil
 }
 
-func (me *LocalMaster) InspectFile(req *AttrRequest, rep *AttrResponse) error {
+func (me *LocalMaster) InspectFile(req *attr.AttrRequest, rep *attr.AttrResponse) error {
 	return me.master.fileServer.GetAttr(req, rep)
 }
 

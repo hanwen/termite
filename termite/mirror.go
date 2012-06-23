@@ -44,13 +44,12 @@ func NewMirror(worker *Worker, rpcConn, revConn, contentConn, revContentConn net
 		worker:         worker,
 		accepting:      true,
 	}
-
-	mirror.cond = sync.NewCond(&mirror.fsMutex)
-	mirror.rpcFs = NewRpcFs(rpc.NewClient(revConn), worker.content, revContentConn)
-
 	_, portString, _ := net.SplitHostPort(worker.listener.Addr().String())
-
-	mirror.rpcFs.id = Hostname + ":" + portString
+	id := Hostname + ":" + portString
+	mirror.cond = sync.NewCond(&mirror.fsMutex)
+	attrClient := attr.NewClient(revConn, id)
+	mirror.rpcFs = NewRpcFs(attrClient, worker.content, revContentConn)
+	mirror.rpcFs.id = id
 	mirror.rpcFs.attr.Paranoia = worker.options.Paranoia
 
 	go mirror.serveRpc()

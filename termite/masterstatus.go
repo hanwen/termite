@@ -53,7 +53,7 @@ func (me *Master) statusHandler(w http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(w, "<p>ContentCache memory hit rate: %.0f %%, age %d",
 		100.0*me.contentStore.MemoryHitRate(),
 		me.contentStore.MemoryHitAge())
-	msgs := me.fileServer.stats.TimingMessages()
+	msgs := me.fileServer.TimingMessages()
 	msgs = append(msgs, me.contentStore.TimingMessages()...)
 	fmt.Fprintf(w, "<ul>")
 	for _, msg := range msgs {

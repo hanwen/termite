@@ -10,16 +10,6 @@ import (
 
 type Empty struct {}
 
-type AttrRequest struct {
-	Name string
-
-	// Worker asking for the request. Useful for debugging.
-	Origin string
-}
-
-type AttrResponse struct {
-	Attrs []*attr.FileAttr
-}
 
 type UpdateRequest struct {
 	Files []*attr.FileAttr
