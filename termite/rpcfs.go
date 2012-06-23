@@ -20,8 +20,6 @@ type RpcFs struct {
 	client        *rpc.Client
 	contentClient *cba.Client
 
-	// Roots that we should try to fetch locally.
-	localRoots []string
 	timings    *stats.TimerStats
 	attr       *attr.AttributeCache
 	id         string

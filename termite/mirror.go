@@ -52,7 +52,6 @@ func NewMirror(worker *Worker, rpcConn, revConn, contentConn, revContentConn net
 
 	mirror.rpcFs.id = Hostname + ":" + portString
 	mirror.rpcFs.attr.Paranoia = worker.options.Paranoia
-	mirror.rpcFs.localRoots = []string{"/lib", "/usr"}
 
 	go mirror.serveRpc()
 	return mirror
