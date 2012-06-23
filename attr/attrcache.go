@@ -112,6 +112,9 @@ func (me *AttributeCache) Queue(fs FileSet) {
 	}
 }
 
+// NewAttributeCache creates a new AttrCache. Its arguments are a
+// function to fetch attributes remotely (for individual attributes), and
+// a stat function (for bulk refreshing data).
 func NewAttributeCache(getter func(n string) *FileAttr,
 	statter func(n string) *fuse.Attr) *AttributeCache {
 	me := &AttributeCache{
