@@ -5,6 +5,7 @@ import (
 	"github.com/hanwen/termite/cba"
 	"log"
 	"net/http"
+	_ "net/http/pprof"
 )
 
 func (me *Master) sizeHistogram() (histo []int, total int) {
@@ -92,7 +93,6 @@ func (me *Master) ServeHTTP(port int) {
 		func(w http.ResponseWriter, req *http.Request) {
 			me.statusHandler(w, req)
 		})
-
 	addr := fmt.Sprintf(":%d", port)
 	log.Println("HTTP status on", addr)
 	err := http.ListenAndServe(addr, nil)
