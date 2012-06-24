@@ -12,17 +12,27 @@ Work in progress.
 
 COMPILE/INSTALL
 
+* Install go from source: see http://golang.org/doc/install/source
+
+* Patch go with
+
+ http://codereview.appspot.com/6297083
+
+to fix issue
+
+ http://code.google.com/p/go/issues/detail?id=3649
+
 * Compiling:
 
-  git clone git://github.com/hanwen/go-fuse.git
-  git clone git://github.com/hanwen/termite.git
-  cd go-fuse && sh all.bash
-  cd termite && sh all.bash
-
-* Install:
-
-  ln -s ${TERMITE_DIR}/termite-make  ~/bin/
-  ln -s ${TERMITE_DIR}/bin/shell-wrapper/shell-wrapper ~/bin/
+  cd /tmp
+  mkdir go ; cd go
+  export GOPATH=$(pwd)
+  for d in bin/coordinator bin/worker bin/master bin/shell-wrapper
+  done
+    go install github.com/hanwen/termite/$d
+  done
+  sudo cp termite-make /usr/local/bin/
+  sudo cp /tmp/go/bin/* /usr/local/bin/
 
 * Make needs to be patched to use termite's shell wrapper:
 
@@ -148,12 +158,8 @@ CAVEATS
 
 TODO (by decreasing priority)
 
-* Cache open file descriptors in cba.Store.
-* Use splice for serving file contents
-* Make master->coordinator RPC block in coordinator so master can
-  learn of developments instantaneously.
-* Security review for the connection scheme.
-* Better connection scheme? Use exp/ssh, tls?
+* Worker -> worker fetch
+* Connection scheme: exp/ssh, security review?
 
 
 SUCCESSFUL COMPILES
