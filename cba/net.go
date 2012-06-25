@@ -38,26 +38,9 @@ func (s *contentServer) ServeChunk(req *Request, rep *Response) (err error) {
 	return err
 }
 
-func (st *Store) TryServeChunkFromMemory(req *Request, rep *Response) bool {
-	c := st.ContentsIfLoaded(req.Hash)
-
-	if c == nil {
-		return false
-	}
-	rep.Chunk = c[req.Start:]
-	rep.Size = len(rep.Chunk)
-	rep.Last = true
-	rep.Have = true
-	return false
-}
-
 func (st *Store) ServeChunk(req *Request, rep *Response) (err error) {
 	if !st.HasHash(req.Hash) {
 		rep.Have = false
-		return nil
-	}
-
-	if st.TryServeChunkFromMemory(req, rep) {
 		return nil
 	}
 

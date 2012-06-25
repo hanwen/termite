@@ -43,7 +43,7 @@ func (tc *netTestCase) Clean() {
 	}
 }
 
-func newNetTestCase(t *testing.T, cache bool) *netTestCase {
+func newNetTestCase(t *testing.T) *netTestCase {
 	me := &netTestCase{}
 	me.tester = t
 	me.startSplices = splice.Used()
@@ -51,9 +51,6 @@ func newNetTestCase(t *testing.T, cache bool) *netTestCase {
 
 	optS := StoreOptions{
 		Dir: me.tmp + "/server",
-	}
-	if cache {
-		optS.MemCount = 100
 	}
 	me.server = NewStore(&optS)
 
@@ -71,8 +68,8 @@ func newNetTestCase(t *testing.T, cache bool) *netTestCase {
 	return me
 }
 
-func runTestNet(t *testing.T, store bool) {
-	tc := newNetTestCase(t, store)
+func TestNet(t *testing.T) {
+	tc := newNetTestCase(t)
 	defer tc.Clean()
 
 	b := bytes.NewBufferString("hello")
@@ -98,21 +95,13 @@ func runTestNet(t *testing.T, store bool) {
 	}
 }
 
-func TestNet(t *testing.T) {
-	runTestNet(t, false)
-}
-
-func TestNetCache(t *testing.T) {
-	runTestNet(t, true)
-}
-
 func TestNetLargeFile(t *testing.T) {
 	b := make([]byte, 257*1024)
 	for i, _ := range b {
 		b[i] = byte(i)
 	}
 
-	tc := newNetTestCase(t, false)
+	tc := newNetTestCase(t)
 	defer tc.Clean()
 
 	hash := tc.server.Save(b)

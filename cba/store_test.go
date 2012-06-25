@@ -32,8 +32,6 @@ func newCcTestCase() *ccTestCase {
 	d, _ := ioutil.TempDir("", "term-cc")
 	opts := &StoreOptions{
 		Dir:        d,
-		MemCount:   10,
-		MemMaxSize: 1024,
 	}
 	store := NewStore(opts)
 
@@ -152,31 +150,20 @@ func TestStoreStream(t *testing.T) {
 	}
 }
 
-func TestStoreStreamReturnContent(t *testing.T) {
+func TestStoreSave(t *testing.T) {
 	tc := newCcTestCase()
 	defer tc.Clean()
-	content := make([]byte, tc.options.MemMaxSize-1)
+
+	sz := 1025
+	content := make([]byte, sz)
 	for i := range content {
 		content[i] = 'x'
 	}
 
 	hash := tc.store.Save(content)
 
-	if !tc.store.inMemoryCache.Has(hash) {
+	if !tc.store.HasHash(hash) {
 		t.Errorf("should have key %x", hash)
-	}
-
-	content = make([]byte, tc.options.MemMaxSize+1)
-	for i := range content {
-		content[i] = 'y'
-	}
-
-	f, _ := ioutil.TempFile("", "term-cc")
-	err := ioutil.WriteFile(f.Name(), content, 0644)
-	check(err)
-	hash = tc.store.SavePath(f.Name())
-	if tc.store.inMemoryCache.Has(hash) {
-		t.Errorf("should not have key %x %v", hash, tc.store.inMemoryCache.Get(hash))
 	}
 }
 

@@ -88,10 +88,6 @@ func (s *spliceServer) ServeChunk(req *Request, rep *Response) (err error) {
 
 // Get the next splice, read it into the response.
 func (s *spliceServer) serveChunk(req *Request, rep *Response) (err error) {
-	if s.store.TryServeChunkFromMemory(req, rep) {
-		return nil
-	}
-
 	if req.Start == 0 {
 		err := s.prepareServe(req.Hash)
 		if err != nil {

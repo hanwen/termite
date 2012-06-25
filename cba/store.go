@@ -27,12 +27,7 @@ type Store struct {
 	throughput *stats.PeriodicSampler
 
 	mutex         sync.Mutex
-	cond          *sync.Cond
-	faulting      map[string]bool
 	have          map[string]bool
-	inMemoryCache *LruCache
-	memoryTries   int
-	memoryHits    int
 	bytesServed   stats.MemCounter
 	bytesReceived stats.MemCounter
 }
@@ -40,8 +35,6 @@ type Store struct {
 type StoreOptions struct {
 	Hash       crypto.Hash
 	Dir        string
-	MemCount   int
-	MemMaxSize int64
 }
 
 // NewStore creates a content cache based in directory d.
@@ -65,40 +58,14 @@ func NewStore(options *StoreOptions) *Store {
 	c := &Store{
 		Options:  options,
 		have:     db,
-		faulting: make(map[string]bool),
 		timings:  stats.NewTimerStats(),
 	}
 	c.initThroughputSampler()
-	if options.MemCount > 0 {
-		c.inMemoryCache = NewLruCache(options.MemCount)
-		if options.MemMaxSize == 0 {
-			options.MemMaxSize = 64 * 1024
-		}
-	}
-
-	c.cond = sync.NewCond(&c.mutex)
 	return c
 }
 
 func (st *Store) HashType() crypto.Hash {
 	return st.Options.Hash
-}
-
-func (st *Store) MemoryHitRate() float64 {
-	if st.memoryTries == 0 {
-		return 0.0
-	}
-	return float64(st.memoryHits) / float64(st.memoryTries)
-}
-
-func (st *Store) MemoryHitAge() int {
-	if st.inMemoryCache == nil {
-		return 0
-	}
-
-	st.mutex.Lock()
-	defer st.mutex.Unlock()
-	return st.inMemoryCache.AverageAge()
 }
 
 func hexDigit(b byte) byte {
@@ -133,24 +100,6 @@ func (st *Store) HasHash(hash string) bool {
 	defer st.mutex.Unlock()
 
 	return st.have[hash]
-}
-
-func (st *Store) ContentsIfLoaded(hash string) []byte {
-	st.mutex.Lock()
-	defer st.mutex.Unlock()
-	for st.faulting[hash] {
-		st.cond.Wait()
-	}
-	st.memoryTries++
-	if st.inMemoryCache == nil {
-		return nil
-	}
-	c := st.inMemoryCache.Get(hash)
-	if c != nil {
-		st.memoryHits++
-		return c.([]byte)
-	}
-	return nil
 }
 
 func (st *Store) Path(hash string) string {
@@ -193,19 +142,7 @@ func (st *Store) DestructiveSavePath(path string) (hash string, err error) {
 
 	h := st.Options.Hash.New()
 
-	var content []byte
-	var size int
-	if before.Size() < st.Options.MemMaxSize {
-		content, err = ioutil.ReadAll(f)
-		if err != nil {
-			return "", err
-		}
-
-		size, _ = h.Write(content)
-	} else {
-		sz, _ := io.Copy(h, f)
-		size = int(sz)
-	}
+	size, _ := io.Copy(h, f)
 
 	s := string(h.Sum(nil))
 	if st.HasHash(s) {
@@ -215,9 +152,6 @@ func (st *Store) DestructiveSavePath(path string) (hash string, err error) {
 
 	st.mutex.Lock()
 	st.have[s] = true
-	if content != nil && st.inMemoryCache != nil {
-		st.inMemoryCache.Add(s, content)
-	}
 	st.mutex.Unlock()
 
 	p := st.Path(s)
@@ -233,7 +167,7 @@ func (st *Store) DestructiveSavePath(path string) (hash string, err error) {
 
 	dt := time.Now().Sub(start)
 
-	st.AddTiming("DestructiveSave", size, dt)
+	st.AddTiming("DestructiveSave", int(size), dt)
 
 	log.Printf("Saving %s as %x destructively", path, s)
 	return s, nil
@@ -251,37 +185,8 @@ func (st *Store) SavePath(path string) (hash string) {
 	return st.SaveStream(f, fi.Size())
 }
 
-// FaultIn loads the data from disk into the memory cache.
-func (st *Store) FaultIn(hash string) {
-	st.mutex.Lock()
-	defer st.mutex.Unlock()
-	if st.inMemoryCache == nil {
-		return
-	}
-	for !st.inMemoryCache.Has(hash) && st.faulting[hash] {
-		st.cond.Wait()
-	}
-	if st.inMemoryCache.Has(hash) {
-		return
-	}
-
-	st.faulting[hash] = true
-	st.mutex.Unlock()
-	c, err := ioutil.ReadFile(st.Path(hash))
-	st.mutex.Lock()
-	if err != nil {
-		log.Fatal("FaultIn:", err)
-	}
-	delete(st.faulting, hash)
-	st.inMemoryCache.Add(hash, c)
-	st.cond.Broadcast()
-}
 
 func (st *Store) Save(content []byte) (hash string) {
-	return st.saveViaMemory(content)
-}
-
-func (st *Store) saveViaMemory(content []byte) (hash string) {
 	writer := st.NewHashWriter()
 	err := writer.WriteClose(content)
 	if err != nil {
@@ -289,26 +194,10 @@ func (st *Store) saveViaMemory(content []byte) (hash string) {
 		return ""
 	}
 	hash = writer.Sum()
-	if st.inMemoryCache != nil {
-		st.mutex.Lock()
-		st.inMemoryCache.Add(hash, content)
-		st.mutex.Unlock()
-	}
 	return hash
 }
 
 func (st *Store) SaveStream(input io.Reader, size int64) (hash string) {
-	if size < st.Options.MemMaxSize {
-		r := make([]byte, size)
-		n, err := io.ReadAtLeast(input, r, int(size))
-		if n != int(size) || err != nil {
-			log.Panicf("SaveStream: short read: %v %v", n, err)
-		}
-
-		r = r[:n]
-		return st.saveViaMemory(r)
-	}
-
 	dup := st.NewHashWriter()
 	err := dup.CopyClose(input, size)
 

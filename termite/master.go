@@ -550,20 +550,16 @@ func (me *Master) replay(fset attr.FileSet) {
 		}
 
 		req.NewFiles[info.Hash] = append(req.NewFiles[info.Hash], f.Name())
-		content := me.contentStore.ContentsIfLoaded(info.Hash)
-
-		if content == nil {
-			var src *os.File
-			src, err = os.Open(me.contentStore.Path(info.Hash))
-			if err != nil {
-				log.Panicf("cache path missing %x", info.Hash)
-			}
-			err = splice.CopyFds(f, src)
-		} else {
-			_, err = f.Write(content)
-		}
+	
+		var src *os.File
+		src, err = os.Open(me.contentStore.Path(info.Hash))
 		if err != nil {
-			log.Fatal("f.Write", err)
+			log.Panicf("cache path missing %x", info.Hash)
+		}
+		err = splice.CopyFds(f, src)
+		
+		if err != nil {
+			log.Fatal("f.CopyFds", err)
 		}
 
 		err = f.Chmod(os.FileMode(info.Attr.Mode & 07777))

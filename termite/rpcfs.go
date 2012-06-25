@@ -54,9 +54,6 @@ func (me *RpcFs) FetchHash(a *attr.FileAttr) error {
 	if e == nil && !got {
 		log.Fatalf("Did not have hash %x for %s", a.Hash, a.Path)
 	}
-	if e == nil && a.Size < uint64(me.cache.Options.MemMaxSize) {
-		me.cache.FaultIn(a.Hash)
-	}
 	return e
 }
 
@@ -126,16 +123,6 @@ func (me *RpcFs) Open(name string, flags uint32, context *fuse.Context) (fuse.Fi
 		return nil, fuse.EIO
 	}
 
-	if contents := me.cache.ContentsIfLoaded(a.Hash); contents != nil {
-		fa := *a.Attr
-		return &fuse.WithFlags{
-			File: &rpcFsFile{
-				fuse.NewDataFile(contents),
-				fa,
-			},
-			FuseFlags: raw.FOPEN_KEEP_CACHE,
-		}, fuse.OK
-	}
 	fa := *a.Attr
 	return &fuse.WithFlags{
 		File: &rpcFsFile{

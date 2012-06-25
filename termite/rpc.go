@@ -49,8 +49,6 @@ type WorkerStatusResponse struct {
 	CpuStats            []stats.CpuStat
 	TotalCpu            stats.CpuStat
 	DiskStats           []stats.DiskStat
-	ContentCacheHitRate float64
-	ContentCacheHitAge  int
 
 	PhaseNames  []string
 	PhaseCounts []int
