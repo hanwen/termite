@@ -63,10 +63,6 @@ func (st *HashWriter) Close() error {
 		log.Fatal("Rename failed", err)
 	}
 
-	st.cache.mutex.Lock()
-	st.cache.have[sum] = true
-	st.cache.mutex.Unlock()
-
 	dt := time.Now().Sub(st.start)
 
 	st.cache.AddTiming("Save", st.size, dt)

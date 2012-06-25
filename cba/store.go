@@ -2,8 +2,6 @@ package cba
 
 import (
 	"crypto"
-	md5pkg "crypto/md5"
-	"crypto/sha1"
 	"io"
 	"io/ioutil"
 	"log"
@@ -15,9 +13,6 @@ import (
 	"github.com/hanwen/termite/stats"
 )
 
-var _ = md5pkg.New
-var _ = sha1.New
-
 // Content based addressing cache.
 type Store struct {
 	// Should not change option values after initalizing.
@@ -27,7 +22,6 @@ type Store struct {
 	throughput *stats.PeriodicSampler
 
 	mutex         sync.Mutex
-	have          map[string]bool
 	bytesServed   stats.MemCounter
 	bytesReceived stats.MemCounter
 }
@@ -51,13 +45,8 @@ func NewStore(options *StoreOptions) *Store {
 		}
 	}
 
-	log.Println("reading hex database", options.Dir)
-	db := ReadHexDatabase(options.Dir)
-	log.Println("done reading.")
-
 	c := &Store{
 		Options:  options,
-		have:     db,
 		timings:  stats.NewTimerStats(),
 	}
 	c.initThroughputSampler()
@@ -76,17 +65,12 @@ func hexDigit(b byte) byte {
 }
 
 func HashPath(dir string, hash string) string {
-	hex := make([]byte, 2*len(hash)+1)
+	hex := make([]byte, 2*len(hash))
 	j := 0
 	for i := 0; i < len(hash); i++ {
 		hex[j] = hexDigit(hash[i] >> 4)
 		hex[j+1] = hexDigit(hash[i] & 0x0f)
 		j += 2
-
-		if i == 0 {
-			hex[j] = '/'
-			j++
-		}
 	}
 	prefixDir := fastpath.Join(dir, string(hex[:2]))
 	if err := os.MkdirAll(prefixDir, 0700); err != nil {
@@ -96,10 +80,8 @@ func HashPath(dir string, hash string) string {
 }
 
 func (st *Store) HasHash(hash string) bool {
-	st.mutex.Lock()
-	defer st.mutex.Unlock()
-
-	return st.have[hash]
+	_, err := os.Lstat(st.Path(hash))
+	return err == nil
 }
 
 func (st *Store) Path(hash string) string {
@@ -149,10 +131,6 @@ func (st *Store) DestructiveSavePath(path string) (hash string, err error) {
 		os.Remove(path)
 		return s, nil
 	}
-
-	st.mutex.Lock()
-	st.have[s] = true
-	st.mutex.Unlock()
 
 	p := st.Path(s)
 	err = os.Rename(path, p)
