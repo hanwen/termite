@@ -12,15 +12,11 @@ Work in progress.
 
 COMPILE/INSTALL
 
-* Install go from source: see http://golang.org/doc/install/source
+* Install go; make sure you have revision 
 
-* Patch go with
+  http://code.google.com/p/go/source/detail?r=2aaa88600d48956ce852e5aa912dafb8f5d2c556 
 
- http://codereview.appspot.com/6297083
-
-to fix issue
-
- http://code.google.com/p/go/issues/detail?id=3649
+  or later
 
 * Compiling:
 
