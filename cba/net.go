@@ -39,7 +39,7 @@ func (s *contentServer) ServeChunk(req *Request, rep *Response) (err error) {
 }
 
 func (st *Store) ServeChunk(req *Request, rep *Response) (err error) {
-	if !st.HasHash(req.Hash) {
+	if !st.Has(req.Hash) {
 		rep.Have = false
 		return nil
 	}

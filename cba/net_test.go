@@ -85,7 +85,7 @@ func TestNet(t *testing.T) {
 		t.Fatalf("unexpected error: Fetch: %v,%v", success, err)
 	}
 
-	if !tc.clientStore.HasHash(hash) {
+	if !tc.clientStore.Has(hash) {
 		t.Errorf("after fetch, the hash should be there")
 	}
 
@@ -107,7 +107,7 @@ func TestNetLargeFile(t *testing.T) {
 	hash := tc.server.Save(b)
 
 	tc.client.Fetch(hash, int64(len(b)))
-	if !tc.clientStore.HasHash(hash) {
+	if !tc.clientStore.Has(hash) {
 		t.Errorf("after fetch, the hash should be there")
 	}
 }

@@ -123,7 +123,7 @@ func (me *Master) uncachedGetAttr(name string) (rep *attr.FileAttr) {
 		disk := attr.EncodedAttr{}
 		diskHash := disk.ReadXAttr(p)
 
-		if diskHash != nil && cur.Eq(&disk) && me.contentStore.HasHash(string(diskHash)) {
+		if diskHash != nil && cur.Eq(&disk) && me.contentStore.Has(string(diskHash)) {
 			rep.Hash = string(diskHash)
 			return rep
 		}

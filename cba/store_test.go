@@ -58,7 +58,7 @@ func TestHashWriter(t *testing.T) {
 	if saved != want {
 		t.Fatalf("mismatch got %x want %x", saved, want)
 	}
-	if !tc.store.HasHash(want) {
+	if !tc.store.Has(want) {
 		t.Fatal("TestHashWriter: store does not have path")
 	}
 }
@@ -78,7 +78,7 @@ func TestStore(t *testing.T) {
 	if savedSum != checksum {
 		t.Fatalf("mismatch got %x want %x", savedSum, checksum)
 	}
-	if !tc.store.HasHash(checksum) {
+	if !tc.store.Has(checksum) {
 		t.Fatal("path gone")
 	}
 }
@@ -101,7 +101,7 @@ func TestStoreDestructiveSave(t *testing.T) {
 		t.Error("mismatch")
 	}
 
-	if !tc.store.HasHash(md5(content)) {
+	if !tc.store.Has(md5(content)) {
 		t.Error("fail")
 	}
 
@@ -136,7 +136,7 @@ func TestStoreStream(t *testing.T) {
 	if got != want {
 		t.Fatalf("mismatch %x %x", got, want)
 	}
-	if !tc.store.HasHash(checksum) {
+	if !tc.store.Has(checksum) {
 		t.Fatal("path gone")
 	}
 
@@ -162,7 +162,7 @@ func TestStoreSave(t *testing.T) {
 
 	hash := tc.store.Save(content)
 
-	if !tc.store.HasHash(hash) {
+	if !tc.store.Has(hash) {
 		t.Errorf("should have key %x", hash)
 	}
 }

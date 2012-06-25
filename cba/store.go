@@ -79,7 +79,7 @@ func HashPath(dir string, hash string) string {
 	return fastpath.Join(prefixDir, string(hex[2:]))
 }
 
-func (st *Store) HasHash(hash string) bool {
+func (st *Store) Has(hash string) bool {
 	_, err := os.Lstat(st.Path(hash))
 	return err == nil
 }
@@ -127,7 +127,7 @@ func (st *Store) DestructiveSavePath(path string) (hash string, err error) {
 	size, _ := io.Copy(h, f)
 
 	s := string(h.Sum(nil))
-	if st.HasHash(s) {
+	if st.Has(s) {
 		os.Remove(path)
 		return s, nil
 	}

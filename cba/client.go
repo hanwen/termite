@@ -39,10 +39,10 @@ func (c *Client) Close() {
 func (c *Client) FetchOnce(want string, size int64) (bool, error) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
-	for !c.store.HasHash(want) && c.fetching[want] {
+	for !c.store.Has(want) && c.fetching[want] {
 		c.cond.Wait()
 	}
-	if c.store.HasHash(want) {
+	if c.store.Has(want) {
 		return true, nil
 	}
 	c.fetching[want] = true
