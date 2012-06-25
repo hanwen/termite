@@ -3,12 +3,13 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/hanwen/termite/termite"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
+
+	"github.com/hanwen/termite/termite"
 )
 
 func serveBin(name string) func(w http.ResponseWriter, req *http.Request) {

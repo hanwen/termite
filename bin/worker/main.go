@@ -3,8 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/hanwen/termite/cba"
-	"github.com/hanwen/termite/termite"
 	"io/ioutil"
 	"log"
 	"os"
@@ -13,6 +11,9 @@ import (
 	"runtime"
 	"strconv"
 	"syscall"
+
+	"github.com/hanwen/termite/cba"
+	"github.com/hanwen/termite/termite"
 )
 
 var _ = log.Printf

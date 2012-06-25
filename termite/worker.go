@@ -3,8 +3,6 @@ package termite
 import (
 	"errors"
 	"fmt"
-	"github.com/hanwen/termite/cba"
-	"github.com/hanwen/termite/stats"
 	"io"
 	"io/ioutil"
 	"log"
@@ -16,6 +14,9 @@ import (
 	"strings"
 	"syscall"
 	"time"
+	
+	"github.com/hanwen/termite/cba"
+	"github.com/hanwen/termite/stats"
 )
 
 var _ = log.Println

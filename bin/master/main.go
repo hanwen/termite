@@ -2,8 +2,6 @@ package main
 
 import (
 	"flag"
-	"github.com/hanwen/termite/cba"
-	"github.com/hanwen/termite/termite"
 	"io/ioutil"
 	"log"
 	"net"
@@ -11,6 +9,9 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/hanwen/termite/cba"
+	"github.com/hanwen/termite/termite"
 )
 
 func main() {
