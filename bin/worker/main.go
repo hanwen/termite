@@ -61,7 +61,6 @@ func main() {
 	jobs := flag.Int("jobs", 1, "Max number of jobs to run.")
 	reapcount := flag.Int("reap-count", 1, "Number of jobs per filesystem.")
 	userFlag := flag.String("user", "nobody", "Run as this user.")
-	memcache := flag.Int("filecache", 256, "number of files to cache in memory")
 	logfile := flag.String("logfile", "", "Output log file to use.")
 	stderrFile := flag.String("stderr", "", "File to write stderr output to.")
 	paranoia := flag.Bool("paranoia", false, "Check attribute cache.")
@@ -112,7 +111,6 @@ func main() {
 		LogFileName: *logfile,
 		StoreOptions: cba.StoreOptions{
 			Dir:      *cachedir,
-			MemCount: *memcache,
 		},
 		HeapLimit:   uint64(*heap) * (1 << 20),
 		Coordinator: *coordinator,
