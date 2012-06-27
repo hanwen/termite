@@ -93,13 +93,21 @@ func mirrorStatusHtml(w http.ResponseWriter, s MirrorStatusResponse) {
 	fmt.Fprintf(w, "</ul>\n")
 }
 
-func (w *Worker) serveStatus() {
-	l, err := net.Listen("tcp", ":0")
+func (w *Worker) serveStatus(port, delta int) {
+	var l net.Listener
+	var err error
+	for p := port; p < port + delta; p++ {
+		l, err = net.Listen("tcp", fmt.Sprintf(":%d", p))
+		if err == nil {
+			break
+		}
+	}
+
 	if err != nil {
 		log.Println("status serve:", err)
 		return
 	}
-
+	
 	w.httpStatusPort = l.Addr().(*net.TCPAddr).Port
 	log.Printf("Serving status on port %d", w.httpStatusPort)
 	mux := http.NewServeMux()

@@ -193,7 +193,7 @@ func (me *Worker) RunWorkerServer() {
 	_, portString, _ := net.SplitHostPort(me.listener.Addr().String())
 	fmt.Sscanf(portString, "%d", &me.options.Port)
 	go me.PeriodicHouseholding()
-	go me.serveStatus()
+	go me.serveStatus(me.options.Port, me.options.PortRetry)
 
 	for {
 		conn, err := me.listener.Accept()
