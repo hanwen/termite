@@ -23,19 +23,19 @@ const _TIMEOUT = 10 * time.Second
 var socketRpc *rpc.Client
 var topDir string
 
-func Rpc() *rpc.Client {
+func Rpc() (*rpc.Client, error) {
 	if socketRpc == nil {
 		socket := termite.FindSocket()
 		if socket == "" {
 			wd, _ := os.Getwd()
-			log.Fatal("Could not find .termite-socket; cwd: %s", wd)
+			return nil, fmt.Errorf("Could not find .termite-socket; cwd: %s", wd)
 		}
 		topDir, _ = filepath.Split(socket)
 		topDir = filepath.Clean(topDir)
 		conn := termite.OpenSocketConnection(socket, termite.RPC_CHANNEL, _TIMEOUT)
 		socketRpc = rpc.NewClient(conn)
 	}
-	return socketRpc
+	return socketRpc, nil
 }
 
 func TryRunDirect(req *termite.WorkRequest) {
@@ -117,7 +117,8 @@ func PrepareRun(cmd string, dir string, topdir string) (*termite.WorkRequest, *t
 func Refresh() {
 	req := 1
 	rep := 1
-	err := Rpc().Call("LocalMaster.RefreshAttributeCache", &req, &rep)
+	rpc, err := Rpc()
+	err = rpc.Call("LocalMaster.RefreshAttributeCache", &req, &rep)
 	if err != nil {
 		log.Fatal("LocalMaster.RefreshAttributeCache: ", err)
 	}
@@ -147,7 +148,8 @@ func Inspect(files []string) {
 		p = p[1:]
 		req := attr.AttrRequest{Name: p}
 		rep := attr.AttrResponse{}
-		err := Rpc().Call("LocalMaster.InspectFile", &req, &rep)
+		rpc, err := Rpc()
+		err = rpc.Call("LocalMaster.InspectFile", &req, &rep)
 		if err != nil {
 			log.Fatal("LocalMaster.InspectFile: ", err)
 		}
@@ -210,7 +212,8 @@ func main() {
 	if *shutdown {
 		req := 1
 		rep := 1
-		err := Rpc().Call("LocalMaster.Shutdown", &req, &rep)
+		rpc, err := Rpc()
+		err = rpc.Call("LocalMaster.Shutdown", &req, &rep)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -256,7 +259,11 @@ func main() {
 	} else {
 		req.Debug = req.Debug || os.Getenv("TERMITE_DEBUG") != "" || *debug
 		req.Worker = *worker
-		err := Rpc().Call("LocalMaster.Run", &req, &rep)
+		rpc, err := Rpc()
+		if err != nil {
+			log.Fatalf("rpc connection problem (%s): %v", *command, err)
+		}
+		err = rpc.Call("LocalMaster.Run", &req, &rep)
 		if err != nil {
 			log.Fatal("LocalMaster.Run: ", err)
 		}
@@ -272,6 +279,7 @@ func main() {
 	}
 
 	// TODO - is this necessary?
-	Rpc().Close()
+	rpc, _ := Rpc()
+	rpc.Close()
 	os.Exit(int(waitMsg))
 }
