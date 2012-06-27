@@ -96,6 +96,10 @@ func mirrorStatusHtml(w http.ResponseWriter, s MirrorStatusResponse) {
 func (w *Worker) serveStatus(port, delta int) {
 	var l net.Listener
 	var err error
+	if delta < 1 {
+		delta = 1
+	}
+	
 	for p := port; p < port + delta; p++ {
 		l, err = net.Listen("tcp", fmt.Sprintf(":%d", p))
 		if err == nil {
@@ -103,7 +107,7 @@ func (w *Worker) serveStatus(port, delta int) {
 		}
 	}
 
-	if err != nil {
+	if err != nil || l == nil {
 		log.Println("status serve:", err)
 		return
 	}

@@ -100,6 +100,7 @@ func NewTestCase(t *testing.T) *testCase {
 		Jobs:           1,
 		ReportInterval: 100 * time.Millisecond,
 		Coordinator:    coordinatorAddr.String(),
+		PortRetry:      10,
 	}
 
 	me.wd = me.tmp + "/wd"
