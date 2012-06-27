@@ -27,7 +27,8 @@ func Rpc() *rpc.Client {
 	if socketRpc == nil {
 		socket := termite.FindSocket()
 		if socket == "" {
-			log.Fatal("Could not find .termite-socket")
+			wd, _ := os.Getwd()
+			log.Fatal("Could not find .termite-socket; cwd: %s", wd)
 		}
 		topDir, _ = filepath.Split(socket)
 		topDir = filepath.Clean(topDir)
