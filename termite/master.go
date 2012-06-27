@@ -555,7 +555,7 @@ func (me *Master) replay(fset attr.FileSet) {
 		path := me.contentStore.Path(info.Hash)
 		src, err = os.Open(path)
 		if err != nil {
-			log.Panicf("cache path missing for %x: %q", info.Hash, path)
+			log.Panicf("cache path missing for %x: %v", info.Hash, err)
 		}
 		err = splice.CopyFds(f, src)
 		
