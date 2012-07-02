@@ -8,9 +8,9 @@
     "SkipRefresh": true
 }, {
 // Configuration stuff:
-    "Regexp": ".*echo.*; else echo \"\"",
+    "Regexp": ".*scripts/link-vmlinux.sh",
     "Local": true,
     "Recurse": false,
-    "SkipRefresh": true
+    "SkipRefresh": false
 }]
 
