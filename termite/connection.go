@@ -277,9 +277,8 @@ func OpenSocketConnection(socket string, channel string, timeout time.Duration) 
 
 func FindSocket() string {
 	socket := os.Getenv("TERMITE_SOCKET")
-	wd, _ := os.Getwd()
 	if socket == "" {
-		dir := wd
+		dir, _ := os.Getwd()
 		for dir != "" && dir != "/" {
 			cand := filepath.Join(dir, _SOCKET)
 			fi, _ := os.Lstat(cand)

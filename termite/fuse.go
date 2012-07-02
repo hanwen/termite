@@ -228,9 +228,7 @@ func (fs *workerFuseFs) reap() (dir string, yield map[string]*fs.Result) {
 			continue
 		}
 		newBacking := backingStoreFiles[v.Backing]
-		if newBacking != "" {
-			v.Backing = newBacking
-		} else {
+		if newBacking == "" {
 			newBacking = fmt.Sprintf("%s/%d", dir, i)
 			i++
 
@@ -240,8 +238,8 @@ func (fs *workerFuseFs) reap() (dir string, yield map[string]*fs.Result) {
 			}
 			log.Printf("created %q", newBacking)
 			backingStoreFiles[v.Backing] = newBacking
-			v.Backing = newBacking
 		}
+		v.Backing = newBacking
 	}
 
 	// We saved the backing store files, so we don't need the file system anymore.
