@@ -558,7 +558,7 @@ func (me *Master) replay(fset attr.FileSet) {
 			log.Panicf("cache path missing for %x: %v", info.Hash, err)
 		}
 		err = splice.CopyFds(f, src)
-		
+		src.Close()
 		if err != nil {
 			log.Fatal("f.CopyFds", err)
 		}
