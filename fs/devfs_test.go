@@ -9,7 +9,7 @@ import (
 )
 
 func setupDevNullFs() (wd string, clean func()) {
-	fs := NewDevNullFs()
+	fs := NewDevFs()
 	mountPoint, _ := ioutil.TempDir("", "termite")
 	state, _, err := fuse.MountNodeFileSystem(mountPoint, fs, nil)
 	if err != nil {
@@ -39,5 +39,18 @@ func TestDevNullFs(t *testing.T) {
 	}
 	if len(result) > 0 {
 		t.Error("Should have 0 length read.")
+	}
+}
+
+func TestRandom(t *testing.T) {
+	wd, clean := setupDevNullFs()
+	defer clean()
+
+	c, err := ioutil.ReadFile(wd+"/urandom")
+	if err != nil {
+		t.Error("random read failed", err)
+	}
+	if len(c) == 0 {
+		t.Error("/dev/urandom returned nothing.")
 	}
 }
