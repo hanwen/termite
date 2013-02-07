@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"unicode"
-	
+
 	"github.com/hanwen/go-fuse/fuse"
 )
 
@@ -37,6 +37,7 @@ func NewProcFs() *ProcFs {
 			"self":        1,
 			"filesystems": 1,
 			"mounts":      1,
+			"version":     1,
 		},
 	}
 }
