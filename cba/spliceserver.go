@@ -5,7 +5,7 @@ import (
 	"os"
 	"sync"
 	"time"
-	
+
 	"github.com/hanwen/go-fuse/splice"
 )
 
@@ -69,6 +69,8 @@ type spliceServer struct {
 	mu      sync.Mutex
 	pending map[serverKey][]chan ServeSplice
 }
+
+var _ = (Server)((*spliceServer)(nil))
 
 func newSpliceServer(store *Store) *spliceServer {
 	return &spliceServer{

@@ -28,6 +28,12 @@ type contentServer struct {
 	store *Store
 }
 
+var _ = (Server)((*contentServer)(nil))
+
+func (s *contentServer) Close() {
+	// nop.
+}
+
 func (s *contentServer) ServeChunk(req *Request, rep *Response) (err error) {
 	start := time.Now()
 	err = s.store.ServeChunk(req, rep)
