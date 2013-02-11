@@ -10,9 +10,8 @@ import (
 var defaultServeSize = 64 * (1 << 10)
 
 func (c *Store) ServeConn(conn io.ReadWriteCloser) {
-	var s Server
+	s := c.newServer()
 	rpcServer := rpc.NewServer()
-	s = newSpliceServer(c)
 	rpcServer.RegisterName("Server", s)
 	rpcServer.ServeConn(conn)
 	conn.Close()
