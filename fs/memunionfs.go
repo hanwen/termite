@@ -567,10 +567,11 @@ func (me *memNode) Truncate(file fuse.File, size uint64, context *fuse.Context) 
 	return code
 }
 
-func (me *memNode) Utimens(file fuse.File, atime int64, mtime int64, context *fuse.Context) (code fuse.Status) {
+func (me *memNode) Utimens(file fuse.File, atime, mtime *time.Time, context *fuse.Context) (code fuse.Status) {
 	me.mutex.Lock()
 	defer me.mutex.Unlock()
-	me.info.SetNs(atime, mtime, time.Now().UnixNano())
+	now := time.Now()
+	me.info.SetTimes(atime, mtime, &now)
 	me.changed = true
 	return fuse.OK
 }

@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/hanwen/go-fuse/fuse"
 )
@@ -72,7 +73,7 @@ func (me *LazyLoopbackFile) GetAttr(a *fuse.Attr) fuse.Status {
 	return s
 }
 
-func (me *LazyLoopbackFile) Utimens(atimeNs int64, mtimeNs int64) fuse.Status {
+func (me *LazyLoopbackFile) Utimens(atimeNs, mtimeNs *time.Time) fuse.Status {
 	return fuse.EPERM
 }
 
