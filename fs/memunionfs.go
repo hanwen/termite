@@ -247,7 +247,7 @@ func (me *memNode) Deletable() bool {
 }
 
 func (me *memNode) StatFs() *fuse.StatfsOut {
-	backingFs := &pathfs.LoopbackFileSystem{Root: me.fs.backingStore}
+	backingFs := pathfs.NewLoopbackFileSystem(me.fs.backingStore)
 	return backingFs.StatFs("")
 }
 
@@ -484,7 +484,7 @@ func (me *memNode) newFile(f fuse.File, writable bool) fuse.File {
 func (me *memNode) promote() {
 	if me.backing == "" {
 		me.backing = me.fs.getFilename()
-		destfs := &pathfs.LoopbackFileSystem{Root: "/"}
+		destfs := pathfs.NewLoopbackFileSystem("/")
 		pathfs.CopyFile(me.fs.readonly, destfs,
 			me.original, strings.TrimLeft(me.backing, "/"), nil)
 		me.original = ""

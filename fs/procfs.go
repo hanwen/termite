@@ -18,7 +18,7 @@ var _ = log.Println
 // Read files from proc - since they have 0 size, we must read the
 // file to set the size correctly.
 type ProcFs struct {
-	*pathfs.LoopbackFileSystem
+	pathfs.FileSystem
 	StripPrefix      string
 	AllowedRootFiles map[string]int
 	Uid              int
@@ -26,7 +26,7 @@ type ProcFs struct {
 
 func NewProcFs() *ProcFs {
 	return &ProcFs{
-		LoopbackFileSystem: pathfs.NewLoopbackFileSystem("/proc"),
+		FileSystem: pathfs.NewLoopbackFileSystem("/proc"),
 		StripPrefix:        "/",
 		AllowedRootFiles: map[string]int{
 			"meminfo":     1,
@@ -67,12 +67,12 @@ func (me *ProcFs) GetAttr(name string, context *fuse.Context) (*fuse.Attr, fuse.
 		}
 	}
 
-	fi, code := me.LoopbackFileSystem.GetAttr(name, context)
+	fi, code := me.FileSystem.GetAttr(name, context)
 	if code.Ok() && isNum(dir) && os.Geteuid() == 0 && uint32(fi.Uid) != context.Uid {
 		return nil, fuse.EPERM
 	}
 	if fi != nil && fi.IsRegular() && fi.Size == 0 {
-		p := me.LoopbackFileSystem.GetPath(name)
+		p := filepath.Join("/proc", name)
 		content, _ := ioutil.ReadFile(p)
 		fi.Size = uint64(len(content))
 	}
@@ -80,7 +80,7 @@ func (me *ProcFs) GetAttr(name string, context *fuse.Context) (*fuse.Attr, fuse.
 }
 
 func (me *ProcFs) Open(name string, flags uint32, context *fuse.Context) (fuse.File, fuse.Status) {
-	p := me.LoopbackFileSystem.GetPath(name)
+	p := filepath.Join("/proc", name)
 	content, err := ioutil.ReadFile(p)
 	if err == nil {
 		return fuse.NewDataFile(content), fuse.OK
@@ -96,7 +96,7 @@ func (me *ProcFs) Readlink(name string, context *fuse.Context) (string, fuse.Sta
 	if name == "self" {
 		return fmt.Sprintf("%d", context.Pid), fuse.OK
 	}
-	val, code := me.LoopbackFileSystem.Readlink(name, context)
+	val, code := me.FileSystem.Readlink(name, context)
 	if code.Ok() && strings.HasPrefix(val, me.StripPrefix) {
 		val = "/" + strings.TrimLeft(val[len(me.StripPrefix):], "/")
 	}
