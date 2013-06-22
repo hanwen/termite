@@ -143,7 +143,7 @@ func newWorkerFuseFs(tmpDir string, rpcFs pathfs.FileSystem, writableRoot string
 
 	mounts := []submount{
 		{"proc", pathfs.NewPathNodeFs(me.procFs, nil)},
-		{"sys", pathfs.NewPathNodeFs(&pathfs.ReadonlyFileSystem{pathfs.NewLoopbackFileSystem("/sys")}, nil)},
+		{"sys", pathfs.NewPathNodeFs(pathfs.NewReadonlyFileSystem(pathfs.NewLoopbackFileSystem("/sys")), nil)},
 		{"tmp", fuse.NewMemNodeFs(tmpBacking + "/tmp")},
 		{"dev", fs.NewDevFs()},
 		{"var/tmp", fuse.NewMemNodeFs(tmpBacking + "/vartmp")},
