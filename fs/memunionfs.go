@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/hanwen/go-fuse/fuse"
+	"github.com/hanwen/go-fuse/fuse/pathfs"
 	"github.com/hanwen/termite/fastpath"
 )
 
@@ -19,7 +20,7 @@ var _ = log.Println
 // A unionfs that only uses on-disk backing store for file contents.
 type MemUnionFs struct {
 	fuse.DefaultNodeFileSystem
-	readonly     fuse.FileSystem
+	readonly     pathfs.FileSystem
 	backingStore string
 	connector    *fuse.FileSystemConnector
 
@@ -222,7 +223,7 @@ func (me *MemUnionFs) newNode(isdir bool) *memNode {
 
 // NewMemUnionFs instantiates a new union file system.  Calling this
 // will access the root of the supplied R/O filesystem.
-func NewMemUnionFs(backingStore string, roFs fuse.FileSystem) (*MemUnionFs, error) {
+func NewMemUnionFs(backingStore string, roFs pathfs.FileSystem) (*MemUnionFs, error) {
 	me := &MemUnionFs{
 		deleted:      make(map[string]bool),
 		backingStore: backingStore,
@@ -246,7 +247,7 @@ func (me *memNode) Deletable() bool {
 }
 
 func (me *memNode) StatFs() *fuse.StatfsOut {
-	backingFs := &fuse.LoopbackFileSystem{Root: me.fs.backingStore}
+	backingFs := &pathfs.LoopbackFileSystem{Root: me.fs.backingStore}
 	return backingFs.StatFs("")
 }
 
@@ -483,8 +484,8 @@ func (me *memNode) newFile(f fuse.File, writable bool) fuse.File {
 func (me *memNode) promote() {
 	if me.backing == "" {
 		me.backing = me.fs.getFilename()
-		destfs := &fuse.LoopbackFileSystem{Root: "/"}
-		fuse.CopyFile(me.fs.readonly, destfs,
+		destfs := &pathfs.LoopbackFileSystem{Root: "/"}
+		pathfs.CopyFile(me.fs.readonly, destfs,
 			me.original, strings.TrimLeft(me.backing, "/"), nil)
 		me.original = ""
 		files := me.Inode().Files(0)

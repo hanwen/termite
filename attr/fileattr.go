@@ -158,17 +158,18 @@ func (a *FileAttr) WriteXAttr(p string) {
 	e.FromAttr(a.Attr)
 
 	b := e.Encode(a.Hash)
-	errno := fuse.Setxattr(p, _TERM_XATTR, b, 0)
-	if errno != 0 {
-		log.Printf("Setxattr %s: code %v", p, syscall.Errno(errno))
+	errno := syscall.Setxattr(p, _TERM_XATTR, b, 0)
+	if errno != nil {
+		log.Printf("Setxattr %s: code %v", p, errno)
 	}
 }
 
 func (e *EncodedAttr) ReadXAttr(path string) (hash []byte) {
 	b := make([]byte, 64)
-	val, errno := fuse.GetXAttr(path, _TERM_XATTR, b)
-	if errno == 0 {
-		return e.Decode(val)
+	val, errno := syscall.Getxattr(path, _TERM_XATTR, b)
+	if errno == nil {
+		// TODO needs test.
+		return e.Decode(b[:val])
 	}
 	return nil
 }

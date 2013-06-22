@@ -99,8 +99,8 @@ func (w *Worker) serveStatus(port, delta int) {
 	if delta < 1 {
 		delta = 1
 	}
-	
-	for p := port; p < port + delta; p++ {
+
+	for p := port; p < port+delta; p++ {
 		l, err = net.Listen("tcp", fmt.Sprintf(":%d", p))
 		if err == nil {
 			break
@@ -111,7 +111,7 @@ func (w *Worker) serveStatus(port, delta int) {
 		log.Println("status serve:", err)
 		return
 	}
-	
+
 	w.httpStatusPort = l.Addr().(*net.TCPAddr).Port
 	log.Printf("Serving status on port %d", w.httpStatusPort)
 	mux := http.NewServeMux()

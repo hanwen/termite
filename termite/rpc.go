@@ -46,9 +46,9 @@ type WorkerStatusResponse struct {
 	Accepting    bool
 
 	// In chronological order.
-	CpuStats            []stats.CpuStat
-	TotalCpu            stats.CpuStat
-	DiskStats           []stats.DiskStat
+	CpuStats  []stats.CpuStat
+	TotalCpu  stats.CpuStat
+	DiskStats []stats.DiskStat
 
 	PhaseNames  []string
 	PhaseCounts []int

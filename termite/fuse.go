@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/hanwen/go-fuse/fuse"
+	"github.com/hanwen/go-fuse/fuse/pathfs"
 	"github.com/hanwen/termite/attr"
 	"github.com/hanwen/termite/fs"
 )
@@ -26,8 +27,8 @@ type workerFuseFs struct {
 	fsConnector *fuse.FileSystemConnector
 	unionFs     *fs.MemUnionFs
 	procFs      *fs.ProcFs
-	rpcNodeFs   *fuse.PathNodeFs
-	unionNodeFs *fuse.PathNodeFs
+	rpcNodeFs   *pathfs.PathNodeFs
+	unionNodeFs *pathfs.PathNodeFs
 
 	// Protected by Mirror.fsMutex
 	id      string
@@ -65,12 +66,12 @@ func (me *workerFuseFs) Stop() {
 }
 
 func (me *workerFuseFs) SetDebug(debug bool) {
-	me.MountState.Debug = debug
-	me.fsConnector.Debug = debug
-	me.rpcNodeFs.Debug = debug
+	me.MountState.SetDebug(debug)
+	me.fsConnector.SetDebug(debug)
+	me.rpcNodeFs.SetDebug(debug)
 }
 
-func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string, nobody *User) (*workerFuseFs, error) {
+func newWorkerFuseFs(tmpDir string, rpcFs pathfs.FileSystem, writableRoot string, nobody *User) (*workerFuseFs, error) {
 	tmpDir, err := ioutil.TempDir(tmpDir, "termite-task")
 	if err != nil {
 		return nil, err
@@ -104,7 +105,7 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string, 
 		fuseOpts.AllowOther = true
 	}
 
-	me.rpcNodeFs = fuse.NewPathNodeFs(rpcFs, nil)
+	me.rpcNodeFs = pathfs.NewPathNodeFs(rpcFs, nil)
 	ttl := 30 * time.Second
 	mOpts := fuse.FileSystemOptions{
 		EntryTimeout:    ttl,
@@ -125,7 +126,7 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string, 
 	go me.MountState.Loop()
 
 	me.unionFs, err = fs.NewMemUnionFs(
-		me.rwDir, &fuse.PrefixFileSystem{rpcFs, me.writableRoot})
+		me.rwDir, &pathfs.PrefixFileSystem{rpcFs, me.writableRoot})
 	if err != nil {
 		return nil, err
 	}
@@ -141,8 +142,8 @@ func newWorkerFuseFs(tmpDir string, rpcFs fuse.FileSystem, writableRoot string, 
 	}
 
 	mounts := []submount{
-		{"proc", fuse.NewPathNodeFs(me.procFs, nil)},
-		{"sys", fuse.NewPathNodeFs(&fuse.ReadonlyFileSystem{fuse.NewLoopbackFileSystem("/sys")}, nil)},
+		{"proc", pathfs.NewPathNodeFs(me.procFs, nil)},
+		{"sys", pathfs.NewPathNodeFs(&pathfs.ReadonlyFileSystem{pathfs.NewLoopbackFileSystem("/sys")}, nil)},
 		{"tmp", fuse.NewMemNodeFs(tmpBacking + "/tmp")},
 		{"dev", fs.NewDevFs()},
 		{"var/tmp", fuse.NewMemNodeFs(tmpBacking + "/vartmp")},

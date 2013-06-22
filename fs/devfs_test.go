@@ -4,7 +4,7 @@ import (
 	"io/ioutil"
 	"os"
 	"testing"
-	
+
 	"github.com/hanwen/go-fuse/fuse"
 )
 
@@ -16,7 +16,7 @@ func setupDevNullFs() (wd string, clean func()) {
 		panic(err)
 	}
 
-	state.Debug = fuse.VerboseTest()
+	state.SetDebug(fuse.VerboseTest())
 	go state.Loop()
 	return mountPoint, func() {
 		state.Unmount()
@@ -46,7 +46,7 @@ func TestRandom(t *testing.T) {
 	wd, clean := setupDevNullFs()
 	defer clean()
 
-	c, err := ioutil.ReadFile(wd+"/urandom")
+	c, err := ioutil.ReadFile(wd + "/urandom")
 	if err != nil {
 		t.Error("random read failed", err)
 	}

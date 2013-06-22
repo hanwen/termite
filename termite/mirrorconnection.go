@@ -10,7 +10,7 @@ import (
 	"strings"
 	"sync"
 	"time"
-	
+
 	"github.com/hanwen/termite/attr"
 	"github.com/hanwen/termite/cba"
 	"github.com/hanwen/termite/stats"

@@ -12,7 +12,7 @@ import (
 	"strings"
 	"syscall"
 	"time"
-	
+
 	"github.com/hanwen/go-fuse/fuse"
 )
 

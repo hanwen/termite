@@ -13,8 +13,9 @@ import (
 	"syscall"
 	"testing"
 	"time"
-	
+
 	"github.com/hanwen/go-fuse/fuse"
+	"github.com/hanwen/go-fuse/fuse/pathfs"
 )
 
 var _ = fmt.Print
@@ -22,7 +23,11 @@ var _ = log.Print
 
 const entryTtl = 100 * time.Millisecond
 
-var CheckSuccess = fuse.CheckSuccess
+func CheckSuccess(err error) {
+	if err != nil {
+		log.Fatal(err)
+	}
+}
 
 // TODO - use ioutil.WriteFile directly.
 func writeToFile(path string, contents string) {
@@ -38,11 +43,11 @@ func readFromFile(path string) string {
 
 func dirNames(path string) map[string]bool {
 	f, err := os.Open(path)
-	fuse.CheckSuccess(err)
+	CheckSuccess(err)
 
 	result := make(map[string]bool)
 	names, err := f.Readdirnames(-1)
-	fuse.CheckSuccess(err)
+	CheckSuccess(err)
 	err = f.Close()
 	CheckSuccess(err)
 
@@ -58,15 +63,15 @@ func setupMemUfs(t *testing.T) (workdir string, ufs *MemUnionFs, cleanup func())
 
 	wd, _ := ioutil.TempDir("", "")
 	err := os.Mkdir(wd+"/mnt", 0700)
-	fuse.CheckSuccess(err)
+	CheckSuccess(err)
 
 	err = os.Mkdir(wd+"/backing", 0700)
-	fuse.CheckSuccess(err)
+	CheckSuccess(err)
 
 	os.Mkdir(wd+"/ro", 0700)
-	fuse.CheckSuccess(err)
+	CheckSuccess(err)
 
-	roFs := fuse.NewLoopbackFileSystem(wd + "/ro")
+	roFs := pathfs.NewLoopbackFileSystem(wd + "/ro")
 	memFs, err := NewMemUnionFs(wd+"/backing", roFs)
 	if err != nil {
 		t.Fatal(err)
@@ -83,8 +88,8 @@ func setupMemUfs(t *testing.T) (workdir string, ufs *MemUnionFs, cleanup func())
 
 	state, conn, err := fuse.MountNodeFileSystem(wd+"/mnt", memFs, opts)
 	CheckSuccess(err)
-	conn.Debug = fuse.VerboseTest()
-	state.Debug = fuse.VerboseTest()
+	conn.SetDebug(fuse.VerboseTest())
+	state.SetDebug(fuse.VerboseTest())
 	go state.Loop()
 
 	return wd, memFs, func() {

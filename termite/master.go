@@ -11,7 +11,7 @@ import (
 	"strings"
 	"sync"
 	"time"
-	
+
 	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/go-fuse/splice"
 	"github.com/hanwen/termite/attr"
@@ -550,7 +550,7 @@ func (me *Master) replay(fset attr.FileSet) {
 		}
 
 		req.NewFiles[info.Hash] = append(req.NewFiles[info.Hash], f.Name())
-	
+
 		var src *os.File
 		path := me.contentStore.Path(info.Hash)
 		src, err = os.Open(path)

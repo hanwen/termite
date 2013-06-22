@@ -14,7 +14,7 @@ import (
 	"strings"
 	"syscall"
 	"time"
-	
+
 	"github.com/hanwen/termite/cba"
 	"github.com/hanwen/termite/stats"
 )

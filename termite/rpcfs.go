@@ -6,6 +6,7 @@ import (
 	"log"
 
 	"github.com/hanwen/go-fuse/fuse"
+	"github.com/hanwen/go-fuse/fuse/pathfs"
 	"github.com/hanwen/go-fuse/raw"
 	"github.com/hanwen/termite/attr"
 	"github.com/hanwen/termite/cba"
@@ -13,7 +14,7 @@ import (
 )
 
 type RpcFs struct {
-	fuse.DefaultFileSystem
+	pathfs.DefaultFileSystem
 	cache         *cba.Store
 	attrClient    *attr.Client
 	contentClient *cba.Client

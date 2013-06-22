@@ -2,9 +2,8 @@ package fs
 
 import (
 	"os"
-	
+
 	"github.com/hanwen/go-fuse/fuse"
-	
 )
 
 const _NULL = "null"
@@ -33,7 +32,6 @@ func (me *DevFs) Root() fuse.FsNode {
 func (me *DevFs) String() string {
 	return "DevFs"
 }
-
 
 type nullNode struct {
 	fuse.DefaultFsNode
@@ -75,7 +73,7 @@ func (me *urandomNode) Access(mode uint32, context *fuse.Context) (code fuse.Sta
 }
 
 func (me *urandomNode) Open(flags uint32, context *fuse.Context) (file fuse.File, code fuse.Status) {
-	if flags & fuse.O_ANYWRITE != 0 {
+	if flags&fuse.O_ANYWRITE != 0 {
 		return nil, fuse.EPERM
 	}
 	f, err := os.Open("/dev/urandom")
@@ -83,12 +81,12 @@ func (me *urandomNode) Open(flags uint32, context *fuse.Context) (file fuse.File
 		return nil, fuse.ToStatus(err)
 	}
 	defer f.Close()
-	
+
 	randData := make([]byte, me.size)
 	n, err := f.Read(randData)
 	if err != nil {
 		return nil, fuse.ToStatus(err)
 	}
-	
+
 	return fuse.NewDataFile(randData[:n]), fuse.OK
 }

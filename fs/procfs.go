@@ -9,6 +9,7 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/hanwen/go-fuse/fuse/pathfs"
 	"github.com/hanwen/go-fuse/fuse"
 )
 
@@ -17,7 +18,7 @@ var _ = log.Println
 // Read files from proc - since they have 0 size, we must read the
 // file to set the size correctly.
 type ProcFs struct {
-	*fuse.LoopbackFileSystem
+	*pathfs.LoopbackFileSystem
 	StripPrefix      string
 	AllowedRootFiles map[string]int
 	Uid              int
@@ -25,7 +26,7 @@ type ProcFs struct {
 
 func NewProcFs() *ProcFs {
 	return &ProcFs{
-		LoopbackFileSystem: fuse.NewLoopbackFileSystem("/proc"),
+		LoopbackFileSystem: pathfs.NewLoopbackFileSystem("/proc"),
 		StripPrefix:        "/",
 		AllowedRootFiles: map[string]int{
 			"meminfo":     1,
