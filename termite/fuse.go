@@ -118,7 +118,7 @@ func newWorkerFuseFs(tmpDir string, rpcFs pathfs.FileSystem, writableRoot string
 	}
 
 	me.fsConnector = fuse.NewFileSystemConnector(me.rpcNodeFs, &mOpts)
-	me.MountState = fuse.NewMountState(me.fsConnector)
+	me.MountState = fuse.NewMountState(me.fsConnector.RawFS())
 	err = me.MountState.Mount(me.mount, &fuseOpts)
 	if err != nil {
 		return nil, err
@@ -126,7 +126,7 @@ func newWorkerFuseFs(tmpDir string, rpcFs pathfs.FileSystem, writableRoot string
 	go me.MountState.Loop()
 
 	me.unionFs, err = fs.NewMemUnionFs(
-		me.rwDir, &pathfs.PrefixFileSystem{rpcFs, me.writableRoot})
+		me.rwDir, pathfs.NewPrefixFileSystem(rpcFs, me.writableRoot))
 	if err != nil {
 		return nil, err
 	}
