@@ -14,7 +14,7 @@ import (
 )
 
 type RpcFs struct {
-	pathfs.DefaultFileSystem
+	pathfs.FileSystem
 	cache         *cba.Store
 	attrClient    *attr.Client
 	contentClient *cba.Client
@@ -26,6 +26,7 @@ type RpcFs struct {
 
 func NewRpcFs(attrClient *attr.Client, cache *cba.Store, contentConn io.ReadWriteCloser) *RpcFs {
 	me := &RpcFs{
+		FileSystem:    pathfs.NewDefaultFileSystem(),
 		attrClient:    attrClient,
 		contentClient: cache.NewClient(contentConn),
 		timings:       stats.NewTimerStats(),
