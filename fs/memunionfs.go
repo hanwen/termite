@@ -19,7 +19,7 @@ var _ = log.Println
 
 // A unionfs that only uses on-disk backing store for file contents.
 type MemUnionFs struct {
-	fuse.DefaultNodeFileSystem
+	fuse.NodeFileSystem
 	readonly     pathfs.FileSystem
 	backingStore string
 	connector    *fuse.FileSystemConnector
@@ -37,7 +37,7 @@ type MemUnionFs struct {
 }
 
 type memNode struct {
-	fuse.DefaultFsNode
+	fuse.FsNode
 	fs *MemUnionFs
 
 	// protects mutable data below.
@@ -213,6 +213,7 @@ func (me *MemUnionFs) Root() fuse.FsNode {
 
 func (me *MemUnionFs) newNode(isdir bool) *memNode {
 	n := &memNode{
+		FsNode: fuse.NewDefaultFsNode(),
 		fs:    me,
 		mutex: &me.mutex,
 	}
@@ -225,6 +226,7 @@ func (me *MemUnionFs) newNode(isdir bool) *memNode {
 // will access the root of the supplied R/O filesystem.
 func NewMemUnionFs(backingStore string, roFs pathfs.FileSystem) (*MemUnionFs, error) {
 	me := &MemUnionFs{
+		NodeFileSystem: fuse.NewDefaultNodeFileSystem(),
 		deleted:      make(map[string]bool),
 		backingStore: backingStore,
 		readonly:     roFs,

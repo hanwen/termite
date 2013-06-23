@@ -9,24 +9,28 @@ import (
 const _NULL = "null"
 
 type DevFs struct {
-	fuse.DefaultNodeFileSystem
-	root fuse.DefaultFsNode
+	fuse.NodeFileSystem
+	root fuse.FsNode
 }
 
 func NewDevFs() *DevFs {
-	me := &DevFs{}
+	me := &DevFs{
+		NodeFileSystem: fuse.NewDefaultNodeFileSystem(),
+		root: fuse.NewDefaultFsNode(),
+	}
 	return me
 }
 
 func (me *DevFs) OnMount(fsc *fuse.FileSystemConnector) {
-	n := me.root.Inode().New(false, &nullNode{})
+	def := fuse.NewDefaultFsNode()
+	n := me.root.Inode().New(false, &nullNode{FsNode: def})
 	me.root.Inode().AddChild("null", n)
-	n = me.root.Inode().New(false, &urandomNode{size: 128})
+	n = me.root.Inode().New(false, &urandomNode{FsNode: def, size: 128})
 	me.root.Inode().AddChild("urandom", n)
 }
 
 func (me *DevFs) Root() fuse.FsNode {
-	return &me.root
+	return me.root
 }
 
 func (me *DevFs) String() string {
@@ -34,7 +38,7 @@ func (me *DevFs) String() string {
 }
 
 type nullNode struct {
-	fuse.DefaultFsNode
+	fuse.FsNode
 }
 
 func (me *nullNode) Deletable() bool {
@@ -54,7 +58,7 @@ func (me *nullNode) Open(flags uint32, context *fuse.Context) (file fuse.File, c
 }
 
 type urandomNode struct {
-	fuse.DefaultFsNode
+	fuse.FsNode
 	size int
 }
 
