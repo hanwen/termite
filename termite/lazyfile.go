@@ -12,18 +12,22 @@ import (
 
 var _ = log.Println
 
-type LazyLoopbackFile struct {
-	fuse.DefaultFile
+type lazyLoopbackFile struct {
+	fuse.File
 
 	mu   sync.Mutex
 	f    fuse.File
 	Name string
 }
 
-func (me *LazyLoopbackFile) SetInode(*fuse.Inode) {
+func NewLazyLoopbackFile(n string) fuse.File {
+	return &lazyLoopbackFile{
+		File: fuse.NewDefaultFile(),
+		Name: n,
+	}
 }
 
-func (me *LazyLoopbackFile) file() (fuse.File, fuse.Status) {
+func (me *lazyLoopbackFile) file() (fuse.File, fuse.Status) {
 	me.mu.Lock()
 	defer me.mu.Unlock()
 	if me.f == nil {
@@ -31,21 +35,21 @@ func (me *LazyLoopbackFile) file() (fuse.File, fuse.Status) {
 		if err != nil {
 			return nil, fuse.ToStatus(err)
 		}
-		me.f = &fuse.LoopbackFile{File: f}
+		me.f = fuse.NewLoopbackFile(f)
 	}
 	return me.f, fuse.OK
 }
 
-func (me *LazyLoopbackFile) InnerFile() fuse.File {
+func (me *lazyLoopbackFile) InnerFile() fuse.File {
 	f, _ := me.file()
 	return f
 }
 
-func (me *LazyLoopbackFile) String() string {
-	return fmt.Sprintf("LazyLoopbackFile(%s)", me.Name)
+func (me *lazyLoopbackFile) String() string {
+	return fmt.Sprintf("lazyLoopbackFile(%s)", me.Name)
 }
 
-func (me *LazyLoopbackFile) Read(buf []byte, off int64) (fuse.ReadResult, fuse.Status) {
+func (me *lazyLoopbackFile) Read(buf []byte, off int64) (fuse.ReadResult, fuse.Status) {
 	f, s := me.file()
 	if s.Ok() {
 		return f.Read(buf, off)
@@ -53,7 +57,7 @@ func (me *LazyLoopbackFile) Read(buf []byte, off int64) (fuse.ReadResult, fuse.S
 	return nil, fuse.OK
 }
 
-func (me *LazyLoopbackFile) Release() {
+func (me *lazyLoopbackFile) Release() {
 	me.mu.Lock()
 	defer me.mu.Unlock()
 	if me.f != nil {
@@ -61,11 +65,11 @@ func (me *LazyLoopbackFile) Release() {
 	}
 }
 
-func (me *LazyLoopbackFile) Write(s []byte, off int64) (uint32, fuse.Status) {
+func (me *lazyLoopbackFile) Write(s []byte, off int64) (uint32, fuse.Status) {
 	return 0, fuse.EPERM
 }
 
-func (me *LazyLoopbackFile) GetAttr(a *fuse.Attr) fuse.Status {
+func (me *lazyLoopbackFile) GetAttr(a *fuse.Attr) fuse.Status {
 	f, s := me.file()
 	if s.Ok() {
 		return f.GetAttr(a)
@@ -73,18 +77,18 @@ func (me *LazyLoopbackFile) GetAttr(a *fuse.Attr) fuse.Status {
 	return s
 }
 
-func (me *LazyLoopbackFile) Utimens(atimeNs, mtimeNs *time.Time) fuse.Status {
+func (me *lazyLoopbackFile) Utimens(atimeNs, mtimeNs *time.Time) fuse.Status {
 	return fuse.EPERM
 }
 
-func (me *LazyLoopbackFile) Truncate(size uint64) fuse.Status {
+func (me *lazyLoopbackFile) Truncate(size uint64) fuse.Status {
 	return fuse.EPERM
 }
 
-func (me *LazyLoopbackFile) Chown(uid uint32, gid uint32) fuse.Status {
+func (me *lazyLoopbackFile) Chown(uid uint32, gid uint32) fuse.Status {
 	return fuse.EPERM
 }
 
-func (me *LazyLoopbackFile) Chmod(perms uint32) fuse.Status {
+func (me *lazyLoopbackFile) Chmod(perms uint32) fuse.Status {
 	return fuse.EPERM
 }

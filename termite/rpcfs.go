@@ -127,7 +127,7 @@ func (me *RpcFs) Open(name string, flags uint32, context *fuse.Context) (fuse.Fi
 	fa := *a.Attr
 	return &fuse.WithFlags{
 		File: &rpcFsFile{
-			&LazyLoopbackFile{Name: me.cache.Path(a.Hash)},
+			NewLazyLoopbackFile(me.cache.Path(a.Hash)),
 			fa,
 		},
 		FuseFlags: raw.FOPEN_KEEP_CACHE,

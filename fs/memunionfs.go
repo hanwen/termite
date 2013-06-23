@@ -431,7 +431,7 @@ func (me *memNode) Create(name string, flags uint32, mode uint32, context *fuse.
 	me.Inode().AddChild(name, n.Inode())
 	me.touch()
 	me.fs.openWritable++
-	return n.newFile(&fuse.LoopbackFile{File: f}, true), n, fuse.OK
+	return n.newFile(fuse.NewLoopbackFile(f), true), n, fuse.OK
 }
 
 type memNodeFile struct {
@@ -496,7 +496,7 @@ func (me *memNode) promote() {
 			if err != nil {
 				panic("error opening backing file")
 			}
-			mf.File = &fuse.LoopbackFile{File: osFile}
+			mf.File = fuse.NewLoopbackFile(osFile)
 			inner.Flush()
 			inner.Release()
 		}
@@ -520,7 +520,7 @@ func (me *memNode) Open(flags uint32, context *fuse.Context) (file fuse.File, co
 		if wr {
 			me.fs.openWritable++
 		}
-		return me.newFile(&fuse.LoopbackFile{File: f}, wr), fuse.OK
+		return me.newFile(fuse.NewLoopbackFile(f), wr), fuse.OK
 	}
 
 	file, code = me.fs.readonly.Open(me.original, flags, context)
