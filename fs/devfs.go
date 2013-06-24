@@ -17,7 +17,7 @@ type DevFs struct {
 func NewDevFs() *DevFs {
 	me := &DevFs{
 		FileSystem: nodefs.NewDefaultFileSystem(),
-		root:           nodefs.NewDefaultNode(),
+		root:       nodefs.NewDefaultNode(),
 	}
 	return me
 }

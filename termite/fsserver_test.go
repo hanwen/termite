@@ -58,7 +58,7 @@ type rpcFsTestCase struct {
 	attr                     *attr.AttributeCache
 	server                   *attr.Server
 	rpcFs                    *RpcFs
-	state                    *fuse.MountState
+	state                    *fuse.Server
 
 	sockL, sockR       io.ReadWriteCloser
 	contentL, contentR io.ReadWriteCloser
@@ -126,7 +126,7 @@ func newRpcFsTestCase(t *testing.T) (me *rpcFsTestCase) {
 		t.Fatal("Mount", err)
 	}
 
-	go me.state.Loop()
+	go me.state.Serve()
 	return me
 }
 

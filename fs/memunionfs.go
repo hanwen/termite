@@ -214,9 +214,9 @@ func (me *MemUnionFs) Root() nodefs.Node {
 
 func (me *MemUnionFs) newNode(isdir bool) *memNode {
 	n := &memNode{
-		Node: nodefs.NewDefaultNode(),
-		fs:     me,
-		mutex:  &me.mutex,
+		Node:  nodefs.NewDefaultNode(),
+		fs:    me,
+		mutex: &me.mutex,
 	}
 	now := time.Now()
 	n.info.SetTimes(&now, &now, &now)
@@ -227,10 +227,10 @@ func (me *MemUnionFs) newNode(isdir bool) *memNode {
 // will access the root of the supplied R/O filesystem.
 func NewMemUnionFs(backingStore string, roFs pathfs.FileSystem) (*MemUnionFs, error) {
 	me := &MemUnionFs{
-		FileSystem: nodefs.NewDefaultFileSystem(),
-		deleted:        make(map[string]bool),
-		backingStore:   backingStore,
-		readonly:       roFs,
+		FileSystem:   nodefs.NewDefaultFileSystem(),
+		deleted:      make(map[string]bool),
+		backingStore: backingStore,
+		readonly:     roFs,
 	}
 
 	me.root = me.newNode(true)

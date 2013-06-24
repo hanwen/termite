@@ -18,7 +18,7 @@ func setupDevNullFs() (wd string, clean func()) {
 	}
 
 	state.SetDebug(fuse.VerboseTest())
-	go state.Loop()
+	go state.Serve()
 	return mountPoint, func() {
 		state.Unmount()
 		os.RemoveAll(mountPoint)

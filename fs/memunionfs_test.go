@@ -91,7 +91,7 @@ func setupMemUfs(t *testing.T) (workdir string, ufs *MemUnionFs, cleanup func())
 	CheckSuccess(err)
 	conn.SetDebug(fuse.VerboseTest())
 	state.SetDebug(fuse.VerboseTest())
-	go state.Loop()
+	go state.Serve()
 
 	return wd, memFs, func() {
 		state.Unmount()
