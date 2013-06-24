@@ -4,32 +4,33 @@ import (
 	"os"
 
 	"github.com/hanwen/go-fuse/fuse"
+	"github.com/hanwen/go-fuse/fuse/nodefs"
 )
 
 const _NULL = "null"
 
 type DevFs struct {
-	fuse.NodeFileSystem
-	root fuse.FsNode
+	nodefs.FileSystem
+	root nodefs.Node
 }
 
 func NewDevFs() *DevFs {
 	me := &DevFs{
-		NodeFileSystem: fuse.NewDefaultNodeFileSystem(),
-		root: fuse.NewDefaultFsNode(),
+		FileSystem: nodefs.NewDefaultFileSystem(),
+		root:           nodefs.NewDefaultNode(),
 	}
 	return me
 }
 
-func (me *DevFs) OnMount(fsc *fuse.FileSystemConnector) {
-	def := fuse.NewDefaultFsNode()
-	n := me.root.Inode().New(false, &nullNode{FsNode: def})
+func (me *DevFs) OnMount(fsc *nodefs.FileSystemConnector) {
+	def := nodefs.NewDefaultNode()
+	n := me.root.Inode().New(false, &nullNode{Node: def})
 	me.root.Inode().AddChild("null", n)
-	n = me.root.Inode().New(false, &urandomNode{FsNode: def, size: 128})
+	n = me.root.Inode().New(false, &urandomNode{Node: def, size: 128})
 	me.root.Inode().AddChild("urandom", n)
 }
 
-func (me *DevFs) Root() fuse.FsNode {
+func (me *DevFs) Root() nodefs.Node {
 	return me.root
 }
 
@@ -38,7 +39,7 @@ func (me *DevFs) String() string {
 }
 
 type nullNode struct {
-	fuse.FsNode
+	nodefs.Node
 }
 
 func (me *nullNode) Deletable() bool {
@@ -49,16 +50,16 @@ func (me *nullNode) Access(mode uint32, context *fuse.Context) (code fuse.Status
 	return fuse.OK
 }
 
-func (me *nullNode) Truncate(file fuse.File, offset uint64, context *fuse.Context) (code fuse.Status) {
+func (me *nullNode) Truncate(file nodefs.File, offset uint64, context *fuse.Context) (code fuse.Status) {
 	return fuse.OK
 }
 
-func (me *nullNode) Open(flags uint32, context *fuse.Context) (file fuse.File, code fuse.Status) {
-	return fuse.NewDevNullFile(), fuse.OK
+func (me *nullNode) Open(flags uint32, context *fuse.Context) (file nodefs.File, code fuse.Status) {
+	return nodefs.NewDevNullFile(), fuse.OK
 }
 
 type urandomNode struct {
-	fuse.FsNode
+	nodefs.Node
 	size int
 }
 
@@ -66,7 +67,7 @@ func (me *urandomNode) Deletable() bool {
 	return false
 }
 
-func (me *urandomNode) GetAttr(out *fuse.Attr, file fuse.File, context *fuse.Context) (code fuse.Status) {
+func (me *urandomNode) GetAttr(out *fuse.Attr, file nodefs.File, context *fuse.Context) (code fuse.Status) {
 	out.Mode = uint32(fuse.S_IFREG | 0444)
 	out.Size = uint64(me.size)
 	return fuse.OK
@@ -76,7 +77,7 @@ func (me *urandomNode) Access(mode uint32, context *fuse.Context) (code fuse.Sta
 	return fuse.OK
 }
 
-func (me *urandomNode) Open(flags uint32, context *fuse.Context) (file fuse.File, code fuse.Status) {
+func (me *urandomNode) Open(flags uint32, context *fuse.Context) (file nodefs.File, code fuse.Status) {
 	if flags&fuse.O_ANYWRITE != 0 {
 		return nil, fuse.EPERM
 	}
@@ -92,5 +93,5 @@ func (me *urandomNode) Open(flags uint32, context *fuse.Context) (file fuse.File
 		return nil, fuse.ToStatus(err)
 	}
 
-	return fuse.NewDataFile(randData[:n]), fuse.OK
+	return nodefs.NewDataFile(randData[:n]), fuse.OK
 }

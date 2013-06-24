@@ -9,8 +9,9 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/hanwen/go-fuse/fuse/pathfs"
 	"github.com/hanwen/go-fuse/fuse"
+	"github.com/hanwen/go-fuse/fuse/nodefs"
+	"github.com/hanwen/go-fuse/fuse/pathfs"
 )
 
 var _ = log.Println
@@ -26,8 +27,8 @@ type ProcFs struct {
 
 func NewProcFs() *ProcFs {
 	return &ProcFs{
-		FileSystem: pathfs.NewLoopbackFileSystem("/proc"),
-		StripPrefix:        "/",
+		FileSystem:  pathfs.NewLoopbackFileSystem("/proc"),
+		StripPrefix: "/",
 		AllowedRootFiles: map[string]int{
 			"meminfo":     1,
 			"cpuinfo":     1,
@@ -79,11 +80,11 @@ func (me *ProcFs) GetAttr(name string, context *fuse.Context) (*fuse.Attr, fuse.
 	return fi, code
 }
 
-func (me *ProcFs) Open(name string, flags uint32, context *fuse.Context) (fuse.File, fuse.Status) {
+func (me *ProcFs) Open(name string, flags uint32, context *fuse.Context) (nodefs.File, fuse.Status) {
 	p := filepath.Join("/proc", name)
 	content, err := ioutil.ReadFile(p)
 	if err == nil {
-		return fuse.NewDataFile(content), fuse.OK
+		return nodefs.NewDataFile(content), fuse.OK
 	}
 	return nil, fuse.ToStatus(err)
 }

@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/hanwen/go-fuse/fuse"
+	"github.com/hanwen/go-fuse/fuse/nodefs"
 	"github.com/hanwen/go-fuse/fuse/pathfs"
 )
 
@@ -79,14 +80,14 @@ func setupMemUfs(t *testing.T) (workdir string, ufs *MemUnionFs, cleanup func())
 
 	// We configure timeouts are smaller, so we can check for
 	// UnionFs's cache consistency.
-	opts := &fuse.FileSystemOptions{
+	opts := &nodefs.Options{
 		EntryTimeout:    entryTtl / 2,
 		AttrTimeout:     entryTtl / 2,
 		NegativeTimeout: entryTtl / 2,
 		PortableInodes:  true,
 	}
 
-	state, conn, err := fuse.MountNodeFileSystem(wd+"/mnt", memFs, opts)
+	state, conn, err := nodefs.MountFileSystem(wd+"/mnt", memFs, opts)
 	CheckSuccess(err)
 	conn.SetDebug(fuse.VerboseTest())
 	state.SetDebug(fuse.VerboseTest())

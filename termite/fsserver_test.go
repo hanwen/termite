@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/hanwen/go-fuse/fuse"
+	"github.com/hanwen/go-fuse/fuse/nodefs"
 	"github.com/hanwen/go-fuse/fuse/pathfs"
 	"github.com/hanwen/termite/attr"
 	"github.com/hanwen/termite/cba"
@@ -119,7 +120,7 @@ func newRpcFsTestCase(t *testing.T) (me *rpcFsTestCase) {
 	me.rpcFs = NewRpcFs(attrClient, me.clientStore, me.contentR)
 	me.rpcFs.id = "rpcfs_test"
 	nfs := pathfs.NewPathNodeFs(me.rpcFs, nil)
-	me.state, _, err = fuse.MountNodeFileSystem(me.mnt, nfs, nil)
+	me.state, _, err = nodefs.MountFileSystem(me.mnt, nfs, nil)
 	me.state.SetDebug(fuse.VerboseTest())
 	if err != nil {
 		t.Fatal("Mount", err)

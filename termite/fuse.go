@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/hanwen/go-fuse/fuse"
+	"github.com/hanwen/go-fuse/fuse/nodefs"
 	"github.com/hanwen/go-fuse/fuse/pathfs"
 	"github.com/hanwen/termite/attr"
 	"github.com/hanwen/termite/fs"
@@ -24,7 +25,7 @@ type workerFuseFs struct {
 	// without leading /
 	writableRoot string
 	*fuse.MountState
-	fsConnector *fuse.FileSystemConnector
+	fsConnector *nodefs.FileSystemConnector
 	unionFs     *fs.MemUnionFs
 	procFs      *fs.ProcFs
 	rpcNodeFs   *pathfs.PathNodeFs
@@ -107,7 +108,7 @@ func newWorkerFuseFs(tmpDir string, rpcFs pathfs.FileSystem, writableRoot string
 
 	me.rpcNodeFs = pathfs.NewPathNodeFs(rpcFs, nil)
 	ttl := 30 * time.Second
-	mOpts := fuse.FileSystemOptions{
+	mOpts := nodefs.Options{
 		EntryTimeout:    ttl,
 		AttrTimeout:     ttl,
 		NegativeTimeout: ttl,
@@ -117,7 +118,7 @@ func newWorkerFuseFs(tmpDir string, rpcFs pathfs.FileSystem, writableRoot string
 		PortableInodes: true,
 	}
 
-	me.fsConnector = fuse.NewFileSystemConnector(me.rpcNodeFs, &mOpts)
+	me.fsConnector = nodefs.NewFileSystemConnector(me.rpcNodeFs, &mOpts)
 	me.MountState = fuse.NewMountState(me.fsConnector.RawFS())
 	err = me.MountState.Mount(me.mount, &fuseOpts)
 	if err != nil {
@@ -138,15 +139,15 @@ func newWorkerFuseFs(tmpDir string, rpcFs pathfs.FileSystem, writableRoot string
 	}
 	type submount struct {
 		mountpoint string
-		fs         fuse.NodeFileSystem
+		fs         nodefs.FileSystem
 	}
 
 	mounts := []submount{
 		{"proc", pathfs.NewPathNodeFs(me.procFs, nil)},
 		{"sys", pathfs.NewPathNodeFs(pathfs.NewReadonlyFileSystem(pathfs.NewLoopbackFileSystem("/sys")), nil)},
-		{"tmp", fuse.NewMemNodeFs(tmpBacking + "/tmp")},
+		{"tmp", nodefs.NewMemNodeFs(tmpBacking + "/tmp")},
 		{"dev", fs.NewDevFs()},
-		{"var/tmp", fuse.NewMemNodeFs(tmpBacking + "/vartmp")},
+		{"var/tmp", nodefs.NewMemNodeFs(tmpBacking + "/vartmp")},
 	}
 	for _, s := range mounts {
 		subOpts := &mOpts

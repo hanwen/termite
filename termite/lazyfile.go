@@ -8,26 +8,27 @@ import (
 	"time"
 
 	"github.com/hanwen/go-fuse/fuse"
+	"github.com/hanwen/go-fuse/fuse/nodefs"
 )
 
 var _ = log.Println
 
 type lazyLoopbackFile struct {
-	fuse.File
+	nodefs.File
 
 	mu   sync.Mutex
-	f    fuse.File
+	f    nodefs.File
 	Name string
 }
 
-func NewLazyLoopbackFile(n string) fuse.File {
+func NewLazyLoopbackFile(n string) nodefs.File {
 	return &lazyLoopbackFile{
-		File: fuse.NewDefaultFile(),
+		File: nodefs.NewDefaultFile(),
 		Name: n,
 	}
 }
 
-func (me *lazyLoopbackFile) file() (fuse.File, fuse.Status) {
+func (me *lazyLoopbackFile) file() (nodefs.File, fuse.Status) {
 	me.mu.Lock()
 	defer me.mu.Unlock()
 	if me.f == nil {
@@ -35,12 +36,12 @@ func (me *lazyLoopbackFile) file() (fuse.File, fuse.Status) {
 		if err != nil {
 			return nil, fuse.ToStatus(err)
 		}
-		me.f = fuse.NewLoopbackFile(f)
+		me.f = nodefs.NewLoopbackFile(f)
 	}
 	return me.f, fuse.OK
 }
 
-func (me *lazyLoopbackFile) InnerFile() fuse.File {
+func (me *lazyLoopbackFile) InnerFile() nodefs.File {
 	f, _ := me.file()
 	return f
 }

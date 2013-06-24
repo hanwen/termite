@@ -6,6 +6,7 @@ import (
 	"log"
 
 	"github.com/hanwen/go-fuse/fuse"
+	"github.com/hanwen/go-fuse/fuse/nodefs"
 	"github.com/hanwen/go-fuse/fuse/pathfs"
 	"github.com/hanwen/go-fuse/raw"
 	"github.com/hanwen/termite/attr"
@@ -95,7 +96,7 @@ func (me *RpcFs) OpenDir(name string, context *fuse.Context) ([]fuse.DirEntry, f
 }
 
 type rpcFsFile struct {
-	fuse.File
+	nodefs.File
 	fuse.Attr
 }
 
@@ -108,7 +109,7 @@ func (me *rpcFsFile) String() string {
 	return fmt.Sprintf("rpcFsFile(%s)", me.File.String())
 }
 
-func (me *RpcFs) Open(name string, flags uint32, context *fuse.Context) (fuse.File, fuse.Status) {
+func (me *RpcFs) Open(name string, flags uint32, context *fuse.Context) (nodefs.File, fuse.Status) {
 	if flags&fuse.O_ANYWRITE != 0 {
 		return nil, fuse.EPERM
 	}
@@ -126,7 +127,7 @@ func (me *RpcFs) Open(name string, flags uint32, context *fuse.Context) (fuse.Fi
 	}
 
 	fa := *a.Attr
-	return &fuse.WithFlags{
+	return &nodefs.WithFlags{
 		File: &rpcFsFile{
 			NewLazyLoopbackFile(me.cache.Path(a.Hash)),
 			fa,

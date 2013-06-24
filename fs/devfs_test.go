@@ -6,12 +6,13 @@ import (
 	"testing"
 
 	"github.com/hanwen/go-fuse/fuse"
+	"github.com/hanwen/go-fuse/fuse/nodefs"
 )
 
 func setupDevNullFs() (wd string, clean func()) {
 	fs := NewDevFs()
 	mountPoint, _ := ioutil.TempDir("", "termite")
-	state, _, err := fuse.MountNodeFileSystem(mountPoint, fs, nil)
+	state, _, err := nodefs.MountFileSystem(mountPoint, fs, nil)
 	if err != nil {
 		panic(err)
 	}
