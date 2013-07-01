@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/rpc"
+	"net"
 	"os"
 	"path/filepath"
 	"testing"
@@ -75,6 +76,25 @@ func (me *rpcFsTestCase) getattr(n string) *attr.FileAttr {
 	return a
 }
 
+func netPair() (net.Conn, net.Conn, error) {
+	l, err := net.Listen("tcp", ":0")
+	if err != nil {
+		return nil, nil, err
+	}
+	defer l.Close()
+	c1, err := net.Dial("tcp", l.Addr().String())
+	if err != nil {
+		return nil, nil, err
+	}
+
+	c2, err := l.Accept()
+	if err != nil {
+		return nil, nil, err
+	}
+	
+	return c1, c2, nil
+}
+
 func newRpcFsTestCase(t *testing.T) (me *rpcFsTestCase) {
 	me = &rpcFsTestCase{tester: t}
 	me.tmp, _ = ioutil.TempDir("", "term-fss")
@@ -98,12 +118,13 @@ func newRpcFsTestCase(t *testing.T) (me *rpcFsTestCase) {
 	me.attr.Paranoia = true
 	me.server = attr.NewServer(me.attr)
 
+	
 	var err error
-	me.sockL, me.sockR, err = unixSocketpair()
+	me.sockL, me.sockR, err = netPair()
 	if err != nil {
 		t.Fatal(err)
 	}
-	me.contentL, me.contentR, err = unixSocketpair()
+	me.contentL, me.contentR, err = netPair()
 	if err != nil {
 		t.Fatal(err)
 	}

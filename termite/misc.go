@@ -264,14 +264,3 @@ func IntToExponent(z int) uint {
 	return exp
 }
 
-func unixSocketpair() (l *os.File, r *os.File, err error) {
-	fd, err := syscall.Socketpair(syscall.AF_UNIX, syscall.SOCK_STREAM, 0)
-
-	if err != nil {
-		return nil, nil, os.NewSyscallError("socketpair",
-			err.(syscall.Errno))
-	}
-	l = os.NewFile(uintptr(fd[0]), "socketpair-half1")
-	r = os.NewFile(uintptr(fd[1]), "socketpair-half2")
-	return
-}

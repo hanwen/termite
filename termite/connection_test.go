@@ -39,52 +39,14 @@ func TestAuthenticate(t *testing.T) {
 	l.Close()
 }
 
-type dummyConn struct {
-	*os.File
-}
-
-func (me *dummyConn) LocalAddr() net.Addr {
-	return &net.UnixAddr{}
-}
-
-func (me *dummyConn) RemoteAddr() net.Addr {
-	return &net.UnixAddr{}
-}
-
-func (me *dummyConn) SetTimeout(nsec int64) error {
-	return nil
-}
-
-func (me *dummyConn) SetDeadline(t time.Time) error {
-	return nil
-}
-
-func (me *dummyConn) SetReadDeadline(t time.Time) error {
-	return nil
-}
-
-func (me *dummyConn) SetWriteDeadline(t time.Time) error {
-	return nil
-}
-
-func (me *dummyConn) SetReadTimeout(nsec int64) error {
-	return nil
-}
-
-func (me *dummyConn) SetWriteTimeout(nsec int64) error {
-	return nil
-}
-
 func TestPendingConnection(t *testing.T) {
-	a1, b1, _ := unixSocketpair()
-	a2, b2, _ := unixSocketpair()
+	a1, conn1, _ := netPair()
+	a2, conn2, _ := netPair()
 	defer a1.Close()
 	defer a2.Close()
-	defer b1.Close()
-	defer b2.Close()
+	defer conn1.Close()
+	defer conn2.Close()
 
-	conn1 := &dummyConn{b1}
-	conn2 := &dummyConn{b2}
 
 	id1 := ConnectionId()
 	id2 := ConnectionId()
