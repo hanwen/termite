@@ -64,6 +64,16 @@ func (me *testCase) StartWorker() {
 	go worker.RunWorkerServer()
 }
 
+func pickPort(t *testing.T) int {
+	l, err := net.Listen("tcp", ":0")
+	if err != nil {
+		t.Fatalf("listen %v", err)
+	}
+	p := l.Addr().(*net.TCPAddr).Port
+	l.Close()
+	return p
+}
+
 func NewTestCase(t *testing.T) *testCase {
 	if os.Geteuid() == 0 {
 		t.Fatal("This test should not run as root")
@@ -83,14 +93,10 @@ func NewTestCase(t *testing.T) *testCase {
 	}
 	me.coordinator = NewCoordinator(&cOpts)
 	go me.coordinator.PeriodicCheck()
-	go me.coordinator.ServeHTTP(0)
-	for me.coordinator.listener == nil {
-		time.Sleep(1e6)
-	}
-	coordinatorAddr := me.coordinator.listener.Addr()
-	_, portString, _ := net.SplitHostPort(coordinatorAddr.String())
-	fmt.Sscanf(portString, "%d", &me.coordinatorPort)
 
+	me.coordinatorPort = pickPort(t)
+	go me.coordinator.ServeHTTP(me.coordinatorPort)
+	coordinatorAddr := fmt.Sprintf("localhost:%d", me.coordinatorPort)
 	me.workerOpts = &WorkerOptions{
 		Secret:  me.secret,
 		TempDir: workerTmp,
@@ -99,7 +105,7 @@ func NewTestCase(t *testing.T) *testCase {
 		},
 		Jobs:           1,
 		ReportInterval: 100 * time.Millisecond,
-		Coordinator:    coordinatorAddr.String(),
+		Coordinator:    coordinatorAddr,
 		PortRetry:      10,
 	}
 
@@ -115,7 +121,7 @@ func NewTestCase(t *testing.T) *testCase {
 			RetryCount:    2,
 			Secret:        me.secret,
 			MaxJobs:       1,
-			Coordinator:   coordinatorAddr.String(),
+			Coordinator:   coordinatorAddr,
 			KeepAlive:     500 * time.Millisecond,
 			Period:        500 * time.Millisecond,
 			ExposePrivate: true,

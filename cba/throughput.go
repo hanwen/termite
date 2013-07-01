@@ -9,7 +9,10 @@ import (
 
 func (st *Store) initThroughputSampler() {
 	st.throughput = stats.NewPeriodicSampler(time.Second, 60, func() stats.Sample {
-		return &ThroughputSample{received: st.bytesReceived, served: st.bytesServed}
+		st.mutex.Lock()
+		s := &ThroughputSample{received: st.bytesReceived, served: st.bytesServed}
+		st.mutex.Unlock()
+		return s		
 	})
 }
 

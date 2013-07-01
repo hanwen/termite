@@ -44,7 +44,7 @@ type workerFuseFs struct {
 
 func (me *workerFuseFs) Status() (s FuseFsStatus) {
 	s.Id = me.id
-	s.Mem = me.BufferPoolStats()
+	s.Mem = me.DebugData()
 	for t := range me.tasks {
 		s.Tasks = append(s.Tasks, t.taskInfo)
 	}

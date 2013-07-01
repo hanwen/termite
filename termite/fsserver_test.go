@@ -110,8 +110,15 @@ func newRpcFsTestCase(t *testing.T) (me *rpcFsTestCase) {
 
 	rpcServer := rpc.NewServer()
 	rpcServer.Register(me.server)
-	go rpcServer.ServeConn(me.sockL)
-	go me.serverStore.ServeConn(me.contentL)
+	go func() {
+		rpcServer.ServeConn(me.sockL)
+		me.sockL.Close()
+	}()
+	go func() {
+		me.serverStore.ServeConn(me.contentL)
+		me.contentL.Close()
+	}()
+	
 	cOpts := cba.StoreOptions{
 		Dir: me.tmp + "/client-cache",
 	}
@@ -135,7 +142,7 @@ func (me *rpcFsTestCase) Clean() {
 		log.Panic("fuse unmount failed.", err)
 	}
 	os.RemoveAll(me.tmp)
-	me.sockL.Close()
+	me.contentR.Close()
 	me.sockR.Close()
 }
 
