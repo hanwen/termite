@@ -249,7 +249,7 @@ func (me *memNode) Deletable() bool {
 	return !me.changed && me.original == ""
 }
 
-func (me *memNode) StatFs() *nodefs.StatfsOut {
+func (me *memNode) StatFs() *fuse.StatfsOut {
 	backingFs := pathfs.NewLoopbackFileSystem(me.fs.backingStore)
 	return backingFs.StatFs("")
 }

@@ -8,7 +8,6 @@ import (
 	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/go-fuse/fuse/nodefs"
 	"github.com/hanwen/go-fuse/fuse/pathfs"
-	"github.com/hanwen/go-fuse/raw"
 	"github.com/hanwen/termite/attr"
 	"github.com/hanwen/termite/cba"
 	"github.com/hanwen/termite/stats"
@@ -132,7 +131,7 @@ func (me *RpcFs) Open(name string, flags uint32, context *fuse.Context) (nodefs.
 			NewLazyLoopbackFile(me.cache.Path(a.Hash)),
 			fa,
 		},
-		FuseFlags: raw.FOPEN_KEEP_CACHE,
+		FuseFlags: fuse.FOPEN_KEEP_CACHE,
 	}, fuse.OK
 }
 
@@ -171,11 +170,11 @@ func (me *RpcFs) GetAttr(name string, context *fuse.Context) (*fuse.Attr, fuse.S
 }
 
 func (me *RpcFs) Access(name string, mode uint32, context *fuse.Context) (code fuse.Status) {
-	if mode == raw.F_OK {
+	if mode == fuse.F_OK {
 		_, code := me.GetAttr(name, context)
 		return code
 	}
-	if mode&raw.W_OK != 0 {
+	if mode&fuse.W_OK != 0 {
 		return fuse.EACCES
 	}
 	return fuse.OK

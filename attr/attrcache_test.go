@@ -293,8 +293,8 @@ func TestAttrCacheIncompleteDir(t *testing.T) {
 		Attr: &fuse.Attr{
 			Mode: syscall.S_IFDIR | 0644,
 		},
-		NameModeMap: map[string]fuse.FileMode{
-			"a": fuse.FileMode(syscall.S_IFDIR),
+		NameModeMap: map[string]FileMode{
+			"a": FileMode(syscall.S_IFDIR),
 		},
 		Path: "",
 	}

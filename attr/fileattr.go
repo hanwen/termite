@@ -11,7 +11,7 @@ import (
 	"github.com/hanwen/go-fuse/fuse"
 )
 
-var _ = log.Printf
+type FileMode uint32
 
 type FileAttr struct {
 	Path string
@@ -20,7 +20,7 @@ type FileAttr struct {
 	Link string
 
 	// Only filled for directories.
-	NameModeMap map[string]fuse.FileMode
+	NameModeMap map[string]FileMode
 }
 
 func (me FileAttr) String() string {
@@ -33,7 +33,7 @@ func (me FileAttr) String() string {
 		id += fmt.Sprintf(" -> %s", me.Link)
 	}
 	if me.Attr != nil {
-		id += fmt.Sprintf(" %s:%o", fuse.FileMode(me.Attr.Mode), me.Attr.Mode&07777)
+		id += fmt.Sprintf(" %s:%o", FileMode(me.Attr.Mode), me.Attr.Mode&07777)
 		if me.NameModeMap != nil {
 			id += "+names"
 		}
@@ -65,7 +65,7 @@ func (me FileAttr) Status() fuse.Status {
 func (me FileAttr) Copy(withdir bool) *FileAttr {
 	a := me
 	if me.NameModeMap != nil && withdir {
-		a.NameModeMap = map[string]fuse.FileMode{}
+		a.NameModeMap = map[string]FileMode{}
 		for k, v := range me.NameModeMap {
 			a.NameModeMap[k] = v
 		}
@@ -189,12 +189,12 @@ func (me *FileAttr) ReadFromFs(p string, hashFunc crypto.Hash) {
 	case me.IsDir():
 		d, e := ioutil.ReadDir(p)
 		if e == nil {
-			me.NameModeMap = make(map[string]fuse.FileMode, len(d))
+			me.NameModeMap = make(map[string]FileMode, len(d))
 			for _, v := range d {
 				a := fuse.ToAttr(v)
 				if a != nil {
 					// attr == nil may happen for fuse mounts that have died.
-					me.NameModeMap[v.Name()] = fuse.FileMode(a.Mode &^ 07777)
+					me.NameModeMap[v.Name()] = FileMode(a.Mode &^ 07777)
 				}
 			}
 		} else {
@@ -231,7 +231,7 @@ func (me *FileAttr) Merge(r FileAttr) {
 
 	if me.IsDir() {
 		if other != nil {
-			me.NameModeMap = make(map[string]fuse.FileMode)
+			me.NameModeMap = make(map[string]FileMode)
 			for k, v := range other {
 				me.NameModeMap[k] = v
 			}

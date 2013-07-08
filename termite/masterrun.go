@@ -32,7 +32,7 @@ func recurseNames(master *Master, name string) (names []string) {
 	a := master.attributes.GetDir(name)
 
 	for n, m := range a.NameModeMap {
-		if m.IsDir() {
+		if m & syscall.S_IFDIR != 0 {
 			names = append(names, recurseNames(master, filepath.Join(name, n))...)
 		} else {
 			names = append(names, filepath.Join(name, n))
@@ -194,7 +194,7 @@ func mkdirEntry(rootless string) *attr.FileAttr {
 		Attr: &fuse.Attr{
 			Mode: syscall.S_IFDIR | 0755,
 		},
-		NameModeMap: map[string]fuse.FileMode{},
+		NameModeMap: map[string]attr.FileMode{},
 	}
 	a.SetTimes(&now, &now, &now)
 	return a

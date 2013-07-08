@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/hanwen/go-fuse/fuse"
