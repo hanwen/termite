@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"io"
 	"io/ioutil"
+	"net"
 	"os"
-	"syscall"
 	"testing"
 
 	"github.com/hanwen/go-fuse/splice"
@@ -18,19 +18,6 @@ type netTestCase struct {
 	sockS, sockC        io.ReadWriteCloser
 	client              *Client
 	startSplices        int
-}
-
-// TODO - cut & paste.
-func unixSocketpair() (l *os.File, r *os.File, err error) {
-	fd, err := syscall.Socketpair(syscall.AF_UNIX, syscall.SOCK_STREAM, 0)
-
-	if err != nil {
-		return nil, nil, os.NewSyscallError("socketpair",
-			err.(syscall.Errno))
-	}
-	l = os.NewFile(uintptr(fd[0]), "socketpair-half1")
-	r = os.NewFile(uintptr(fd[1]), "socketpair-half2")
-	return
 }
 
 func (tc *netTestCase) Clean() {
@@ -58,7 +45,7 @@ func newNetTestCase(t *testing.T) *netTestCase {
 	optC.Dir = me.tmp + "/client"
 	me.clientStore = NewStore(&optC)
 	var err error
-	me.sockS, me.sockC, err = unixSocketpair()
+	me.sockS, me.sockC = net.Pipe()
 	if err != nil {
 		t.Fatalf("unixSocketpair: %v", err)
 	}
