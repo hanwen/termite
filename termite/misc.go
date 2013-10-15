@@ -11,8 +11,6 @@ import (
 	"regexp"
 	"strings"
 	"time"
-
-	"github.com/hanwen/go-fuse/fuse"
 )
 
 func init() {
@@ -46,8 +44,7 @@ func Version() string {
 		tVersion = *version
 	}
 
-	return fmt.Sprintf("Termite %s (go-fuse %s)",
-		tVersion, fuse.Version())
+	return fmt.Sprintf("Termite %s", tVersion)
 }
 
 func EscapeRegexp(s string) string {
