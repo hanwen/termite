@@ -5,9 +5,12 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/go-fuse/fuse/nodefs"
 )
+
+func VerboseTest() bool {
+	return false
+}
 
 func setupDevNullFs() (wd string, clean func()) {
 	fs := NewDevFs()
@@ -17,7 +20,7 @@ func setupDevNullFs() (wd string, clean func()) {
 		panic(err)
 	}
 
-	state.SetDebug(fuse.VerboseTest())
+	state.SetDebug(VerboseTest())
 	go state.Serve()
 	return mountPoint, func() {
 		state.Unmount()

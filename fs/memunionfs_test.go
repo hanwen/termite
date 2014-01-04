@@ -89,8 +89,8 @@ func setupMemUfs(t *testing.T) (workdir string, ufs *MemUnionFs, cleanup func())
 
 	state, conn, err := nodefs.MountFileSystem(wd+"/mnt", memFs, opts)
 	CheckSuccess(err)
-	conn.SetDebug(fuse.VerboseTest())
-	state.SetDebug(fuse.VerboseTest())
+	conn.SetDebug(VerboseTest())
+	state.SetDebug(VerboseTest())
 	go state.Serve()
 
 	return wd, memFs, func() {
