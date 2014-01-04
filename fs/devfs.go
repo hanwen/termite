@@ -24,10 +24,8 @@ func NewDevFs() *DevFs {
 
 func (me *DevFs) OnMount(fsc *nodefs.FileSystemConnector) {
 	def := nodefs.NewDefaultNode()
-	n := me.root.Inode().New(false, &nullNode{Node: def})
-	me.root.Inode().AddChild("null", n)
-	n = me.root.Inode().New(false, &urandomNode{Node: def, size: 128})
-	me.root.Inode().AddChild("urandom", n)
+	me.root.Inode().NewChild("null", false, &nullNode{Node: def})
+	me.root.Inode().NewChild("urandom", false, &urandomNode{Node: def, size: 128})
 }
 
 func (me *DevFs) Root() nodefs.Node {

@@ -266,12 +266,6 @@ func (me *memNode) ctouch() {
 	me.info.SetTimes(nil, nil, &now)
 }
 
-func (me *memNode) newNode(isdir bool) *memNode {
-	n := me.fs.newNode(isdir)
-	me.Inode().New(isdir, n)
-	return n
-}
-
 func (me *memNode) Readlink(c *fuse.Context) ([]byte, fuse.Status) {
 	me.mutex.RLock()
 	defer me.mutex.RUnlock()
@@ -301,13 +295,14 @@ func (me *memNode) lookup(out *fuse.Attr, name string, context *fuse.Context) (n
 	}
 
 	*out = *fi
-	child := me.newNode(fi.Mode&fuse.S_IFDIR != 0)
+	isDir := fi.Mode&fuse.S_IFDIR != 0
+	child := me. fs.newNode(isDir)
 	child.info = *fi
 	child.original = fn
 	if child.info.Mode&fuse.S_IFLNK != 0 {
 		child.link, _ = me.fs.readonly.Readlink(fn, context)
 	}
-	me.Inode().AddChild(name, child.Inode())
+	me.Inode().NewChild(name, isDir, child)
 
 	return child, fuse.OK
 }
@@ -316,10 +311,10 @@ func (me *memNode) Mkdir(name string, mode uint32, context *fuse.Context) (newNo
 	me.mutex.Lock()
 	defer me.mutex.Unlock()
 
-	n := me.newNode(true)
+	n := me.fs.newNode(true)
 	n.changed = true
 	n.info.Mode = mode | fuse.S_IFDIR
-	me.Inode().AddChild(name, n.Inode())
+	me.Inode().NewChild(name, true, n)
 	me.touch()
 	return n, fuse.OK
 }
@@ -347,11 +342,12 @@ func (me *memNode) Rmdir(name string, context *fuse.Context) (code fuse.Status) 
 func (me *memNode) Symlink(name string, content string, context *fuse.Context) (newNode nodefs.Node, code fuse.Status) {
 	me.mutex.Lock()
 	defer me.mutex.Unlock()
-	n := me.newNode(false)
+
+	n := me.fs.newNode(false)
 	n.info.Mode = fuse.S_IFLNK | 0777
 	n.link = content
 	n.changed = true
-	me.Inode().AddChild(name, n.Inode())
+	me.Inode().NewChild(name, false, n)
 	me.touch()
 	return n, fuse.OK
 }
@@ -422,7 +418,7 @@ func (me *memNode) Create(name string, flags uint32, mode uint32, context *fuse.
 	me.mutex.Lock()
 	defer me.mutex.Unlock()
 
-	n := me.newNode(false)
+	n := me.fs.newNode(false)
 	n.info.Mode = mode | fuse.S_IFREG
 	n.changed = true
 	n.backing = me.fs.getFilename()
@@ -431,7 +427,7 @@ func (me *memNode) Create(name string, flags uint32, mode uint32, context *fuse.
 		log.Printf("Backing store error %q: %v", n.backing, err)
 		return nil, nil, fuse.ToStatus(err)
 	}
-	me.Inode().AddChild(name, n.Inode())
+	me.Inode().NewChild(name, false, n)
 	me.touch()
 	me.fs.openWritable++
 	return n.newFile(nodefs.NewLoopbackFile(f), true), n, fuse.OK
