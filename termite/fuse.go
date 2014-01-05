@@ -118,7 +118,7 @@ func newWorkerFuseFs(tmpDir string, rpcFs pathfs.FileSystem, writableRoot string
 		PortableInodes: true,
 	}
 
-	me.fsConnector = nodefs.NewFileSystemConnector(me.rpcNodeFs, &mOpts)
+	me.fsConnector = nodefs.NewFileSystemConnector(me.rpcNodeFs.Root(), &mOpts)
 	me.Server, err = fuse.NewServer(me.fsConnector.RawFS(), me.mount, &fuseOpts)
 	if err != nil {
 		return nil, err
@@ -138,15 +138,15 @@ func newWorkerFuseFs(tmpDir string, rpcFs pathfs.FileSystem, writableRoot string
 	}
 	type submount struct {
 		mountpoint string
-		fs         nodefs.FileSystem
+		root         nodefs.Node
 	}
 
 	mounts := []submount{
-		{"proc", pathfs.NewPathNodeFs(me.procFs, nil)},
-		{"sys", pathfs.NewPathNodeFs(pathfs.NewReadonlyFileSystem(pathfs.NewLoopbackFileSystem("/sys")), nil)},
-		{"tmp", nodefs.NewMemNodeFs(tmpBacking + "/tmp")},
-		{"dev", fs.NewDevFs()},
-		{"var/tmp", nodefs.NewMemNodeFs(tmpBacking + "/vartmp")},
+		{"proc", pathfs.NewPathNodeFs(me.procFs, nil).Root()},
+		{"sys", pathfs.NewPathNodeFs(pathfs.NewReadonlyFileSystem(pathfs.NewLoopbackFileSystem("/sys")), nil).Root()},
+		{"tmp", nodefs.NewMemNodeFSRoot(tmpBacking + "/tmp")},
+		{"dev", fs.NewDevFSRoot()},
+		{"var/tmp", nodefs.NewMemNodeFSRoot(tmpBacking + "/vartmp")},
 	}
 	for _, s := range mounts {
 		subOpts := &mOpts
@@ -154,7 +154,7 @@ func newWorkerFuseFs(tmpDir string, rpcFs pathfs.FileSystem, writableRoot string
 			subOpts = nil
 		}
 
-		code := me.rpcNodeFs.Mount(s.mountpoint, s.fs, subOpts)
+		code := me.rpcNodeFs.Mount(s.mountpoint, s.root, subOpts)
 		if !code.Ok() {
 			if err := me.Server.Unmount(); err != nil {
 				log.Fatal("FUSE unmount error during cleanup:", err)
@@ -177,7 +177,7 @@ func newWorkerFuseFs(tmpDir string, rpcFs pathfs.FileSystem, writableRoot string
 		rpcFs.GetAttr("tmp", nil)
 		rpcFs.GetAttr(me.writableRoot, nil)
 	}
-	code := me.rpcNodeFs.Mount(me.writableRoot, me.unionFs, &mOpts)
+	code := me.rpcNodeFs.Mount(me.writableRoot, me.unionFs.Root(), &mOpts)
 	if !code.Ok() {
 		if err := me.Server.Unmount(); err != nil {
 			log.Fatal("FUSE unmount error during cleanup:", err)

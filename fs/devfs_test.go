@@ -13,14 +13,14 @@ func VerboseTest() bool {
 }
 
 func setupDevNullFs() (wd string, clean func()) {
-	fs := NewDevFs()
+	root := NewDevFSRoot()
 	mountPoint, _ := ioutil.TempDir("", "termite")
-	state, _, err := nodefs.MountFileSystem(mountPoint, fs, nil)
+	state, _, err := nodefs.MountRoot(mountPoint, root, nil)
 	if err != nil {
 		panic(err)
 	}
 
-	state.SetDebug(VerboseTest())
+	state.SetDebug(true)
 	go state.Serve()
 	return mountPoint, func() {
 		state.Unmount()

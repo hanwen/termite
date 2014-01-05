@@ -57,8 +57,8 @@ type Result struct {
 	Link     string
 }
 
-func (me *MemUnionFs) OnMount(conn *nodefs.FileSystemConnector) {
-	me.connector = conn
+func (fs *MemUnionFs) onMount(conn *nodefs.FileSystemConnector) {
+	fs.connector = conn
 }
 
 func (me *MemUnionFs) markCloseWrite() {
@@ -227,7 +227,6 @@ func (me *MemUnionFs) newNode(isdir bool) *memNode {
 // will access the root of the supplied R/O filesystem.
 func NewMemUnionFs(backingStore string, roFs pathfs.FileSystem) (*MemUnionFs, error) {
 	me := &MemUnionFs{
-		FileSystem:   nodefs.NewDefaultFileSystem(),
 		deleted:      make(map[string]bool),
 		backingStore: backingStore,
 		readonly:     roFs,
@@ -247,6 +246,10 @@ func NewMemUnionFs(backingStore string, roFs pathfs.FileSystem) (*MemUnionFs, er
 
 func (me *memNode) Deletable() bool {
 	return !me.changed && me.original == ""
+}
+
+func (me *memNode) OnMount(c *nodefs.FileSystemConnector) {
+	me.fs.onMount(c)
 }
 
 func (me *memNode) StatFs() *fuse.StatfsOut {

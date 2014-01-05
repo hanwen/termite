@@ -9,31 +9,21 @@ import (
 
 const _NULL = "null"
 
-type DevFs struct {
-	nodefs.FileSystem
-	root nodefs.Node
+type devFSRoot struct {
+	nodefs.Node
 }
 
-func NewDevFs() *DevFs {
-	me := &DevFs{
-		FileSystem: nodefs.NewDefaultFileSystem(),
-		root:       nodefs.NewDefaultNode(),
+func NewDevFSRoot() nodefs.Node {
+	r := &devFSRoot{
+		nodefs.NewDefaultNode(),
 	}
-	return me
+	return r
 }
 
-func (me *DevFs) OnMount(fsc *nodefs.FileSystemConnector) {
+func (r *devFSRoot) OnMount(fsc *nodefs.FileSystemConnector) {
 	def := nodefs.NewDefaultNode()
-	me.root.Inode().NewChild("null", false, &nullNode{Node: def})
-	me.root.Inode().NewChild("urandom", false, &urandomNode{Node: def, size: 128})
-}
-
-func (me *DevFs) Root() nodefs.Node {
-	return me.root
-}
-
-func (me *DevFs) String() string {
-	return "DevFs"
+	r.Inode().NewChild("null", false, &nullNode{Node: def})
+	r.Inode().NewChild("urandom", false, &urandomNode{Node: def, size: 128})
 }
 
 type nullNode struct {
