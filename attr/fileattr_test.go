@@ -23,7 +23,7 @@ func TestFileAttrReadFrom(t *testing.T) {
 	}
 
 	m := attr.NameModeMap["file.txt"]
-	if m & syscall.S_IFREG == 0 {
+	if m&syscall.S_IFREG == 0 {
 		t.Fatalf("unexpected mode: %o, want %o", m, syscall.S_IFREG)
 	}
 }

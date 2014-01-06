@@ -8,8 +8,8 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
-	"net/rpc"
 	"net"
+	"net/rpc"
 	"os"
 	"path/filepath"
 	"testing"
@@ -91,7 +91,7 @@ func netPair() (net.Conn, net.Conn, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	
+
 	return c1, c2, nil
 }
 
@@ -118,7 +118,6 @@ func newRpcFsTestCase(t *testing.T) (me *rpcFsTestCase) {
 	me.attr.Paranoia = true
 	me.server = attr.NewServer(me.attr)
 
-	
 	var err error
 	me.sockL, me.sockR, err = netPair()
 	if err != nil {
@@ -139,7 +138,7 @@ func newRpcFsTestCase(t *testing.T) (me *rpcFsTestCase) {
 		me.serverStore.ServeConn(me.contentL)
 		me.contentL.Close()
 	}()
-	
+
 	cOpts := cba.StoreOptions{
 		Dir: me.tmp + "/client-cache",
 	}
@@ -149,7 +148,7 @@ func newRpcFsTestCase(t *testing.T) (me *rpcFsTestCase) {
 	me.rpcFs.id = "rpcfs_test"
 	nfs := pathfs.NewPathNodeFs(me.rpcFs, nil)
 	me.state, _, err = nodefs.MountFileSystem(me.mnt, nfs, nil)
-//	me.state.SetDebug(fuse.VerboseTest())
+	//	me.state.SetDebug(fuse.VerboseTest())
 	if err != nil {
 		t.Fatal("Mount", err)
 	}

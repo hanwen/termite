@@ -20,7 +20,7 @@ var _ = log.Printf
 
 func handleStop(daemon *termite.Worker) {
 	ch := make(chan os.Signal, 1)
-	
+
 	signal.Notify(ch, os.Interrupt, os.Kill)
 	for sig := range ch {
 		log.Println("got signal: ", sig)
@@ -111,7 +111,7 @@ func main() {
 		ReapCount:   *reapcount,
 		LogFileName: *logfile,
 		StoreOptions: cba.StoreOptions{
-			Dir:      *cachedir,
+			Dir: *cachedir,
 		},
 		HeapLimit:   uint64(*heap) * (1 << 20),
 		Coordinator: *coordinator,

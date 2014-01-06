@@ -12,7 +12,7 @@ func (st *Store) initThroughputSampler() {
 		st.mutex.Lock()
 		s := &ThroughputSample{received: st.bytesReceived, served: st.bytesServed}
 		st.mutex.Unlock()
-		return s		
+		return s
 	})
 }
 

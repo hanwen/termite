@@ -47,7 +47,6 @@ func TestPendingConnection(t *testing.T) {
 	defer conn1.Close()
 	defer conn2.Close()
 
-
 	id1 := ConnectionId()
 	id2 := ConnectionId()
 

@@ -1,11 +1,12 @@
 package main
+
 import (
 	"flag"
 	"io/ioutil"
 	"log"
 	"net"
 	"syscall"
-	
+
 	"github.com/hanwen/termite/cba"
 	"github.com/hanwen/termite/termite"
 )
@@ -17,13 +18,13 @@ func main() {
 	port := flag.Int("port", 0, "RPC port")
 
 	flag.Parse()
-	
+
 	secret, err := ioutil.ReadFile(*secretFile)
 	if err != nil {
 		log.Fatal("ReadFile", err)
 	}
-	opts:= cba.StoreOptions{
-		Dir:      *cachedir,
+	opts := cba.StoreOptions{
+		Dir: *cachedir,
 	}
 	store := cba.NewStore(&opts)
 	listener := termite.AuthenticatedListener(*port, secret, 10)

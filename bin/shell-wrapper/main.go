@@ -9,8 +9,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sort"
-	"syscall"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/hanwen/termite/attr"
@@ -54,7 +54,7 @@ func TryRunDirect(req *termite.WorkRequest) {
 var bashInternals = []string{
 	"alias", "bg", "bind", "break", "builtin", "caller", "case", "cd",
 	"command", "compgen", "complete", "compopt", "continue", "coproc",
-	"declare", "dirs", "disown", /* echo, */ "enable", "eval", "exec", "exit",
+	"declare", "dirs", "disown" /* echo, */, "enable", "eval", "exec", "exit",
 	"export", "false", "fc", "fg", "for", "for", "function", "getopts",
 	"hash", "help", "history", "if", "jobs", "kill", "let", "local",
 	"logout", "mapfile", "popd", "printf", "pushd", "pwd", "read",

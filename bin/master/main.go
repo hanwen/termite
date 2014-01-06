@@ -65,7 +65,7 @@ func main() {
 		KeepAlive:    time.Duration(*keepAlive * float64(time.Second)),
 		FetchAll:     *fetchAll,
 		StoreOptions: cba.StoreOptions{
-			Dir:      *cachedir,
+			Dir: *cachedir,
 		},
 		RetryCount: *retry,
 		XAttrCache: *xattr,

@@ -31,7 +31,7 @@ type ccTestCase struct {
 func newCcTestCase() *ccTestCase {
 	d, _ := ioutil.TempDir("", "term-cc")
 	opts := &StoreOptions{
-		Dir:        d,
+		Dir: d,
 	}
 	store := NewStore(opts)
 

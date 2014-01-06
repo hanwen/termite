@@ -138,7 +138,7 @@ func newWorkerFuseFs(tmpDir string, rpcFs pathfs.FileSystem, writableRoot string
 	}
 	type submount struct {
 		mountpoint string
-		root         nodefs.Node
+		root       nodefs.Node
 	}
 
 	mounts := []submount{

@@ -10,7 +10,7 @@ import (
 	"syscall"
 	"testing"
 	"time"
-	
+
 	"github.com/hanwen/go-fuse/fuse"
 )
 

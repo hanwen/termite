@@ -27,8 +27,8 @@ type Store struct {
 }
 
 type StoreOptions struct {
-	Hash       crypto.Hash
-	Dir        string
+	Hash crypto.Hash
+	Dir  string
 }
 
 // NewStore creates a content cache based in directory d.
@@ -46,8 +46,8 @@ func NewStore(options *StoreOptions) *Store {
 	}
 
 	c := &Store{
-		Options:  options,
-		timings:  stats.NewTimerStats(),
+		Options: options,
+		timings: stats.NewTimerStats(),
 	}
 	c.initThroughputSampler()
 	return c
@@ -162,7 +162,6 @@ func (st *Store) SavePath(path string) (hash string) {
 	fi, _ := f.Stat()
 	return st.SaveStream(f, fi.Size())
 }
-
 
 func (st *Store) Save(content []byte) (hash string) {
 	writer := st.NewHashWriter()
