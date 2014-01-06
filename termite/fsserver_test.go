@@ -147,7 +147,7 @@ func newRpcFsTestCase(t *testing.T) (me *rpcFsTestCase) {
 	me.rpcFs = NewRpcFs(attrClient, me.clientStore, me.contentR)
 	me.rpcFs.id = "rpcfs_test"
 	nfs := pathfs.NewPathNodeFs(me.rpcFs, nil)
-	me.state, _, err = nodefs.MountFileSystem(me.mnt, nfs, nil)
+	me.state, _, err = nodefs.MountRoot(me.mnt, nfs.Root(), nil)
 	//	me.state.SetDebug(fuse.VerboseTest())
 	if err != nil {
 		t.Fatal("Mount", err)

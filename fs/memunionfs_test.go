@@ -87,7 +87,7 @@ func setupMemUfs(t *testing.T) (workdir string, ufs *MemUnionFs, cleanup func())
 		PortableInodes:  true,
 	}
 
-	state, conn, err := nodefs.MountFileSystem(wd+"/mnt", memFs, opts)
+	state, conn, err := nodefs.MountRoot(wd+"/mnt", memFs.Root(), opts)
 	CheckSuccess(err)
 	conn.SetDebug(VerboseTest())
 	state.SetDebug(VerboseTest())

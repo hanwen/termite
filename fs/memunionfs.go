@@ -20,7 +20,6 @@ var _ = log.Println
 
 // A unionfs that only uses on-disk backing store for file contents.
 type MemUnionFs struct {
-	nodefs.FileSystem
 	readonly     pathfs.FileSystem
 	backingStore string
 	connector    *nodefs.FileSystemConnector
