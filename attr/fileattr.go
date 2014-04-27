@@ -13,6 +13,24 @@ import (
 
 type FileMode uint32
 
+func (m FileMode) String() string {
+	nm := "?"
+	switch int(m &^ 07777) {
+	case syscall.S_IFDIR:
+		nm = "d"
+	case syscall.S_IFREG:
+		nm = "f"
+	case syscall.S_IFLNK:
+		nm = "l"
+	case syscall.S_IFSOCK:
+		nm = "s"
+	default:
+		nm = fmt.Sprintf("%x", uint32(m)^07777)
+	}
+
+	return fmt.Sprintf("%s:%o", nm, uint32(m&07777))
+}
+
 type FileAttr struct {
 	Path string
 	*fuse.Attr
@@ -33,7 +51,7 @@ func (me FileAttr) String() string {
 		id += fmt.Sprintf(" -> %s", me.Link)
 	}
 	if me.Attr != nil {
-		id += fmt.Sprintf(" %s:%o", FileMode(me.Attr.Mode), me.Attr.Mode&07777)
+		id += FileMode(me.Attr.Mode).String()
 		if me.NameModeMap != nil {
 			id += "+names"
 		}

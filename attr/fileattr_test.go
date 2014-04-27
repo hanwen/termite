@@ -28,6 +28,14 @@ func TestFileAttrReadFrom(t *testing.T) {
 	}
 }
 
+func TestFileModeString(t *testing.T) {
+	got := FileMode(syscall.S_IFDIR | 0755).String()
+	want := "d:755"
+	if got != want {
+		t.Errorf("got %q want %q", got, want)
+	}
+}
+
 func TestEncode(t *testing.T) {
 	e := EncodedAttr{}
 
