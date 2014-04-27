@@ -249,7 +249,7 @@ func (me *Mirror) newWorkerFuseFs() (*workerFuseFs, error) {
 func (me *Mirror) newWorkerTask(req *WorkRequest, rep *WorkResponse) (*WorkerTask, error) {
 	var stdin io.ReadWriteCloser
 	if req.StdinId != "" {
-		stdin = me.worker.pending.wait(req.StdinId)
+		stdin = me.worker.listener.Accept(req.StdinId)
 	}
 	task := &WorkerTask{
 		req:       req,

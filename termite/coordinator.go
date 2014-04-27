@@ -3,7 +3,6 @@ package termite
 import (
 	"errors"
 	"fmt"
-	"io"
 	"log"
 	"net"
 	"net/http"
@@ -51,6 +50,7 @@ type Coordinator struct {
 
 	listener net.Listener
 
+	dialer     connDialer
 	mutex      sync.Mutex
 	cond       *sync.Cond
 	workers    map[string]*WorkerRegistration
@@ -73,13 +73,14 @@ func NewCoordinator(opts *CoordinatorOptions) *Coordinator {
 		options: &o,
 		workers: make(map[string]*WorkerRegistration),
 		Mux:     http.NewServeMux(),
+		dialer:  newTCPDialer(o.Secret),
 	}
 	c.cond = sync.NewCond(&c.mutex)
 	return c
 }
 
 func (me *Coordinator) Register(req *RegistrationRequest, rep *Empty) error {
-	conn, err := me.dial(req.Address)
+	conn, err := me.dialer.Open(req.Address, RPC_CHANNEL)
 	if conn != nil {
 		conn.Close()
 	}
@@ -112,7 +113,6 @@ func (me *Coordinator) List(req *ListRequest, rep *ListResponse) error {
 	for !me.lastChange.After(req.Latest) {
 		me.cond.Wait()
 	}
-
 	keys := []string{}
 	for k := range me.workers {
 		keys = append(keys, k)
@@ -133,7 +133,7 @@ func (me *Coordinator) checkReachable() {
 
 	var toDelete []string
 	for _, a := range addrs {
-		conn, err := net.Dial("tcp", a)
+		conn, err := me.dialer.Open(a, RPC_CHANNEL)
 		if err != nil {
 			toDelete = append(toDelete, a)
 		} else {
@@ -149,6 +149,7 @@ func (me *Coordinator) checkReachable() {
 	for _, a := range toDelete {
 		w := me.workers[a]
 		if w != nil && now.After(w.LastReported) {
+			log.Println("dropping worker", a)
 			delete(me.workers, a)
 		}
 	}
@@ -166,14 +167,9 @@ func (me *Coordinator) PeriodicCheck() {
 	}
 }
 
-func (c *Coordinator) dial(addr string) (io.ReadWriteCloser, error) {
-	return DialTypedConnection(addr, RPC_CHANNEL, c.options.Secret)
-}
-
 func (c *Coordinator) killWorker(addr string, restart bool) error {
-	conn, err := c.dial(addr)
+	conn, err := c.dialer.Open(addr, RPC_CHANNEL)
 	if err == nil {
-		log.Println("calling kill")
 		killReq := ShutdownRequest{Restart: restart}
 		rep := ShutdownResponse{}
 		cl := rpc.NewClient(conn)
@@ -184,7 +180,7 @@ func (c *Coordinator) killWorker(addr string, restart bool) error {
 }
 
 func (c *Coordinator) shutdownWorker(addr string, restart bool) error {
-	conn, err := c.dial(addr)
+	conn, err := c.dialer.Open(addr, RPC_CHANNEL)
 	if err != nil {
 		return err
 	}

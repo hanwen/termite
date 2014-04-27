@@ -2,6 +2,7 @@ package termite
 
 import (
 	"fmt"
+	"io"
 	"syscall"
 
 	"github.com/hanwen/termite/attr"
@@ -83,11 +84,15 @@ type WorkRequest struct {
 
 	// Id of connection streaming stdin.
 	StdinId string
-	Debug   bool
-	Binary  string
-	Argv    []string
-	Env     []string
-	Dir     string
+
+	// TODO - don't abuse RPC message for transporting this.
+	StdinConn io.ReadWriteCloser
+
+	Debug  bool
+	Binary string
+	Argv   []string
+	Env    []string
+	Dir    string
 
 	// Signal that a command ran locally.  Used for logging in the master.
 	RanLocally bool

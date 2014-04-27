@@ -111,6 +111,7 @@ func (me *mirrorConnections) fetchWorkers(last *time.Time) (newMap map[string]bo
 		log.Println("coordinator has no workers for us.")
 	}
 	*last = rep.LastChange
+
 	return newMap, nil
 }
 

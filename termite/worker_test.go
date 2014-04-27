@@ -142,7 +142,10 @@ func NewTestCase(t *testing.T) *testCase {
 	}()
 	me.StartWorker()
 	wg.Wait()
-	for i := 0; me.coordinator.WorkerCount() == 0 && i < 10; i++ {
+	for i := 0; me.coordinator.WorkerCount() == 0; i++ {
+		if i > 10 {
+			t.Fatal("no live workers after 10 tries")
+		}
 		time.Sleep(50e6)
 	}
 

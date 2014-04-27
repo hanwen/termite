@@ -2,6 +2,7 @@ package termite
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net"
@@ -25,11 +26,11 @@ type Master struct {
 	excluded      map[string]bool
 	attributes    *attr.AttributeCache
 	mirrors       *mirrorConnections
-	pending       *pendingConns
 	taskIds       chan int
 	options       *MasterOptions
 	replayChannel chan *replayRequest
 	quit          chan int
+	dialer        connDialer
 }
 
 // Immutable state and options for master.
@@ -188,6 +189,7 @@ func NewMaster(options *MasterOptions) *Master {
 	}
 
 	me.options = &o
+	me.dialer = newTCPDialer(o.Secret)
 	me.excluded = make(map[string]bool)
 	for _, e := range options.Excludes {
 		me.excluded[e] = true
@@ -196,7 +198,6 @@ func NewMaster(options *MasterOptions) *Master {
 	me.mirrors = newMirrorConnections(
 		me, options.Coordinator, options.MaxJobs)
 	me.mirrors.keepAlive = options.KeepAlive
-	me.pending = newPendingConns()
 	me.attributes = attr.NewAttributeCache(func(n string) *attr.FileAttr {
 		return me.uncachedGetAttr(n)
 	},
@@ -278,42 +279,41 @@ func (me *Master) Start() {
 }
 
 func (me *Master) createMirror(addr string, jobs int) (*mirrorConnection, error) {
-	closeMe := []net.Conn{}
+	closeMe := []io.ReadWriteCloser{}
 	defer func() {
 		for _, c := range closeMe {
 			c.Close()
 		}
 	}()
-	secret := me.options.Secret
-	conn, err := DialTypedConnection(addr, RPC_CHANNEL, secret)
+	conn, err := me.dialer.Open(addr, RPC_CHANNEL)
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
 
 	rpcId := ConnectionId()
-	rpcConn, err := DialTypedConnection(addr, rpcId, secret)
+	rpcConn, err := me.dialer.Open(addr, rpcId)
 	if err != nil {
 		return nil, err
 	}
 	closeMe = append(closeMe, rpcConn)
 
 	revId := ConnectionId()
-	revConn, err := DialTypedConnection(addr, revId, secret)
+	revConn, err := me.dialer.Open(addr, revId)
 	if err != nil {
 		return nil, err
 	}
 	closeMe = append(closeMe, revConn)
 
 	contentId := ConnectionId()
-	contentConn, err := DialTypedConnection(addr, contentId, secret)
+	contentConn, err := me.dialer.Open(addr, contentId)
 	if err != nil {
 		return nil, err
 	}
 	closeMe = append(closeMe, contentConn)
 
 	revContentId := ConnectionId()
-	revContentConn, err := DialTypedConnection(addr, revContentId, secret)
+	revContentConn, err := me.dialer.Open(addr, revContentId)
 	if err != nil {
 		return nil, err
 	}
@@ -368,18 +368,17 @@ func (me *Master) runOnMirror(mirror *mirrorConnection, req *WorkRequest, rep *W
 	defer me.mirrors.jobDone(mirror)
 
 	// Tunnel stdin.
-	if req.StdinId != "" {
-		inputConn := me.pending.wait(req.StdinId)
-		destInputConn, err := DialTypedConnection(mirror.workerAddr,
-			req.StdinId, me.options.Secret)
+	if req.StdinConn != nil {
+		destInputConn, err := me.dialer.Open(mirror.workerAddr, req.StdinId)
 		if err != nil {
 			return err
 		}
-		go func() {
-			HookedCopy(destInputConn, inputConn, PrintStdinSliceLen)
+		go func(rwc io.ReadWriteCloser) {
+			HookedCopy(destInputConn, rwc, PrintStdinSliceLen)
 			destInputConn.Close()
-			inputConn.Close()
-		}()
+			rwc.Close()
+		}(req.StdinConn)
+		req.StdinConn = nil
 	}
 
 	log.Printf("Running task %d on %s: %v", req.TaskId, mirror.workerAddr, req.Argv)

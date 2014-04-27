@@ -195,26 +195,6 @@ func (me *PendingConnections) Accept(conn net.Conn) bool {
 	return true
 }
 
-func DialTypedConnection(addr string, id string, secret []byte) (net.Conn, error) {
-	if len(id) != HEADER_LEN {
-		log.Fatal("id != 8", id, len(id))
-	}
-	conn, err := net.Dial("tcp", addr)
-	if err != nil {
-		return nil, err
-	}
-
-	err = Authenticate(conn, secret)
-	if err != nil {
-		return nil, err
-	}
-	_, err = io.WriteString(conn, id)
-	if err != nil {
-		return nil, err
-	}
-	return conn, nil
-}
-
 func OpenSocketConnection(socket string, channel string, timeout time.Duration) net.Conn {
 	delay := time.Duration(0)
 	conn, err := net.Dial("unix", socket)

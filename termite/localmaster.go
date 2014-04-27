@@ -14,7 +14,7 @@ import (
 // Expose functionality for the local tool to use.
 type LocalMaster struct {
 	master   *Master
-	listener net.Listener
+	listener connListener
 	server   *rpc.Server
 }
 
@@ -35,7 +35,9 @@ func (me *LocalMaster) Run(req *WorkRequest, rep *WorkResponse) error {
 	if len(req.Binary) == 0 || req.Binary[0] != '/' {
 		return fmt.Errorf("Path to binary is not absolute: %q", req.Binary)
 	}
-
+	if req.StdinId != "" {
+		req.StdinConn = me.listener.Accept(req.StdinId)
+	}
 	return me.master.run(req, rep)
 }
 
@@ -60,7 +62,6 @@ func (me *LocalMaster) start(sock string) {
 	if err != nil {
 		log.Fatal("startLocalServer: ", err)
 	}
-	me.listener = l
 	defer os.Remove(sock)
 
 	err = os.Chmod(sock, 0700)
@@ -69,21 +70,13 @@ func (me *LocalMaster) start(sock string) {
 	}
 
 	log.Println("accepting connections on", sock)
-	for {
-		conn, err := me.listener.Accept()
-		if err != nil {
-			break
+	chans := make(chan io.ReadWriteCloser, 1)
+	go func() {
+		for c := range chans {
+			go me.server.ServeConn(c)
 		}
+	}()
 
-		var h [HEADER_LEN]byte
-		if _, err := io.ReadFull(conn, h[:]); err != nil {
-			break
-		}
-
-		if string(h[:]) == RPC_CHANNEL {
-			go me.server.ServeConn(conn)
-		} else {
-			me.master.pending.add(string(h[:]), conn)
-		}
-	}
+	me.listener = newTCPListener(l, nil, chans)
+	me.listener.Wait()
 }

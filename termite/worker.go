@@ -12,7 +12,6 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/hanwen/termite/cba"
@@ -20,7 +19,7 @@ import (
 )
 
 type Worker struct {
-	listener  net.Listener
+	listener  connListener
 	rpcServer *rpc.Server
 	content   *cba.Store
 	stats     *stats.ServerStats
@@ -29,7 +28,6 @@ type Worker struct {
 	canRestart     bool
 	options        *WorkerOptions
 	accepting      bool
-	pending        *pendingConns
 	httpStatusPort int
 	mirrors        *WorkerMirrors
 }
@@ -98,7 +96,6 @@ func NewWorker(options *WorkerOptions) *Worker {
 
 	me := &Worker{
 		content:    cache,
-		pending:    newPendingConns(),
 		rpcServer:  rpc.NewServer(),
 		stats:      stats.NewServerStats(),
 		options:    &copied,
@@ -168,12 +165,10 @@ func (me *Worker) CreateMirror(req *CreateMirrorRequest, rep *CreateMirrorRespon
 	if !me.accepting {
 		return errors.New("Worker is shutting down.")
 	}
-
-	rpcConn := me.pending.wait(req.RpcId)
-	revConn := me.pending.wait(req.RevRpcId)
-	contentConn := me.pending.wait(req.ContentId)
-	revContentConn := me.pending.wait(req.RevContentId)
-
+	rpcConn := me.listener.Accept(req.RpcId)
+	revConn := me.listener.Accept(req.RevRpcId)
+	contentConn := me.listener.Accept(req.ContentId)
+	revContentConn := me.listener.Accept(req.RevContentId)
 	mirror, err := me.mirrors.getMirror(rpcConn, revConn, contentConn, revContentConn, req.MaxJobCount)
 	if err != nil {
 		rpcConn.Close()
@@ -189,76 +184,21 @@ func (me *Worker) CreateMirror(req *CreateMirrorRequest, rep *CreateMirrorRespon
 }
 
 func (me *Worker) RunWorkerServer() {
-	me.listener = portRangeListener(me.options.Port, me.options.PortRetry)
+	listener := portRangeListener(me.options.Port, me.options.PortRetry)
 
-	_, portString, _ := net.SplitHostPort(me.listener.Addr().String())
+	_, portString, _ := net.SplitHostPort(listener.Addr().String())
 	fmt.Sscanf(portString, "%d", &me.options.Port)
 	go me.PeriodicHouseholding()
 	go me.serveStatus(me.options.Port, me.options.PortRetry)
 
-	for {
-		conn, err := me.listener.Accept()
-		if err != nil {
-			break
+	incomingRpc := make(chan io.ReadWriteCloser, 1)
+	go func() {
+		for c := range incomingRpc {
+			go me.rpcServer.ServeConn(c)
 		}
+	}()
 
-		go me.handshake(conn)
-	}
-}
-
-func (w *Worker) handshake(c net.Conn) {
-	if err := Authenticate(c, w.options.Secret); err != nil {
-		log.Println("Authenticate", err)
-		c.Close()
-		return
-	}
-
-	var h [HEADER_LEN]byte
-	if _, err := io.ReadFull(c, h[:]); err != nil {
-		return
-	}
-
-	chType := string(h[:])
-	if chType == RPC_CHANNEL {
-		go w.rpcServer.ServeConn(c)
-	} else {
-		w.pending.add(chType, c)
-	}
-}
-
-type pendingConns struct {
-	conns map[string]io.ReadWriteCloser
-	cond  sync.Cond
-}
-
-func newPendingConns() *pendingConns {
-	p := &pendingConns{
-		conns: map[string]io.ReadWriteCloser{},
-	}
-	p.cond.L = new(sync.Mutex)
-	return p
-}
-
-func (p *pendingConns) add(key string, conn io.ReadWriteCloser) {
-	p.cond.L.Lock()
-	defer p.cond.L.Unlock()
-	if p.conns[key] != nil {
-		panic("collision")
-	}
-	p.conns[key] = conn
-	p.cond.Broadcast()
-}
-
-func (p *pendingConns) wait(key string) io.ReadWriteCloser {
-	p.cond.L.Lock()
-	defer p.cond.L.Unlock()
-	for p.conns[key] == nil {
-		p.cond.Wait()
-	}
-
-	ch := p.conns[key]
-	delete(p.conns, key)
-	return ch
+	me.listener = newTCPListener(listener, me.options.Secret, incomingRpc)
 }
 
 func (me *Worker) Log(req *LogRequest, rep *LogResponse) error {
