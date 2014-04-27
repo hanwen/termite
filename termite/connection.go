@@ -13,7 +13,6 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -121,78 +120,6 @@ func ConnectionId() string {
 	encoded[0] = 'i'
 	binary.BigEndian.PutUint64(encoded[1:], id)
 	return string(encoded)
-}
-
-type pendingConnection struct {
-	Id    string
-	Ready sync.Cond
-	Conn  net.Conn
-}
-
-// PendingConnections manages a list of connections, indexed by ID.
-// The id is sent as the first 8 bytes, after the authentication.
-type PendingConnections struct {
-	connectionsMutex sync.Mutex
-	connections      map[string]*pendingConnection
-}
-
-func NewPendingConnections() *PendingConnections {
-	return &PendingConnections{
-		connections: make(map[string]*pendingConnection),
-	}
-}
-
-func (me *PendingConnections) newPendingConnection(id string) *pendingConnection {
-	p := &pendingConnection{
-		Id: id,
-	}
-	p.Ready.L = &me.connectionsMutex
-	return p
-}
-
-func (me *PendingConnections) WaitConnection(id string) net.Conn {
-	me.connectionsMutex.Lock()
-	defer me.connectionsMutex.Unlock()
-	p := me.connections[id]
-	if p == nil {
-		p = me.newPendingConnection(id)
-		me.connections[id] = p
-	}
-
-	for p.Conn == nil {
-		p.Ready.Wait()
-	}
-
-	me.connections[id] = nil
-	return p.Conn
-}
-
-// Returns false if caller should handle the connection.
-func (me *PendingConnections) Accept(conn net.Conn) bool {
-	idBytes := make([]byte, HEADER_LEN)
-	n, err := conn.Read(idBytes)
-	if n != HEADER_LEN || err != nil {
-		conn.Close()
-		return true
-	}
-	id := string(idBytes)
-	if id == RPC_CHANNEL {
-		return false
-	}
-
-	me.connectionsMutex.Lock()
-	defer me.connectionsMutex.Unlock()
-	p := me.connections[id]
-	if p == nil {
-		p = me.newPendingConnection(id)
-		me.connections[id] = p
-	}
-	if p.Conn != nil {
-		log.Panicf("accepted the same connection id twice: %s", id)
-	}
-	p.Conn = conn
-	p.Ready.Signal()
-	return true
 }
 
 func OpenSocketConnection(socket string, channel string, timeout time.Duration) net.Conn {
