@@ -105,43 +105,6 @@ func Authenticate(conn net.Conn, secret []byte) error {
 	return nil
 }
 
-type Listener struct {
-	net.Listener
-	secret []byte
-}
-
-func AuthenticatedListener(port int, secret []byte, retryCount int) net.Listener {
-	var err error
-	for i := 0; i <= retryCount; i++ {
-		p := port + i
-		addr := fmt.Sprintf(":%d", p)
-		listener, e := net.Listen("tcp", addr)
-		if e == nil {
-			log.Println("Listening to", listener.Addr())
-			return &Listener{listener, secret}
-		}
-		err = e
-	}
-	log.Fatal("net.Listen:", err)
-	return nil
-}
-
-func (me *Listener) Accept() (net.Conn, error) {
-	for {
-		c, err := me.Listener.Accept()
-		if err != nil {
-			return nil, err
-		}
-		err = Authenticate(c, me.secret)
-		if err != nil {
-			c.Close()
-			continue
-		}
-		return c, nil
-	}
-	return nil, io.EOF
-}
-
 // ids:
 //
 const (
@@ -290,4 +253,20 @@ func FindSocket() string {
 		}
 	}
 	return socket
+}
+
+func portRangeListener(port int, retryCount int) net.Listener {
+	var err error
+	for i := 0; i <= retryCount; i++ {
+		p := port + i
+		addr := fmt.Sprintf(":%d", p)
+		listener, e := net.Listen("tcp", addr)
+		if e == nil {
+			log.Println("Listening to", listener.Addr())
+			return listener
+		}
+		err = e
+	}
+	log.Fatal("net.Listen:", err)
+	return nil
 }

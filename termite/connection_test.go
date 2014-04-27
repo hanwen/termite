@@ -3,36 +3,37 @@ package termite
 import (
 	"fmt"
 	"io"
-	"math/rand"
 	"net"
 	"os"
 	"testing"
-	"time"
 )
 
 func TestAuthenticate(t *testing.T) {
 	secret := RandomBytes(20)
-	port := int(rand.Int31n(2000) + 1024)
 
-	l := AuthenticatedListener(port, secret, 10)
+	l, _ := net.Listen("tcp", ":0")
 	go func() {
 		for {
-			_, err := l.Accept()
+			c, err := l.Accept()
 			if err != nil {
 				break
+			}
+
+			if err := Authenticate(c, secret); err != nil {
+				c.Close()
 			}
 		}
 	}()
 
-	time.Sleep(1e9)
 	hostname, _ := os.Hostname()
-	addr := fmt.Sprintf("%s:%d", hostname, port)
-	_, err := DialTypedConnection(addr, RPC_CHANNEL, secret)
+	addr := fmt.Sprintf("%s:%d", hostname, l.Addr().(*net.TCPAddr).Port)
+	c, err := DialTypedConnection(addr, RPC_CHANNEL, secret)
 	if err != nil {
 		t.Fatal("unexpected failure", err)
 	}
+	c.Close()
 
-	c, err := DialTypedConnection(addr, RPC_CHANNEL, []byte("foobar"))
+	c, err = DialTypedConnection(addr, RPC_CHANNEL, []byte("foobar"))
 	if c != nil {
 		t.Error("expect failure")
 	}

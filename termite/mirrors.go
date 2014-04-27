@@ -3,8 +3,9 @@ package termite
 import (
 	"errors"
 	"fmt"
+	"io"
 	"log"
-	"net"
+	"math/rand"
 	"runtime"
 	"sync"
 )
@@ -25,7 +26,7 @@ func NewWorkerMirrors(w *Worker) *WorkerMirrors {
 	return me
 }
 
-func (me *WorkerMirrors) getMirror(rpcConn, revConn, contentConn, revContentConn net.Conn, reserveCount int) (*Mirror, error) {
+func (me *WorkerMirrors) getMirror(rpcConn, revConn, contentConn, revContentConn io.ReadWriteCloser, reserveCount int) (*Mirror, error) {
 	if reserveCount <= 0 {
 		return nil, errors.New("must ask positive jobcount")
 	}
@@ -46,7 +47,8 @@ func (me *WorkerMirrors) getMirror(rpcConn, revConn, contentConn, revContentConn
 
 	mirror := NewMirror(me.worker, rpcConn, revConn, contentConn, revContentConn)
 	mirror.maxJobCount = reserveCount
-	key := fmt.Sprintf("%v", rpcConn.RemoteAddr())
+
+	key := fmt.Sprintf("todo%d", rand.Int63n(1<<60))
 	me.mirrorMap[key] = mirror
 	mirror.key = key
 	return mirror, nil

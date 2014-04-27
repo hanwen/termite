@@ -3,8 +3,8 @@ package termite
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"log"
-	"net"
 	"os"
 	"os/exec"
 	"strings"
@@ -17,7 +17,7 @@ import (
 type WorkerTask struct {
 	req       *WorkRequest
 	rep       *WorkResponse
-	stdinConn net.Conn
+	stdinConn io.ReadWriteCloser
 	mirror    *Mirror
 	cmd       *exec.Cmd
 	taskInfo  string

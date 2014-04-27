@@ -3,9 +3,9 @@ package termite
 import (
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"math/rand"
-	"net"
 	"net/rpc"
 	"strings"
 	"sync"
@@ -22,8 +22,8 @@ type mirrorConnection struct {
 	contentClient *cba.Client
 
 	// For serving the Fileserver.
-	reverseConnection  net.Conn
-	reverseContentConn net.Conn
+	reverseConnection  io.ReadWriteCloser
+	reverseContentConn io.ReadWriteCloser
 
 	// Protected by mirrorConnections.Mutex.
 	maxJobs       int
@@ -122,7 +122,7 @@ func (me *mirrorConnections) refreshWorkers() {
 			time.Sleep(10 * time.Second)
 			continue
 		}
-		log.Printf("Got %d workers %v", len(newWorkers), last)
+		//log.Printf("Got %d workers %v", len(newWorkers), last)
 		me.Mutex.Lock()
 		me.workers = newWorkers
 		me.Mutex.Unlock()

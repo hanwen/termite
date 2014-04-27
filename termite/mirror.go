@@ -2,6 +2,7 @@ package termite
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/rpc"
@@ -13,9 +14,9 @@ import (
 // State associated with one master.
 type Mirror struct {
 	worker         *Worker
-	rpcConn        net.Conn
-	contentConn    net.Conn
-	revContentConn net.Conn
+	rpcConn        io.ReadWriteCloser
+	contentConn    io.ReadWriteCloser
+	revContentConn io.ReadWriteCloser
 
 	rpcFs        *RpcFs
 	writableRoot string
@@ -34,9 +35,7 @@ type Mirror struct {
 	killed     bool
 }
 
-func NewMirror(worker *Worker, rpcConn, revConn, contentConn, revContentConn net.Conn) *Mirror {
-	log.Println("Mirror for", rpcConn)
-
+func NewMirror(worker *Worker, rpcConn, revConn, contentConn, revContentConn io.ReadWriteCloser) *Mirror {
 	mirror := &Mirror{
 		activeFses:     map[*workerFuseFs]bool{},
 		rpcConn:        rpcConn,
@@ -209,7 +208,6 @@ func (me *Mirror) updateFiles(attrs []*attr.FileAttr) {
 
 func (me *Mirror) Run(req *WorkRequest, rep *WorkResponse) error {
 	me.worker.stats.Enter("run")
-	log.Print("Received request", req)
 
 	// Don't run me.updateFiles() as we don't want to issue
 	// unneeded cache invalidations.
@@ -249,9 +247,9 @@ func (me *Mirror) newWorkerFuseFs() (*workerFuseFs, error) {
 }
 
 func (me *Mirror) newWorkerTask(req *WorkRequest, rep *WorkResponse) (*WorkerTask, error) {
-	var stdin net.Conn
+	var stdin io.ReadWriteCloser
 	if req.StdinId != "" {
-		stdin = me.worker.pending.WaitConnection(req.StdinId)
+		stdin = me.worker.pending.wait(req.StdinId)
 	}
 	task := &WorkerTask{
 		req:       req,

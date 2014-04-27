@@ -3,6 +3,7 @@ package termite
 import (
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -78,7 +79,7 @@ func NewCoordinator(opts *CoordinatorOptions) *Coordinator {
 }
 
 func (me *Coordinator) Register(req *RegistrationRequest, rep *Empty) error {
-	conn, err := DialTypedConnection(req.Address, RPC_CHANNEL, me.options.Secret)
+	conn, err := me.dial(req.Address)
 	if conn != nil {
 		conn.Close()
 	}
@@ -132,7 +133,7 @@ func (me *Coordinator) checkReachable() {
 
 	var toDelete []string
 	for _, a := range addrs {
-		conn, err := DialTypedConnection(a, RPC_CHANNEL, me.options.Secret)
+		conn, err := net.Dial("tcp", a)
 		if err != nil {
 			toDelete = append(toDelete, a)
 		} else {
@@ -165,9 +166,14 @@ func (me *Coordinator) PeriodicCheck() {
 	}
 }
 
-func (me *Coordinator) killWorker(addr string, restart bool) error {
-	conn, err := DialTypedConnection(addr, RPC_CHANNEL, me.options.Secret)
+func (c *Coordinator) dial(addr string) (io.ReadWriteCloser, error) {
+	return DialTypedConnection(addr, RPC_CHANNEL, c.options.Secret)
+}
+
+func (c *Coordinator) killWorker(addr string, restart bool) error {
+	conn, err := c.dial(addr)
 	if err == nil {
+		log.Println("calling kill")
 		killReq := ShutdownRequest{Restart: restart}
 		rep := ShutdownResponse{}
 		cl := rpc.NewClient(conn)
@@ -177,8 +183,8 @@ func (me *Coordinator) killWorker(addr string, restart bool) error {
 	return err
 }
 
-func (me *Coordinator) shutdownWorker(addr string, restart bool) error {
-	conn, err := DialTypedConnection(addr, RPC_CHANNEL, me.options.Secret)
+func (c *Coordinator) shutdownWorker(addr string, restart bool) error {
+	conn, err := c.dial(addr)
 	if err != nil {
 		return err
 	}

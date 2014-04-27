@@ -152,9 +152,9 @@ func (me *Coordinator) killHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	addr, err := me.getHost(req)
-	var conn net.Conn
+	var conn io.ReadWriteCloser
 	if err == nil {
-		conn, err = DialTypedConnection(addr, RPC_CHANNEL, me.options.Secret)
+		conn, err = me.dial(addr)
 	}
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
@@ -188,7 +188,7 @@ func (me *Coordinator) killHandler(w http.ResponseWriter, req *http.Request) {
 	if restart {
 		action = "restart"
 	}
-	fmt.Fprintf(w, "<p>%s of %s in progress", action, conn.RemoteAddr())
+	fmt.Fprintf(w, "<p>%s of %s in progress", action, addr)
 	// Should have a redirect.
 	fmt.Fprintf(w, "<p><a href=\"/\">back to index</a>")
 	go me.checkReachable()

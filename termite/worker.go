@@ -12,27 +12,24 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-	"syscall"
+	"sync"
 	"time"
 
 	"github.com/hanwen/termite/cba"
 	"github.com/hanwen/termite/stats"
 )
 
-var _ = log.Println
-
 type Worker struct {
 	listener  net.Listener
 	rpcServer *rpc.Server
 	content   *cba.Store
-	pending   *PendingConnections
 	stats     *stats.ServerStats
 
-	stopListener chan int
-	canRestart   bool
-	options      *WorkerOptions
-	accepting    bool
-
+	stopListener   chan int
+	canRestart     bool
+	options        *WorkerOptions
+	accepting      bool
+	pending        *pendingConns
 	httpStatusPort int
 	mirrors        *WorkerMirrors
 }
@@ -55,9 +52,10 @@ type WorkerOptions struct {
 	PortRetry int
 
 	Paranoia bool
-	Secret   []byte
-	TempDir  string
-	Jobs     int
+
+	Secret  []byte
+	TempDir string
+	Jobs    int
 
 	// If set, change user to this for running.
 	User *User
@@ -100,7 +98,7 @@ func NewWorker(options *WorkerOptions) *Worker {
 
 	me := &Worker{
 		content:    cache,
-		pending:    NewPendingConnections(),
+		pending:    newPendingConns(),
 		rpcServer:  rpc.NewServer(),
 		stats:      stats.NewServerStats(),
 		options:    &copied,
@@ -111,6 +109,7 @@ func NewWorker(options *WorkerOptions) *Worker {
 	me.mirrors = NewWorkerMirrors(me)
 	me.stopListener = make(chan int, 1)
 	me.rpcServer.Register(me)
+
 	return me
 }
 
@@ -170,10 +169,11 @@ func (me *Worker) CreateMirror(req *CreateMirrorRequest, rep *CreateMirrorRespon
 		return errors.New("Worker is shutting down.")
 	}
 
-	rpcConn := me.pending.WaitConnection(req.RpcId)
-	revConn := me.pending.WaitConnection(req.RevRpcId)
-	contentConn := me.pending.WaitConnection(req.ContentId)
-	revContentConn := me.pending.WaitConnection(req.RevContentId)
+	rpcConn := me.pending.wait(req.RpcId)
+	revConn := me.pending.wait(req.RevRpcId)
+	contentConn := me.pending.wait(req.ContentId)
+	revContentConn := me.pending.wait(req.RevContentId)
+
 	mirror, err := me.mirrors.getMirror(rpcConn, revConn, contentConn, revContentConn, req.MaxJobCount)
 	if err != nil {
 		rpcConn.Close()
@@ -189,7 +189,8 @@ func (me *Worker) CreateMirror(req *CreateMirrorRequest, rep *CreateMirrorRespon
 }
 
 func (me *Worker) RunWorkerServer() {
-	me.listener = AuthenticatedListener(me.options.Port, me.options.Secret, me.options.PortRetry)
+	me.listener = portRangeListener(me.options.Port, me.options.PortRetry)
+
 	_, portString, _ := net.SplitHostPort(me.listener.Addr().String())
 	fmt.Sscanf(portString, "%d", &me.options.Port)
 	go me.PeriodicHouseholding()
@@ -197,22 +198,67 @@ func (me *Worker) RunWorkerServer() {
 
 	for {
 		conn, err := me.listener.Accept()
-		if err == syscall.EINVAL {
-			break
-		}
 		if err != nil {
-			if e, ok := err.(*net.OpError); ok && e.Err == syscall.EINVAL {
-				break
-			}
-			log.Println("me.listener", err)
 			break
 		}
 
-		log.Println("Authenticated connection from", conn.RemoteAddr())
-		if !me.pending.Accept(conn) {
-			go me.rpcServer.ServeConn(conn)
-		}
+		go me.handshake(conn)
 	}
+}
+
+func (w *Worker) handshake(c net.Conn) {
+	if err := Authenticate(c, w.options.Secret); err != nil {
+		log.Println("Authenticate", err)
+		c.Close()
+		return
+	}
+
+	var h [HEADER_LEN]byte
+	if _, err := io.ReadFull(c, h[:]); err != nil {
+		return
+	}
+
+	chType := string(h[:])
+	if chType == RPC_CHANNEL {
+		go w.rpcServer.ServeConn(c)
+	} else {
+		w.pending.add(chType, c)
+	}
+}
+
+type pendingConns struct {
+	conns map[string]io.ReadWriteCloser
+	cond  sync.Cond
+}
+
+func newPendingConns() *pendingConns {
+	p := &pendingConns{
+		conns: map[string]io.ReadWriteCloser{},
+	}
+	p.cond.L = new(sync.Mutex)
+	return p
+}
+
+func (p *pendingConns) add(key string, conn io.ReadWriteCloser) {
+	p.cond.L.Lock()
+	defer p.cond.L.Unlock()
+	if p.conns[key] != nil {
+		panic("collision")
+	}
+	p.conns[key] = conn
+	p.cond.Broadcast()
+}
+
+func (p *pendingConns) wait(key string) io.ReadWriteCloser {
+	p.cond.L.Lock()
+	defer p.cond.L.Unlock()
+	for p.conns[key] == nil {
+		p.cond.Wait()
+	}
+
+	ch := p.conns[key]
+	delete(p.conns, key)
+	return ch
 }
 
 func (me *Worker) Log(req *LogRequest, rep *LogResponse) error {

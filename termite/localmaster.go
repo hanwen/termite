@@ -2,11 +2,11 @@ package termite
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/rpc"
 	"os"
-	"syscall"
 
 	"github.com/hanwen/termite/attr"
 )
@@ -71,14 +71,19 @@ func (me *LocalMaster) start(sock string) {
 	log.Println("accepting connections on", sock)
 	for {
 		conn, err := me.listener.Accept()
-		if err == syscall.EINVAL {
+		if err != nil {
 			break
 		}
-		if err != nil {
-			log.Fatal("listener.accept: ", err)
+
+		var h [HEADER_LEN]byte
+		if _, err := io.ReadFull(conn, h[:]); err != nil {
+			break
 		}
-		if !me.master.pending.Accept(conn) {
+
+		if string(h[:]) == RPC_CHANNEL {
 			go me.server.ServeConn(conn)
+		} else {
+			me.master.pending.add(string(h[:]), conn)
 		}
 	}
 }

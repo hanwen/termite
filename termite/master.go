@@ -25,7 +25,7 @@ type Master struct {
 	excluded      map[string]bool
 	attributes    *attr.AttributeCache
 	mirrors       *mirrorConnections
-	pending       *PendingConnections
+	pending       *pendingConns
 	taskIds       chan int
 	options       *MasterOptions
 	replayChannel chan *replayRequest
@@ -196,7 +196,7 @@ func NewMaster(options *MasterOptions) *Master {
 	me.mirrors = newMirrorConnections(
 		me, options.Coordinator, options.MaxJobs)
 	me.mirrors.keepAlive = options.KeepAlive
-	me.pending = NewPendingConnections()
+	me.pending = newPendingConns()
 	me.attributes = attr.NewAttributeCache(func(n string) *attr.FileAttr {
 		return me.uncachedGetAttr(n)
 	},
@@ -284,7 +284,6 @@ func (me *Master) createMirror(addr string, jobs int) (*mirrorConnection, error)
 			c.Close()
 		}
 	}()
-
 	secret := me.options.Secret
 	conn, err := DialTypedConnection(addr, RPC_CHANNEL, secret)
 	if err != nil {
@@ -338,6 +337,7 @@ func (me *Master) createMirror(addr string, jobs int) (*mirrorConnection, error)
 	}
 	closeMe = nil
 
+	log.Print("serving fileServerRpc on ", revConn.(net.Conn).LocalAddr())
 	go me.fileServerRpc.ServeConn(revConn)
 	go me.contentStore.ServeConn(revContentConn)
 
@@ -369,8 +369,8 @@ func (me *Master) runOnMirror(mirror *mirrorConnection, req *WorkRequest, rep *W
 
 	// Tunnel stdin.
 	if req.StdinId != "" {
-		inputConn := me.pending.WaitConnection(req.StdinId)
-		destInputConn, err := DialTypedConnection(mirror.reverseConnection.RemoteAddr().String(),
+		inputConn := me.pending.wait(req.StdinId)
+		destInputConn, err := DialTypedConnection(mirror.workerAddr,
 			req.StdinId, me.options.Secret)
 		if err != nil {
 			return err
