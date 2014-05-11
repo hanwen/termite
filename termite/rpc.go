@@ -74,6 +74,9 @@ type WorkResponse struct {
 	// Task ids for which the fileset contains data.
 	TaskIds []int
 
+	// Files from the backing store that were read.
+	Reads []string
+
 	// Worker where this was processed.
 	WorkerId string
 }

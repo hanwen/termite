@@ -25,11 +25,11 @@ type workerFuseFs struct {
 	// without leading /
 	writableRoot string
 	*fuse.Server
-	fsConnector *nodefs.FileSystemConnector
-	unionFs     *fs.MemUnionFs
-	procFs      *fs.ProcFs
-	rpcNodeFs   *pathfs.PathNodeFs
-	unionNodeFs *pathfs.PathNodeFs
+	fsConnector  *nodefs.FileSystemConnector
+	unionFs      *fs.MemUnionFs
+	procFs       *fs.ProcFs
+	rpcNodeFs    *pathfs.PathNodeFs
+	annotatingFS *AnnotatingFS
 
 	// Protected by Mirror.fsMutex
 	id      string
@@ -125,8 +125,9 @@ func newWorkerFuseFs(tmpDir string, rpcFs pathfs.FileSystem, writableRoot string
 	}
 	go me.Server.Serve()
 
-	me.unionFs, err = fs.NewMemUnionFs(
-		me.rwDir, pathfs.NewPrefixFileSystem(rpcFs, me.writableRoot))
+	prefixFS := pathfs.NewPrefixFileSystem(rpcFs, me.writableRoot)
+	me.annotatingFS = NewAnnotatingFS(prefixFS)
+	me.unionFs, err = fs.NewMemUnionFs(me.rwDir, me.annotatingFS)
 	if err != nil {
 		return nil, err
 	}
@@ -215,8 +216,15 @@ func (me *workerFuseFs) update(attrs []*attr.FileAttr) {
 	me.unionFs.Update(updates)
 }
 
-func (fs *workerFuseFs) reap() (dir string, yield map[string]*fs.Result) {
-	yield = fs.unionFs.Reap()
+type fsYield struct {
+	dir   string
+	files map[string]*fs.Result
+	reads []string
+}
+
+func (fs *workerFuseFs) reap() fsYield {
+	yield := fs.unionFs.Reap()
+	opened := fs.annotatingFS.Reap()
 	backingStoreFiles := map[string]string{}
 	dir, err := ioutil.TempDir(fs.tmpDir, "reap")
 	if err != nil {
@@ -245,5 +253,5 @@ func (fs *workerFuseFs) reap() (dir string, yield map[string]*fs.Result) {
 
 	// We saved the backing store files, so we don't need the file system anymore.
 	fs.unionFs.Reset()
-	return dir, yield
+	return fsYield{dir, yield, opened}
 }

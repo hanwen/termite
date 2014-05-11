@@ -1,8 +1,12 @@
 package main
 
 import (
+	"crypto"
+	_ "crypto/md5"
+	"encoding/json"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/rpc"
 	"os"
@@ -196,6 +200,58 @@ func RunLocally(req *termite.WorkRequest, rule *termite.LocalRule) syscall.WaitS
 	return msg.Sys().(syscall.WaitStatus)
 }
 
+func DumpAnnotations(rep *termite.WorkResponse) {
+	d := filepath.Join(topDir, ".annotation")
+	if fi, err := os.Stat(d); err != nil || !fi.IsDir() {
+		if err := os.MkdirAll(d, 0755); err != nil {
+			log.Fatalf("MkdirAll: %v", err)
+		}
+	}
+
+	type annotation struct {
+		Deps    []string
+		Target  string
+		Read    []string
+		Written []string
+		Deleted []string
+		Time    time.Time
+	}
+
+	depStr := os.Getenv("MAKE_DEPS")
+	a := annotation{
+		Deps:   strings.Split(depStr, " "),
+		Target: os.Getenv("MAKE_TARGET"),
+		Read:   rep.Reads,
+		Time:   time.Now(),
+	}
+
+	slashTopDir := topDir + "/"
+	if rep.FileSet != nil {
+		for _, f := range rep.Files {
+			p := "/" + f.Path
+			p = strings.TrimPrefix(p, slashTopDir)
+			if f.Deletion() {
+				a.Deleted = append(a.Deleted, p)
+			} else {
+				a.Written = append(a.Written, p)
+			}
+		}
+	}
+	out, err := json.Marshal(&a)
+	if err != nil {
+		log.Fatalf("Marshal: %v", err)
+	}
+	h := crypto.MD5.New()
+	if err != nil {
+		log.Fatalf("MD5: %v", err)
+	}
+	out = append(out, '\n')
+	h.Write(out)
+	if err := ioutil.WriteFile(filepath.Join(d, fmt.Sprintf("%x", h.Sum(nil))), out, 0644); err != nil {
+		log.Fatalf("WriteFile: %v", err)
+	}
+}
+
 func main() {
 	command := flag.String("c", "", "command to run.")
 	refresh := flag.Bool("refresh", false, "refresh master file cache.")
@@ -267,6 +323,8 @@ func main() {
 		if err != nil {
 			log.Fatal("LocalMaster.Run: ", err)
 		}
+
+		DumpAnnotations(&rep)
 
 		os.Stdout.Write([]byte(rep.Stdout))
 		os.Stderr.Write([]byte(rep.Stderr))
