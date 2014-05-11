@@ -199,6 +199,7 @@ func (me *Worker) RunWorkerServer() {
 	}()
 
 	me.listener = newTCPListener(listener, me.options.Secret, incomingRpc)
+	me.listener.Wait()
 }
 
 func (me *Worker) Log(req *LogRequest, rep *LogResponse) error {
