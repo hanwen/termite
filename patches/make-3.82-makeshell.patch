@@ -1,8 +1,10 @@
-commit fae7a0ba7cbd7e34d1ccaa733f86e0d76c176418
+commit c6ff116fa2023247d1e32ff2bb1db8cdb8ae4b60
 Author: hanwen <hanwen@google.com>
 Date:   Sun May 11 19:43:11 2014 +0200
 
     Add MAKE_TARGET and MAKE_DEPS to environment; MAKE_SHELL support.
+    
+    Invoke true for pure dependency rules.
 
 diff --git a/job.c b/job.c
 index aacfb84..c6cd1f4 100644
@@ -21,6 +23,47 @@ index aacfb84..c6cd1f4 100644
  #ifdef WINDOWS32
      /*
       * Convert to forward slashes so that construct_command_argv_internal()
+diff --git a/remake.c b/remake.c
+index 27d2550..ba30e4c 100644
+--- a/remake.c
++++ b/remake.c
+@@ -272,6 +272,17 @@ update_goal_chain (struct dep *goals)
+   return status;
+ }
+ 
++
++struct commands*
++default_commands(void)
++{
++  struct commands* cmds = calloc (1, sizeof (struct commands));
++  cmds->fileinfo.filenm = 0;
++  cmds->commands = xstrdup("true");
++  cmds->command_lines = 0;
++  return cmds;
++}
++
+ /* If FILE is not up to date, execute the commands for it.
+    Return 0 if successful, 1 if unsuccessful;
+    but with some flag settings, just call `exit' if unsuccessful.
+@@ -289,7 +300,7 @@ update_file (struct file *file, unsigned int depth)
+ {
+   register int status = 0;
+   register struct file *f;
+-
++  
+   f = file->double_colon ? file->double_colon : file;
+ 
+   /* Prune the dependency graph: if we've already been here on _this_
+@@ -1162,6 +1173,9 @@ touch_file (struct file *file)
+ static void
+ remake_file (struct file *file)
+ {
++  if (file->cmds == 0 && file->deps != 0) {
++    file->cmds = default_commands();
++  }
+   if (file->cmds == 0)
+     {
+       if (file->phony)
 diff --git a/variable.c b/variable.c
 index 915be20..e19f78d 100644
 --- a/variable.c
