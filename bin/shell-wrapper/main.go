@@ -200,7 +200,7 @@ func RunLocally(req *termite.WorkRequest, rule *termite.LocalRule) syscall.WaitS
 	return msg.Sys().(syscall.WaitStatus)
 }
 
-func DumpAnnotations(rep *termite.WorkResponse) {
+func DumpAnnotations(req *termite.WorkRequest, rep *termite.WorkResponse, dur time.Duration) {
 	d := filepath.Join(topDir, ".annotation")
 	if fi, err := os.Stat(d); err != nil || !fi.IsDir() {
 		if err := os.MkdirAll(d, 0755); err != nil {
@@ -209,20 +209,26 @@ func DumpAnnotations(rep *termite.WorkResponse) {
 	}
 
 	type annotation struct {
-		Deps    []string
-		Target  string
-		Read    []string
-		Written []string
-		Deleted []string
-		Time    time.Time
+		Deps     []string
+		Dir      string
+		Target   string
+		Read     []string
+		Written  []string
+		Deleted  []string
+		Time     time.Time
+		Duration time.Duration
+		Command  string
 	}
 
 	depStr := os.Getenv("MAKE_DEPS")
 	a := annotation{
-		Deps:   strings.Split(depStr, " "),
-		Target: os.Getenv("MAKE_TARGET"),
-		Read:   rep.Reads,
-		Time:   time.Now(),
+		Deps:     strings.Split(depStr, " "),
+		Dir:      req.Dir,
+		Target:   os.Getenv("MAKE_TARGET"),
+		Read:     rep.Reads,
+		Time:     time.Now(),
+		Command:  strings.Join(req.Argv, " "),
+		Duration: dur,
 	}
 
 	slashTopDir := topDir + "/"
@@ -319,12 +325,14 @@ func main() {
 		if err != nil {
 			log.Fatalf("rpc connection problem (%s): %v", *command, err)
 		}
-		err = rpc.Call("LocalMaster.Run", &req, &rep)
+
+		start := time.Now()
+		err = rpc.Call("LocalMaster.Run", req, &rep)
 		if err != nil {
 			log.Fatal("LocalMaster.Run: ", err)
 		}
 
-		DumpAnnotations(&rep)
+		DumpAnnotations(req, &rep, time.Since(start))
 
 		os.Stdout.Write([]byte(rep.Stdout))
 		os.Stderr.Write([]byte(rep.Stderr))
