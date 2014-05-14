@@ -17,6 +17,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/hanwen/termite/analyze"
 	"github.com/hanwen/termite/attr"
 	"github.com/hanwen/termite/termite"
 )
@@ -208,32 +209,22 @@ func DumpAnnotations(req *termite.WorkRequest, rep *termite.WorkResponse, dur ti
 		}
 	}
 
-	type annotation struct {
-		Deps     []string
-		Dir      string
-		Target   string
-		Read     []string
-		Written  []string
-		Deleted  []string
-		Time     time.Time
-		Duration time.Duration
-		Command  string
-	}
-
 	depStr := os.Getenv("MAKE_DEPS")
-	a := annotation{
-		Deps:     strings.Split(depStr, " "),
-		Dir:      req.Dir,
-		Target:   os.Getenv("MAKE_TARGET"),
-		Read:     rep.Reads,
-		Time:     time.Now(),
-		Command:  strings.Join(req.Argv, " "),
-		Duration: dur,
+	a := analyze.Annotation{
+		Deps:    strings.Split(depStr, " "),
+		Dir:     req.Dir,
+		Target:  os.Getenv("MAKE_TARGET"),
+		Read:    rep.Reads,
+		Command: strings.Join(req.Argv, " "),
 	}
 
 	slashTopDir := topDir + "/"
 	if rep.FileSet != nil {
 		for _, f := range rep.Files {
+			if f.IsDir() {
+				continue
+			}
+
 			p := "/" + f.Path
 			p = strings.TrimPrefix(p, slashTopDir)
 			if f.Deletion() {
@@ -251,9 +242,22 @@ func DumpAnnotations(req *termite.WorkRequest, rep *termite.WorkResponse, dur ti
 	if err != nil {
 		log.Fatalf("MD5: %v", err)
 	}
-	out = append(out, '\n')
 	h.Write(out)
-	if err := ioutil.WriteFile(filepath.Join(d, fmt.Sprintf("%x", h.Sum(nil))), out, 0644); err != nil {
+	fn := fmt.Sprintf("%x", h.Sum(nil))
+
+	// Don't hash timestamps.
+	a.Time = time.Now()
+	a.Duration = dur
+	a.Filename = fn
+
+	out, err = json.Marshal(&a)
+	if err != nil {
+		log.Fatalf("Marshal: %v", err)
+	}
+
+	out = append(out, '\n')
+
+	if err := ioutil.WriteFile(filepath.Join(d, fn), out, 0644); err != nil {
 		log.Fatalf("WriteFile: %v", err)
 	}
 }
