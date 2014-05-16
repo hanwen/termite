@@ -8,9 +8,10 @@ import (
 	"strings"
 )
 
-type graph struct {
+type Graph struct {
 	// Write result => Action
 	Actions map[string]*Action
+	Errors  []error
 }
 
 func keys(m map[string]struct{}) []string {
@@ -22,7 +23,7 @@ func keys(m map[string]struct{}) []string {
 	return ks
 }
 
-func (g *graph) actionURL(a string) string {
+func (g *Graph) actionURL(a string) string {
 	if _, ok := g.Actions[a]; ok {
 		return fmt.Sprintf("<a href=\"/target?t=%s\">%s</a>\n", a, html.EscapeString(a))
 	} else {
@@ -30,7 +31,7 @@ func (g *graph) actionURL(a string) string {
 	}
 }
 
-func (g *graph) writeNode(w http.ResponseWriter, a *Action) {
+func (g *Graph) writeNode(w http.ResponseWriter, a *Action) {
 	fmt.Fprintf(w, "<html><body>\n")
 	fmt.Fprintf(w, "<p>targets</p>\n")
 	fmt.Fprintf(w, "<ul>\n")
@@ -73,7 +74,7 @@ func (g *graph) writeNode(w http.ResponseWriter, a *Action) {
 	fmt.Fprintf(w, "</body></html>\n")
 }
 
-func (g *graph) ServeAction(w http.ResponseWriter, req *http.Request) {
+func (g *Graph) ServeAction(w http.ResponseWriter, req *http.Request) {
 	values := req.URL.Query()
 	names, ok := values["t"]
 	if !ok {
@@ -90,7 +91,18 @@ func (g *graph) ServeAction(w http.ResponseWriter, req *http.Request) {
 	g.writeNode(w, a)
 }
 
-func (g *graph) ServeActions(w http.ResponseWriter, req *http.Request) {
+func (g *Graph) ServeErrors(w http.ResponseWriter, req *http.Request) {
+	fmt.Fprintf(w, "<html><body>\n")
+	fmt.Fprintf(w, "<p>errors</p><ul>\n")
+	for _, e := range g.Errors {
+		fmt.Fprintf(w, "<li>%s</li>\n", e)
+
+	}
+	fmt.Fprintf(w, "</ul>\n")
+	fmt.Fprintf(w, "</body></html>\n")
+}
+
+func (g *Graph) ServeActions(w http.ResponseWriter, req *http.Request) {
 	var ks []string
 	for k := range g.Actions {
 		ks = append(ks, k)
@@ -104,10 +116,9 @@ func (g *graph) ServeActions(w http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(w, "</ul></body></html>\n")
 }
 
-func ServeAction(addr string, actions map[string]*Action) error {
-	gr := graph{actions}
-
-	http.HandleFunc("/target", gr.ServeAction)
-	http.HandleFunc("/", gr.ServeActions)
+func (g *Graph) Serve(addr string) error {
+	http.HandleFunc("/target", g.ServeAction)
+	http.HandleFunc("/errors", g.ServeErrors)
+	http.HandleFunc("/", g.ServeActions)
 	return http.ListenAndServe(addr, nil)
 }

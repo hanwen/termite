@@ -122,3 +122,40 @@ func CombineCommands(annotations []*Annotation) *Action {
 	action.Time = annotations[0].Time
 	return &action
 }
+
+func (g *Graph) add(a *Action) {
+	for k := range a.Writes {
+		if v, ok := g.Actions[k]; ok {
+			if v != a {
+				g.Errors = append(g.Errors, fmt.Errorf("ignoring duplicate write %q: %v   %v", k, v.Annotations, a.Annotations))
+			}
+		} else {
+			g.Actions[k] = a
+		}
+	}
+	for k := range a.Targets {
+		if v, ok := g.Actions[k]; ok {
+			if v != a {
+				g.Errors = append(g.Errors, fmt.Errorf("ignoring duplicate target %q: have %v, add %v", k, v, a))
+			}
+		} else {
+			g.Actions[k] = a
+		}
+	}
+}
+
+func NewGraph(anns []*Annotation) *Graph {
+	annotations := map[string][]*Annotation{}
+	for _, r := range anns {
+		annotations[r.Target] = append(annotations[r.Target], r)
+	}
+
+	g := Graph{
+		Actions: map[string]*Action{},
+	}
+	for _, a := range annotations {
+		action := CombineCommands(a)
+		g.add(action)
+	}
+	return &g
+}
