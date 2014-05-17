@@ -17,21 +17,21 @@ func keys(m map[string]struct{}) []string {
 	return ks
 }
 
-func (g *Graph) actionURL(a string) string {
-	if _, ok := g.ActionByTarget[a]; ok {
+func (g *Graph) targetURL(a string) string {
+	if _, ok := g.TargetByName[a]; ok {
 		return fmt.Sprintf("<a href=\"/target?t=%s\">%s</a>\n", a, html.EscapeString(a))
 	} else {
 		return html.EscapeString(a)
 	}
 }
 
-func annotationRef(ann *Annotation) string {
-	return fmt.Sprintf("<a href=\"/annotation?id=%s\">%s</a>", ann.ID(), ann.ID())
+func commandRef(ann *Command) string {
+	return fmt.Sprintf("<a href=\"/command?id=%s\">%s</a>", ann.ID(), ann.ID())
 }
 
-func (g *Graph) writeNode(w http.ResponseWriter, a *Action) {
+func (g *Graph) writeNode(w http.ResponseWriter, a *Target) {
 	fmt.Fprintf(w, "<html><body>\n")
-	fmt.Fprintf(w, "<p>targets: %s</p>\n", a.Target)
+	fmt.Fprintf(w, "<p>name: %s</p>\n", a.Name)
 	fmt.Fprintf(w, "<p>written files</p>\n")
 	fmt.Fprintf(w, "<ul>\n")
 	for _, k := range keys(a.Writes) {
@@ -45,20 +45,20 @@ func (g *Graph) writeNode(w http.ResponseWriter, a *Action) {
 		if strings.HasPrefix(k, "/") {
 			continue
 		}
-		fmt.Fprintf(w, "<li>%s\n", g.actionURL(k))
+		fmt.Fprintf(w, "<li>%s\n", g.targetURL(k))
 	}
 	fmt.Fprintf(w, "</ul>\n")
 
 	fmt.Fprintf(w, "<p>read files</p>\n")
 	fmt.Fprintf(w, "<ul>\n")
 	for _, k := range keys(a.Reads) {
-		fmt.Fprintf(w, "<li>%s\n", g.actionURL(k))
+		fmt.Fprintf(w, "<li>%s\n", g.targetURL(k))
 	}
 	fmt.Fprintf(w, "</ul>\n")
 
 	fmt.Fprintf(w, "<p>commands</p>\n")
-	for _, k := range a.Annotations {
-		fmt.Fprintf(w, "<li>%s : <pre>\n", annotationRef(k))
+	for _, k := range a.Commands {
+		fmt.Fprintf(w, "<li>%s : <pre>\n", commandRef(k))
 		w.Write([]byte(html.EscapeString(k.Command) + "\n"))
 		fmt.Fprintf(w, "</pre></li>\n")
 	}
@@ -67,22 +67,22 @@ func (g *Graph) writeNode(w http.ResponseWriter, a *Action) {
 	fmt.Fprintf(w, "</body></html>\n")
 }
 
-func (g *Graph) writeAnnotation(w http.ResponseWriter, a *Annotation) {
+func (g *Graph) writeCommand(w http.ResponseWriter, a *Command) {
 	fmt.Fprintf(w, "<html><body>\n")
 	fmt.Fprintf(w, "<p>start %s, duration %s</p>\n", a.Time, a.Duration)
 
 	fmt.Fprintf(w, "<p>target: %s</p>\n", a.Target)
 	fmt.Fprintf(w, "<p>written files</p>\n")
 	fmt.Fprintf(w, "<ul>\n")
-	for _, k := range a.Written {
+	for _, k := range a.Writes {
 		fmt.Fprintf(w, "<li>%s\n", k)
 	}
 	fmt.Fprintf(w, "</ul>\n")
 
 	fmt.Fprintf(w, "<p>read files</p>\n")
 	fmt.Fprintf(w, "<ul>\n")
-	for _, k := range a.Read {
-		fmt.Fprintf(w, "<li>%s\n", g.actionURL(k))
+	for _, k := range a.Reads {
+		fmt.Fprintf(w, "<li>%s\n", g.targetURL(k))
 	}
 	fmt.Fprintf(w, "</ul>\n")
 
@@ -92,7 +92,7 @@ func (g *Graph) writeAnnotation(w http.ResponseWriter, a *Annotation) {
 		if strings.HasPrefix(k, "/") {
 			continue
 		}
-		fmt.Fprintf(w, "<li>%s\n", g.actionURL(k))
+		fmt.Fprintf(w, "<li>%s\n", g.targetURL(k))
 	}
 	fmt.Fprintf(w, "</ul>\n")
 
@@ -104,17 +104,17 @@ func (g *Graph) writeAnnotation(w http.ResponseWriter, a *Annotation) {
 
 }
 
-func (g *Graph) ServeAction(w http.ResponseWriter, req *http.Request) {
+func (g *Graph) ServeTarget(w http.ResponseWriter, req *http.Request) {
 	values := req.URL.Query()
 	names, ok := values["t"]
 	if !ok {
-		http.Error(w, "404 action param not found", http.StatusNotFound)
+		http.Error(w, "404 target param not found", http.StatusNotFound)
 		return
 	}
 
-	a, ok := g.ActionByTarget[names[0]]
+	a, ok := g.TargetByName[names[0]]
 	if !ok {
-		http.Error(w, fmt.Sprintf("404 action %s not found", names[0]), http.StatusNotFound)
+		http.Error(w, fmt.Sprintf("404 target %s not found", names[0]), http.StatusNotFound)
 		return
 	}
 
@@ -131,21 +131,21 @@ func (g *Graph) ServeErrors(w http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(w, "</body></html>\n")
 }
 
-func (g *Graph) ServeAnnotation(w http.ResponseWriter, req *http.Request) {
+func (g *Graph) ServeCommand(w http.ResponseWriter, req *http.Request) {
 	values := req.URL.Query()
 	names, ok := values["id"]
 	if !ok {
-		http.Error(w, "404 annotation param not found", http.StatusNotFound)
+		http.Error(w, "404 command param not found", http.StatusNotFound)
 		return
 	}
 
-	a, ok := g.AnnotationByID[names[0]]
+	a, ok := g.CommandByID[names[0]]
 	if !ok {
-		http.Error(w, fmt.Sprintf("404 annotation %s not found", names[0]), http.StatusNotFound)
+		http.Error(w, fmt.Sprintf("404 command %s not found", names[0]), http.StatusNotFound)
 		return
 	}
 
-	g.writeAnnotation(w, a)
+	g.writeCommand(w, a)
 }
 
 func (g *Graph) ServeRoot(w http.ResponseWriter, req *http.Request) {
@@ -157,27 +157,27 @@ func (g *Graph) ServeRoot(w http.ResponseWriter, req *http.Request) {
 
 }
 
-func (g *Graph) ServeActions(w http.ResponseWriter, req *http.Request) {
+func (g *Graph) ServeTargets(w http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(w, "<html><body>\n")
 	fmt.Fprintf(w, "<p>targets</p><ul>\n")
 
 	keys := []string{}
-	for k := range g.ActionByTarget {
+	for k := range g.TargetByName {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
 
 	for _, k := range keys {
-		fmt.Fprintf(w, "<li>%s", g.actionURL(k))
+		fmt.Fprintf(w, "<li>%s", g.targetURL(k))
 	}
 	fmt.Fprintf(w, "</ul></body></html>\n")
 }
 
 func (g *Graph) Serve(addr string) error {
-	http.HandleFunc("/targets", g.ServeActions)
-	http.HandleFunc("/target", g.ServeAction)
+	http.HandleFunc("/targets", g.ServeTargets)
+	http.HandleFunc("/target", g.ServeTarget)
 	http.HandleFunc("/errors", g.ServeErrors)
-	http.HandleFunc("/annotation", g.ServeAnnotation)
+	http.HandleFunc("/command", g.ServeCommand)
 	http.HandleFunc("/", g.ServeRoot)
 	return http.ListenAndServe(addr, nil)
 }
