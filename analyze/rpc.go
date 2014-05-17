@@ -1,6 +1,7 @@
 package analyze
 
 import (
+	"path/filepath"
 	"time"
 )
 
@@ -15,15 +16,11 @@ type Annotation struct {
 	Duration time.Duration
 	Command  string
 	Filename string
+
+	action *Action
 }
 
-type Action struct {
-	Commands    []string
-	Reads       map[string]struct{}
-	Deps        map[string]struct{}
-	Writes      map[string]struct{}
-	Targets     map[string]struct{}
-	Duration    time.Duration
-	Time        time.Time
-	Annotations []string
+func (a *Annotation) ID() string {
+	_, base := filepath.Split(a.Filename)
+	return base
 }
