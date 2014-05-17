@@ -12,24 +12,24 @@ import (
 )
 
 type Graph struct {
-	ActionByWrite     map[string]*Action
-	ActionByTarget    map[string]*Action
-	AnnotationByID    map[string]*Annotation
-	AnnotationByWrite map[string]*Annotation
-	Errors            []Error
+	TargetByWrite  map[string]*Target
+	TargetByName   map[string]*Target
+	CommandByID    map[string]*Command
+	CommandByWrite map[string]*Command
+	Errors         []Error
 }
 
-type Action struct {
-	Target      string
-	Reads       map[string]struct{}
-	Deps        map[string]struct{}
-	Writes      map[string]struct{}
-	Duration    time.Duration
-	Annotations []*Annotation
+type Target struct {
+	Name     string
+	Reads    map[string]struct{}
+	Deps     map[string]struct{}
+	Writes   map[string]struct{}
+	Duration time.Duration
+	Commands []*Command
 }
 
-func (a *Action) Start() time.Time {
-	return a.Annotations[0].Time
+func (a *Target) Start() time.Time {
+	return a.Commands[0].Time
 }
 
 type Error interface {
@@ -37,21 +37,21 @@ type Error interface {
 }
 
 type dupWrite struct {
-	write       string
-	annotations []*Annotation
+	write    string
+	commands []*Command
 }
 
 func (d *dupWrite) HTML(g *Graph) string {
 	s := ""
-	for _, a := range d.annotations {
-		s += fmt.Sprintf("<li>%s\n", annotationRef(a))
+	for _, a := range d.commands {
+		s += fmt.Sprintf("<li>%s\n", commandRef(a))
 	}
 	return fmt.Sprintf("file %q written by <ul>%s</ul>", d.write, s)
 }
 
-func ReadDir(dir string) ([]*Annotation, error) {
+func ReadDir(dir string) ([]*Command, error) {
 	dir = filepath.Clean(dir)
-	result := []*Annotation{}
+	result := []*Command{}
 	f, err := os.Open(dir)
 	if err != nil {
 		return nil, err
@@ -69,7 +69,7 @@ func ReadDir(dir string) ([]*Annotation, error) {
 			return nil, fmt.Errorf("read(%q): %v", fn, err)
 		}
 
-		var a Annotation
+		var a Command
 		if err := json.Unmarshal(contents, &a); err != nil {
 			return nil, fmt.Errorf("Unmarshal(%q): %v", fn, err)
 		}
@@ -97,7 +97,7 @@ func ReadDir(dir string) ([]*Annotation, error) {
 	return result, nil
 }
 
-type annSlice []*Annotation
+type annSlice []*Command
 
 func (s annSlice) Len() int {
 	return len(s)
@@ -110,46 +110,46 @@ func (s annSlice) Less(i, j int) bool {
 	return s[i].Time.UnixNano() < s[j].Time.UnixNano()
 }
 
-func (g *Graph) computeAction(action *Action) {
-	action.Writes = map[string]struct{}{}
-	action.Reads = map[string]struct{}{}
-	action.Deps = map[string]struct{}{}
-	sort.Sort(annSlice(action.Annotations))
+func (g *Graph) computeTarget(target *Target) {
+	target.Writes = map[string]struct{}{}
+	target.Reads = map[string]struct{}{}
+	target.Deps = map[string]struct{}{}
+	sort.Sort(annSlice(target.Commands))
 
 	yes := struct{}{}
-	for _, a := range action.Annotations {
-		a.action = action
-		action.Duration += a.Duration
+	for _, a := range target.Commands {
+		a.target = target
+		target.Duration += a.Duration
 		for _, f := range a.Deps {
 			if f == "" {
 				continue
 			}
-			action.Deps[f] = yes
+			target.Deps[f] = yes
 		}
-		for _, f := range a.Read {
+		for _, f := range a.Reads {
 			if f == "" {
 				continue
 			}
 			if strings.HasPrefix(f, "/") {
 				continue
 			}
-			action.Reads[f] = yes
+			target.Reads[f] = yes
 		}
-		for _, f := range a.Deleted {
+		for _, f := range a.Deletions {
 			if f == "" {
 				continue
 			}
-			delete(action.Writes, f)
-			delete(action.Reads, f)
+			delete(target.Writes, f)
+			delete(target.Reads, f)
 		}
-		for _, f := range a.Written {
+		for _, f := range a.Writes {
 			if f == "" {
 				continue
 			}
-			action.Writes[f] = yes
+			target.Writes[f] = yes
 		}
 		if a.Target != "" {
-			action.Target = a.Target
+			target.Name = a.Target
 		}
 
 	}
@@ -159,38 +159,38 @@ func (g *Graph) addError(e Error) {
 	g.Errors = append(g.Errors, e)
 }
 
-func (g *Graph) addAnnotation(ann *Annotation) {
-	g.AnnotationByID[ann.ID()] = ann
-	for _, w := range ann.Written {
-		if exist, ok := g.AnnotationByWrite[w]; ok {
-			g.addError(&dupWrite{w, []*Annotation{exist, ann}})
+func (g *Graph) addCommand(ann *Command) {
+	g.CommandByID[ann.ID()] = ann
+	for _, w := range ann.Writes {
+		if exist, ok := g.CommandByWrite[w]; ok {
+			g.addError(&dupWrite{w, []*Command{exist, ann}})
 		} else {
-			g.AnnotationByWrite[w] = ann
+			g.CommandByWrite[w] = ann
 		}
 	}
 
-	action := g.ActionByTarget[ann.Target]
-	if action == nil {
-		action = &Action{}
-		g.ActionByTarget[ann.Target] = action
+	target := g.TargetByName[ann.Target]
+	if target == nil {
+		target = &Target{}
+		g.TargetByName[ann.Target] = target
 	}
 
-	action.Annotations = append(action.Annotations, ann)
+	target.Commands = append(target.Commands, ann)
 }
 
-func NewGraph(anns []*Annotation) *Graph {
+func NewGraph(anns []*Command) *Graph {
 	g := Graph{
-		ActionByTarget:    map[string]*Action{},
-		AnnotationByWrite: map[string]*Annotation{},
-		AnnotationByID:    map[string]*Annotation{},
+		TargetByName:   map[string]*Target{},
+		CommandByWrite: map[string]*Command{},
+		CommandByID:    map[string]*Command{},
 	}
 
 	for _, ann := range anns {
-		g.addAnnotation(ann)
+		g.addCommand(ann)
 	}
 
-	for _, a := range g.ActionByTarget {
-		g.computeAction(a)
+	for _, a := range g.TargetByName {
+		g.computeTarget(a)
 	}
 	return &g
 }

@@ -210,11 +210,11 @@ func DumpAnnotations(req *termite.WorkRequest, rep *termite.WorkResponse, dur ti
 	}
 
 	depStr := os.Getenv("MAKE_DEPS")
-	a := analyze.Annotation{
+	a := analyze.Command{
 		Deps:    strings.Split(depStr, " "),
 		Dir:     req.Dir,
 		Target:  os.Getenv("MAKE_TARGET"),
-		Read:    rep.Reads,
+		Reads:   rep.Reads,
 		Command: strings.Join(req.Argv, " "),
 	}
 
@@ -228,16 +228,16 @@ func DumpAnnotations(req *termite.WorkRequest, rep *termite.WorkResponse, dur ti
 			p := "/" + f.Path
 			p = strings.TrimPrefix(p, slashTopDir)
 			if f.Deletion() {
-				a.Deleted = append(a.Deleted, p)
+				a.Deletions = append(a.Deletions, p)
 			} else {
-				a.Written = append(a.Written, p)
+				a.Writes = append(a.Writes, p)
 			}
 		}
 	}
-	sort.Strings(a.Deleted)
-	sort.Strings(a.Written)
+	sort.Strings(a.Deletions)
+	sort.Strings(a.Writes)
 	sort.Strings(a.Deps)
-	sort.Strings(a.Read)
+	sort.Strings(a.Reads)
 	out, err := json.Marshal(&a)
 	if err != nil {
 		log.Fatalf("Marshal: %v", err)
