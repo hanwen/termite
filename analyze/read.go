@@ -8,7 +8,46 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 )
+
+type Graph struct {
+	ActionByWrite     map[string]*Action
+	ActionByTarget    map[string]*Action
+	AnnotationByID    map[string]*Annotation
+	AnnotationByWrite map[string]*Annotation
+	Errors            []Error
+}
+
+type Action struct {
+	Target      string
+	Reads       map[string]struct{}
+	Deps        map[string]struct{}
+	Writes      map[string]struct{}
+	Duration    time.Duration
+	Annotations []*Annotation
+}
+
+func (a *Action) Start() time.Time {
+	return a.Annotations[0].Time
+}
+
+type Error interface {
+	HTML(g *Graph) string
+}
+
+type dupWrite struct {
+	write       string
+	annotations []*Annotation
+}
+
+func (d *dupWrite) HTML(g *Graph) string {
+	s := ""
+	for _, a := range d.annotations {
+		s += fmt.Sprintf("<li>%s\n", annotationRef(a))
+	}
+	return fmt.Sprintf("file %q written by <ul>%s</ul>", d.write, s)
+}
 
 func ReadDir(dir string) ([]*Annotation, error) {
 	dir = filepath.Clean(dir)
@@ -71,18 +110,15 @@ func (s annSlice) Less(i, j int) bool {
 	return s[i].Time.UnixNano() < s[j].Time.UnixNano()
 }
 
-func CombineCommands(annotations []*Annotation) *Action {
-	sort.Sort(annSlice(annotations))
+func (g *Graph) computeAction(action *Action) {
+	action.Writes = map[string]struct{}{}
+	action.Reads = map[string]struct{}{}
+	action.Deps = map[string]struct{}{}
+	sort.Sort(annSlice(action.Annotations))
 
-	action := Action{
-		Writes:  map[string]struct{}{},
-		Reads:   map[string]struct{}{},
-		Deps:    map[string]struct{}{},
-		Targets: map[string]struct{}{},
-	}
 	yes := struct{}{}
-	for _, a := range annotations {
-		action.Commands = append(action.Commands, a.Command)
+	for _, a := range action.Annotations {
+		a.action = action
 		action.Duration += a.Duration
 		for _, f := range a.Deps {
 			if f == "" {
@@ -113,49 +149,48 @@ func CombineCommands(annotations []*Annotation) *Action {
 			action.Writes[f] = yes
 		}
 		if a.Target != "" {
-			action.Targets[a.Target] = yes
+			action.Target = a.Target
 		}
 
-		action.Annotations = append(action.Annotations, a.Filename)
 	}
-
-	action.Time = annotations[0].Time
-	return &action
 }
 
-func (g *Graph) add(a *Action) {
-	for k := range a.Writes {
-		if v, ok := g.Actions[k]; ok {
-			if v != a {
-				g.Errors = append(g.Errors, fmt.Errorf("ignoring duplicate write %q: %v   %v", k, v.Annotations, a.Annotations))
-			}
+func (g *Graph) addError(e Error) {
+	g.Errors = append(g.Errors, e)
+}
+
+func (g *Graph) addAnnotation(ann *Annotation) {
+	g.AnnotationByID[ann.ID()] = ann
+	for _, w := range ann.Written {
+		if exist, ok := g.AnnotationByWrite[w]; ok {
+			g.addError(&dupWrite{w, []*Annotation{exist, ann}})
 		} else {
-			g.Actions[k] = a
+			g.AnnotationByWrite[w] = ann
 		}
 	}
-	for k := range a.Targets {
-		if v, ok := g.Actions[k]; ok {
-			if v != a {
-				g.Errors = append(g.Errors, fmt.Errorf("ignoring duplicate target %q: have %v, add %v", k, v, a))
-			}
-		} else {
-			g.Actions[k] = a
-		}
+
+	action := g.ActionByTarget[ann.Target]
+	if action == nil {
+		action = &Action{}
+		g.ActionByTarget[ann.Target] = action
 	}
+
+	action.Annotations = append(action.Annotations, ann)
 }
 
 func NewGraph(anns []*Annotation) *Graph {
-	annotations := map[string][]*Annotation{}
-	for _, r := range anns {
-		annotations[r.Target] = append(annotations[r.Target], r)
+	g := Graph{
+		ActionByTarget:    map[string]*Action{},
+		AnnotationByWrite: map[string]*Annotation{},
+		AnnotationByID:    map[string]*Annotation{},
 	}
 
-	g := Graph{
-		Actions: map[string]*Action{},
+	for _, ann := range anns {
+		g.addAnnotation(ann)
 	}
-	for _, a := range annotations {
-		action := CombineCommands(a)
-		g.add(action)
+
+	for _, a := range g.ActionByTarget {
+		g.computeAction(a)
 	}
 	return &g
 }
