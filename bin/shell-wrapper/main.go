@@ -234,6 +234,10 @@ func DumpAnnotations(req *termite.WorkRequest, rep *termite.WorkResponse, dur ti
 			}
 		}
 	}
+	sort.Strings(a.Deleted)
+	sort.Strings(a.Written)
+	sort.Strings(a.Deps)
+	sort.Strings(a.Read)
 	out, err := json.Marshal(&a)
 	if err != nil {
 		log.Fatalf("Marshal: %v", err)
