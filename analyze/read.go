@@ -13,12 +13,18 @@ import (
 	"time"
 )
 
+type edge struct {
+	target *Target
+	dep    *Target
+}
+
 type Graph struct {
 	TargetByWrite  map[string]*Target
 	TargetByName   map[string]*Target
 	CommandByID    map[string]*Command
 	CommandByWrite map[string]*Command
 	Errors         []Error
+	UsedEdges      map[edge]struct{}
 }
 
 type Target struct {
@@ -248,6 +254,7 @@ func NewGraph(anns []*Command) *Graph {
 		TargetByWrite:  map[string]*Target{},
 		CommandByWrite: map[string]*Command{},
 		CommandByID:    map[string]*Command{},
+		UsedEdges:      map[edge]struct{}{},
 	}
 
 	for _, ann := range anns {

@@ -15,7 +15,7 @@ type undeclaredDep struct {
 }
 
 func (u *undeclaredDep) HTML(g *Graph) string {
-	return fmt.Sprintf("target %s reads undeclared dependency %s",
+	return fmt.Sprintf("undeclared dependency: target %s reads %s",
 		g.targetURL(u.Target), u.Read)
 }
 
@@ -25,14 +25,13 @@ type unusedDep struct {
 }
 
 func (u *unusedDep) HTML(g *Graph) string {
-	return fmt.Sprintf("target %s does not use dependency %s",
+	return fmt.Sprintf("unused dependency: target %s, dep %s",
 		g.targetURL(u.Target), u.Dep)
 }
 
 func (g *Graph) checkTarget(target *Target) {
 	realDeps := map[*Target]string{}
 	for r := range target.Reads {
-		log.Println("R", r)
 		t := g.TargetByWrite[r]
 		if t != nil {
 			realDeps[t] = r
@@ -42,6 +41,7 @@ func (g *Graph) checkTarget(target *Target) {
 	usedDeps := targetSet{}
 	for dep, name := range realDeps {
 		if _, ok := target.Deps[name]; ok {
+			g.UsedEdges[edge{target, dep}] = yes
 			usedDeps[dep] = yes
 		}
 		if _, ok := target.Deps[dep.Name]; ok {
@@ -53,34 +53,56 @@ func (g *Graph) checkTarget(target *Target) {
 	}
 
 	for d := range realDeps {
-		t := g.findPath(target, d)
-		if t != nil {
-			usedDeps[t] = yes
+		path := g.findPath([]*Target{target}, d)
+		if path != nil {
+			for i := 1; i < len(path); i++ {
+				g.UsedEdges[edge{path[i-1], path[i]}] = yes
+			}
 		} else {
 			e := &undeclaredDep{target.Name, realDeps[d]}
 			g.Errors = append(g.Errors, e)
 			target.Errors = append(target.Errors, e)
 		}
 	}
-
-	// TODO - check declared edges for use.
 }
 
-func (g *Graph) findPath(target *Target, needle *Target) *Target {
+// finds a path reaching needle from the partial path given. Returns
+// the complete path or nil.
+func (g *Graph) findPath(partial []*Target, needle *Target) []*Target {
+	target := partial[len(partial)-1]
 	if target == needle {
-		return target
+		return partial
 	}
+
 	for d := range target.Deps {
 		dep := g.TargetByName[d]
-		if dep != nil && g.findPath(dep, needle) != nil {
-			return target
+		if dep == nil {
+			continue
+		}
+
+		if try := g.findPath(append(partial, dep), needle); try != nil {
+			return try
 		}
 	}
 	return nil
 }
 
 func (g *Graph) checkTargets() {
+	log.Println("checking targets")
 	for _, target := range g.TargetByName {
 		g.checkTarget(target)
+	}
+	for _, target := range g.TargetByName {
+		g.checkUnusedDeps(target)
+	}
+	log.Println("done checking targets")
+}
+
+func (g *Graph) checkUnusedDeps(target *Target) {
+	for dep := range target.Deps {
+		depTarget := g.TargetByName[dep]
+		if _, ok := g.UsedEdges[edge{target, depTarget}]; !ok {
+			target.Errors = append(target.Errors, &unusedDep{target.Name, dep})
+		}
 	}
 }
