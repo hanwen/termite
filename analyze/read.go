@@ -148,7 +148,10 @@ func ReadDir(dir string, depRe *regexp.Regexp) ([]*Command, error) {
 
 		var clean []string
 		for _, p := range a.Deps {
-			p, err = filepath.Rel(base, filepath.Join(a.Dir, p))
+			if !filepath.IsAbs(p) {
+				p = filepath.Join(a.Dir, p)
+			}
+			p, err = filepath.Rel(base, p)
 			if err != nil {
 				return nil, fmt.Errorf("rel %q %v", p, err)
 			}
