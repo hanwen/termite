@@ -28,6 +28,7 @@ type Target struct {
 	Writes   map[string]struct{}
 	Duration time.Duration
 	Commands []*Command
+	Errors   []Error
 }
 
 func (a *Target) Start() time.Time {
@@ -236,11 +237,15 @@ func (g *Graph) addCommand(ann *Command) {
 	}
 
 	target.Commands = append(target.Commands, ann)
+	for _, w := range ann.Writes {
+		g.TargetByWrite[w] = target
+	}
 }
 
 func NewGraph(anns []*Command) *Graph {
 	g := Graph{
 		TargetByName:   map[string]*Target{},
+		TargetByWrite:  map[string]*Target{},
 		CommandByWrite: map[string]*Command{},
 		CommandByID:    map[string]*Command{},
 	}
@@ -252,5 +257,6 @@ func NewGraph(anns []*Command) *Graph {
 	for _, a := range g.TargetByName {
 		g.computeTarget(a)
 	}
+	g.checkTargets()
 	return &g
 }

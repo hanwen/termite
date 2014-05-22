@@ -62,6 +62,11 @@ func (g *Graph) writeNode(w http.ResponseWriter, a *Target) {
 		w.Write([]byte(html.EscapeString(k.Command) + "\n"))
 		fmt.Fprintf(w, "</pre></li>\n")
 	}
+	fmt.Fprintf(w, "<p>errors</p><ul>\n")
+	for _, e := range a.Errors {
+		fmt.Fprintf(w, "<li>%s</li>\n", e.HTML(g))
+	}
+	fmt.Fprintf(w, "</ul>\n")
 
 	fmt.Fprintf(w, "<p>timing: %s</p>\n", a.Duration)
 	fmt.Fprintf(w, "</body></html>\n")
