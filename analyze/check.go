@@ -10,8 +10,8 @@ type targetSet map[*Target]struct{}
 var yes = struct{}{}
 
 type undeclaredDep struct {
-	Target string
-	Read   string
+	Target *String
+	Read   *String
 }
 
 func (u *undeclaredDep) HTML(g *Graph) string {
@@ -20,8 +20,8 @@ func (u *undeclaredDep) HTML(g *Graph) string {
 }
 
 type unusedDep struct {
-	Target string
-	Dep    string
+	Target *String
+	Dep    *String
 }
 
 func (u *unusedDep) HTML(g *Graph) string {
@@ -30,7 +30,7 @@ func (u *unusedDep) HTML(g *Graph) string {
 }
 
 func (g *Graph) checkTarget(target *Target) {
-	realDeps := map[*Target]string{}
+	realDeps := map[*Target]*String{}
 	for r := range target.Reads {
 		t := g.TargetByWrite[r]
 		if t != nil {
@@ -109,7 +109,8 @@ func (g *Graph) checkUnusedDeps(target *Target) {
 	for dep := range target.Deps {
 		depTarget := g.TargetByName[dep]
 		if _, ok := g.UsedEdges[edge{target, depTarget}]; !ok {
-			target.Errors = append(target.Errors, &unusedDep{target.Name, dep})
+			target.Errors = append(target.Errors, &unusedDep{
+				target.Name, dep})
 		}
 	}
 }

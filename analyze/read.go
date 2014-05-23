@@ -19,22 +19,45 @@ type edge struct {
 }
 
 type Graph struct {
-	TargetByWrite  map[string]*Target
-	TargetByName   map[string]*Target
-	CommandByID    map[string]*Command
+	strings        map[string]*String
+	TargetByWrite  map[*String]*Target
+	TargetByName   map[*String]*Target
+	CommandByID    map[*String]*Command
 	CommandByWrite map[string]*Command
 	Errors         []Error
 	UsedEdges      map[edge]struct{}
 }
 
 type Target struct {
-	Name     string
-	Reads    map[string]struct{}
-	Deps     map[string]struct{}
-	Writes   map[string]struct{}
+	Name     *String
+	Reads    map[*String]struct{}
+	Deps     map[*String]struct{}
+	Writes   map[*String]struct{}
 	Duration time.Duration
 	Commands []*Command
 	Errors   []Error
+}
+
+func (g *Graph) Lookup(s string) *String {
+	return g.strings[s]
+}
+
+func (g *Graph) Intern(s string) *String {
+	interned := g.strings[s]
+	if interned == nil {
+		interned = &String{s}
+		g.strings[s] = interned
+	}
+	return interned
+}
+
+// String is an interned string.
+type String struct {
+	string
+}
+
+func (s *String) String() string {
+	return s.string
 }
 
 func (a *Target) Start() time.Time {
@@ -181,9 +204,9 @@ func (s annSlice) Less(i, j int) bool {
 }
 
 func (g *Graph) computeTarget(target *Target) {
-	target.Writes = map[string]struct{}{}
-	target.Reads = map[string]struct{}{}
-	target.Deps = map[string]struct{}{}
+	target.Writes = map[*String]struct{}{}
+	target.Reads = map[*String]struct{}{}
+	target.Deps = map[*String]struct{}{}
 	sort.Sort(annSlice(target.Commands))
 
 	yes := struct{}{}
@@ -194,7 +217,7 @@ func (g *Graph) computeTarget(target *Target) {
 			if f == "" {
 				continue
 			}
-			target.Deps[f] = yes
+			target.Deps[g.Intern(f)] = yes
 		}
 		for _, f := range a.Reads {
 			if f == "" {
@@ -203,23 +226,23 @@ func (g *Graph) computeTarget(target *Target) {
 			if strings.HasPrefix(f, "/") {
 				continue
 			}
-			target.Reads[f] = yes
+			target.Reads[g.Intern(f)] = yes
 		}
 		for _, f := range a.Deletions {
 			if f == "" {
 				continue
 			}
-			delete(target.Writes, f)
-			delete(target.Reads, f)
+			delete(target.Writes, g.Intern(f))
+			delete(target.Reads, g.Intern(f))
 		}
 		for _, f := range a.Writes {
 			if f == "" {
 				continue
 			}
-			target.Writes[f] = yes
+			target.Writes[g.Intern(f)] = yes
 		}
 		if a.Target != "" {
-			target.Name = a.Target
+			target.Name = g.Intern(a.Target)
 		}
 
 	}
@@ -230,7 +253,7 @@ func (g *Graph) addError(e Error) {
 }
 
 func (g *Graph) addCommand(ann *Command) {
-	g.CommandByID[ann.ID()] = ann
+	g.CommandByID[g.Intern(ann.ID())] = ann
 	for _, w := range ann.Writes {
 		if exist, ok := g.CommandByWrite[w]; ok {
 			g.addError(&dupWrite{w, []*Command{exist, ann}})
@@ -239,24 +262,25 @@ func (g *Graph) addCommand(ann *Command) {
 		}
 	}
 
-	target := g.TargetByName[ann.Target]
+	target := g.TargetByName[g.Intern(ann.Target)]
 	if target == nil {
 		target = &Target{}
-		g.TargetByName[ann.Target] = target
+		g.TargetByName[g.Intern(ann.Target)] = target
 	}
 
 	target.Commands = append(target.Commands, ann)
 	for _, w := range ann.Writes {
-		g.TargetByWrite[w] = target
+		g.TargetByWrite[g.Intern(w)] = target
 	}
 }
 
 func NewGraph(anns []*Command) *Graph {
 	g := Graph{
-		TargetByName:   map[string]*Target{},
-		TargetByWrite:  map[string]*Target{},
+		strings:        map[string]*String{},
+		TargetByName:   map[*String]*Target{},
+		TargetByWrite:  map[*String]*Target{},
 		CommandByWrite: map[string]*Command{},
-		CommandByID:    map[string]*Command{},
+		CommandByID:    map[*String]*Command{},
 		UsedEdges:      map[edge]struct{}{},
 	}
 
