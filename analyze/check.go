@@ -74,10 +74,17 @@ func (g *Graph) findPath(partial []*Target, needle *Target) []*Target {
 		return partial
 	}
 
+nextDep:
 	for d := range target.Deps {
 		dep := g.TargetByName[d]
 		if dep == nil {
 			continue
+		}
+		for _, done := range partial {
+			if done == dep {
+				log.Println("cyclic dep", target.Name, dep.Name)
+				continue nextDep
+			}
 		}
 
 		if try := g.findPath(append(partial, dep), needle); try != nil {
