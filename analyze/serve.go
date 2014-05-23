@@ -8,6 +8,28 @@ import (
 	"strings"
 )
 
+type internedSlice []*String
+
+func (s internedSlice) Len() int {
+	return len(s)
+}
+func (s internedSlice) Swap(i, j int) {
+	s[j], s[i] = s[i], s[j]
+}
+
+func (s internedSlice) Less(i, j int) bool {
+	return s[i].String() < s[j].String()
+}
+
+func internKeys(m map[*String]struct{}) []*String {
+	var ks internedSlice
+	for k := range m {
+		ks = append(ks, k)
+	}
+	sort.Sort(ks)
+	return ks
+}
+
 func keys(m map[string]struct{}) []string {
 	var ks []string
 	for k := range m {
@@ -17,11 +39,11 @@ func keys(m map[string]struct{}) []string {
 	return ks
 }
 
-func (g *Graph) targetURL(a string) string {
+func (g *Graph) targetURL(a *String) string {
 	if _, ok := g.TargetByName[a]; ok {
-		return fmt.Sprintf("<a href=\"/target?t=%s\">%s</a>\n", a, html.EscapeString(a))
+		return fmt.Sprintf("<a href=\"/target?t=%s\">%s</a>\n", a.String(), html.EscapeString(a.String()))
 	} else {
-		return html.EscapeString(a)
+		return html.EscapeString(a.String())
 	}
 }
 
@@ -34,24 +56,21 @@ func (g *Graph) writeNode(w http.ResponseWriter, a *Target) {
 	fmt.Fprintf(w, "<p>name: %s</p>\n", a.Name)
 	fmt.Fprintf(w, "<p>written files</p>\n")
 	fmt.Fprintf(w, "<ul>\n")
-	for _, k := range keys(a.Writes) {
+	for _, k := range internKeys(a.Writes) {
 		fmt.Fprintf(w, "<li>%s\n", k)
 	}
 	fmt.Fprintf(w, "</ul>\n")
 
 	fmt.Fprintf(w, "<p>declared deps</p>\n")
 	fmt.Fprintf(w, "<ul>\n")
-	for _, k := range keys(a.Deps) {
-		if strings.HasPrefix(k, "/") {
-			continue
-		}
+	for _, k := range internKeys(a.Deps) {
 		fmt.Fprintf(w, "<li>%s\n", g.targetURL(k))
 	}
 	fmt.Fprintf(w, "</ul>\n")
 
 	fmt.Fprintf(w, "<p>read files</p>\n")
 	fmt.Fprintf(w, "<ul>\n")
-	for _, k := range keys(a.Reads) {
+	for _, k := range internKeys(a.Reads) {
 		fmt.Fprintf(w, "<li>%s\n", g.targetURL(k))
 	}
 	fmt.Fprintf(w, "</ul>\n")
@@ -87,7 +106,7 @@ func (g *Graph) writeCommand(w http.ResponseWriter, a *Command) {
 	fmt.Fprintf(w, "<p>read files</p>\n")
 	fmt.Fprintf(w, "<ul>\n")
 	for _, k := range a.Reads {
-		fmt.Fprintf(w, "<li>%s\n", g.targetURL(k))
+		fmt.Fprintf(w, "<li>%s\n", g.targetURL(g.Intern(k)))
 	}
 	fmt.Fprintf(w, "</ul>\n")
 
@@ -97,7 +116,7 @@ func (g *Graph) writeCommand(w http.ResponseWriter, a *Command) {
 		if strings.HasPrefix(k, "/") {
 			continue
 		}
-		fmt.Fprintf(w, "<li>%s\n", g.targetURL(k))
+		fmt.Fprintf(w, "<li>%s\n", g.targetURL(g.Intern(k)))
 	}
 	fmt.Fprintf(w, "</ul>\n")
 
@@ -117,7 +136,7 @@ func (g *Graph) ServeTarget(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	a, ok := g.TargetByName[names[0]]
+	a, ok := g.TargetByName[g.Intern(names[0])]
 	if !ok {
 		http.Error(w, fmt.Sprintf("404 target %s not found", names[0]), http.StatusNotFound)
 		return
@@ -144,7 +163,7 @@ func (g *Graph) ServeCommand(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	a, ok := g.CommandByID[names[0]]
+	a, ok := g.CommandByID[g.Lookup(names[0])]
 	if !ok {
 		http.Error(w, fmt.Sprintf("404 command %s not found", names[0]), http.StatusNotFound)
 		return
@@ -166,11 +185,11 @@ func (g *Graph) ServeTargets(w http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(w, "<html><body>\n")
 	fmt.Fprintf(w, "<p>targets</p><ul>\n")
 
-	keys := []string{}
+	var keys internedSlice
 	for k := range g.TargetByName {
 		keys = append(keys, k)
 	}
-	sort.Strings(keys)
+	sort.Sort(keys)
 
 	for _, k := range keys {
 		fmt.Fprintf(w, "<li>%s", g.targetURL(k))
