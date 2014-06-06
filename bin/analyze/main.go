@@ -5,7 +5,7 @@ import (
 	"log"
 	"regexp"
 
-	"termite/analyze"
+	"github.com/hanwen/termite/analyze"
 )
 
 func main() {
