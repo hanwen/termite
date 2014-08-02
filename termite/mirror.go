@@ -13,10 +13,9 @@ import (
 
 // State associated with one master.
 type Mirror struct {
-	worker         *Worker
-	rpcConn        io.ReadWriteCloser
-	contentConn    io.ReadWriteCloser
-	revContentConn io.ReadWriteCloser
+	worker      *Worker
+	rpcConn     io.ReadWriteCloser
+	contentConn io.ReadWriteCloser
 
 	rpcFs        *RpcFs
 	writableRoot string
@@ -37,12 +36,11 @@ type Mirror struct {
 
 func NewMirror(worker *Worker, rpcConn, revConn, contentConn, revContentConn io.ReadWriteCloser) *Mirror {
 	mirror := &Mirror{
-		activeFses:     map[*workerFuseFs]bool{},
-		rpcConn:        rpcConn,
-		contentConn:    contentConn,
-		revContentConn: revContentConn,
-		worker:         worker,
-		accepting:      true,
+		activeFses:  map[*workerFuseFs]bool{},
+		rpcConn:     rpcConn,
+		contentConn: contentConn,
+		worker:      worker,
+		accepting:   true,
 	}
 	_, portString, _ := net.SplitHostPort(worker.listener.Addr().String())
 	id := Hostname + ":" + portString
