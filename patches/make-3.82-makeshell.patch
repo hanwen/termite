@@ -1,10 +1,8 @@
-commit 722beb976da61fffd48546a3a6b2dca994e96bbd
-Author: Han-Wen Nienhuys <hanwen@google.com>
-Date:   Wed Aug 17 00:01:08 2011 -0300
+commit fae7a0ba7cbd7e34d1ccaa733f86e0d76c176418
+Author: hanwen <hanwen@google.com>
+Date:   Sun May 11 19:43:11 2014 +0200
 
-    Introduce $(MAKE_SHELL) for invoking shell commands.
-    
-    This allows for more flexible command distribution.
+    Add MAKE_TARGET and MAKE_DEPS to environment; MAKE_SHELL support.
 
 diff --git a/job.c b/job.c
 index aacfb84..c6cd1f4 100644
@@ -23,3 +21,81 @@ index aacfb84..c6cd1f4 100644
  #ifdef WINDOWS32
      /*
       * Convert to forward slashes so that construct_command_argv_internal()
+diff --git a/variable.c b/variable.c
+index 915be20..e19f78d 100644
+--- a/variable.c
++++ b/variable.c
+@@ -937,6 +937,30 @@ define_automatic_variables (void)
+ 
+ int export_all_variables;
+ 
++static char *dump_deps(struct file *file) {
++  struct dep* d = NULL;
++  char *deps_val = malloc(100);
++  int dep_max = 100;
++  strcpy(deps_val, "MAKE_DEPS=");
++  int dep_len = strlen(deps_val);
++  for (d = file->deps; d; d = d->next) {
++    const char *n = d->file->name;
++    int l = strlen(n); 
++    while (dep_len + l+2 >= dep_max) {
++      dep_max = 2*dep_max;
++      deps_val = realloc(deps_val, dep_max);
++    }
++
++    strncpy(deps_val + dep_len, n, l);
++    dep_len += l;
++    deps_val[dep_len] = ' ';
++    dep_len++;
++    deps_val[dep_len] = '\0';
++  }
++
++  return deps_val;
++}
++
+ /* Create a new environment for FILE's commands.
+    If FILE is nil, this is for the `shell' function.
+    The child's MAKELEVEL variable is incremented.  */
+@@ -1037,7 +1061,7 @@ target_environment (struct file *file)
+   makelevel_key.length = MAKELEVEL_LENGTH;
+   hash_delete (&table, &makelevel_key);
+ 
+-  result = result_0 = xmalloc ((table.ht_fill + 2) * sizeof (char *));
++  result = result_0 = xmalloc ((table.ht_fill + 4) * sizeof (char *));
+ 
+   v_slot = (struct variable **) table.ht_vec;
+   v_end = v_slot + table.ht_size;
+@@ -1045,7 +1069,14 @@ target_environment (struct file *file)
+     if (! HASH_VACANT (*v_slot))
+       {
+ 	struct variable *v = *v_slot;
+-
++	if (!strcmp(v->name, "MAKE_TARGET")) {
++	  continue;
++	}
++	if (!strcmp(v->name, "MAKE_DEPS")) {
++	  continue;
++	}
++		    
++	
+ 	/* If V is recursively expanded and didn't come from the environment,
+ 	   expand its value.  If it came from the environment, it should
+ 	   go back into the environment unchanged.  */
+@@ -1072,6 +1103,9 @@ target_environment (struct file *file)
+ 	  }
+       }
+ 
++  *result++ = dump_deps(file);
++  *result++ = xstrdup(concat (2, "MAKE_TARGET=", file->name));
++
+   *result = xmalloc (100);
+   sprintf (*result, "%s=%u", MAKELEVEL_NAME, makelevel + 1);
+   *++result = 0;
+@@ -1080,6 +1114,7 @@ target_environment (struct file *file)
+ 
+   return result_0;
+ }
++
+ 
+ static struct variable *
+ set_special_var (struct variable *var)

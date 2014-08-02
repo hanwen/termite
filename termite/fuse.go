@@ -48,8 +48,9 @@ type workerFS struct {
 	rootDir string // absolute path of the root of the RPC backed miror FS
 
 	// without leading /
-	unionFs     *termitefs.MemUnionFs
-	unionNodeFs *pathfs.PathNodeFs
+	unionFs      *termitefs.MemUnionFs
+	unionNodeFs  *pathfs.PathNodeFs
+	annotatingFS *AnnotatingFS
 
 	state *workerFSState
 }
@@ -217,9 +218,11 @@ func (fuseFS *fuseFS) newWorkerFS(id string) (*workerFS, error) {
 		return nil, err
 	}
 
+	prefixFS := pathfs.NewPrefixFileSystem(fuseFS.rpcFS, fs.fuseFS.writableRoot)
+	fs.annotatingFS = NewAnnotatingFS(prefixFS)
 	var err error
 	fs.unionFs, err = termitefs.NewMemUnionFs(
-		fs.rwDir, pathfs.NewPrefixFileSystem(fuseFS.rpcFS, fs.fuseFS.writableRoot))
+		fs.rwDir, prefixFS)
 	if err != nil {
 		return nil, err
 	}
@@ -263,8 +266,15 @@ func (fs *workerFS) update(attrs []*attr.FileAttr) {
 	fs.unionFs.Update(updates)
 }
 
-func (fs *workerFS) reap() (dir string, yield map[string]*termitefs.Result) {
-	yield = fs.unionFs.Reap()
+type fsYield struct {
+	dir   string
+	files map[string]*termitefs.Result
+	reads []string
+}
+
+func (fs *workerFS) reap() fsYield {
+	yield := fs.unionFs.Reap()
+	opened := fs.annotatingFS.Reap()
 	backingStoreFiles := map[string]string{}
 	dir, err := ioutil.TempDir(fs.tmpDir, "reap")
 	if err != nil {
@@ -293,5 +303,5 @@ func (fs *workerFS) reap() (dir string, yield map[string]*termitefs.Result) {
 
 	// We saved the backing store files, so we don't need the file system anymore.
 	fs.unionFs.Reset()
-	return dir, yield
+	return fsYield{dir, yield, opened}
 }

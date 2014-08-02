@@ -59,7 +59,7 @@ func (t *WorkerTask) Run() error {
 
 	t.mirror.worker.stats.Enter("reap")
 	if t.mirror.considerReap(fsState, t) {
-		t.rep.FileSet, t.rep.TaskIds = t.mirror.reapFuse(fsState)
+		t.rep.FileSet, t.rep.TaskIds, t.rep.Reads = t.mirror.reapFuse(fsState)
 	} else {
 		t.mirror.returnFS(fsState)
 	}
@@ -176,14 +176,14 @@ func (t *WorkerTask) runInFuse(state *workerFSState) error {
 
 // fillReply empties the unionFs and hashes files as needed.  It will
 // return the FS back the pool as soon as possible.
-func (t *Mirror) fillReply(state *workerFSState) *attr.FileSet {
-	dir, yield := state.fs.reap()
+func (t *Mirror) fillReply(state *workerFSState) (*attr.FileSet, []string) {
+	fsResult := state.fs.reap()
 	t.returnFS(state)
 
-	files := make([]*attr.FileAttr, 0, len(yield))
+	files := make([]*attr.FileAttr, 0, len(fsResult.files))
 	wrRoot := strings.TrimLeft(state.fs.fuseFS.writableRoot, "/")
 	reapedHashes := map[string]string{}
-	for path, v := range yield {
+	for path, v := range fsResult.files {
 		f := &attr.FileAttr{
 			Path: fastpath.Join(wrRoot, path),
 		}
@@ -220,10 +220,10 @@ func (t *Mirror) fillReply(state *workerFSState) *attr.FileSet {
 
 	fset := attr.FileSet{Files: files}
 	fset.Sort()
-	err := os.Remove(dir)
+	err := os.Remove(fsResult.dir)
 	if err != nil {
-		log.Fatal("fillReply: Remove failed: %v", err)
+		log.Fatalf("fillReply: Remove failed: %v", err)
 	}
 
-	return &fset
+	return &fset, fsResult.reads
 }

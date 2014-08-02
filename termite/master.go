@@ -409,7 +409,6 @@ func (m *Master) runOnce(req *WorkRequest, rep *WorkResponse) error {
 		return err
 	}
 
-	rep.FileSet = nil
 	return err
 }
 
