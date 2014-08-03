@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"syscall"
 
@@ -36,7 +37,7 @@ func (me *WorkerTask) String() string {
 }
 
 func (me *WorkerTask) Run() error {
-	fuseFs, err := me.mirror.newFs(me)
+	fuseFS, err := me.mirror.newFs(me)
 
 	if err == ShuttingDownError {
 		// We can't return an error, since that would cause
@@ -53,21 +54,21 @@ func (me *WorkerTask) Run() error {
 	}
 
 	me.mirror.worker.stats.Enter("fuse")
-	err = me.runInFuse(fuseFs)
+	err = me.runInFuse(fuseFS)
 	me.mirror.worker.stats.Exit("fuse")
 
 	me.mirror.worker.stats.Enter("reap")
-	if me.mirror.considerReap(fuseFs, me) {
-		me.rep.FileSet, me.rep.TaskIds = me.mirror.reapFuse(fuseFs)
+	if me.mirror.considerReap(fuseFS, me) {
+		me.rep.FileSet, me.rep.TaskIds = me.mirror.reapFuse(fuseFS)
 	} else {
-		me.mirror.returnFs(fuseFs)
+		me.mirror.returnFs(fuseFS)
 	}
 	me.mirror.worker.stats.Exit("reap")
 
 	return err
 }
 
-func (me *WorkerTask) runInFuse(fuseFs *workerFuseFs) error {
+func (me *WorkerTask) runInFuse(fuseFs *fuseFS) error {
 	fuseFs.SetDebug(me.req.Debug)
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
@@ -79,19 +80,20 @@ func (me *WorkerTask) runInFuse(fuseFs *workerFuseFs) error {
 		Args: me.req.Argv,
 	}
 	cmd := me.cmd
+	dir := filepath.Join(fuseFs.mount, fuseFs.subDir)
 	if os.Geteuid() == 0 {
 		attr := &syscall.SysProcAttr{}
 		attr.Credential = &syscall.Credential{
 			Uid: uint32(me.mirror.worker.options.User.Uid),
 			Gid: uint32(me.mirror.worker.options.User.Gid),
 		}
-		attr.Chroot = fuseFs.mount
+		attr.Chroot = dir
 
 		cmd.SysProcAttr = attr
 		cmd.Dir = me.req.Dir
 	} else {
-		cmd.Path = fastpath.Join(fuseFs.mount, me.req.Binary)
-		cmd.Dir = fastpath.Join(fuseFs.mount, me.req.Dir)
+		cmd.Path = fastpath.Join(dir, me.req.Binary)
+		cmd.Dir = fastpath.Join(dir, me.req.Dir)
 	}
 
 	cmd.Env = me.req.Env
@@ -133,7 +135,7 @@ func (me *WorkerTask) runInFuse(fuseFs *workerFuseFs) error {
 
 // fillReply empties the unionFs and hashes files as needed.  It will
 // return the FS back the pool as soon as possible.
-func (me *Mirror) fillReply(fs *workerFuseFs) *attr.FileSet {
+func (me *Mirror) fillReply(fs *fuseFS) *attr.FileSet {
 	dir, yield := fs.reap()
 	me.returnFs(fs)
 

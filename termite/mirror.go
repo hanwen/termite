@@ -29,14 +29,14 @@ type Mirror struct {
 	cond       *sync.Cond
 	waiting    int
 	nextFsId   int
-	activeFses map[*workerFuseFs]bool
+	activeFses map[*fuseFS]bool
 	accepting  bool
 	killed     bool
 }
 
 func NewMirror(worker *Worker, rpcConn, revConn, contentConn, revContentConn io.ReadWriteCloser) *Mirror {
 	mirror := &Mirror{
-		activeFses:  map[*workerFuseFs]bool{},
+		activeFses:  map[*fuseFS]bool{},
 		rpcConn:     rpcConn,
 		contentConn: contentConn,
 		worker:      worker,
@@ -116,7 +116,7 @@ func init() {
 	ShuttingDownError = fmt.Errorf("shutting down")
 }
 
-func (me *Mirror) newFs(t *WorkerTask) (fs *workerFuseFs, err error) {
+func (me *Mirror) newFs(t *WorkerTask) (fs *fuseFS, err error) {
 	me.fsMutex.Lock()
 	defer me.fsMutex.Unlock()
 
@@ -141,19 +141,19 @@ func (me *Mirror) newFs(t *WorkerTask) (fs *workerFuseFs, err error) {
 		return nil, err
 	}
 
-	me.prepareFs(fs)
+	me.prepareFS(fs)
 	fs.addTask(t)
 	me.activeFses[fs] = true
 	return fs, nil
 }
 
 // Must hold lock.
-func (me *Mirror) prepareFs(fs *workerFuseFs) {
+func (me *Mirror) prepareFS(fs *fuseFS) {
 	fs.reaping = false
 	fs.taskIds = make([]int, 0, me.worker.options.ReapCount)
 }
 
-func (me *Mirror) considerReap(fs *workerFuseFs, task *WorkerTask) bool {
+func (me *Mirror) considerReap(fs *fuseFS, task *WorkerTask) bool {
 	me.fsMutex.Lock()
 	defer me.fsMutex.Unlock()
 	delete(fs.tasks, task)
@@ -164,7 +164,7 @@ func (me *Mirror) considerReap(fs *workerFuseFs, task *WorkerTask) bool {
 	return fs.reaping
 }
 
-func (me *Mirror) reapFuse(fs *workerFuseFs) (results *attr.FileSet, taskIds []int) {
+func (me *Mirror) reapFuse(fs *fuseFS) (results *attr.FileSet, taskIds []int) {
 	log.Printf("Reaping fuse FS %v", fs.id)
 	ids := fs.taskIds[:]
 	results = me.fillReply(fs)
@@ -172,12 +172,12 @@ func (me *Mirror) reapFuse(fs *workerFuseFs) (results *attr.FileSet, taskIds []i
 	return results, ids
 }
 
-func (me *Mirror) returnFs(fs *workerFuseFs) {
+func (me *Mirror) returnFs(fs *fuseFS) {
 	me.fsMutex.Lock()
 	defer me.fsMutex.Unlock()
 
 	if fs.reaping {
-		me.prepareFs(fs)
+		me.prepareFS(fs)
 	}
 
 	fs.SetDebug(false)
@@ -232,8 +232,8 @@ func (me *Mirror) Run(req *WorkRequest, rep *WorkResponse) error {
 
 const _DELETIONS = "DELETIONS"
 
-func (me *Mirror) newWorkerFuseFs() (*workerFuseFs, error) {
-	f, err := newWorkerFuseFs(me.worker.options.TempDir, me.rpcFs, me.writableRoot,
+func (me *Mirror) newWorkerFuseFs() (*fuseFS, error) {
+	f, err := newFuseFS(me.worker.options.TempDir, me.rpcFs, me.writableRoot,
 		me.worker.options.User)
 	if err != nil {
 		return nil, err

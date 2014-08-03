@@ -92,7 +92,6 @@ func (p *pendingConns) accept(key string) io.ReadWriteCloser {
 	p.cond.L.Lock()
 	defer p.cond.L.Unlock()
 	for p.conns != nil && p.conns[key] == nil {
-		log.Println("wake")
 		p.cond.Wait()
 	}
 	if p.conns == nil {
