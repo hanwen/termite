@@ -33,16 +33,16 @@ type mirrorConnection struct {
 	fileSetWaiter *attr.FileSetWaiter
 }
 
-func (me *mirrorConnection) Id() string {
-	return me.workerAddr
+func (c *mirrorConnection) Id() string {
+	return c.workerAddr
 }
 
-func (me *mirrorConnection) replay(fset attr.FileSet) error {
+func (c *mirrorConnection) replay(fset attr.FileSet) error {
 	// Must get data before we modify the file-system, so we don't
 	// leave the FS in a half-finished state.
 	for _, info := range fset.Files {
-		if info.Hash != "" && !me.master.contentStore.Has(info.Hash) {
-			got, err := me.contentClient.Fetch(info.Hash, int64(info.Size))
+		if info.Hash != "" && !c.master.contentStore.Has(info.Hash) {
+			got, err := c.contentClient.Fetch(info.Hash, int64(info.Size))
 			if !got && err == nil {
 				log.Fatalf("mirrorConnection.replay: fetch corruption remote does not have file %x", info.Hash)
 			}
@@ -51,21 +51,21 @@ func (me *mirrorConnection) replay(fset attr.FileSet) error {
 			}
 		}
 	}
-	me.master.replay(fset)
+	c.master.replay(fset)
 	return nil
 }
 
-func (me *mirrorConnection) Send(files []*attr.FileAttr) error {
+func (c *mirrorConnection) Send(files []*attr.FileAttr) error {
 	req := UpdateRequest{
 		Files: files,
 	}
 	rep := UpdateResponse{}
-	err := me.rpcClient.Call("Mirror.Update", &req, &rep)
+	err := c.rpcClient.Call("Mirror.Update", &req, &rep)
 	if err != nil {
 		log.Println("Mirror.Update failure", err)
 		return err
 	}
-	log.Printf("Sent pending changes to %s", me.workerAddr)
+	log.Printf("Sent pending changes to %s", c.workerAddr)
 	return nil
 }
 
@@ -88,9 +88,9 @@ type mirrorConnections struct {
 	lastActionTime time.Time
 }
 
-func (me *mirrorConnections) fetchWorkers(last *time.Time) (newMap map[string]bool, err error) {
+func (c *mirrorConnections) fetchWorkers(last *time.Time) (newMap map[string]bool, err error) {
 	newMap = map[string]bool{}
-	client, err := rpc.DialHTTP("tcp", me.coordinator)
+	client, err := rpc.DialHTTP("tcp", c.coordinator)
 	if err != nil {
 		log.Println("fetchWorkers: dialing coordinator:", err)
 		return nil, err
@@ -115,23 +115,23 @@ func (me *mirrorConnections) fetchWorkers(last *time.Time) (newMap map[string]bo
 	return newMap, nil
 }
 
-func (me *mirrorConnections) refreshWorkers() {
+func (c *mirrorConnections) refreshWorkers() {
 	last := time.Unix(0, 0)
 	for {
-		newWorkers, err := me.fetchWorkers(&last)
+		newWorkers, err := c.fetchWorkers(&last)
 		if err != nil {
 			time.Sleep(10 * time.Second)
 			continue
 		}
 		//log.Printf("Got %d workers %v", len(newWorkers), last)
-		me.Mutex.Lock()
-		me.workers = newWorkers
-		me.Mutex.Unlock()
+		c.Mutex.Lock()
+		c.workers = newWorkers
+		c.Mutex.Unlock()
 	}
 }
 
 func newMirrorConnections(m *Master, coordinator string, maxJobs int) *mirrorConnections {
-	me := &mirrorConnections{
+	c := &mirrorConnections{
 		master:        m,
 		wantedMaxJobs: maxJobs,
 		workers:       make(map[string]bool),
@@ -139,23 +139,23 @@ func newMirrorConnections(m *Master, coordinator string, maxJobs int) *mirrorCon
 		coordinator:   coordinator,
 		keepAlive:     time.Minute,
 	}
-	me.refreshStats()
-	return me
+	c.refreshStats()
+	return c
 }
 
-func (me *mirrorConnections) refreshStats() {
-	me.stats = stats.NewServerStats()
-	me.stats.PhaseOrder = []string{"run", "send", "remote", "filewait"}
+func (c *mirrorConnections) refreshStats() {
+	c.stats = stats.NewServerStats()
+	c.stats.PhaseOrder = []string{"run", "send", "remote", "filewait"}
 }
 
-func (me *mirrorConnections) periodicHouseholding() {
-	me.maybeDropConnections()
+func (c *mirrorConnections) periodicHouseholding() {
+	c.maybeDropConnections()
 }
 
 // Must be called with lock held.
-func (me *mirrorConnections) availableJobs() int {
+func (c *mirrorConnections) availableJobs() int {
 	a := 0
-	for _, mc := range me.mirrors {
+	for _, mc := range c.mirrors {
 		if mc.availableJobs > 0 {
 			a += mc.availableJobs
 		}
@@ -164,75 +164,75 @@ func (me *mirrorConnections) availableJobs() int {
 }
 
 // Must be called with lock held.
-func (me *mirrorConnections) maxJobs() int {
+func (c *mirrorConnections) maxJobs() int {
 	a := 0
-	for _, mc := range me.mirrors {
+	for _, mc := range c.mirrors {
 		a += mc.maxJobs
 	}
 	return a
 }
 
-func (me *mirrorConnections) maybeDropConnections() {
-	me.Mutex.Lock()
-	defer me.Mutex.Unlock()
+func (c *mirrorConnections) maybeDropConnections() {
+	c.Mutex.Lock()
+	defer c.Mutex.Unlock()
 
 	// Already dropped everything.
-	if len(me.mirrors) == 0 {
+	if len(c.mirrors) == 0 {
 		return
 	}
 
 	// Something is running.
-	if me.availableJobs() < me.maxJobs() {
+	if c.availableJobs() < c.maxJobs() {
 		return
 	}
 
-	if me.lastActionTime.Add(me.keepAlive).After(time.Now()) {
+	if c.lastActionTime.Add(c.keepAlive).After(time.Now()) {
 		return
 	}
 
 	log.Println("master inactive too long. Dropping connections.")
-	me.dropConnections()
+	c.dropConnections()
 }
 
-func (me *mirrorConnections) dropConnections() {
-	for _, mc := range me.mirrors {
+func (c *mirrorConnections) dropConnections() {
+	for _, mc := range c.mirrors {
 		mc.rpcClient.Close()
 		mc.contentClient.Close()
 		mc.reverseConnection.Close()
 		mc.reverseContentConn.Close()
-		me.master.attributes.RmClient(mc)
+		c.master.attributes.RmClient(mc)
 	}
-	me.mirrors = make(map[string]*mirrorConnection)
-	me.refreshStats()
+	c.mirrors = make(map[string]*mirrorConnection)
+	c.refreshStats()
 }
 
 // Gets a mirrorConnection to run on.  Will block if none available
-func (me *mirrorConnections) find(name string) (*mirrorConnection, error) {
-	me.Mutex.Lock()
-	defer me.Mutex.Unlock()
+func (c *mirrorConnections) find(name string) (*mirrorConnection, error) {
+	c.Mutex.Lock()
+	defer c.Mutex.Unlock()
 
 	var found *mirrorConnection
-	for nm, v := range me.mirrors {
+	for nm, v := range c.mirrors {
 		if strings.Contains(nm, name) {
 			found = v
 			break
 		}
 	}
 	if found == nil {
-		return nil, fmt.Errorf("No worker with name: %q. Have %v", name, me.mirrors)
+		return nil, fmt.Errorf("No worker with name: %q. Have %v", name, c.mirrors)
 	}
 	found.availableJobs--
 	return found, nil
 }
 
-func (me *mirrorConnections) pick() (*mirrorConnection, error) {
-	me.Mutex.Lock()
-	defer me.Mutex.Unlock()
+func (c *mirrorConnections) pick() (*mirrorConnection, error) {
+	c.Mutex.Lock()
+	defer c.Mutex.Unlock()
 
-	if me.availableJobs() <= 0 {
-		me.tryConnect()
+	if c.availableJobs() <= 0 {
+		c.tryConnect()
 
-		if me.maxJobs() == 0 {
+		if c.maxJobs() == 0 {
 			// Didn't connect to anything.  Should
 			// probably direct the wrapper to compile
 			// locally.
@@ -242,7 +242,7 @@ func (me *mirrorConnections) pick() (*mirrorConnection, error) {
 
 	maxAvail := -1e9
 	var maxAvailMirror *mirrorConnection
-	for _, v := range me.mirrors {
+	for _, v := range c.mirrors {
 		if v.availableJobs > 0 {
 			v.availableJobs--
 			return v, nil
@@ -258,32 +258,32 @@ func (me *mirrorConnections) pick() (*mirrorConnection, error) {
 	return maxAvailMirror, nil
 }
 
-func (me *mirrorConnections) drop(mc *mirrorConnection, err error) {
-	me.master.attributes.RmClient(mc)
+func (c *mirrorConnections) drop(mc *mirrorConnection, err error) {
+	c.master.attributes.RmClient(mc)
 
-	me.Mutex.Lock()
-	defer me.Mutex.Unlock()
+	c.Mutex.Lock()
+	defer c.Mutex.Unlock()
 	log.Printf("Dropping mirror %s. Reason: %s", mc.workerAddr, err)
 	mc.rpcClient.Close()
 	mc.contentClient.Close()
 	mc.reverseConnection.Close()
 	mc.reverseContentConn.Close()
-	delete(me.mirrors, mc.workerAddr)
-	delete(me.workers, mc.workerAddr)
+	delete(c.mirrors, mc.workerAddr)
+	delete(c.workers, mc.workerAddr)
 }
 
-func (me *mirrorConnections) jobDone(mc *mirrorConnection) {
-	me.Mutex.Lock()
-	defer me.Mutex.Unlock()
+func (c *mirrorConnections) jobDone(mc *mirrorConnection) {
+	c.Mutex.Lock()
+	defer c.Mutex.Unlock()
 
-	me.lastActionTime = time.Now()
+	c.lastActionTime = time.Now()
 	mc.availableJobs++
 }
 
-func (me *mirrorConnections) idleWorkerAddress() string {
+func (c *mirrorConnections) idleWorkerAddress() string {
 	cands := []string{}
-	for addr := range me.workers {
-		_, ok := me.mirrors[addr]
+	for addr := range c.workers {
+		_, ok := c.mirrors[addr]
 		if ok {
 			continue
 		}
@@ -297,36 +297,36 @@ func (me *mirrorConnections) idleWorkerAddress() string {
 }
 
 // Tries to connect to one extra worker.  Must already hold mutex.
-func (me *mirrorConnections) tryConnect() {
+func (c *mirrorConnections) tryConnect() {
 	// We want to max out capacity of each worker, as that helps
 	// with cache hit rates on the worker.
-	wanted := me.wantedMaxJobs - me.maxJobs()
+	wanted := c.wantedMaxJobs - c.maxJobs()
 	if wanted <= 0 {
 		return
 	}
 
 	for {
-		addr := me.idleWorkerAddress()
+		addr := c.idleWorkerAddress()
 		if addr == "" {
 			break
 		}
-		me.Mutex.Unlock()
+		c.Mutex.Unlock()
 		log.Printf("Creating mirror on %v, requesting %d jobs", addr, wanted)
-		mc, err := me.master.createMirror(addr, wanted)
-		me.Mutex.Lock()
+		mc, err := c.master.createMirror(addr, wanted)
+		c.Mutex.Lock()
 		if err != nil {
-			delete(me.workers, addr)
+			delete(c.workers, addr)
 			log.Println("nonfatal error creating mirror:", err)
 		} else {
 			// This could happen in the unlikely event of
 			// the workers having more capacity than our
 			// parallelism.
-			if _, ok := me.mirrors[addr]; ok {
+			if _, ok := c.mirrors[addr]; ok {
 				log.Panicf("already have this mirror: %v", addr)
 			}
 			mc.workerAddr = addr
-			me.mirrors[addr] = mc
-			me.master.attributes.AddClient(mc)
+			c.mirrors[addr] = mc
+			c.master.attributes.AddClient(mc)
 		}
 	}
 }

@@ -15,18 +15,18 @@ import (
 	"github.com/hanwen/go-fuse/fuse/nodefs"
 	"github.com/hanwen/go-fuse/fuse/pathfs"
 	"github.com/hanwen/termite/attr"
-	"github.com/hanwen/termite/fs"
+	termitefs "github.com/hanwen/termite/fs"
 )
 
-type workerFuseFs struct {
+type workerFS struct {
 	rwDir   string
 	tmpDir  string
 	rootDir string // absolute path of the root of the RPC backed miror FS
 
 	// without leading /
 	writableRoot string
-	unionFs      *fs.MemUnionFs
-	procFs       *fs.ProcFs
+	unionFs      *termitefs.MemUnionFs
+	procFs       *termitefs.ProcFs
 	rpcNodeFs    *pathfs.PathNodeFs
 	unionNodeFs  *pathfs.PathNodeFs
 
@@ -42,42 +42,42 @@ type workerFuseFs struct {
 }
 
 type fuseFS struct {
-	tmpDir string
-	mount  string
-	root   nodefs.Node
-	*fuse.Server
+	tmpDir      string
+	mount       string
+	root        nodefs.Node
+	server      *fuse.Server
 	fsConnector *nodefs.FileSystemConnector
 }
 
 func (fs *fuseFS) Stop() {
-	if err := fs.Server.Unmount(); err != nil {
+	if err := fs.server.Unmount(); err != nil {
 		// If the unmount fails, the RemoveAll will stat all
 		// of the FUSE file system, so we have to exit.
-		log.Panic("unmount fail in workerFuseFs.Stop:", err)
+		log.Panic("unmount fail in workerFS.Stop:", err)
 	}
 	os.RemoveAll(fs.tmpDir)
 }
 
-func (me *fuseFS) SetDebug(debug bool) {
-	me.Server.SetDebug(debug)
-	me.fsConnector.SetDebug(debug)
+func (fs *fuseFS) SetDebug(debug bool) {
+	fs.server.SetDebug(debug)
+	fs.fsConnector.SetDebug(debug)
 }
 
-func (me *workerFuseFs) Status() (s FuseFsStatus) {
-	s.Id = me.id
-	for t := range me.tasks {
+func (fs *workerFS) Status() (s FuseFsStatus) {
+	s.Id = fs.id
+	for t := range fs.tasks {
 		s.Tasks = append(s.Tasks, t.taskInfo)
 	}
 	return s
 }
 
-func (me *workerFuseFs) addTask(task *WorkerTask) {
-	me.taskIds = append(me.taskIds, task.req.TaskId)
-	me.tasks[task] = true
+func (fs *workerFS) addTask(task *WorkerTask) {
+	fs.taskIds = append(fs.taskIds, task.req.TaskId)
+	fs.tasks[task] = true
 }
 
-func (me *workerFuseFs) SetDebug(debug bool) {
-	me.rpcNodeFs.SetDebug(debug)
+func (fs *workerFS) SetDebug(debug bool) {
+	fs.rpcNodeFs.SetDebug(debug)
 }
 
 func newFuseFS(tmpDir string) (*fuseFS, error) {
@@ -101,16 +101,16 @@ func newFuseFS(tmpDir string) (*fuseFS, error) {
 		fuseOpts.AllowOther = true
 	}
 
-	fs.Server, err = fuse.NewServer(fs.fsConnector.RawFS(), fs.mount, &fuseOpts)
+	fs.server, err = fuse.NewServer(fs.fsConnector.RawFS(), fs.mount, &fuseOpts)
 	if err != nil {
 		return nil, err
 	}
-	go fs.Server.Serve()
+	go fs.server.Serve()
 	return fs, nil
 }
 
-func (fuseFS *fuseFS) newWorkerFuseFs(rpcFs pathfs.FileSystem, writableRoot string, nobody *User) (*workerFuseFs, error) {
-	me := &workerFuseFs{
+func (fuseFS *fuseFS) newWorkerFuseFs(rpcFs pathfs.FileSystem, writableRoot string, nobody *User) (*workerFS, error) {
+	fs := &workerFS{
 		tmpDir:       fuseFS.tmpDir,
 		writableRoot: strings.TrimLeft(writableRoot, "/"),
 		tasks:        map[*WorkerTask]bool{},
@@ -123,17 +123,17 @@ func (fuseFS *fuseFS) newWorkerFuseFs(rpcFs pathfs.FileSystem, writableRoot stri
 
 	tmpBacking := ""
 	for _, v := range []dirInit{
-		{&me.rwDir, "rw"},
+		{&fs.rwDir, "rw"},
 		{&tmpBacking, "tmp-backing"},
 	} {
-		*v.dst = filepath.Join(me.tmpDir, v.val)
+		*v.dst = filepath.Join(fs.tmpDir, v.val)
 		if err := os.Mkdir(*v.dst, 0700); err != nil {
 			return nil, err
 		}
 	}
 
 	subDir := fmt.Sprintf("sub%x", rand.Int31())
-	me.rpcNodeFs = pathfs.NewPathNodeFs(rpcFs, nil)
+	fs.rpcNodeFs = pathfs.NewPathNodeFs(rpcFs, nil)
 	ttl := 30 * time.Second
 	mOpts := nodefs.Options{
 		EntryTimeout:    ttl,
@@ -145,35 +145,33 @@ func (fuseFS *fuseFS) newWorkerFuseFs(rpcFs pathfs.FileSystem, writableRoot stri
 		PortableInodes: true,
 	}
 
-	if status := fuseFS.fsConnector.Mount(fuseFS.root.Inode(), subDir, me.rpcNodeFs.Root(), &mOpts); !status.Ok() {
+	if status := fuseFS.fsConnector.Mount(fuseFS.root.Inode(), subDir, fs.rpcNodeFs.Root(), &mOpts); !status.Ok() {
 		return nil, fmt.Errorf("Mount root on %q: %v", subDir, status)
 	}
 
 	var err error
-	me.unionFs, err = fs.NewMemUnionFs(
-		me.rwDir, pathfs.NewPrefixFileSystem(rpcFs, me.writableRoot))
+	fs.unionFs, err = termitefs.NewMemUnionFs(
+		fs.rwDir, pathfs.NewPrefixFileSystem(rpcFs, fs.writableRoot))
 	if err != nil {
 		return nil, err
 	}
 
-	me.rootDir = filepath.Join(fuseFS.mount, subDir)
-	me.procFs = fs.NewProcFs()
-	me.procFs.StripPrefix = me.rootDir
+	fs.rootDir = filepath.Join(fuseFS.mount, subDir)
+	procFs := termitefs.NewProcFs()
+	procFs.StripPrefix = fs.rootDir
 	if nobody != nil {
-		me.procFs.Uid = nobody.Uid
+		procFs.Uid = nobody.Uid
 	}
 	type submount struct {
 		mountpoint string
 		root       nodefs.Node
 	}
 
-	fuseFS.Server.SetDebug(true)
-
 	mounts := []submount{
-		{"proc", pathfs.NewPathNodeFs(me.procFs, nil).Root()},
+		{"proc", pathfs.NewPathNodeFs(procFs, nil).Root()},
 		{"sys", pathfs.NewPathNodeFs(pathfs.NewReadonlyFileSystem(pathfs.NewLoopbackFileSystem("/sys")), nil).Root()},
 		{"tmp", nodefs.NewMemNodeFSRoot(tmpBacking + "/tmp")},
-		{"dev", fs.NewDevFSRoot()},
+		{"dev", termitefs.NewDevFSRoot()},
 		{"var/tmp", nodefs.NewMemNodeFSRoot(tmpBacking + "/vartmp")},
 	}
 	for _, s := range mounts {
@@ -182,13 +180,13 @@ func (fuseFS *fuseFS) newWorkerFuseFs(rpcFs pathfs.FileSystem, writableRoot stri
 			subOpts = nil
 		}
 
-		code := me.rpcNodeFs.Mount(s.mountpoint, s.root, subOpts)
+		code := fs.rpcNodeFs.Mount(s.mountpoint, s.root, subOpts)
 		if !code.Ok() {
 			return nil, errors.New(fmt.Sprintf("submount error for %q: %v", s.mountpoint, code))
 		}
 	}
-	if strings.HasPrefix(me.writableRoot, "tmp/") {
-		parent, _ := filepath.Split(me.writableRoot)
+	if strings.HasPrefix(fs.writableRoot, "tmp/") {
+		parent, _ := filepath.Split(fs.writableRoot)
 		dir := filepath.Join(fuseFS.mount, subDir, parent)
 		if err := os.MkdirAll(dir, 0755); err != nil {
 			return nil, errors.New(fmt.Sprintf("Mkdir of %q in /tmp fail: %v", parent, err))
@@ -197,30 +195,30 @@ func (fuseFS *fuseFS) newWorkerFuseFs(rpcFs pathfs.FileSystem, writableRoot stri
 		// getting confused by asking for tmp/foo/bar
 		// directly.
 		rpcFs.GetAttr("tmp", nil)
-		rpcFs.GetAttr(me.writableRoot, nil)
+		rpcFs.GetAttr(fs.writableRoot, nil)
 	}
-	code := me.rpcNodeFs.Mount(me.writableRoot, me.unionFs.Root(), &mOpts)
+	code := fs.rpcNodeFs.Mount(fs.writableRoot, fs.unionFs.Root(), &mOpts)
 	if !code.Ok() {
-		return nil, errors.New(fmt.Sprintf("submount writable root %s: %v", me.writableRoot, code))
+		return nil, errors.New(fmt.Sprintf("submount writable root %s: %v", fs.writableRoot, code))
 	}
 
-	return me, nil
+	return fs, nil
 }
 
-func (me *workerFuseFs) update(attrs []*attr.FileAttr) {
-	updates := map[string]*fs.Result{}
+func (fs *workerFS) update(attrs []*attr.FileAttr) {
+	updates := map[string]*termitefs.Result{}
 	for _, attr := range attrs {
 		path := strings.TrimLeft(attr.Path, "/")
-		if !strings.HasPrefix(path, me.writableRoot) {
-			me.rpcNodeFs.Notify(path)
+		if !strings.HasPrefix(path, fs.writableRoot) {
+			fs.rpcNodeFs.Notify(path)
 			continue
 		}
-		path = strings.TrimLeft(path[len(me.writableRoot):], "/")
+		path = strings.TrimLeft(path[len(fs.writableRoot):], "/")
 
 		if attr.Deletion() {
-			updates[path] = &fs.Result{}
+			updates[path] = &termitefs.Result{}
 		} else {
-			r := fs.Result{
+			r := termitefs.Result{
 				Original: "",
 				Backing:  "",
 				Link:     attr.Link,
@@ -231,10 +229,10 @@ func (me *workerFuseFs) update(attrs []*attr.FileAttr) {
 			updates[path] = &r
 		}
 	}
-	me.unionFs.Update(updates)
+	fs.unionFs.Update(updates)
 }
 
-func (fs *workerFuseFs) reap() (dir string, yield map[string]*fs.Result) {
+func (fs *workerFS) reap() (dir string, yield map[string]*termitefs.Result) {
 	yield = fs.unionFs.Reap()
 	backingStoreFiles := map[string]string{}
 	dir, err := ioutil.TempDir(fs.tmpDir, "reap")

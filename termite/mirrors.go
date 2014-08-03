@@ -18,26 +18,26 @@ type WorkerMirrors struct {
 }
 
 func NewWorkerMirrors(w *Worker) *WorkerMirrors {
-	me := &WorkerMirrors{
+	wm := &WorkerMirrors{
 		worker:    w,
 		mirrorMap: make(map[string]*Mirror),
 	}
-	me.cond = sync.NewCond(&me.mirrorMapMutex)
-	return me
+	wm.cond = sync.NewCond(&wm.mirrorMapMutex)
+	return wm
 }
 
-func (me *WorkerMirrors) getMirror(rpcConn, revConn, contentConn, revContentConn io.ReadWriteCloser, reserveCount int) (*Mirror, error) {
+func (wm *WorkerMirrors) getMirror(rpcConn, revConn, contentConn, revContentConn io.ReadWriteCloser, reserveCount int) (*Mirror, error) {
 	if reserveCount <= 0 {
 		return nil, errors.New("must ask positive jobcount")
 	}
-	me.mirrorMapMutex.Lock()
-	defer me.mirrorMapMutex.Unlock()
+	wm.mirrorMapMutex.Lock()
+	defer wm.mirrorMapMutex.Unlock()
 	used := 0
-	for _, v := range me.mirrorMap {
+	for _, v := range wm.mirrorMap {
 		used += v.maxJobCount
 	}
 
-	remaining := me.worker.options.Jobs - used
+	remaining := wm.worker.options.Jobs - used
 	if remaining <= 0 {
 		return nil, errors.New("no processes available")
 	}
@@ -45,7 +45,7 @@ func (me *WorkerMirrors) getMirror(rpcConn, revConn, contentConn, revContentConn
 		reserveCount = remaining
 	}
 
-	mirror, err := NewMirror(me.worker, rpcConn, revConn, contentConn, revContentConn)
+	mirror, err := NewMirror(wm.worker, rpcConn, revConn, contentConn, revContentConn)
 	if err != nil {
 		return nil, err
 	}
@@ -53,34 +53,34 @@ func (me *WorkerMirrors) getMirror(rpcConn, revConn, contentConn, revContentConn
 	mirror.maxJobCount = reserveCount
 
 	key := fmt.Sprintf("todo%d", rand.Int63n(1<<60))
-	me.mirrorMap[key] = mirror
+	wm.mirrorMap[key] = mirror
 	mirror.key = key
 	return mirror, nil
 }
 
-func (me *WorkerMirrors) DropMirror(mirror *Mirror) {
-	me.mirrorMapMutex.Lock()
-	defer me.mirrorMapMutex.Unlock()
+func (wm *WorkerMirrors) DropMirror(mirror *Mirror) {
+	wm.mirrorMapMutex.Lock()
+	defer wm.mirrorMapMutex.Unlock()
 
 	log.Println("dropping mirror", mirror.key)
-	delete(me.mirrorMap, mirror.key)
-	me.cond.Broadcast()
+	delete(wm.mirrorMap, mirror.key)
+	wm.cond.Broadcast()
 	runtime.GC()
 }
 
-func (me *WorkerMirrors) mirrors() (result []*Mirror) {
-	me.mirrorMapMutex.Lock()
-	defer me.mirrorMapMutex.Unlock()
-	for _, m := range me.mirrorMap {
+func (wm *WorkerMirrors) mirrors() (result []*Mirror) {
+	wm.mirrorMapMutex.Lock()
+	defer wm.mirrorMapMutex.Unlock()
+	for _, m := range wm.mirrorMap {
 		result = append(result, m)
 	}
 	return
 }
 
-func (me *WorkerMirrors) shutdown(aggressive bool) {
+func (wm *WorkerMirrors) shutdown(aggressive bool) {
 	log.Printf("shutting down mirrors: aggressive=%v", aggressive)
 	wg := sync.WaitGroup{}
-	mirrors := me.mirrors()
+	mirrors := wm.mirrors()
 	wg.Add(len(mirrors))
 	for _, m := range mirrors {
 		go func(m *Mirror) {
@@ -90,12 +90,12 @@ func (me *WorkerMirrors) shutdown(aggressive bool) {
 	}
 
 	wg.Wait()
-	me.mirrorMap = map[string]*Mirror{}
+	wm.mirrorMap = map[string]*Mirror{}
 	log.Println("All mirrors have shut down.")
 }
 
-func (me *WorkerMirrors) Status(req *WorkerStatusRequest, rep *WorkerStatusResponse) {
-	for _, mirror := range me.mirrors() {
+func (wm *WorkerMirrors) Status(req *WorkerStatusRequest, rep *WorkerStatusResponse) {
+	for _, mirror := range wm.mirrors() {
 		mRep := MirrorStatusResponse{}
 		mReq := MirrorStatusRequest{}
 		mirror.Status(&mReq, &mRep)

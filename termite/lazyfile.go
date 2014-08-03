@@ -28,68 +28,68 @@ func NewLazyLoopbackFile(n string) nodefs.File {
 	}
 }
 
-func (me *lazyLoopbackFile) file() (nodefs.File, fuse.Status) {
-	me.mu.Lock()
-	defer me.mu.Unlock()
-	if me.f == nil {
-		f, err := os.Open(me.Name)
+func (f *lazyLoopbackFile) file() (nodefs.File, fuse.Status) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.f == nil {
+		file, err := os.Open(f.Name)
 		if err != nil {
 			return nil, fuse.ToStatus(err)
 		}
-		me.f = nodefs.NewLoopbackFile(f)
+		f.f = nodefs.NewLoopbackFile(file)
 	}
-	return me.f, fuse.OK
+	return f.f, fuse.OK
 }
 
-func (me *lazyLoopbackFile) InnerFile() nodefs.File {
-	f, _ := me.file()
-	return f
+func (f *lazyLoopbackFile) InnerFile() nodefs.File {
+	inner, _ := f.file()
+	return inner
 }
 
-func (me *lazyLoopbackFile) String() string {
-	return fmt.Sprintf("lazyLoopbackFile(%s)", me.Name)
+func (f *lazyLoopbackFile) String() string {
+	return fmt.Sprintf("lazyLoopbackFile(%s)", f.Name)
 }
 
-func (me *lazyLoopbackFile) Read(buf []byte, off int64) (fuse.ReadResult, fuse.Status) {
-	f, s := me.file()
+func (f *lazyLoopbackFile) Read(buf []byte, off int64) (fuse.ReadResult, fuse.Status) {
+	inner, s := f.file()
 	if s.Ok() {
-		return f.Read(buf, off)
+		return inner.Read(buf, off)
 	}
 	return nil, fuse.OK
 }
 
-func (me *lazyLoopbackFile) Release() {
-	me.mu.Lock()
-	defer me.mu.Unlock()
-	if me.f != nil {
-		me.f.Release()
+func (f *lazyLoopbackFile) Release() {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.f != nil {
+		f.f.Release()
 	}
 }
 
-func (me *lazyLoopbackFile) Write(s []byte, off int64) (uint32, fuse.Status) {
+func (f *lazyLoopbackFile) Write(s []byte, off int64) (uint32, fuse.Status) {
 	return 0, fuse.EPERM
 }
 
-func (me *lazyLoopbackFile) GetAttr(a *fuse.Attr) fuse.Status {
-	f, s := me.file()
+func (f *lazyLoopbackFile) GetAttr(a *fuse.Attr) fuse.Status {
+	inner, s := f.file()
 	if s.Ok() {
-		return f.GetAttr(a)
+		return inner.GetAttr(a)
 	}
 	return s
 }
 
-func (me *lazyLoopbackFile) Utimens(atimeNs, mtimeNs *time.Time) fuse.Status {
+func (f *lazyLoopbackFile) Utimens(atimeNs, mtimeNs *time.Time) fuse.Status {
 	return fuse.EPERM
 }
 
-func (me *lazyLoopbackFile) Truncate(size uint64) fuse.Status {
+func (f *lazyLoopbackFile) Truncate(size uint64) fuse.Status {
 	return fuse.EPERM
 }
 
-func (me *lazyLoopbackFile) Chown(uid uint32, gid uint32) fuse.Status {
+func (f *lazyLoopbackFile) Chown(uid uint32, gid uint32) fuse.Status {
 	return fuse.EPERM
 }
 
-func (me *lazyLoopbackFile) Chmod(perms uint32) fuse.Status {
+func (f *lazyLoopbackFile) Chmod(perms uint32) fuse.Status {
 	return fuse.EPERM
 }

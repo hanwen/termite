@@ -13,15 +13,15 @@ import (
 
 var _ = log.Println
 
-func (me *Master) MaybeRunInMaster(req *WorkRequest, rep *WorkResponse) bool {
+func (m *Master) MaybeRunInMaster(req *WorkRequest, rep *WorkResponse) bool {
 	binary := req.Binary
 	_, binary = filepath.Split(binary)
 
 	switch binary {
 	case "mkdir":
-		return mkdirMaybeMasterRun(me, req, rep)
+		return mkdirMaybeMasterRun(m, req, rep)
 	case "rm":
-		return rmMaybeMasterRun(me, req, rep)
+		return rmMaybeMasterRun(m, req, rep)
 		// TODO - implement mv ?
 	}
 	return false

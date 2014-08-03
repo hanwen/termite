@@ -101,8 +101,8 @@ type WorkRequest struct {
 	Worker string
 }
 
-func (me *WorkRequest) Summary() string {
-	return fmt.Sprintf("Stdin %s Cmd %s Id %d", me.StdinId, me.Argv, me.TaskId)
+func (r *WorkRequest) Summary() string {
+	return fmt.Sprintf("Stdin %s Cmd %s Id %d", r.StdinId, r.Argv, r.TaskId)
 }
 
 type CreateMirrorRequest struct {

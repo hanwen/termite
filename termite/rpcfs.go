@@ -25,14 +25,14 @@ type RpcFs struct {
 }
 
 func NewRpcFs(attrClient *attr.Client, cache *cba.Store, contentConn io.ReadWriteCloser) *RpcFs {
-	me := &RpcFs{
+	fs := &RpcFs{
 		FileSystem:    pathfs.NewDefaultFileSystem(),
 		attrClient:    attrClient,
 		contentClient: cache.NewClient(contentConn),
 		timings:       stats.NewTimerStats(),
 	}
 
-	me.attr = attr.NewAttributeCache(
+	fs.attr = attr.NewAttributeCache(
 		func(n string) *attr.FileAttr {
 			a := attr.FileAttr{}
 			err := attrClient.GetAttr(n, &a)
@@ -42,41 +42,41 @@ func NewRpcFs(attrClient *attr.Client, cache *cba.Store, contentConn io.ReadWrit
 			}
 			return &a
 		}, nil)
-	me.cache = cache
-	return me
+	fs.cache = cache
+	return fs
 }
 
-func (me *RpcFs) Close() {
-	me.attrClient.Close()
-	me.contentClient.Close()
+func (fs *RpcFs) Close() {
+	fs.attrClient.Close()
+	fs.contentClient.Close()
 }
 
-func (me *RpcFs) FetchHash(a *attr.FileAttr) error {
-	got, e := me.contentClient.FetchOnce(a.Hash, int64(a.Size))
+func (fs *RpcFs) FetchHash(a *attr.FileAttr) error {
+	got, e := fs.contentClient.FetchOnce(a.Hash, int64(a.Size))
 	if e == nil && !got {
 		log.Fatalf("Did not have hash %x for %s", a.Hash, a.Path)
 	}
 	return e
 }
 
-func (me *RpcFs) Update(req *UpdateRequest, resp *UpdateResponse) error {
-	me.updateFiles(req.Files)
+func (fs *RpcFs) Update(req *UpdateRequest, resp *UpdateResponse) error {
+	fs.updateFiles(req.Files)
 	return nil
 }
 
-func (me *RpcFs) updateFiles(files []*attr.FileAttr) {
-	me.attr.Update(files)
+func (fs *RpcFs) updateFiles(files []*attr.FileAttr) {
+	fs.attr.Update(files)
 }
 
 ////////////////////////////////////////////////////////////////
 // FS API
 
-func (me *RpcFs) String() string {
+func (fs *RpcFs) String() string {
 	return "RpcFs"
 }
 
-func (me *RpcFs) OpenDir(name string, context *fuse.Context) ([]fuse.DirEntry, fuse.Status) {
-	r := me.attr.GetDir(name)
+func (fs *RpcFs) OpenDir(name string, context *fuse.Context) ([]fuse.DirEntry, fuse.Status) {
+	r := fs.attr.GetDir(name)
 	if r.Deletion() {
 		return nil, fuse.ENOENT
 	}
@@ -99,20 +99,20 @@ type rpcFsFile struct {
 	fuse.Attr
 }
 
-func (me *rpcFsFile) GetAttr(a *fuse.Attr) fuse.Status {
-	*a = me.Attr
+func (fs *rpcFsFile) GetAttr(a *fuse.Attr) fuse.Status {
+	*a = fs.Attr
 	return fuse.OK
 }
 
-func (me *rpcFsFile) String() string {
-	return fmt.Sprintf("rpcFsFile(%s)", me.File.String())
+func (fs *rpcFsFile) String() string {
+	return fmt.Sprintf("rpcFsFile(%s)", fs.File.String())
 }
 
-func (me *RpcFs) Open(name string, flags uint32, context *fuse.Context) (nodefs.File, fuse.Status) {
+func (fs *RpcFs) Open(name string, flags uint32, context *fuse.Context) (nodefs.File, fuse.Status) {
 	if flags&fuse.O_ANYWRITE != 0 {
 		return nil, fuse.EPERM
 	}
-	a := me.attr.Get(name)
+	a := fs.attr.Get(name)
 	if a == nil {
 		return nil, fuse.ENOENT
 	}
@@ -120,7 +120,7 @@ func (me *RpcFs) Open(name string, flags uint32, context *fuse.Context) (nodefs.
 		return nil, fuse.ENOENT
 	}
 
-	if err := me.FetchHash(a); err != nil {
+	if err := fs.FetchHash(a); err != nil {
 		log.Printf("Error fetching contents %v", err)
 		return nil, fuse.EIO
 	}
@@ -128,15 +128,15 @@ func (me *RpcFs) Open(name string, flags uint32, context *fuse.Context) (nodefs.
 	fa := *a.Attr
 	return &nodefs.WithFlags{
 		File: &rpcFsFile{
-			NewLazyLoopbackFile(me.cache.Path(a.Hash)),
+			NewLazyLoopbackFile(fs.cache.Path(a.Hash)),
 			fa,
 		},
 		FuseFlags: fuse.FOPEN_KEEP_CACHE,
 	}, fuse.OK
 }
 
-func (me *RpcFs) Readlink(name string, context *fuse.Context) (string, fuse.Status) {
-	a := me.attr.Get(name)
+func (fs *RpcFs) Readlink(name string, context *fuse.Context) (string, fuse.Status) {
+	a := fs.attr.Get(name)
 	if a == nil {
 		return "", fuse.ENOENT
 	}
@@ -152,13 +152,13 @@ func (me *RpcFs) Readlink(name string, context *fuse.Context) (string, fuse.Stat
 	return a.Link, fuse.OK
 }
 
-func (me *RpcFs) GetAttr(name string, context *fuse.Context) (*fuse.Attr, fuse.Status) {
-	r := me.attr.Get(name)
+func (fs *RpcFs) GetAttr(name string, context *fuse.Context) (*fuse.Attr, fuse.Status) {
+	r := fs.attr.Get(name)
 	if r == nil {
 		return nil, fuse.ENOENT
 	}
 	if r.Hash != "" {
-		go me.FetchHash(r)
+		go fs.FetchHash(r)
 	}
 	a := &fuse.Attr{}
 	if !r.Deletion() {
@@ -169,9 +169,9 @@ func (me *RpcFs) GetAttr(name string, context *fuse.Context) (*fuse.Attr, fuse.S
 	return a, r.Status()
 }
 
-func (me *RpcFs) Access(name string, mode uint32, context *fuse.Context) (code fuse.Status) {
+func (fs *RpcFs) Access(name string, mode uint32, context *fuse.Context) (code fuse.Status) {
 	if mode == fuse.F_OK {
-		_, code := me.GetAttr(name, context)
+		_, code := fs.GetAttr(name, context)
 		return code
 	}
 	if mode&fuse.W_OK != 0 {

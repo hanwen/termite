@@ -91,11 +91,11 @@ type replayRequest struct {
 	Done          chan int
 }
 
-func (me *Master) uncachedGetAttr(name string) (rep *attr.FileAttr) {
+func (m *Master) uncachedGetAttr(name string) (rep *attr.FileAttr) {
 	rep = &attr.FileAttr{Path: name}
-	p := me.path(name)
+	p := m.path(name)
 
-	if p == me.options.Socket || p == me.options.LogFile {
+	if p == m.options.Socket || p == m.options.LogFile {
 		return rep
 	}
 
@@ -103,19 +103,19 @@ func (me *Master) uncachedGetAttr(name string) (rep *attr.FileAttr) {
 
 	// We don't want to expose the master's private files to the
 	// world.
-	if !me.options.ExposePrivate && fi != nil && fi.Mode().Perm()&0077 == 0 {
+	if !m.options.ExposePrivate && fi != nil && fi.Mode().Perm()&0077 == 0 {
 		log.Printf("Denied access to private file %q", name)
 		return rep
 	}
 
-	if me.excluded[name] {
+	if m.excluded[name] {
 		log.Printf("Denied access to excluded file %q", name)
 		return rep
 	}
 	rep.Attr = fuse.ToAttr(fi)
 
-	xattrPossible := rep.IsRegular() && me.options.XAttrCache && rep.Uid == uint32(me.options.Uid) && ((me.options.WritableRoot != "" && strings.HasPrefix(p, me.options.WritableRoot)) ||
-		(me.options.SourceRoot != "" && strings.HasPrefix(p, me.options.SourceRoot)))
+	xattrPossible := rep.IsRegular() && m.options.XAttrCache && rep.Uid == uint32(m.options.Uid) && ((m.options.WritableRoot != "" && strings.HasPrefix(p, m.options.WritableRoot)) ||
+		(m.options.SourceRoot != "" && strings.HasPrefix(p, m.options.SourceRoot)))
 
 	if xattrPossible {
 		cur := attr.EncodedAttr{}
@@ -124,14 +124,14 @@ func (me *Master) uncachedGetAttr(name string) (rep *attr.FileAttr) {
 		disk := attr.EncodedAttr{}
 		diskHash := disk.ReadXAttr(p)
 
-		if diskHash != nil && cur.Eq(&disk) && me.contentStore.Has(string(diskHash)) {
+		if diskHash != nil && cur.Eq(&disk) && m.contentStore.Has(string(diskHash)) {
 			rep.Hash = string(diskHash)
 			return rep
 		}
 	}
 
 	if fi != nil {
-		me.fillContent(rep)
+		m.fillContent(rep)
 		if xattrPossible {
 			if rep.Mode&0222 == 0 {
 				os.Chmod(p, os.FileMode(rep.Mode|0200))
@@ -145,12 +145,12 @@ func (me *Master) uncachedGetAttr(name string) (rep *attr.FileAttr) {
 	return rep
 }
 
-func (me *Master) fillContent(rep *attr.FileAttr) {
+func (m *Master) fillContent(rep *attr.FileAttr) {
 	if rep.IsSymlink() || rep.IsDir() {
-		rep.ReadFromFs(me.path(rep.Path), me.options.Hash)
+		rep.ReadFromFs(m.path(rep.Path), m.options.Hash)
 	} else if rep.IsRegular() {
-		fullPath := me.path(rep.Path)
-		rep.Hash = me.contentStore.SavePath(fullPath)
+		fullPath := m.path(rep.Path)
+		rep.Hash = m.contentStore.SavePath(fullPath)
 		if rep.Hash == "" {
 			// Typically happens if we want to open /etc/shadow as normal user.
 			log.Println("fillContent returning EPERM for", rep.Path)
@@ -159,14 +159,14 @@ func (me *Master) fillContent(rep *attr.FileAttr) {
 	}
 }
 
-func (me *Master) path(n string) string {
+func (m *Master) path(n string) string {
 	return "/" + n
 }
 
 func NewMaster(options *MasterOptions) *Master {
 	contentStore := cba.NewStore(&options.StoreOptions)
 
-	me := &Master{
+	m := &Master{
 		contentStore:  contentStore,
 		taskIds:       make(chan int, 100),
 		replayChannel: make(chan *replayRequest, 1),
@@ -188,34 +188,34 @@ func NewMaster(options *MasterOptions) *Master {
 		o.LogFile, _ = filepath.Abs(o.LogFile)
 	}
 
-	me.options = &o
-	me.dialer = newTCPDialer(o.Secret)
-	me.excluded = make(map[string]bool)
+	m.options = &o
+	m.dialer = newTCPDialer(o.Secret)
+	m.excluded = make(map[string]bool)
 	for _, e := range options.Excludes {
-		me.excluded[e] = true
+		m.excluded[e] = true
 	}
 
-	me.mirrors = newMirrorConnections(
-		me, options.Coordinator, options.MaxJobs)
-	me.mirrors.keepAlive = options.KeepAlive
-	me.attributes = attr.NewAttributeCache(func(n string) *attr.FileAttr {
-		return me.uncachedGetAttr(n)
+	m.mirrors = newMirrorConnections(
+		m, options.Coordinator, options.MaxJobs)
+	m.mirrors.keepAlive = options.KeepAlive
+	m.attributes = attr.NewAttributeCache(func(n string) *attr.FileAttr {
+		return m.uncachedGetAttr(n)
 	},
 		func(n string) *fuse.Attr {
-			fi, _ := os.Lstat(me.path(n))
+			fi, _ := os.Lstat(m.path(n))
 			return fuse.ToAttr(fi)
 		})
-	me.fileServer = attr.NewServer(me.attributes)
-	me.fileServerRpc = rpc.NewServer()
-	me.fileServerRpc.Register(me.fileServer)
+	m.fileServer = attr.NewServer(m.attributes)
+	m.fileServerRpc = rpc.NewServer()
+	m.fileServerRpc.Register(m.fileServer)
 
-	me.CheckPrivate()
+	m.CheckPrivate()
 
 	// Generate taskids.
 	go func() {
 		i := 0
 		for {
-			me.taskIds <- i
+			m.taskIds <- i
 			i++
 		}
 	}()
@@ -223,20 +223,20 @@ func NewMaster(options *MasterOptions) *Master {
 	// Make sure we update the filesystem and attributes together.
 	go func() {
 		for {
-			r := <-me.replayChannel
-			me.replayFileModifications(r.Files, r.DelFileHashes, r.NewFiles)
+			r := <-m.replayChannel
+			m.replayFileModifications(r.Files, r.DelFileHashes, r.NewFiles)
 			r.Done <- 1
 		}
 	}()
 
-	return me
+	return m
 }
 
-func (me *Master) CheckPrivate() {
-	if me.options.ExposePrivate {
+func (m *Master) CheckPrivate() {
+	if m.options.ExposePrivate {
 		return
 	}
-	d := me.options.WritableRoot
+	d := m.options.WritableRoot
 	for d != "" {
 		fi, err := os.Lstat(d)
 		if err != nil {
@@ -250,10 +250,10 @@ func (me *Master) CheckPrivate() {
 }
 
 // Fetch in the background.
-func (me *Master) FetchAll() {
+func (m *Master) FetchAll() {
 	wg := sync.WaitGroup{}
 	last := ""
-	for _, r := range []string{me.options.WritableRoot, me.options.SourceRoot} {
+	for _, r := range []string{m.options.WritableRoot, m.options.SourceRoot} {
 		if last == r || r == "" {
 			continue
 		}
@@ -262,7 +262,7 @@ func (me *Master) FetchAll() {
 
 		go func(p string) {
 			log.Println("Prefetch", p)
-			me.fetchAll(strings.TrimLeft(p, "/"))
+			m.fetchAll(strings.TrimLeft(p, "/"))
 			wg.Done()
 		}(r)
 	}
@@ -270,50 +270,50 @@ func (me *Master) FetchAll() {
 	log.Println("FetchAll done")
 }
 
-func (me *Master) Start() {
-	if me.options.FetchAll {
-		go me.FetchAll()
+func (m *Master) Start() {
+	if m.options.FetchAll {
+		go m.FetchAll()
 	}
-	go localStart(me, me.options.Socket)
-	me.waitForExit()
+	go localStart(m, m.options.Socket)
+	m.waitForExit()
 }
 
-func (me *Master) createMirror(addr string, jobs int) (*mirrorConnection, error) {
+func (m *Master) createMirror(addr string, jobs int) (*mirrorConnection, error) {
 	closeMe := []io.ReadWriteCloser{}
 	defer func() {
 		for _, c := range closeMe {
 			c.Close()
 		}
 	}()
-	conn, err := me.dialer.Open(addr, RPC_CHANNEL)
+	conn, err := m.dialer.Open(addr, RPC_CHANNEL)
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
 
 	rpcId := ConnectionId()
-	rpcConn, err := me.dialer.Open(addr, rpcId)
+	rpcConn, err := m.dialer.Open(addr, rpcId)
 	if err != nil {
 		return nil, err
 	}
 	closeMe = append(closeMe, rpcConn)
 
 	revId := ConnectionId()
-	revConn, err := me.dialer.Open(addr, revId)
+	revConn, err := m.dialer.Open(addr, revId)
 	if err != nil {
 		return nil, err
 	}
 	closeMe = append(closeMe, revConn)
 
 	contentId := ConnectionId()
-	contentConn, err := me.dialer.Open(addr, contentId)
+	contentConn, err := m.dialer.Open(addr, contentId)
 	if err != nil {
 		return nil, err
 	}
 	closeMe = append(closeMe, contentConn)
 
 	revContentId := ConnectionId()
-	revContentConn, err := me.dialer.Open(addr, revContentId)
+	revContentConn, err := m.dialer.Open(addr, revContentId)
 	if err != nil {
 		return nil, err
 	}
@@ -324,7 +324,7 @@ func (me *Master) createMirror(addr string, jobs int) (*mirrorConnection, error)
 		RevRpcId:     revId,
 		ContentId:    contentId,
 		RevContentId: revContentId,
-		WritableRoot: me.options.WritableRoot,
+		WritableRoot: m.options.WritableRoot,
 		MaxJobCount:  jobs,
 	}
 	rep := CreateMirrorResponse{}
@@ -338,13 +338,13 @@ func (me *Master) createMirror(addr string, jobs int) (*mirrorConnection, error)
 	closeMe = nil
 
 	log.Print("serving fileServerRpc on ", revConn.(net.Conn).LocalAddr())
-	go me.fileServerRpc.ServeConn(revConn)
-	go me.contentStore.ServeConn(revContentConn)
+	go m.fileServerRpc.ServeConn(revConn)
+	go m.contentStore.ServeConn(revContentConn)
 
 	mc := &mirrorConnection{
-		master:             me,
+		master:             m,
 		rpcClient:          rpc.NewClient(rpcConn),
-		contentClient:      me.contentStore.NewClient(contentConn),
+		contentClient:      m.contentStore.NewClient(contentConn),
 		reverseConnection:  revConn,
 		reverseContentConn: revContentConn,
 		maxJobs:            rep.GrantedJobCount,
@@ -357,19 +357,19 @@ func (me *Master) createMirror(addr string, jobs int) (*mirrorConnection, error)
 	return mc, nil
 }
 
-func (me *Master) runOnMirror(mirror *mirrorConnection, req *WorkRequest, rep *WorkResponse) error {
-	me.mirrors.stats.Enter("send")
-	err := me.attributes.Send(mirror)
-	me.mirrors.stats.Exit("send")
+func (m *Master) runOnMirror(mirror *mirrorConnection, req *WorkRequest, rep *WorkResponse) error {
+	m.mirrors.stats.Enter("send")
+	err := m.attributes.Send(mirror)
+	m.mirrors.stats.Exit("send")
 	if err != nil {
 		return err
 	}
 
-	defer me.mirrors.jobDone(mirror)
+	defer m.mirrors.jobDone(mirror)
 
 	// Tunnel stdin.
 	if req.StdinConn != nil {
-		destInputConn, err := me.dialer.Open(mirror.workerAddr, req.StdinId)
+		destInputConn, err := m.dialer.Open(mirror.workerAddr, req.StdinId)
 		if err != nil {
 			return err
 		}
@@ -387,25 +387,25 @@ func (me *Master) runOnMirror(mirror *mirrorConnection, req *WorkRequest, rep *W
 	}
 
 	mirror.fileSetWaiter.Prepare(req.TaskId)
-	me.mirrors.stats.Enter("remote")
+	m.mirrors.stats.Enter("remote")
 	err = mirror.rpcClient.Call("Mirror.Run", req, rep)
-	me.mirrors.stats.Exit("remote")
+	m.mirrors.stats.Exit("remote")
 	if err == nil {
-		me.mirrors.stats.Enter("filewait")
+		m.mirrors.stats.Enter("filewait")
 		err = mirror.fileSetWaiter.Wait(rep.FileSet, rep.TaskIds, req.TaskId)
-		me.mirrors.stats.Exit("filewait")
+		m.mirrors.stats.Exit("filewait")
 	}
 	return err
 }
 
-func (me *Master) runOnce(req *WorkRequest, rep *WorkResponse) error {
-	mirror, err := me.mirrors.pick()
+func (m *Master) runOnce(req *WorkRequest, rep *WorkResponse) error {
+	mirror, err := m.mirrors.pick()
 	if err != nil {
 		return err
 	}
-	err = me.runOnMirror(mirror, req, rep)
+	err = m.runOnMirror(mirror, req, rep)
 	if err != nil {
-		me.mirrors.drop(mirror, err)
+		m.mirrors.drop(mirror, err)
 		return err
 	}
 
@@ -413,39 +413,39 @@ func (me *Master) runOnce(req *WorkRequest, rep *WorkResponse) error {
 	return err
 }
 
-func (me *Master) run(req *WorkRequest, rep *WorkResponse) (err error) {
-	me.mirrors.stats.Enter("run")
-	defer me.mirrors.stats.Exit("run")
-	req.TaskId = <-me.taskIds
-	if me.MaybeRunInMaster(req, rep) {
+func (m *Master) run(req *WorkRequest, rep *WorkResponse) (err error) {
+	m.mirrors.stats.Enter("run")
+	defer m.mirrors.stats.Exit("run")
+	req.TaskId = <-m.taskIds
+	if m.MaybeRunInMaster(req, rep) {
 		log.Println("Ran in master:", req.Summary())
 		return nil
 	}
 
 	if req.Worker != "" {
-		mc, err := me.mirrors.find(req.Worker)
+		mc, err := m.mirrors.find(req.Worker)
 		if err != nil {
 			return err
 		}
-		return me.runOnMirror(mc, req, rep)
+		return m.runOnMirror(mc, req, rep)
 	}
 
-	err = me.runOnce(req, rep)
-	for i := 0; i < me.options.RetryCount && err != nil; i++ {
+	err = m.runOnce(req, rep)
+	for i := 0; i < m.options.RetryCount && err != nil; i++ {
 		log.Println("Retrying; last error:", err)
-		err = me.runOnce(req, rep)
+		err = m.runOnce(req, rep)
 	}
 
 	return err
 }
 
-func (me *Master) replayFileModifications(infos []*attr.FileAttr, delFileHashes map[string]string, newFiles map[string][]string) {
+func (m *Master) replayFileModifications(infos []*attr.FileAttr, delFileHashes map[string]string, newFiles map[string][]string) {
 	for _, info := range infos {
 		name := "/" + info.Path
 		if info.Deletion() {
 			if delFileHashes[info.Path] != "" {
 				dest := fmt.Sprintf("%s/.termite-deltmp%x",
-					me.options.WritableRoot, RandomBytes(8))
+					m.options.WritableRoot, RandomBytes(8))
 				if err := os.Rename(name, dest); err != nil {
 					log.Fatal("os.Rename:", err)
 				}
@@ -498,12 +498,12 @@ func (me *Master) replayFileModifications(infos []*attr.FileAttr, delFileHashes 
 		// TODO - test this.
 		fi, _ := os.Lstat(name)
 		info.Attr = fuse.ToAttr(fi)
-		if info.IsRegular() && me.options.XAttrCache && info.Uid == uint32(me.options.Uid) {
+		if info.IsRegular() && m.options.XAttrCache && info.Uid == uint32(m.options.Uid) {
 			info.WriteXAttr(name)
 		}
 	}
 
-	me.attributes.Update(infos)
+	m.attributes.Update(infos)
 	for _, v := range newFiles {
 		for _, f := range v {
 			if err := os.Remove(f); err != nil {
@@ -513,7 +513,7 @@ func (me *Master) replayFileModifications(infos []*attr.FileAttr, delFileHashes 
 	}
 }
 
-func (me *Master) replay(fset attr.FileSet) {
+func (m *Master) replay(fset attr.FileSet) {
 	// TODO - make a .termitetmp for replayed files.
 	req := replayRequest{
 		make(map[string][]string),
@@ -527,7 +527,7 @@ func (me *Master) replay(fset attr.FileSet) {
 	// replayFileModifications(), to limit contention.
 	for _, info := range fset.Files {
 		if info.Deletion() {
-			a := me.attributes.Get(info.Path)
+			a := m.attributes.Get(info.Path)
 			if !a.Deletion() && a.Hash != "" {
 				req.DelFileHashes[info.Path] = a.Hash
 				haveHashes[a.Hash]++
@@ -543,7 +543,7 @@ func (me *Master) replay(fset attr.FileSet) {
 		}
 
 		log.Printf("Prepare %x: %s", info.Hash, info.Path)
-		f, err := ioutil.TempFile(me.options.WritableRoot, ".tmp-termite")
+		f, err := ioutil.TempFile(m.options.WritableRoot, ".tmp-termite")
 		if err != nil {
 			log.Fatal("TempFile", err)
 		}
@@ -551,7 +551,7 @@ func (me *Master) replay(fset attr.FileSet) {
 		req.NewFiles[info.Hash] = append(req.NewFiles[info.Hash], f.Name())
 
 		var src *os.File
-		path := me.contentStore.Path(info.Hash)
+		path := m.contentStore.Path(info.Hash)
 		src, err = os.Open(path)
 		if err != nil {
 			log.Panicf("cache path missing for %x: %v", info.Hash, err)
@@ -576,37 +576,37 @@ func (me *Master) replay(fset attr.FileSet) {
 		}
 	}
 
-	me.attributes.Queue(fset)
+	m.attributes.Queue(fset)
 
-	me.replayChannel <- &req
+	m.replayChannel <- &req
 	<-req.Done
 }
 
-func (me *Master) refreshAttributeCache() {
-	updated := me.attributes.Refresh("")
-	me.attributes.Queue(updated)
+func (m *Master) refreshAttributeCache() {
+	updated := m.attributes.Refresh("")
+	m.attributes.Queue(updated)
 }
 
-func (me *Master) fetchAll(path string) {
-	a := me.attributes.GetDir(path)
+func (m *Master) fetchAll(path string) {
+	a := m.attributes.GetDir(path)
 	for n := range a.NameModeMap {
-		me.fetchAll(filepath.Join(path, n))
+		m.fetchAll(filepath.Join(path, n))
 	}
 }
 
-func (me *Master) waitForExit() {
-	go me.mirrors.refreshWorkers()
-	ticker := time.NewTicker(me.options.Period)
+func (m *Master) waitForExit() {
+	go m.mirrors.refreshWorkers()
+	ticker := time.NewTicker(m.options.Period)
 
 L:
 	for {
 		select {
-		case <-me.quit:
+		case <-m.quit:
 			log.Println("quit received.")
 			break L
 		case <-ticker.C:
 			log.Println("periodic household.")
-			me.mirrors.periodicHouseholding()
+			m.mirrors.periodicHouseholding()
 		}
 	}
 }

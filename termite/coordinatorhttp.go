@@ -12,29 +12,29 @@ import (
 	"time"
 )
 
-func (me *Coordinator) getHost(req *http.Request) (string, error) {
+func (c *Coordinator) getHost(req *http.Request) (string, error) {
 	q := req.URL.Query()
 	vs, ok := q["host"]
 	if !ok || len(vs) == 0 {
 		return "", fmt.Errorf("query param 'host' missing")
 	}
 	addr := string(vs[0])
-	if me.getWorker(addr) == nil {
+	if c.getWorker(addr) == nil {
 		return "", fmt.Errorf("worker %q unknown", addr)
 	}
 
 	return addr, nil
 }
 
-func (me *Coordinator) workerHandler(w http.ResponseWriter, req *http.Request) {
-	addr, err := me.getHost(req)
+func (c *Coordinator) workerHandler(w http.ResponseWriter, req *http.Request) {
+	addr, err := c.getHost(req)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(w, "<html><head><title>Termite worker status</title></head>")
 		fmt.Fprintf(w, "<body>Error: %s</body></html>", err.Error())
 		return
 	}
-	workerData := me.getWorker(addr)
+	workerData := c.getWorker(addr)
 	host, _, _ := net.SplitHostPort(addr)
 	resp, err := http.Get(fmt.Sprintf("http://%s:%d/%s?%s", host, workerData.HttpStatusPort,
 		req.URL.Path, req.URL.RawQuery))
@@ -50,52 +50,52 @@ func (me *Coordinator) workerHandler(w http.ResponseWriter, req *http.Request) {
 	resp.Body.Close()
 }
 
-func (me *Coordinator) ServeHTTP(port int) {
-	me.Mux.HandleFunc("/",
+func (c *Coordinator) ServeHTTP(port int) {
+	c.Mux.HandleFunc("/",
 		func(w http.ResponseWriter, req *http.Request) {
-			me.rootHandler(w, req)
+			c.rootHandler(w, req)
 		})
-	me.Mux.HandleFunc("/worker",
+	c.Mux.HandleFunc("/worker",
 		func(w http.ResponseWriter, req *http.Request) {
-			me.workerHandler(w, req)
+			c.workerHandler(w, req)
 		})
-	me.Mux.HandleFunc("/log",
+	c.Mux.HandleFunc("/log",
 		func(w http.ResponseWriter, req *http.Request) {
-			me.workerHandler(w, req)
+			c.workerHandler(w, req)
 		})
-	me.Mux.HandleFunc("/shutdown",
+	c.Mux.HandleFunc("/shutdown",
 		func(w http.ResponseWriter, req *http.Request) {
-			me.shutdownSelf(w, req)
+			c.shutdownSelf(w, req)
 		})
-	me.Mux.HandleFunc("/workerkill",
+	c.Mux.HandleFunc("/workerkill",
 		func(w http.ResponseWriter, req *http.Request) {
-			me.killHandler(w, req)
+			c.killHandler(w, req)
 		})
-	me.Mux.HandleFunc("/killall",
+	c.Mux.HandleFunc("/killall",
 		func(w http.ResponseWriter, req *http.Request) {
-			me.killAllHandler(w, req)
+			c.killAllHandler(w, req)
 		})
-	me.Mux.HandleFunc("/restartall",
+	c.Mux.HandleFunc("/restartall",
 		func(w http.ResponseWriter, req *http.Request) {
-			me.killAllHandler(w, req)
+			c.killAllHandler(w, req)
 		})
-	me.Mux.HandleFunc("/restart",
+	c.Mux.HandleFunc("/restart",
 		func(w http.ResponseWriter, req *http.Request) {
-			me.killHandler(w, req)
+			c.killHandler(w, req)
 		})
 
 	rpcServer := rpc.NewServer()
-	if err := rpcServer.Register(me); err != nil {
+	if err := rpcServer.Register(c); err != nil {
 		log.Fatal("rpcServer.Register:", err)
 	}
-	me.Mux.HandleFunc(rpc.DefaultRPCPath,
+	c.Mux.HandleFunc(rpc.DefaultRPCPath,
 		func(w http.ResponseWriter, req *http.Request) {
 			rpcServer.ServeHTTP(w, req)
 		})
 
 	addr := fmt.Sprintf(":%d", port)
 	var err error
-	me.listener, err = net.Listen("tcp", addr)
+	c.listener, err = net.Listen("tcp", addr)
 	if err != nil {
 		log.Fatal("net.Listen: ", err.Error())
 	}
@@ -103,9 +103,9 @@ func (me *Coordinator) ServeHTTP(port int) {
 
 	httpServer := http.Server{
 		Addr:    addr,
-		Handler: me.Mux,
+		Handler: c.Mux,
 	}
-	err = httpServer.Serve(me.listener)
+	err = httpServer.Serve(c.listener)
 	if e, ok := err.(*net.OpError); ok && e.Err == syscall.EINVAL {
 		return
 	}
@@ -115,46 +115,46 @@ func (me *Coordinator) ServeHTTP(port int) {
 	}
 }
 
-func (me *Coordinator) killAllHandler(w http.ResponseWriter, req *http.Request) {
-	me.log(req)
-	if !me.checkPassword(w, req) {
+func (c *Coordinator) killAllHandler(w http.ResponseWriter, req *http.Request) {
+	c.log(req)
+	if !c.checkPassword(w, req) {
 		return
 	}
 
 	w.Header().Set("Content-Type", "text/html")
 	fmt.Fprintf(w, "<p>%s in progress", req.URL.Path)
-	err := me.killAll(req.URL.Path == "/restartall")
+	err := c.killAll(req.URL.Path == "/restartall")
 	if err != nil {
 		fmt.Fprintf(w, "error: %v", err)
 	}
 	// Should have a redirect.
 	fmt.Fprintf(w, "<p><a href=\"/\">back to index</a>")
-	go me.checkReachable()
+	go c.checkReachable()
 }
 
-func (me *Coordinator) checkPassword(w http.ResponseWriter, req *http.Request) bool {
-	if me.options.WebPassword == "" {
+func (c *Coordinator) checkPassword(w http.ResponseWriter, req *http.Request) bool {
+	if c.options.WebPassword == "" {
 		return true
 	}
 	q := req.URL.Query()
 	pw := q["pw"]
-	if len(pw) == 0 || pw[0] != me.options.WebPassword {
+	if len(pw) == 0 || pw[0] != c.options.WebPassword {
 		fmt.Fprintf(w, "<html><body>unauthorized &amp;pw=PASSWORD missing or incorrect.</body></html>")
 		return false
 	}
 	return true
 }
 
-func (me *Coordinator) killHandler(w http.ResponseWriter, req *http.Request) {
-	me.log(req)
-	if !me.checkPassword(w, req) {
+func (c *Coordinator) killHandler(w http.ResponseWriter, req *http.Request) {
+	c.log(req)
+	if !c.checkPassword(w, req) {
 		return
 	}
 
-	addr, err := me.getHost(req)
+	addr, err := c.getHost(req)
 	var conn io.ReadWriteCloser
 	if err == nil {
-		conn, err = me.dialer.Open(addr, RPC_CHANNEL)
+		conn, err = c.dialer.Open(addr, RPC_CHANNEL)
 	}
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
@@ -191,13 +191,13 @@ func (me *Coordinator) killHandler(w http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(w, "<p>%s of %s in progress", action, addr)
 	// Should have a redirect.
 	fmt.Fprintf(w, "<p><a href=\"/\">back to index</a>")
-	go me.checkReachable()
+	go c.checkReachable()
 }
 
-func (me *Coordinator) rootHandler(w http.ResponseWriter, req *http.Request) {
+func (c *Coordinator) rootHandler(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
-	me.mutex.Lock()
-	defer me.mutex.Unlock()
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
 
 	fmt.Fprintf(w, "<html><head><title>Termite coordinator</title></head>")
 	fmt.Fprintf(w, "<body><h1>Termite coordinator</h1><ul>")
@@ -205,13 +205,13 @@ func (me *Coordinator) rootHandler(w http.ResponseWriter, req *http.Request) {
 	defer fmt.Fprintf(w, "</body></html>")
 
 	keys := []string{}
-	for k := range me.workers {
+	for k := range c.workers {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
 
 	for _, k := range keys {
-		worker := me.workers[k]
+		worker := c.workers[k]
 		addr := worker.Address
 		fmt.Fprintf(w, "<li><a href=\"worker?host=%s\">address <tt>%s</tt>, host <tt>%s</tt></a>"+
 			" (<a href=\"/workerkill?host=%s\">Kill</a>, \n"+
@@ -224,20 +224,20 @@ func (me *Coordinator) rootHandler(w http.ResponseWriter, req *http.Request) {
 		"<a href=\"restartall\">restart all workers</a>")
 }
 
-func (me *Coordinator) shutdownSelf(w http.ResponseWriter, req *http.Request) {
+func (c *Coordinator) shutdownSelf(w http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(w, "<html><head><title>Termite coordinator</title></head>")
 	fmt.Fprintf(w, "<body><h1>Shutdown in progress</h1><ul>")
 
 	// Async, so we can still return the reply here.
-	time.AfterFunc(100e6, func() { me.Shutdown() })
+	time.AfterFunc(100e6, func() { c.Shutdown() })
 }
 
-func (me *Coordinator) killAll(restart bool) error {
-	addrs := me.workerAddresses()
+func (c *Coordinator) killAll(restart bool) error {
+	addrs := c.workerAddresses()
 	done := make(chan error, len(addrs))
 	for _, w := range addrs {
 		go func(w string) {
-			err := me.killWorker(w, restart)
+			err := c.killWorker(w, restart)
 			done <- err
 		}(w)
 	}

@@ -4,33 +4,33 @@ import (
 	"github.com/hanwen/termite/stats"
 )
 
-func (me *Mirror) Status(req *MirrorStatusRequest, rep *MirrorStatusResponse) error {
-	me.fsMutex.Lock()
-	defer me.fsMutex.Unlock()
-	rep.Root = me.writableRoot
-	rep.Granted = me.maxJobCount
-	rep.WaitingTasks = me.waiting
-	rep.Accepting = me.accepting
+func (m *Mirror) Status(req *MirrorStatusRequest, rep *MirrorStatusResponse) error {
+	m.fsMutex.Lock()
+	defer m.fsMutex.Unlock()
+	rep.Root = m.writableRoot
+	rep.Granted = m.maxJobCount
+	rep.WaitingTasks = m.waiting
+	rep.Accepting = m.accepting
 
-	for fs := range me.activeFses {
+	for fs := range m.activeFses {
 		rep.Fses = append(rep.Fses, fs.Status())
 	}
-	rep.RpcTimings = append(me.rpcFs.timings.TimingMessages(),
-		me.worker.content.TimingMessages()...)
+	rep.RpcTimings = append(m.rpcFs.timings.TimingMessages(),
+		m.worker.content.TimingMessages()...)
 	return nil
 }
 
-func (me *Worker) Status(req *WorkerStatusRequest, rep *WorkerStatusResponse) error {
-	me.mirrors.Status(req, rep)
+func (w *Worker) Status(req *WorkerStatusRequest, rep *WorkerStatusResponse) error {
+	w.mirrors.Status(req, rep)
 
 	// TODO - pass WorkerOptions out.
-	rep.MaxJobCount = me.options.Jobs
+	rep.MaxJobCount = w.options.Jobs
 	rep.Version = Version()
-	rep.Accepting = me.accepting
-	rep.CpuStats = me.stats.CpuStats()
-	rep.DiskStats = me.stats.DiskStats()
-	rep.PhaseCounts = me.stats.PhaseCounts()
-	rep.PhaseNames = me.stats.PhaseOrder
+	rep.Accepting = w.accepting
+	rep.CpuStats = w.stats.CpuStats()
+	rep.DiskStats = w.stats.DiskStats()
+	rep.PhaseCounts = w.stats.PhaseCounts()
+	rep.PhaseNames = w.stats.PhaseOrder
 	rep.TotalCpu = *stats.TotalCpuStat()
 	rep.MemStat = *stats.GetMemStat()
 	return nil

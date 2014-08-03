@@ -23,20 +23,20 @@ type WorkerTask struct {
 	taskInfo  string
 }
 
-func (me *WorkerTask) Kill() {
-	if me.cmd.Process != nil {
-		pid := me.cmd.Process.Pid
+func (t *WorkerTask) Kill() {
+	if t.cmd.Process != nil {
+		pid := t.cmd.Process.Pid
 		err := syscall.Kill(pid, syscall.SIGQUIT)
 		log.Printf("Killed pid %d, result %v", pid, err)
 	}
 }
 
-func (me *WorkerTask) String() string {
-	return me.taskInfo
+func (t *WorkerTask) String() string {
+	return t.taskInfo
 }
 
-func (me *WorkerTask) Run() error {
-	fuseFS, err := me.mirror.newFs(me)
+func (t *WorkerTask) Run() error {
+	fuseFS, err := t.mirror.newFs(t)
 
 	if err == ShuttingDownError {
 		// We can't return an error, since that would cause
@@ -52,52 +52,52 @@ func (me *WorkerTask) Run() error {
 		return err
 	}
 
-	me.mirror.worker.stats.Enter("fuse")
-	err = me.runInFuse(fuseFS)
-	me.mirror.worker.stats.Exit("fuse")
+	t.mirror.worker.stats.Enter("fuse")
+	err = t.runInFuse(fuseFS)
+	t.mirror.worker.stats.Exit("fuse")
 
-	me.mirror.worker.stats.Enter("reap")
-	if me.mirror.considerReap(fuseFS, me) {
-		me.rep.FileSet, me.rep.TaskIds = me.mirror.reapFuse(fuseFS)
+	t.mirror.worker.stats.Enter("reap")
+	if t.mirror.considerReap(fuseFS, t) {
+		t.rep.FileSet, t.rep.TaskIds = t.mirror.reapFuse(fuseFS)
 	} else {
-		me.mirror.returnFs(fuseFS)
+		t.mirror.returnFs(fuseFS)
 	}
-	me.mirror.worker.stats.Exit("reap")
+	t.mirror.worker.stats.Exit("reap")
 
 	return err
 }
 
-func (me *WorkerTask) runInFuse(fuseFs *workerFuseFs) error {
-	fuseFs.SetDebug(me.req.Debug)
+func (t *WorkerTask) runInFuse(fuseFs *workerFS) error {
+	fuseFs.SetDebug(t.req.Debug)
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
 
 	// See /bin/true for the background of
 	// /bin/true. http://code.google.com/p/go/issues/detail?id=2373
-	me.cmd = &exec.Cmd{
-		Path: me.req.Binary,
-		Args: me.req.Argv,
+	t.cmd = &exec.Cmd{
+		Path: t.req.Binary,
+		Args: t.req.Argv,
 	}
-	cmd := me.cmd
+	cmd := t.cmd
 	if os.Geteuid() == 0 {
 		attr := &syscall.SysProcAttr{}
 		attr.Credential = &syscall.Credential{
-			Uid: uint32(me.mirror.worker.options.User.Uid),
-			Gid: uint32(me.mirror.worker.options.User.Gid),
+			Uid: uint32(t.mirror.worker.options.User.Uid),
+			Gid: uint32(t.mirror.worker.options.User.Gid),
 		}
 		attr.Chroot = fuseFs.rootDir
 		cmd.SysProcAttr = attr
-		cmd.Dir = me.req.Dir
+		cmd.Dir = t.req.Dir
 	} else {
-		cmd.Path = fastpath.Join(fuseFs.rootDir, me.req.Binary)
-		cmd.Dir = fastpath.Join(fuseFs.rootDir, me.req.Dir)
+		cmd.Path = fastpath.Join(fuseFs.rootDir, t.req.Binary)
+		cmd.Dir = fastpath.Join(fuseFs.rootDir, t.req.Dir)
 	}
 
-	cmd.Env = me.req.Env
+	cmd.Env = t.req.Env
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
-	if me.stdinConn != nil {
-		cmd.Stdin = me.stdinConn
+	if t.stdinConn != nil {
+		cmd.Stdin = t.stdinConn
 	}
 
 	if err := cmd.Start(); err != nil {
@@ -105,39 +105,39 @@ func (me *WorkerTask) runInFuse(fuseFs *workerFuseFs) error {
 	}
 
 	printCmd := fmt.Sprintf("%v", cmd.Args)
-	if me.req.Debug {
+	if t.req.Debug {
 		printCmd = fmt.Sprintf("%v", cmd)
 	}
-	me.taskInfo = fmt.Sprintf("%v, dir %v, fuse FS %v",
+	t.taskInfo = fmt.Sprintf("%v, dir %v, fuse FS %v",
 		printCmd, cmd.Dir, fuseFs.id)
 	err := cmd.Wait()
 
 	exitErr, ok := err.(*exec.ExitError)
 	if ok {
-		me.rep.Exit = exitErr.Sys().(syscall.WaitStatus)
+		t.rep.Exit = exitErr.Sys().(syscall.WaitStatus)
 		err = nil
 	}
 
 	// No waiting: if the process exited, we kill the connection.
-	if me.stdinConn != nil {
-		me.stdinConn.Close()
+	if t.stdinConn != nil {
+		t.stdinConn.Close()
 	}
 
 	// We could use a connection here too, but this is simpler.
-	me.rep.Stdout = stdout.String()
-	me.rep.Stderr = stderr.String()
+	t.rep.Stdout = stdout.String()
+	t.rep.Stderr = stderr.String()
 
 	return err
 }
 
 // fillReply empties the unionFs and hashes files as needed.  It will
 // return the FS back the pool as soon as possible.
-func (me *Mirror) fillReply(fs *workerFuseFs) *attr.FileSet {
+func (t *Mirror) fillReply(fs *workerFS) *attr.FileSet {
 	dir, yield := fs.reap()
-	me.returnFs(fs)
+	t.returnFs(fs)
 
 	files := make([]*attr.FileAttr, 0, len(yield))
-	wrRoot := strings.TrimLeft(me.writableRoot, "/")
+	wrRoot := strings.TrimLeft(t.writableRoot, "/")
 	reapedHashes := map[string]string{}
 	for path, v := range yield {
 		f := &attr.FileAttr{
@@ -151,7 +151,7 @@ func (me *Mirror) fillReply(fs *workerFuseFs) *attr.FileSet {
 		if !f.Deletion() && f.IsRegular() {
 			contentPath := fastpath.Join(wrRoot, v.Original)
 			if v.Original != "" && v.Original != contentPath {
-				fa := me.rpcFs.attr.Get(contentPath)
+				fa := t.rpcFs.attr.Get(contentPath)
 				if fa.Hash == "" {
 					log.Panicf("Contents for %q disappeared.", contentPath)
 				}
@@ -162,7 +162,7 @@ func (me *Mirror) fillReply(fs *workerFuseFs) *attr.FileSet {
 				if !ok {
 					var err error
 
-					h, err = me.worker.content.DestructiveSavePath(v.Backing)
+					h, err = t.worker.content.DestructiveSavePath(v.Backing)
 					if err != nil || h == "" {
 						log.Fatalf("DestructiveSavePath fail %v, %q", err, h)
 					}

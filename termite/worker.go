@@ -94,7 +94,7 @@ func NewWorker(options *WorkerOptions) *Worker {
 
 	cache := cba.NewStore(&options.StoreOptions)
 
-	me := &Worker{
+	w := &Worker{
 		content:    cache,
 		rpcServer:  rpc.NewServer(),
 		stats:      stats.NewServerStats(),
@@ -102,26 +102,26 @@ func NewWorker(options *WorkerOptions) *Worker {
 		accepting:  true,
 		canRestart: true,
 	}
-	me.stats.PhaseOrder = []string{"run", "fuse", "reap"}
-	me.mirrors = NewWorkerMirrors(me)
-	me.stopListener = make(chan int, 1)
-	me.rpcServer.Register(me)
+	w.stats.PhaseOrder = []string{"run", "fuse", "reap"}
+	w.mirrors = NewWorkerMirrors(w)
+	w.stopListener = make(chan int, 1)
+	w.rpcServer.Register(w)
 
-	return me
+	return w
 }
 
-func (me *Worker) PeriodicHouseholding() {
-	for me.accepting {
-		me.Report()
-		if me.options.HeapLimit > 0 {
+func (w *Worker) PeriodicHouseholding() {
+	for w.accepting {
+		w.Report()
+		if w.options.HeapLimit > 0 {
 			heap := stats.GetMemStat().Total()
-			if heap > me.options.HeapLimit {
+			if heap > w.options.HeapLimit {
 				log.Println("Exceeded heap limit. Restarting...")
-				me.shutdown(true, false)
+				w.shutdown(true, false)
 			}
 		}
 
-		c := time.After(me.options.ReportInterval)
+		c := time.After(w.options.ReportInterval)
 		<-c
 	}
 }
@@ -138,21 +138,21 @@ func init() {
 	cname = strings.TrimRight(cname, ".")
 }
 
-func (me *Worker) Report() {
-	if me.options.Coordinator == "" {
+func (w *Worker) Report() {
+	if w.options.Coordinator == "" {
 		return
 	}
-	client, err := rpc.DialHTTP("tcp", me.options.Coordinator)
+	client, err := rpc.DialHTTP("tcp", w.options.Coordinator)
 	if err != nil {
 		log.Println("dialing coordinator:", err)
 		return
 	}
 
 	req := RegistrationRequest{
-		Address:        fmt.Sprintf("%v:%d", cname, me.options.Port),
-		Name:           fmt.Sprintf("%s:%d", Hostname, me.options.Port),
+		Address:        fmt.Sprintf("%v:%d", cname, w.options.Port),
+		Name:           fmt.Sprintf("%s:%d", Hostname, w.options.Port),
 		Version:        Version(),
-		HttpStatusPort: me.httpStatusPort,
+		HttpStatusPort: w.httpStatusPort,
 	}
 	rep := Empty{}
 	err = client.Call("Coordinator.Register", &req, &rep)
@@ -161,15 +161,15 @@ func (me *Worker) Report() {
 	}
 }
 
-func (me *Worker) CreateMirror(req *CreateMirrorRequest, rep *CreateMirrorResponse) error {
-	if !me.accepting {
+func (w *Worker) CreateMirror(req *CreateMirrorRequest, rep *CreateMirrorResponse) error {
+	if !w.accepting {
 		return errors.New("Worker is shutting down.")
 	}
-	rpcConn := me.listener.Accept(req.RpcId)
-	revConn := me.listener.Accept(req.RevRpcId)
-	contentConn := me.listener.Accept(req.ContentId)
-	revContentConn := me.listener.Accept(req.RevContentId)
-	mirror, err := me.mirrors.getMirror(rpcConn, revConn, contentConn, revContentConn, req.MaxJobCount)
+	rpcConn := w.listener.Accept(req.RpcId)
+	revConn := w.listener.Accept(req.RevRpcId)
+	contentConn := w.listener.Accept(req.ContentId)
+	revContentConn := w.listener.Accept(req.RevContentId)
+	mirror, err := w.mirrors.getMirror(rpcConn, revConn, contentConn, revContentConn, req.MaxJobCount)
 	if err != nil {
 		rpcConn.Close()
 		revConn.Close()
@@ -183,31 +183,31 @@ func (me *Worker) CreateMirror(req *CreateMirrorRequest, rep *CreateMirrorRespon
 	return nil
 }
 
-func (me *Worker) RunWorkerServer() {
-	listener := portRangeListener(me.options.Port, me.options.PortRetry)
+func (w *Worker) RunWorkerServer() {
+	listener := portRangeListener(w.options.Port, w.options.PortRetry)
 
 	_, portString, _ := net.SplitHostPort(listener.Addr().String())
-	fmt.Sscanf(portString, "%d", &me.options.Port)
-	go me.PeriodicHouseholding()
-	go me.serveStatus(me.options.Port, me.options.PortRetry)
+	fmt.Sscanf(portString, "%d", &w.options.Port)
+	go w.PeriodicHouseholding()
+	go w.serveStatus(w.options.Port, w.options.PortRetry)
 
 	incomingRpc := make(chan io.ReadWriteCloser, 1)
 	go func() {
 		for c := range incomingRpc {
-			go me.rpcServer.ServeConn(c)
+			go w.rpcServer.ServeConn(c)
 		}
 	}()
 
-	me.listener = newTCPListener(listener, me.options.Secret, incomingRpc)
-	me.listener.Wait()
+	w.listener = newTCPListener(listener, w.options.Secret, incomingRpc)
+	w.listener.Wait()
 }
 
-func (me *Worker) Log(req *LogRequest, rep *LogResponse) error {
-	if me.options.LogFileName == "" {
+func (w *Worker) Log(req *LogRequest, rep *LogResponse) error {
+	if w.options.LogFileName == "" {
 		return fmt.Errorf("No log filename set.")
 	}
 
-	f, err := os.Open(me.options.LogFileName)
+	f, err := os.Open(w.options.LogFileName)
 	if err != nil {
 		return err
 	}
@@ -247,9 +247,9 @@ func (me *Worker) Log(req *LogRequest, rep *LogResponse) error {
 	return nil
 }
 
-func (me *Worker) restart() {
+func (w *Worker) restart() {
 	cl := http.Client{}
-	req, err := cl.Get(fmt.Sprintf("http://%s/bin/worker", me.options.Coordinator))
+	req, err := cl.Get(fmt.Sprintf("http://%s/bin/worker", w.options.Coordinator))
 	if err != nil {
 		log.Fatal("http get error.")
 	}
@@ -272,33 +272,33 @@ func (me *Worker) restart() {
 	cmd.Start()
 }
 
-func (me *Worker) DropMirror(mirror *Mirror) {
-	me.mirrors.DropMirror(mirror)
+func (w *Worker) DropMirror(mirror *Mirror) {
+	w.mirrors.DropMirror(mirror)
 }
 
-func (me *Worker) Shutdown(req *ShutdownRequest, rep *ShutdownResponse) error {
+func (w *Worker) Shutdown(req *ShutdownRequest, rep *ShutdownResponse) error {
 	log.Printf("Received Shutdown RPC: %#v", req)
-	me.shutdown(req.Restart, req.Kill)
+	w.shutdown(req.Restart, req.Kill)
 	return nil
 }
 
-func (me *Worker) shutdown(restart bool, aggressive bool) {
-	if restart && me.canRestart {
-		me.canRestart = false
-		me.restart()
+func (w *Worker) shutdown(restart bool, aggressive bool) {
+	if restart && w.canRestart {
+		w.canRestart = false
+		w.restart()
 
 		// Wait a bit, since we don't want to shutdown before
 		// the new worker is up
 		time.Sleep(2 * time.Second)
 	}
-	me.accepting = false
+	w.accepting = false
 	go func() {
-		me.mirrors.shutdown(aggressive)
+		w.mirrors.shutdown(aggressive)
 
 		// Sleep to give the master some time to process the results.
 		if !aggressive {
-			time.Sleep(me.options.LameDuckPeriod)
+			time.Sleep(w.options.LameDuckPeriod)
 		}
-		me.listener.Close()
+		w.listener.Close()
 	}()
 }

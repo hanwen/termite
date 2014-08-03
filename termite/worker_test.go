@@ -38,15 +38,15 @@ type testCase struct {
 	startFdCount    int
 }
 
-func (me *testCase) FindBin(name string) string {
+func (tc *testCase) FindBin(name string) string {
 	full, err := exec.LookPath(name)
 	if err != nil {
-		me.tester.Fatal("looking for binary:", err)
+		tc.tester.Fatal("looking for binary:", err)
 	}
 
 	full, err = filepath.EvalSymlinks(full)
 	if err != nil {
-		me.tester.Fatal("EvalSymlinks:", err)
+		tc.tester.Fatal("EvalSymlinks:", err)
 	}
 	return full
 }
@@ -58,9 +58,9 @@ func testEnv() []string {
 	}
 }
 
-func (me *testCase) StartWorker() {
-	worker := NewWorker(me.workerOpts)
-	me.workers = append(me.workers, worker)
+func (tc *testCase) StartWorker() {
+	worker := NewWorker(tc.workerOpts)
+	tc.workers = append(tc.workers, worker)
 	go worker.RunWorkerServer()
 }
 
@@ -79,29 +79,29 @@ func NewTestCase(t *testing.T) *testCase {
 		t.Fatal("This test should not run as root")
 	}
 
-	me := new(testCase)
-	me.tester = t
-	me.secret = RandomBytes(20)
-	me.tmp, _ = ioutil.TempDir("", "")
+	tc := new(testCase)
+	tc.tester = t
+	tc.secret = RandomBytes(20)
+	tc.tmp, _ = ioutil.TempDir("", "")
 
-	me.startFdCount = me.fdCount()
-	workerTmp := me.tmp + "/worker-tmp"
+	tc.startFdCount = tc.fdCount()
+	workerTmp := tc.tmp + "/worker-tmp"
 	os.Mkdir(workerTmp, 0700)
 
 	cOpts := CoordinatorOptions{
-		Secret: me.secret,
+		Secret: tc.secret,
 	}
-	me.coordinator = NewCoordinator(&cOpts)
-	go me.coordinator.PeriodicCheck()
+	tc.coordinator = NewCoordinator(&cOpts)
+	go tc.coordinator.PeriodicCheck()
 
-	me.coordinatorPort = pickPort(t)
-	go me.coordinator.ServeHTTP(me.coordinatorPort)
-	coordinatorAddr := fmt.Sprintf("localhost:%d", me.coordinatorPort)
-	me.workerOpts = &WorkerOptions{
-		Secret:  me.secret,
+	tc.coordinatorPort = pickPort(t)
+	go tc.coordinator.ServeHTTP(tc.coordinatorPort)
+	coordinatorAddr := fmt.Sprintf("localhost:%d", tc.coordinatorPort)
+	tc.workerOpts = &WorkerOptions{
+		Secret:  tc.secret,
 		TempDir: workerTmp,
 		StoreOptions: cba.StoreOptions{
-			Dir: me.tmp + "/worker-cache",
+			Dir: tc.tmp + "/worker-cache",
 		},
 		Jobs:           1,
 		ReportInterval: 100 * time.Millisecond,
@@ -109,118 +109,118 @@ func NewTestCase(t *testing.T) *testCase {
 		PortRetry:      10,
 	}
 
-	me.wd = me.tmp + "/wd"
-	os.MkdirAll(me.wd, 0755)
+	tc.wd = tc.tmp + "/wd"
+	os.MkdirAll(tc.wd, 0755)
 
-	me.socket = me.wd + "/master-socket"
+	tc.socket = tc.wd + "/master-socket"
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
 		masterOpts := MasterOptions{
-			WritableRoot:  me.wd,
+			WritableRoot:  tc.wd,
 			RetryCount:    2,
-			Secret:        me.secret,
+			Secret:        tc.secret,
 			MaxJobs:       1,
 			Coordinator:   coordinatorAddr,
 			KeepAlive:     500 * time.Millisecond,
 			Period:        500 * time.Millisecond,
 			ExposePrivate: true,
 			StoreOptions: cba.StoreOptions{
-				Dir: me.tmp + "/master-cache",
+				Dir: tc.tmp + "/master-cache",
 			},
-			Socket: me.socket,
+			Socket: tc.socket,
 		}
-		me.master = NewMaster(&masterOpts)
-		go me.master.Start()
+		tc.master = NewMaster(&masterOpts)
+		go tc.master.Start()
 		for i := 0; i < 10; i++ {
-			if fi, _ := os.Lstat(me.socket); fi != nil {
+			if fi, _ := os.Lstat(tc.socket); fi != nil {
 				break
 			}
 			time.Sleep(10e6)
 		}
 		wg.Done()
 	}()
-	me.StartWorker()
+	tc.StartWorker()
 	wg.Wait()
-	for i := 0; me.coordinator.WorkerCount() == 0; i++ {
+	for i := 0; tc.coordinator.WorkerCount() == 0; i++ {
 		if i > 10 {
 			t.Fatal("no live workers after 10 tries")
 		}
 		time.Sleep(50e6)
 	}
 
-	return me
+	return tc
 }
 
-func (me *testCase) fdCount() int {
+func (tc *testCase) fdCount() int {
 	entries, err := ioutil.ReadDir("/proc/self/fd")
 	if err != nil {
-		me.tester.Fatal("ReadDir fd", err)
+		tc.tester.Fatal("ReadDir fd", err)
 	}
 	return len(entries)
 }
 
-func (me *testCase) Clean() {
-	me.master.mirrors.dropConnections()
-	me.master.quit <- 1
+func (tc *testCase) Clean() {
+	tc.master.mirrors.dropConnections()
+	tc.master.quit <- 1
 
-	me.coordinator.killAll(false)
+	tc.coordinator.killAll(false)
 	splice.ClearSplicePool()
 
 	// TODO - should have explicit worker shutdown routine.
-	me.coordinator.Shutdown()
+	tc.coordinator.Shutdown()
 
 	// TODO - should sleep until everything has exited.
 	time.Sleep(500 * time.Millisecond)
-	os.RemoveAll(me.tmp)
+	os.RemoveAll(tc.tmp)
 
 	// TODO - there are still some persistent leaks here.
-	if false && me.fdCount() > me.startFdCount {
-		me.tester.Errorf("Fd leak. Start: %d, end %d", me.startFdCount, me.fdCount())
+	if false && tc.fdCount() > tc.startFdCount {
+		tc.tester.Errorf("Fd leak. Start: %d, end %d", tc.startFdCount, tc.fdCount())
 		dir := "/proc/self/fd"
 		entries, _ := ioutil.ReadDir(dir)
 		for _, e := range entries {
 			l, _ := os.Readlink(filepath.Join(dir, e.Name()))
-			me.tester.Logf("%s -> %q", e.Name(), l)
+			tc.tester.Logf("%s -> %q", e.Name(), l)
 		}
 	}
 }
 
-func (me *testCase) refresh() {
-	me.master.refreshAttributeCache()
+func (tc *testCase) refresh() {
+	tc.master.refreshAttributeCache()
 }
 
-func (me *testCase) RunFail(req WorkRequest) (rep WorkResponse) {
-	rep = me.Run(req, true)
+func (tc *testCase) RunFail(req WorkRequest) (rep WorkResponse) {
+	rep = tc.Run(req, true)
 	if rep.Exit.ExitStatus() == 0 {
-		me.tester.Fatalf("expect exit status != 0 for %v", req)
+		tc.tester.Fatalf("expect exit status != 0 for %v", req)
 	}
 	return rep
 }
 
-func (me *testCase) RunSuccess(req WorkRequest) (rep WorkResponse) {
-	rep = me.Run(req, true)
+func (tc *testCase) RunSuccess(req WorkRequest) (rep WorkResponse) {
+	rep = tc.Run(req, true)
 	if rep.Exit.ExitStatus() != 0 {
-		me.tester.Fatalf("Got exit status %d for %v", rep.Exit.ExitStatus(), req)
+		tc.tester.Fatalf("Got exit status %d for %v", rep.Exit.ExitStatus(), req)
 	}
 	return rep
 }
 
-func (me *testCase) Run(req WorkRequest, mustExit bool) (rep WorkResponse) {
-	rpcConn := OpenSocketConnection(me.socket, RPC_CHANNEL, 1e7)
+func (tc *testCase) Run(req WorkRequest, mustExit bool) (rep WorkResponse) {
+	rpcConn := OpenSocketConnection(tc.socket, RPC_CHANNEL, 1e7)
 	client := rpc.NewClient(rpcConn)
 	if req.Env == nil {
 		req.Env = testEnv()
 	}
 	if req.Dir == "" {
-		req.Dir = me.wd
+		req.Dir = tc.wd
 	}
 	if req.Binary == "" {
-		req.Binary = me.FindBin(req.Argv[0])
+		req.Binary = tc.FindBin(req.Argv[0])
 	}
 	err := client.Call("LocalMaster.Run", &req, &rep)
 	if mustExit && err != nil {
-		me.tester.Fatal("LocalMaster.Run: ", err)
+		tc.tester.Fatal("LocalMaster.Run: ", err)
 	}
 	client.Close()
 	return rep

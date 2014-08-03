@@ -236,13 +236,13 @@ func HookedCopy(w io.Writer, r io.Reader, proc func([]byte)) error {
 	return nil
 }
 
-func (me *WorkResponse) String() string {
+func (r *WorkResponse) String() string {
 	return fmt.Sprintf("WorkResponse{exit %d, taskids %v: %v. Err: %s, Out: %s}",
-		me.Exit.ExitStatus(),
-		me.TaskIds,
-		me.FileSet,
-		HumanTrim(me.Stderr, 1024),
-		HumanTrim(me.Stdout, 1024))
+		r.Exit.ExitStatus(),
+		r.TaskIds,
+		r.FileSet,
+		HumanTrim(r.Stderr, 1024),
+		HumanTrim(r.Stdout, 1024))
 }
 
 // IntToExponent the smallest E such that 2^E >= Z.

@@ -79,8 +79,8 @@ func NewCoordinator(opts *CoordinatorOptions) *Coordinator {
 	return c
 }
 
-func (me *Coordinator) Register(req *RegistrationRequest, rep *Empty) error {
-	conn, err := me.dialer.Open(req.Address, RPC_CHANNEL)
+func (c *Coordinator) Register(req *RegistrationRequest, rep *Empty) error {
+	conn, err := c.dialer.Open(req.Address, RPC_CHANNEL)
 	if conn != nil {
 		conn.Close()
 	}
@@ -89,51 +89,51 @@ func (me *Coordinator) Register(req *RegistrationRequest, rep *Empty) error {
 			"error contacting address: %v", err))
 	}
 
-	me.mutex.Lock()
-	defer me.mutex.Unlock()
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
 
 	w := &WorkerRegistration{Registration: Registration(*req)}
 	w.LastReported = time.Now()
-	me.lastChange = w.LastReported
-	me.workers[w.Address] = w
-	me.cond.Broadcast()
+	c.lastChange = w.LastReported
+	c.workers[w.Address] = w
+	c.cond.Broadcast()
 	return nil
 }
 
-func (me *Coordinator) WorkerCount() int {
-	me.mutex.Lock()
-	defer me.mutex.Unlock()
-	return len(me.workers)
+func (c *Coordinator) WorkerCount() int {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	return len(c.workers)
 }
 
-func (me *Coordinator) List(req *ListRequest, rep *ListResponse) error {
-	me.mutex.Lock()
-	defer me.mutex.Unlock()
+func (c *Coordinator) List(req *ListRequest, rep *ListResponse) error {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
 
-	for !me.lastChange.After(req.Latest) {
-		me.cond.Wait()
+	for !c.lastChange.After(req.Latest) {
+		c.cond.Wait()
 	}
 	keys := []string{}
-	for k := range me.workers {
+	for k := range c.workers {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
 	for _, k := range keys {
-		w := me.workers[k]
+		w := c.workers[k]
 		rep.Registrations = append(rep.Registrations, w.Registration)
 	}
-	rep.LastChange = me.lastChange
+	rep.LastChange = c.lastChange
 	return nil
 }
 
-func (me *Coordinator) checkReachable() {
+func (c *Coordinator) checkReachable() {
 	now := time.Now()
 
-	addrs := me.workerAddresses()
+	addrs := c.workerAddresses()
 
 	var toDelete []string
 	for _, a := range addrs {
-		conn, err := me.dialer.Open(a, RPC_CHANNEL)
+		conn, err := c.dialer.Open(a, RPC_CHANNEL)
 		if err != nil {
 			toDelete = append(toDelete, a)
 		} else {
@@ -145,25 +145,24 @@ func (me *Coordinator) checkReachable() {
 		return
 	}
 
-	me.mutex.Lock()
+	c.mutex.Lock()
 	for _, a := range toDelete {
-		w := me.workers[a]
+		w := c.workers[a]
 		if w != nil && now.After(w.LastReported) {
 			log.Println("dropping worker", a)
-			delete(me.workers, a)
+			delete(c.workers, a)
 		}
 	}
-	me.lastChange = time.Now()
-	me.mutex.Unlock()
+	c.lastChange = time.Now()
+	c.mutex.Unlock()
 }
 
 const _POLL = 60
 
-func (me *Coordinator) PeriodicCheck() {
+func (c *Coordinator) PeriodicCheck() {
 	for {
-		c := time.After(_POLL * 1e9)
-		<-c
-		me.checkReachable()
+		time.Sleep(_POLL * time.Second)
+		c.checkReachable()
 	}
 }
 
@@ -194,26 +193,26 @@ func (c *Coordinator) shutdownWorker(addr string, restart bool) error {
 	return err
 }
 
-func (me *Coordinator) workerAddresses() (out []string) {
-	me.mutex.Lock()
-	defer me.mutex.Unlock()
-	for k := range me.workers {
+func (c *Coordinator) workerAddresses() (out []string) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	for k := range c.workers {
 		out = append(out, k)
 	}
 	return out
 }
 
-func (me *Coordinator) getWorker(addr string) *WorkerRegistration {
-	me.mutex.Lock()
-	defer me.mutex.Unlock()
-	return me.workers[addr]
+func (c *Coordinator) getWorker(addr string) *WorkerRegistration {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	return c.workers[addr]
 }
 
-func (me *Coordinator) Shutdown() {
+func (c *Coordinator) Shutdown() {
 	log.Println("Coordinator shutdown.")
-	me.listener.Close()
+	c.listener.Close()
 }
 
-func (me *Coordinator) log(req *http.Request) {
+func (c *Coordinator) log(req *http.Request) {
 	log.Printf("from %v: %v", req.RemoteAddr, req.URL)
 }

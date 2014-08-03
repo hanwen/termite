@@ -47,8 +47,8 @@ func newLocalDecider(input io.Reader) *localDecider {
 	return &decider
 }
 
-func (me *localDecider) ShouldRunLocally(command string) *LocalRule {
-	for _, r := range me.rules {
+func (d *localDecider) ShouldRunLocally(command string) *LocalRule {
+	for _, r := range d.rules {
 		m, err := regexp.MatchString(r.Regexp, command)
 		if err != nil {
 			log.Fatal("regexp error:", err)

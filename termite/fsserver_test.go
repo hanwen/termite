@@ -67,11 +67,11 @@ type rpcFsTestCase struct {
 	tester *testing.T
 }
 
-func (me *rpcFsTestCase) getattr(n string) *attr.FileAttr {
-	p := filepath.Join(me.orig, n)
-	a := GetattrForTest(me.tester, p)
+func (tc *rpcFsTestCase) getattr(n string) *attr.FileAttr {
+	p := filepath.Join(tc.orig, n)
+	a := GetattrForTest(tc.tester, p)
 	if a.Hash != "" {
-		me.serverStore.SavePath(p)
+		tc.serverStore.SavePath(p)
 	}
 	return a
 }
@@ -95,75 +95,75 @@ func netPair() (net.Conn, net.Conn, error) {
 	return c1, c2, nil
 }
 
-func newRpcFsTestCase(t *testing.T) (me *rpcFsTestCase) {
-	me = &rpcFsTestCase{tester: t}
-	me.tmp, _ = ioutil.TempDir("", "term-fss")
+func newRpcFsTestCase(t *testing.T) (tc *rpcFsTestCase) {
+	tc = &rpcFsTestCase{tester: t}
+	tc.tmp, _ = ioutil.TempDir("", "term-fss")
 
-	me.mnt = me.tmp + "/mnt"
-	me.orig = me.tmp + "/orig"
-	srvCache := me.tmp + "/server-cache"
+	tc.mnt = tc.tmp + "/mnt"
+	tc.orig = tc.tmp + "/orig"
+	srvCache := tc.tmp + "/server-cache"
 
-	os.Mkdir(me.mnt, 0700)
-	os.Mkdir(me.orig, 0700)
+	os.Mkdir(tc.mnt, 0700)
+	os.Mkdir(tc.orig, 0700)
 
 	copts := cba.StoreOptions{
 		Dir: srvCache,
 	}
-	me.serverStore = cba.NewStore(&copts)
-	me.attr = attr.NewAttributeCache(
-		func(n string) *attr.FileAttr { return me.getattr(n) },
+	tc.serverStore = cba.NewStore(&copts)
+	tc.attr = attr.NewAttributeCache(
+		func(n string) *attr.FileAttr { return tc.getattr(n) },
 		func(n string) *fuse.Attr {
-			return StatForTest(t, filepath.Join(me.orig, n))
+			return StatForTest(t, filepath.Join(tc.orig, n))
 		})
-	me.attr.Paranoia = true
-	me.server = attr.NewServer(me.attr)
+	tc.attr.Paranoia = true
+	tc.server = attr.NewServer(tc.attr)
 
 	var err error
-	me.sockL, me.sockR, err = netPair()
+	tc.sockL, tc.sockR, err = netPair()
 	if err != nil {
 		t.Fatal(err)
 	}
-	me.contentL, me.contentR, err = netPair()
+	tc.contentL, tc.contentR, err = netPair()
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	rpcServer := rpc.NewServer()
-	rpcServer.Register(me.server)
+	rpcServer.Register(tc.server)
 	go func() {
-		rpcServer.ServeConn(me.sockL)
-		me.sockL.Close()
+		rpcServer.ServeConn(tc.sockL)
+		tc.sockL.Close()
 	}()
 	go func() {
-		me.serverStore.ServeConn(me.contentL)
-		me.contentL.Close()
+		tc.serverStore.ServeConn(tc.contentL)
+		tc.contentL.Close()
 	}()
 
 	cOpts := cba.StoreOptions{
-		Dir: me.tmp + "/client-cache",
+		Dir: tc.tmp + "/client-cache",
 	}
-	me.clientStore = cba.NewStore(&cOpts)
-	attrClient := attr.NewClient(me.sockR, "id")
-	me.rpcFs = NewRpcFs(attrClient, me.clientStore, me.contentR)
-	me.rpcFs.id = "rpcfs_test"
-	nfs := pathfs.NewPathNodeFs(me.rpcFs, nil)
-	me.state, _, err = nodefs.MountRoot(me.mnt, nfs.Root(), nil)
-	//	me.state.SetDebug(fuse.VerboseTest())
+	tc.clientStore = cba.NewStore(&cOpts)
+	attrClient := attr.NewClient(tc.sockR, "id")
+	tc.rpcFs = NewRpcFs(attrClient, tc.clientStore, tc.contentR)
+	tc.rpcFs.id = "rpcfs_test"
+	nfs := pathfs.NewPathNodeFs(tc.rpcFs, nil)
+	tc.state, _, err = nodefs.MountRoot(tc.mnt, nfs.Root(), nil)
+	//	tc.state.SetDebug(fuse.VerboseTest())
 	if err != nil {
 		t.Fatal("Mount", err)
 	}
 
-	go me.state.Serve()
-	return me
+	go tc.state.Serve()
+	return tc
 }
 
-func (me *rpcFsTestCase) Clean() {
-	if err := me.state.Unmount(); err != nil {
+func (tc *rpcFsTestCase) Clean() {
+	if err := tc.state.Unmount(); err != nil {
 		log.Panic("fuse unmount failed.", err)
 	}
-	os.RemoveAll(me.tmp)
-	me.contentR.Close()
-	me.sockR.Close()
+	os.RemoveAll(tc.tmp)
+	tc.contentR.Close()
+	tc.sockR.Close()
 }
 
 func check(err error) {
@@ -173,15 +173,15 @@ func check(err error) {
 }
 
 func TestRpcFsReadDirCache(t *testing.T) {
-	me := newRpcFsTestCase(t)
-	defer me.Clean()
+	tc := newRpcFsTestCase(t)
+	defer tc.Clean()
 
-	os.Mkdir(me.orig+"/subdir", 0700)
+	os.Mkdir(tc.orig+"/subdir", 0700)
 	content := "hello"
-	err := ioutil.WriteFile(me.orig+"/subdir/file.txt", []byte(content), 0644)
+	err := ioutil.WriteFile(tc.orig+"/subdir/file.txt", []byte(content), 0644)
 	check(err)
 
-	entries, err := ioutil.ReadDir(me.mnt + "/subdir")
+	entries, err := ioutil.ReadDir(tc.mnt + "/subdir")
 	check(err)
 
 	seen := false
@@ -195,28 +195,28 @@ func TestRpcFsReadDirCache(t *testing.T) {
 		t.Fatalf("Missing entry %q %v", "file.txt", entries)
 	}
 
-	before, _ := os.Lstat(me.orig + "/subdir")
+	before, _ := os.Lstat(tc.orig + "/subdir")
 	for {
-		err = ioutil.WriteFile(me.orig+"/subdir/unstatted.txt", []byte("somethingelse"), 0644)
+		err = ioutil.WriteFile(tc.orig+"/subdir/unstatted.txt", []byte("somethingelse"), 0644)
 		check(err)
-		after, _ := os.Lstat(me.orig + "/subdir")
+		after, _ := os.Lstat(tc.orig + "/subdir")
 		if !before.ModTime().Equal(after.ModTime()) {
 			break
 		}
 		time.Sleep(10e6)
-		os.Remove(me.orig + "/subdir/unstatted.txt")
+		os.Remove(tc.orig + "/subdir/unstatted.txt")
 	}
 
-	err = os.Remove(me.orig + "/subdir/file.txt")
+	err = os.Remove(tc.orig + "/subdir/file.txt")
 	check(err)
 
-	fset := me.attr.Refresh("")
-	me.rpcFs.updateFiles(fset.Files)
+	fset := tc.attr.Refresh("")
+	tc.rpcFs.updateFiles(fset.Files)
 
-	_, err = ioutil.ReadDir(me.mnt + "/subdir")
+	_, err = ioutil.ReadDir(tc.mnt + "/subdir")
 	check(err)
 
-	dir := me.rpcFs.attr.GetDir("subdir")
+	dir := tc.rpcFs.attr.GetDir("subdir")
 	if dir == nil {
 		t.Fatalf("Should have cache entry for /subdir")
 	}
@@ -230,59 +230,59 @@ func TestRpcFsReadDirCache(t *testing.T) {
 }
 
 func TestRpcFsBasic(t *testing.T) {
-	me := newRpcFsTestCase(t)
-	defer me.Clean()
+	tc := newRpcFsTestCase(t)
+	defer tc.Clean()
 
-	os.Mkdir(me.orig+"/subdir", 0700)
+	os.Mkdir(tc.orig+"/subdir", 0700)
 	content := "hello"
-	err := ioutil.WriteFile(me.orig+"/file.txt", []byte(content), 0644)
+	err := ioutil.WriteFile(tc.orig+"/file.txt", []byte(content), 0644)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	fi, err := os.Lstat(me.mnt + "/subdir")
+	fi, err := os.Lstat(tc.mnt + "/subdir")
 	if fi == nil || !fi.IsDir() {
 		t.Fatal("subdir stat", fi, err)
 	}
 
-	c, err := ioutil.ReadFile(me.mnt + "/file.txt")
+	c, err := ioutil.ReadFile(tc.mnt + "/file.txt")
 	if err != nil || string(c) != "hello" {
 		t.Errorf("Readfile: want 'hello', got '%s', err %v", c, err)
 	}
 
-	entries, err := ioutil.ReadDir(me.mnt)
+	entries, err := ioutil.ReadDir(tc.mnt)
 	if err != nil || len(entries) != 2 {
 		t.Error("Readdir", err, entries)
 	}
 
 	// This test implementation detail - should be separate?
-	a := me.attr.Get("file.txt")
+	a := tc.attr.Get("file.txt")
 	if a == nil || a.Hash == "" || string(a.Hash) != string(md5str(content)) {
 		t.Errorf("cache error %v (%x)", a)
 	}
 
 	newcontent := "somethingelse"
-	err = ioutil.WriteFile(me.orig+"/file.txt", []byte(newcontent), 0644)
+	err = ioutil.WriteFile(tc.orig+"/file.txt", []byte(newcontent), 0644)
 	check(err)
-	err = ioutil.WriteFile(me.orig+"/foobar.txt", []byte("more content"), 0644)
+	err = ioutil.WriteFile(tc.orig+"/foobar.txt", []byte("more content"), 0644)
 	check(err)
 
-	me.attr.Refresh("")
-	a = me.attr.Get("file.txt")
+	tc.attr.Refresh("")
+	a = tc.attr.Get("file.txt")
 	if a == nil || a.Hash == "" || a.Hash != md5str(newcontent) {
 		t.Errorf("refreshAttributeCache: cache error got %v, want %x", a, md5str(newcontent))
 	}
 }
 
 func TestRpcFsFetchOnce(t *testing.T) {
-	me := newRpcFsTestCase(t)
-	defer me.Clean()
-	ioutil.WriteFile(me.orig+"/file.txt", []byte{42}, 0644)
-	me.attr.Refresh("")
+	tc := newRpcFsTestCase(t)
+	defer tc.Clean()
+	ioutil.WriteFile(tc.orig+"/file.txt", []byte{42}, 0644)
+	tc.attr.Refresh("")
 
-	ioutil.ReadFile(me.mnt + "/file.txt")
+	ioutil.ReadFile(tc.mnt + "/file.txt")
 
-	stats := me.serverStore.TimingMap()
+	stats := tc.serverStore.TimingMap()
 	key := "ContentStore.Save"
 	if stats == nil || stats[key] == nil {
 		t.Fatalf("Stats %q missing: %v", key, stats)
@@ -293,36 +293,36 @@ func TestRpcFsFetchOnce(t *testing.T) {
 }
 
 func TestFsServerCache(t *testing.T) {
-	me := newRpcFsTestCase(t)
-	defer me.Clean()
+	tc := newRpcFsTestCase(t)
+	defer tc.Clean()
 
 	content := "hello"
-	err := ioutil.WriteFile(me.orig+"/file.txt", []byte(content), 0644)
-	me.attr.Refresh("")
-	c := me.attr.Copy().Files
+	err := ioutil.WriteFile(tc.orig+"/file.txt", []byte(content), 0644)
+	tc.attr.Refresh("")
+	c := tc.attr.Copy().Files
 	if len(c) > 0 {
 		t.Errorf("cache not empty? %#v", c)
 	}
 
-	os.Lstat(me.mnt + "/file.txt")
-	c = me.attr.Copy().Files
+	os.Lstat(tc.mnt + "/file.txt")
+	c = tc.attr.Copy().Files
 	if len(c) != 2 {
 		t.Errorf("cache should have 2 entries, got %#v", c)
 	}
 	name := "file.txt"
-	ok := me.attr.Have(name)
+	ok := tc.attr.Have(name)
 	if !ok {
 		t.Errorf("no entry for %q", name)
 	}
 
-	newName := me.orig + "/new.txt"
-	err = os.Rename(me.orig+"/file.txt", newName)
+	newName := tc.orig + "/new.txt"
+	err = os.Rename(tc.orig+"/file.txt", newName)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	me.attr.Refresh("")
-	ok = me.attr.Have(name)
+	tc.attr.Refresh("")
+	ok = tc.attr.Have(name)
 	if ok {
 		t.Errorf("after rename: entry for %q unexpected", name)
 	}

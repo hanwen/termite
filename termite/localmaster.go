@@ -19,15 +19,15 @@ type LocalMaster struct {
 }
 
 func localStart(m *Master, sock string) {
-	me := LocalMaster{
+	l := LocalMaster{
 		master: m,
 	}
-	me.server = rpc.NewServer()
-	me.server.Register(&me)
-	me.start(sock)
+	l.server = rpc.NewServer()
+	l.server.Register(&l)
+	l.start(sock)
 }
 
-func (me *LocalMaster) Run(req *WorkRequest, rep *WorkResponse) error {
+func (m *LocalMaster) Run(req *WorkRequest, rep *WorkResponse) error {
 	if req.RanLocally {
 		log.Println("Ran command locally:", req.Argv)
 		return nil
@@ -36,28 +36,28 @@ func (me *LocalMaster) Run(req *WorkRequest, rep *WorkResponse) error {
 		return fmt.Errorf("Path to binary is not absolute: %q", req.Binary)
 	}
 	if req.StdinId != "" {
-		req.StdinConn = me.listener.Accept(req.StdinId)
+		req.StdinConn = m.listener.Accept(req.StdinId)
 	}
-	return me.master.run(req, rep)
+	return m.master.run(req, rep)
 }
 
-func (me *LocalMaster) Shutdown(req *int, rep *int) error {
-	me.master.quit <- 1
+func (m *LocalMaster) Shutdown(req *int, rep *int) error {
+	m.master.quit <- 1
 	return nil
 }
 
-func (me *LocalMaster) RefreshAttributeCache(input *int, output *int) error {
+func (m *LocalMaster) RefreshAttributeCache(input *int, output *int) error {
 	log.Println("Refreshing attribute cache")
-	me.master.refreshAttributeCache()
+	m.master.refreshAttributeCache()
 	log.Println("Refresh done")
 	return nil
 }
 
-func (me *LocalMaster) InspectFile(req *attr.AttrRequest, rep *attr.AttrResponse) error {
-	return me.master.fileServer.GetAttr(req, rep)
+func (m *LocalMaster) InspectFile(req *attr.AttrRequest, rep *attr.AttrResponse) error {
+	return m.master.fileServer.GetAttr(req, rep)
 }
 
-func (me *LocalMaster) start(sock string) {
+func (m *LocalMaster) start(sock string) {
 	l, err := net.Listen("unix", sock)
 	if err != nil {
 		log.Fatal("startLocalServer: ", err)
@@ -73,10 +73,10 @@ func (me *LocalMaster) start(sock string) {
 	chans := make(chan io.ReadWriteCloser, 1)
 	go func() {
 		for c := range chans {
-			go me.server.ServeConn(c)
+			go m.server.ServeConn(c)
 		}
 	}()
 
-	me.listener = newTCPListener(l, nil, chans)
-	me.listener.Wait()
+	m.listener = newTCPListener(l, nil, chans)
+	m.listener.Wait()
 }
