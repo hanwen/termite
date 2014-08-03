@@ -7,7 +7,6 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"syscall"
 
@@ -68,7 +67,7 @@ func (me *WorkerTask) Run() error {
 	return err
 }
 
-func (me *WorkerTask) runInFuse(fuseFs *fuseFS) error {
+func (me *WorkerTask) runInFuse(fuseFs *workerFuseFs) error {
 	fuseFs.SetDebug(me.req.Debug)
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
@@ -80,20 +79,18 @@ func (me *WorkerTask) runInFuse(fuseFs *fuseFS) error {
 		Args: me.req.Argv,
 	}
 	cmd := me.cmd
-	dir := filepath.Join(fuseFs.mount, fuseFs.subDir)
 	if os.Geteuid() == 0 {
 		attr := &syscall.SysProcAttr{}
 		attr.Credential = &syscall.Credential{
 			Uid: uint32(me.mirror.worker.options.User.Uid),
 			Gid: uint32(me.mirror.worker.options.User.Gid),
 		}
-		attr.Chroot = dir
-
+		attr.Chroot = fuseFs.rootDir
 		cmd.SysProcAttr = attr
 		cmd.Dir = me.req.Dir
 	} else {
-		cmd.Path = fastpath.Join(dir, me.req.Binary)
-		cmd.Dir = fastpath.Join(dir, me.req.Dir)
+		cmd.Path = fastpath.Join(fuseFs.rootDir, me.req.Binary)
+		cmd.Dir = fastpath.Join(fuseFs.rootDir, me.req.Dir)
 	}
 
 	cmd.Env = me.req.Env
@@ -135,7 +132,7 @@ func (me *WorkerTask) runInFuse(fuseFs *fuseFS) error {
 
 // fillReply empties the unionFs and hashes files as needed.  It will
 // return the FS back the pool as soon as possible.
-func (me *Mirror) fillReply(fs *fuseFS) *attr.FileSet {
+func (me *Mirror) fillReply(fs *workerFuseFs) *attr.FileSet {
 	dir, yield := fs.reap()
 	me.returnFs(fs)
 

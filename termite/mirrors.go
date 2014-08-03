@@ -45,7 +45,11 @@ func (me *WorkerMirrors) getMirror(rpcConn, revConn, contentConn, revContentConn
 		reserveCount = remaining
 	}
 
-	mirror := NewMirror(me.worker, rpcConn, revConn, contentConn, revContentConn)
+	mirror, err := NewMirror(me.worker, rpcConn, revConn, contentConn, revContentConn)
+	if err != nil {
+		return nil, err
+	}
+
 	mirror.maxJobCount = reserveCount
 
 	key := fmt.Sprintf("todo%d", rand.Int63n(1<<60))

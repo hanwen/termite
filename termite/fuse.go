@@ -19,9 +19,9 @@ import (
 )
 
 type workerFuseFs struct {
-	rwDir  string
-	tmpDir string
-	subDir string
+	rwDir   string
+	tmpDir  string
+	rootDir string // absolute path of the root of the RPC backed miror FS
 
 	// without leading /
 	writableRoot string
@@ -42,7 +42,6 @@ type workerFuseFs struct {
 }
 
 type fuseFS struct {
-	*workerFuseFs
 	tmpDir string
 	mount  string
 	root   nodefs.Node
@@ -56,12 +55,11 @@ func (fs *fuseFS) Stop() {
 		// of the FUSE file system, so we have to exit.
 		log.Panic("unmount fail in workerFuseFs.Stop:", err)
 	}
-	fs.workerFuseFs.Stop()
+	os.RemoveAll(fs.tmpDir)
 }
 
 func (me *fuseFS) SetDebug(debug bool) {
 	me.Server.SetDebug(debug)
-	me.workerFuseFs.SetDebug(debug)
 	me.fsConnector.SetDebug(debug)
 }
 
@@ -78,15 +76,11 @@ func (me *workerFuseFs) addTask(task *WorkerTask) {
 	me.tasks[task] = true
 }
 
-func (me *workerFuseFs) Stop() {
-	os.RemoveAll(me.tmpDir)
-}
-
 func (me *workerFuseFs) SetDebug(debug bool) {
 	me.rpcNodeFs.SetDebug(debug)
 }
 
-func newFuseFS(tmpDir string, rpcFs pathfs.FileSystem, writableRoot string, nobody *User) (*fuseFS, error) {
+func newFuseFS(tmpDir string) (*fuseFS, error) {
 	tmpDir, err := ioutil.TempDir(tmpDir, "termite-task")
 	if err != nil {
 		return nil, err
@@ -112,18 +106,12 @@ func newFuseFS(tmpDir string, rpcFs pathfs.FileSystem, writableRoot string, nobo
 		return nil, err
 	}
 	go fs.Server.Serve()
-
-	fs.workerFuseFs, err = newWorkerFuseFs(tmpDir, rpcFs, writableRoot, nobody, fs)
-	if err != nil {
-		fs.Server.Unmount()
-		return nil, err
-	}
 	return fs, nil
 }
 
-func newWorkerFuseFs(tmpDir string, rpcFs pathfs.FileSystem, writableRoot string, nobody *User, fuseFS *fuseFS) (*workerFuseFs, error) {
+func (fuseFS *fuseFS) newWorkerFuseFs(rpcFs pathfs.FileSystem, writableRoot string, nobody *User) (*workerFuseFs, error) {
 	me := &workerFuseFs{
-		tmpDir:       tmpDir,
+		tmpDir:       fuseFS.tmpDir,
 		writableRoot: strings.TrimLeft(writableRoot, "/"),
 		tasks:        map[*WorkerTask]bool{},
 	}
@@ -144,7 +132,7 @@ func newWorkerFuseFs(tmpDir string, rpcFs pathfs.FileSystem, writableRoot string
 		}
 	}
 
-	me.subDir = fmt.Sprintf("sub%x", rand.Int31())
+	subDir := fmt.Sprintf("sub%x", rand.Int31())
 	me.rpcNodeFs = pathfs.NewPathNodeFs(rpcFs, nil)
 	ttl := 30 * time.Second
 	mOpts := nodefs.Options{
@@ -157,8 +145,8 @@ func newWorkerFuseFs(tmpDir string, rpcFs pathfs.FileSystem, writableRoot string
 		PortableInodes: true,
 	}
 
-	if status := fuseFS.fsConnector.Mount(fuseFS.root.Inode(), me.subDir, me.rpcNodeFs.Root(), &mOpts); !status.Ok() {
-		return nil, fmt.Errorf("Mount root on %q: %v", me.subDir, status)
+	if status := fuseFS.fsConnector.Mount(fuseFS.root.Inode(), subDir, me.rpcNodeFs.Root(), &mOpts); !status.Ok() {
+		return nil, fmt.Errorf("Mount root on %q: %v", subDir, status)
 	}
 
 	var err error
@@ -168,8 +156,9 @@ func newWorkerFuseFs(tmpDir string, rpcFs pathfs.FileSystem, writableRoot string
 		return nil, err
 	}
 
+	me.rootDir = filepath.Join(fuseFS.mount, subDir)
 	me.procFs = fs.NewProcFs()
-	me.procFs.StripPrefix = filepath.Join(fuseFS.mount, me.subDir)
+	me.procFs.StripPrefix = me.rootDir
 	if nobody != nil {
 		me.procFs.Uid = nobody.Uid
 	}
@@ -200,7 +189,7 @@ func newWorkerFuseFs(tmpDir string, rpcFs pathfs.FileSystem, writableRoot string
 	}
 	if strings.HasPrefix(me.writableRoot, "tmp/") {
 		parent, _ := filepath.Split(me.writableRoot)
-		dir := filepath.Join(fuseFS.mount, me.subDir, parent)
+		dir := filepath.Join(fuseFS.mount, subDir, parent)
 		if err := os.MkdirAll(dir, 0755); err != nil {
 			return nil, errors.New(fmt.Sprintf("Mkdir of %q in /tmp fail: %v", parent, err))
 		}
