@@ -32,9 +32,17 @@ func (m FileMode) String() string {
 }
 
 type FileAttr struct {
+	// Full path of the file
 	Path string
+
+	// Attr holds the FUSE attributes
 	*fuse.Attr
+
+	// Hash holds the cryptographic has of the file, in case of a
+	// normal file.
 	Hash string
+
+	// Link holds the link target in case of a symlink.
 	Link string
 
 	// Only filled for directories.
@@ -83,7 +91,7 @@ func (me FileAttr) Status() fuse.Status {
 func (me FileAttr) Copy(withdir bool) *FileAttr {
 	a := me
 	if me.NameModeMap != nil && withdir {
-		a.NameModeMap = map[string]FileMode{}
+		a.NameModeMap = make(map[string]FileMode, len(me.NameModeMap))
 		for k, v := range me.NameModeMap {
 			a.NameModeMap[k] = v
 		}

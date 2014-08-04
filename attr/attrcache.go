@@ -198,6 +198,7 @@ func (me *AttributeCache) GetDir(name string) (rep *FileAttr) {
 	return me.get(name, true)
 }
 
+// localGet returns data from the in-memory cache.
 func (me *AttributeCache) localGet(name string, withdir bool) (rep *FileAttr) {
 	me.mutex.RLock()
 	defer me.mutex.RUnlock()
