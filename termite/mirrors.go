@@ -26,7 +26,7 @@ func NewWorkerMirrors(w *Worker) *WorkerMirrors {
 	return wm
 }
 
-func (wm *WorkerMirrors) getMirror(rpcConn, revConn, contentConn, revContentConn io.ReadWriteCloser, reserveCount int) (*Mirror, error) {
+func (wm *WorkerMirrors) getMirror(rpcConn, revConn, contentConn, revContentConn io.ReadWriteCloser, reserveCount int, writableRoot string) (*Mirror, error) {
 	if reserveCount <= 0 {
 		return nil, errors.New("must ask positive jobcount")
 	}
@@ -47,6 +47,10 @@ func (wm *WorkerMirrors) getMirror(rpcConn, revConn, contentConn, revContentConn
 
 	mirror, err := NewMirror(wm.worker, rpcConn, revConn, contentConn, revContentConn)
 	if err != nil {
+		return nil, err
+	}
+
+	if err := mirror.startFUSE(writableRoot); err != nil {
 		return nil, err
 	}
 

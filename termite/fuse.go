@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"math/rand"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/hanwen/go-fuse/fuse"
@@ -18,18 +19,7 @@ import (
 	termitefs "github.com/hanwen/termite/fs"
 )
 
-type workerFS struct {
-	rwDir   string
-	tmpDir  string
-	rootDir string // absolute path of the root of the RPC backed miror FS
-
-	// without leading /
-	writableRoot string
-	unionFs      *termitefs.MemUnionFs
-	procFs       *termitefs.ProcFs
-	rpcNodeFs    *pathfs.PathNodeFs
-	unionNodeFs  *pathfs.PathNodeFs
-
+type workerFSState struct {
 	// Protected by Mirror.fsMutex
 	id      string
 	reaping bool
@@ -39,14 +29,98 @@ type workerFS struct {
 
 	// Task ids that have results pending in this FS.
 	taskIds []int
+
+	// workerFS that this state belongs to.
+	fs *workerFS
+}
+
+func newWorkerFSState(fs *workerFS) *workerFSState {
+	return &workerFSState{
+		tasks: map[*WorkerTask]bool{},
+		fs:    fs,
+	}
+}
+
+type workerFS struct {
+	fuseFS *fuseFS
+
+	rwDir   string
+	tmpDir  string
+	rootDir string // absolute path of the root of the RPC backed miror FS
+
+	// without leading /
+	unionFs     *termitefs.MemUnionFs
+	procFs      *termitefs.ProcFs
+	unionNodeFs *pathfs.PathNodeFs
+
+	state *workerFSState
 }
 
 type fuseFS struct {
-	tmpDir      string
-	mount       string
-	root        nodefs.Node
-	server      *fuse.Server
-	fsConnector *nodefs.FileSystemConnector
+	tmpDir       string
+	mount        string
+	root         nodefs.Node
+	server       *fuse.Server
+	fsConnector  *nodefs.FileSystemConnector
+	rpcNodeFS    *pathfs.PathNodeFs
+	rpcFS        *RpcFs
+	writableRoot string
+	nobody       *User
+
+	// indexed by prefix inside the root
+	workerMu sync.Mutex
+	workers  map[string]*workerFS
+}
+
+type multiRPCFS struct {
+	*RpcFs
+}
+
+var workerRegex = regexp.MustCompile("^worker[0-9]{4}/?")
+
+const prefixLen = len("worker1234")
+
+func (m *multiRPCFS) strip(n string) string {
+	if workerRegex.MatchString(n) {
+		if len(n) == prefixLen {
+			return ""
+		}
+		return n[prefixLen+1:]
+	}
+	return n
+}
+
+func (fs *multiRPCFS) OpenDir(name string, context *fuse.Context) ([]fuse.DirEntry, fuse.Status) {
+	return fs.RpcFs.OpenDir(fs.strip(name), context)
+}
+
+func (fs *multiRPCFS) Open(name string, flags uint32, context *fuse.Context) (nodefs.File, fuse.Status) {
+	return fs.RpcFs.Open(fs.strip(name), flags, context)
+}
+
+func (fs *multiRPCFS) Readlink(name string, context *fuse.Context) (string, fuse.Status) {
+	return fs.RpcFs.Readlink(fs.strip(name), context)
+}
+
+func (fs *multiRPCFS) GetAttr(name string, context *fuse.Context) (*fuse.Attr, fuse.Status) {
+	return fs.RpcFs.GetAttr(fs.strip(name), context)
+}
+
+func (fs *multiRPCFS) Access(name string, mode uint32, context *fuse.Context) (code fuse.Status) {
+	return fs.RpcFs.Access(fs.strip(name), mode, context)
+}
+
+func (fs *fuseFS) addWorkerFS() (*workerFS, error) {
+	fs.workerMu.Lock()
+	defer fs.workerMu.Unlock()
+	id := fmt.Sprintf("worker%04d", len(fs.workers))
+
+	wfs, err := fs.newWorkerFS(id)
+	if err != nil {
+		return nil, err
+	}
+	fs.workers[id] = wfs
+	return wfs, nil
 }
 
 func (fs *fuseFS) Stop() {
@@ -63,7 +137,7 @@ func (fs *fuseFS) SetDebug(debug bool) {
 	fs.fsConnector.SetDebug(debug)
 }
 
-func (fs *workerFS) Status() (s FuseFsStatus) {
+func (fs *workerFSState) Status() (s FuseFsStatus) {
 	s.Id = fs.id
 	for t := range fs.tasks {
 		s.Tasks = append(s.Tasks, t.taskInfo)
@@ -71,23 +145,40 @@ func (fs *workerFS) Status() (s FuseFsStatus) {
 	return s
 }
 
-func (fs *workerFS) addTask(task *WorkerTask) {
+func (fs *workerFSState) addTask(task *WorkerTask) {
 	fs.taskIds = append(fs.taskIds, task.req.TaskId)
 	fs.tasks[task] = true
 }
 
 func (fs *workerFS) SetDebug(debug bool) {
-	fs.rpcNodeFs.SetDebug(debug)
+	fs.fuseFS.rpcNodeFS.SetDebug(debug)
 }
 
-func newFuseFS(tmpDir string) (*fuseFS, error) {
+func nodeFSOptions() *nodefs.Options {
+	ttl := 30 * time.Second
+	return &nodefs.Options{
+		EntryTimeout:    ttl,
+		AttrTimeout:     ttl,
+		NegativeTimeout: ttl,
+
+		// 32-bit programs have trouble with 64-bit inode
+		// numbers.
+		PortableInodes: true,
+	}
+}
+
+func newFuseFS(tmpDir string, rpcFS *RpcFs, writableRoot string) (*fuseFS, error) {
 	tmpDir, err := ioutil.TempDir(tmpDir, "termite-task")
 	if err != nil {
 		return nil, err
 	}
 
 	fs := &fuseFS{
-		root:   nodefs.NewDefaultNode(),
+		writableRoot: strings.TrimLeft(writableRoot, "/"),
+		workers:      map[string]*workerFS{},
+		rpcFS:        rpcFS,
+		rpcNodeFS: pathfs.NewPathNodeFs(&multiRPCFS{rpcFS},
+			&pathfs.PathNodeFsOptions{ClientInodes: true}),
 		tmpDir: tmpDir,
 		mount:  filepath.Join(tmpDir, "mnt"),
 	}
@@ -95,7 +186,8 @@ func newFuseFS(tmpDir string) (*fuseFS, error) {
 		return nil, err
 	}
 
-	fs.fsConnector = nodefs.NewFileSystemConnector(fs.root, nil)
+	fs.fsConnector = nodefs.NewFileSystemConnector(fs.rpcNodeFS.Root(),
+		nodeFSOptions())
 	fuseOpts := fuse.MountOptions{}
 	if os.Geteuid() == 0 {
 		fuseOpts.AllowOther = true
@@ -106,15 +198,17 @@ func newFuseFS(tmpDir string) (*fuseFS, error) {
 		return nil, err
 	}
 	go fs.server.Serve()
+	fs.rpcNodeFS.SetDebug(true)
+	fs.server.SetDebug(true)
 	return fs, nil
 }
 
-func (fuseFS *fuseFS) newWorkerFuseFs(rpcFs pathfs.FileSystem, writableRoot string, nobody *User) (*workerFS, error) {
+func (fuseFS *fuseFS) newWorkerFS(id string) (*workerFS, error) {
 	fs := &workerFS{
-		tmpDir:       fuseFS.tmpDir,
-		writableRoot: strings.TrimLeft(writableRoot, "/"),
-		tasks:        map[*WorkerTask]bool{},
+		fuseFS: fuseFS,
+		tmpDir: filepath.Join(fuseFS.tmpDir, id),
 	}
+	fs.state = newWorkerFSState(fs)
 
 	type dirInit struct {
 		dst *string
@@ -127,40 +221,23 @@ func (fuseFS *fuseFS) newWorkerFuseFs(rpcFs pathfs.FileSystem, writableRoot stri
 		{&tmpBacking, "tmp-backing"},
 	} {
 		*v.dst = filepath.Join(fs.tmpDir, v.val)
-		if err := os.Mkdir(*v.dst, 0700); err != nil {
+		if err := os.MkdirAll(*v.dst, 0700); err != nil {
 			return nil, err
 		}
 	}
 
-	subDir := fmt.Sprintf("sub%x", rand.Int31())
-	fs.rpcNodeFs = pathfs.NewPathNodeFs(rpcFs, nil)
-	ttl := 30 * time.Second
-	mOpts := nodefs.Options{
-		EntryTimeout:    ttl,
-		AttrTimeout:     ttl,
-		NegativeTimeout: ttl,
-
-		// 32-bit programs have trouble with 64-bit inode
-		// numbers.
-		PortableInodes: true,
-	}
-
-	if status := fuseFS.fsConnector.Mount(fuseFS.root.Inode(), subDir, fs.rpcNodeFs.Root(), &mOpts); !status.Ok() {
-		return nil, fmt.Errorf("Mount root on %q: %v", subDir, status)
-	}
-
 	var err error
 	fs.unionFs, err = termitefs.NewMemUnionFs(
-		fs.rwDir, pathfs.NewPrefixFileSystem(rpcFs, fs.writableRoot))
+		fs.rwDir, pathfs.NewPrefixFileSystem(fuseFS.rpcFS, fs.fuseFS.writableRoot))
 	if err != nil {
 		return nil, err
 	}
 
-	fs.rootDir = filepath.Join(fuseFS.mount, subDir)
+	fs.rootDir = filepath.Join(fuseFS.mount, id)
 	procFs := termitefs.NewProcFs()
 	procFs.StripPrefix = fs.rootDir
-	if nobody != nil {
-		procFs.Uid = nobody.Uid
+	if fuseFS.nobody != nil {
+		procFs.Uid = fuseFS.nobody.Uid
 	}
 	type submount struct {
 		mountpoint string
@@ -175,31 +252,34 @@ func (fuseFS *fuseFS) newWorkerFuseFs(rpcFs pathfs.FileSystem, writableRoot stri
 		{"var/tmp", nodefs.NewMemNodeFSRoot(tmpBacking + "/vartmp")},
 	}
 	for _, s := range mounts {
-		subOpts := &mOpts
+		subOpts := nodeFSOptions()
 		if s.mountpoint == "proc" {
 			subOpts = nil
 		}
 
-		code := fs.rpcNodeFs.Mount(s.mountpoint, s.root, subOpts)
-		if !code.Ok() {
+		if code := fuseFS.rpcNodeFS.Mount(filepath.Join(id, s.mountpoint), s.root, subOpts); !code.Ok() {
 			return nil, errors.New(fmt.Sprintf("submount error for %q: %v", s.mountpoint, code))
 		}
 	}
-	if strings.HasPrefix(fs.writableRoot, "tmp/") {
-		parent, _ := filepath.Split(fs.writableRoot)
-		dir := filepath.Join(fuseFS.mount, subDir, parent)
+
+	if strings.HasPrefix(fs.fuseFS.writableRoot, "tmp/") {
+		parent, _ := filepath.Split(fs.fuseFS.writableRoot)
+		dir := filepath.Join(fuseFS.mount, id, parent)
 		if err := os.MkdirAll(dir, 0755); err != nil {
 			return nil, errors.New(fmt.Sprintf("Mkdir of %q in /tmp fail: %v", parent, err))
 		}
 		// This is hackish, but we don't want rpcfs/fsserver
 		// getting confused by asking for tmp/foo/bar
 		// directly.
-		rpcFs.GetAttr("tmp", nil)
-		rpcFs.GetAttr(fs.writableRoot, nil)
+		fuseFS.rpcFS.GetAttr("tmp", nil)
+		fuseFS.rpcFS.GetAttr(fs.fuseFS.writableRoot, nil)
 	}
-	code := fs.rpcNodeFs.Mount(fs.writableRoot, fs.unionFs.Root(), &mOpts)
+
+	code := fs.fuseFS.rpcNodeFS.Mount(filepath.Join(id, fs.fuseFS.writableRoot), fs.unionFs.Root(), nodeFSOptions())
+	os.Lstat(filepath.Join(fuseFS.mount, id, fs.fuseFS.writableRoot))
+
 	if !code.Ok() {
-		return nil, errors.New(fmt.Sprintf("submount writable root %s: %v", fs.writableRoot, code))
+		return nil, errors.New(fmt.Sprintf("submount writable root %s: %v", fs.fuseFS.writableRoot, code))
 	}
 
 	return fs, nil
@@ -209,11 +289,11 @@ func (fs *workerFS) update(attrs []*attr.FileAttr) {
 	updates := map[string]*termitefs.Result{}
 	for _, attr := range attrs {
 		path := strings.TrimLeft(attr.Path, "/")
-		if !strings.HasPrefix(path, fs.writableRoot) {
-			fs.rpcNodeFs.Notify(path)
+		if !strings.HasPrefix(path, fs.fuseFS.writableRoot) {
+			fs.fuseFS.rpcNodeFS.Notify(path)
 			continue
 		}
-		path = strings.TrimLeft(path[len(fs.writableRoot):], "/")
+		path = strings.TrimLeft(path[len(fs.fuseFS.writableRoot):], "/")
 
 		if attr.Deletion() {
 			updates[path] = &termitefs.Result{}

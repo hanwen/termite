@@ -7,7 +7,9 @@ import (
 func (m *Mirror) Status(req *MirrorStatusRequest, rep *MirrorStatusResponse) error {
 	m.fsMutex.Lock()
 	defer m.fsMutex.Unlock()
-	rep.Root = m.writableRoot
+	if m.fuseFS != nil {
+		rep.Root = m.fuseFS.writableRoot
+	}
 	rep.Granted = m.maxJobCount
 	rep.WaitingTasks = m.waiting
 	rep.Accepting = m.accepting

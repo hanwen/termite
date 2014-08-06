@@ -17,8 +17,7 @@ type Mirror struct {
 	rpcConn     io.ReadWriteCloser
 	contentConn io.ReadWriteCloser
 
-	rpcFs        *RpcFs
-	writableRoot string
+	rpcFs *RpcFs
 
 	fuseFS *fuseFS
 
@@ -31,14 +30,14 @@ type Mirror struct {
 	cond       *sync.Cond
 	waiting    int
 	nextFsId   int
-	activeFses map[*workerFS]bool
+	activeFses map[*workerFSState]bool
 	accepting  bool
 	killed     bool
 }
 
 func NewMirror(worker *Worker, rpcConn, revConn, contentConn, revContentConn io.ReadWriteCloser) (*Mirror, error) {
 	mirror := &Mirror{
-		activeFses:  map[*workerFS]bool{},
+		activeFses:  map[*workerFSState]bool{},
 		rpcConn:     rpcConn,
 		contentConn: contentConn,
 		worker:      worker,
@@ -53,14 +52,16 @@ func NewMirror(worker *Worker, rpcConn, revConn, contentConn, revContentConn io.
 	mirror.rpcFs.attr.Paranoia = worker.options.Paranoia
 
 	go mirror.serveRpc()
-
-	if fs, err := newFuseFS(worker.options.TempDir); err != nil {
-		return nil, err
-	} else {
-		mirror.fuseFS = fs
-	}
-
 	return mirror, nil
+}
+
+func (m *Mirror) startFUSE(writableRoot string) error {
+	if fs, err := newFuseFS(m.worker.options.TempDir, m.rpcFs, writableRoot); err != nil {
+		return err
+	} else {
+		m.fuseFS = fs
+	}
+	return nil
 }
 
 func (m *Mirror) serveRpc() {
@@ -125,7 +126,7 @@ func init() {
 	ShuttingDownError = fmt.Errorf("shutting down")
 }
 
-func (m *Mirror) newFs(t *WorkerTask) (fs *workerFS, err error) {
+func (m *Mirror) newFs(t *WorkerTask) (fs *workerFSState, err error) {
 	m.fsMutex.Lock()
 	defer m.fsMutex.Unlock()
 
@@ -145,24 +146,25 @@ func (m *Mirror) newFs(t *WorkerTask) (fs *workerFS, err error) {
 			return fs, nil
 		}
 	}
-	fs, err = m.newWorkerFuseFs()
+
+	wfs, err := m.fuseFS.addWorkerFS()
 	if err != nil {
 		return nil, err
 	}
 
-	m.prepareFS(fs)
-	fs.addTask(t)
-	m.activeFses[fs] = true
-	return fs, nil
+	m.prepareFS(wfs.state)
+	wfs.state.addTask(t)
+	m.activeFses[wfs.state] = true
+	return wfs.state, nil
 }
 
 // Must hold lock.
-func (m *Mirror) prepareFS(fs *workerFS) {
+func (m *Mirror) prepareFS(fs *workerFSState) {
 	fs.reaping = false
 	fs.taskIds = make([]int, 0, m.worker.options.ReapCount)
 }
 
-func (m *Mirror) considerReap(fs *workerFS, task *WorkerTask) bool {
+func (m *Mirror) considerReap(fs *workerFSState, task *WorkerTask) bool {
 	m.fsMutex.Lock()
 	defer m.fsMutex.Unlock()
 	delete(fs.tasks, task)
@@ -173,7 +175,7 @@ func (m *Mirror) considerReap(fs *workerFS, task *WorkerTask) bool {
 	return fs.reaping
 }
 
-func (m *Mirror) reapFuse(fs *workerFS) (results *attr.FileSet, taskIds []int) {
+func (m *Mirror) reapFuse(fs *workerFSState) (results *attr.FileSet, taskIds []int) {
 	log.Printf("Reaping fuse FS %v", fs.id)
 	ids := fs.taskIds[:]
 	results = m.fillReply(fs)
@@ -181,17 +183,17 @@ func (m *Mirror) reapFuse(fs *workerFS) (results *attr.FileSet, taskIds []int) {
 	return results, ids
 }
 
-func (m *Mirror) returnFs(fs *workerFS) {
+func (m *Mirror) returnFS(state *workerFSState) {
 	m.fsMutex.Lock()
 	defer m.fsMutex.Unlock()
 
-	if fs.reaping {
-		m.prepareFS(fs)
+	if state.reaping {
+		m.prepareFS(state)
 	}
 
-	fs.SetDebug(false)
+	state.fs.SetDebug(false)
 	if !m.accepting {
-		delete(m.activeFses, fs)
+		delete(m.activeFses, state)
 		m.cond.Broadcast()
 	}
 }
@@ -207,8 +209,8 @@ func (m *Mirror) updateFiles(attrs []*attr.FileAttr) {
 	m.fsMutex.Lock()
 	defer m.fsMutex.Unlock()
 
-	for fs := range m.activeFses {
-		fs.update(attrs)
+	for state := range m.activeFses {
+		state.fs.update(attrs)
 	}
 }
 
@@ -239,17 +241,6 @@ func (m *Mirror) Run(req *WorkRequest, rep *WorkResponse) error {
 }
 
 const _DELETIONS = "DELETIONS"
-
-func (m *Mirror) newWorkerFuseFs() (*workerFS, error) {
-	f, err := m.fuseFS.newWorkerFuseFs(m.rpcFs, m.writableRoot, m.worker.options.User)
-	if err != nil {
-		return nil, err
-	}
-	f.id = fmt.Sprintf("%d", m.nextFsId)
-	m.nextFsId++
-
-	return f, err
-}
 
 func (m *Mirror) newWorkerTask(req *WorkRequest, rep *WorkResponse) (*WorkerTask, error) {
 	var stdin io.ReadWriteCloser

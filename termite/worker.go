@@ -169,7 +169,7 @@ func (w *Worker) CreateMirror(req *CreateMirrorRequest, rep *CreateMirrorRespons
 	revConn := w.listener.Accept(req.RevRpcId)
 	contentConn := w.listener.Accept(req.ContentId)
 	revContentConn := w.listener.Accept(req.RevContentId)
-	mirror, err := w.mirrors.getMirror(rpcConn, revConn, contentConn, revContentConn, req.MaxJobCount)
+	mirror, err := w.mirrors.getMirror(rpcConn, revConn, contentConn, revContentConn, req.MaxJobCount, req.WritableRoot)
 	if err != nil {
 		rpcConn.Close()
 		revConn.Close()
@@ -177,7 +177,6 @@ func (w *Worker) CreateMirror(req *CreateMirrorRequest, rep *CreateMirrorRespons
 		revContentConn.Close()
 		return err
 	}
-	mirror.writableRoot = req.WritableRoot
 
 	rep.GrantedJobCount = mirror.maxJobCount
 	return nil

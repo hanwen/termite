@@ -60,15 +60,15 @@ func (t *WorkerTask) Run() error {
 	if t.mirror.considerReap(fuseFS, t) {
 		t.rep.FileSet, t.rep.TaskIds = t.mirror.reapFuse(fuseFS)
 	} else {
-		t.mirror.returnFs(fuseFS)
+		t.mirror.returnFS(fuseFS)
 	}
 	t.mirror.worker.stats.Exit("reap")
 
 	return err
 }
 
-func (t *WorkerTask) runInFuse(fuseFs *workerFS) error {
-	fuseFs.SetDebug(t.req.Debug)
+func (t *WorkerTask) runInFuse(state *workerFSState) error {
+	state.fs.SetDebug(t.req.Debug)
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
 
@@ -85,12 +85,12 @@ func (t *WorkerTask) runInFuse(fuseFs *workerFS) error {
 			Uid: uint32(t.mirror.worker.options.User.Uid),
 			Gid: uint32(t.mirror.worker.options.User.Gid),
 		}
-		attr.Chroot = fuseFs.rootDir
+		attr.Chroot = state.fs.rootDir
 		cmd.SysProcAttr = attr
 		cmd.Dir = t.req.Dir
 	} else {
-		cmd.Path = fastpath.Join(fuseFs.rootDir, t.req.Binary)
-		cmd.Dir = fastpath.Join(fuseFs.rootDir, t.req.Dir)
+		cmd.Path = fastpath.Join(state.fs.rootDir, t.req.Binary)
+		cmd.Dir = fastpath.Join(state.fs.rootDir, t.req.Dir)
 	}
 
 	cmd.Env = t.req.Env
@@ -109,7 +109,7 @@ func (t *WorkerTask) runInFuse(fuseFs *workerFS) error {
 		printCmd = fmt.Sprintf("%v", cmd)
 	}
 	t.taskInfo = fmt.Sprintf("%v, dir %v, fuse FS %v",
-		printCmd, cmd.Dir, fuseFs.id)
+		printCmd, cmd.Dir, state.id)
 	err := cmd.Wait()
 
 	exitErr, ok := err.(*exec.ExitError)
@@ -132,12 +132,12 @@ func (t *WorkerTask) runInFuse(fuseFs *workerFS) error {
 
 // fillReply empties the unionFs and hashes files as needed.  It will
 // return the FS back the pool as soon as possible.
-func (t *Mirror) fillReply(fs *workerFS) *attr.FileSet {
-	dir, yield := fs.reap()
-	t.returnFs(fs)
+func (t *Mirror) fillReply(state *workerFSState) *attr.FileSet {
+	dir, yield := state.fs.reap()
+	t.returnFS(state)
 
 	files := make([]*attr.FileAttr, 0, len(yield))
-	wrRoot := strings.TrimLeft(t.writableRoot, "/")
+	wrRoot := strings.TrimLeft(state.fs.fuseFS.writableRoot, "/")
 	reapedHashes := map[string]string{}
 	for path, v := range yield {
 		f := &attr.FileAttr{
