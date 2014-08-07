@@ -26,7 +26,7 @@
     "Recurse": false,
     "SkipRefresh": true
 }, {
-    "Regexp": "^if \\[ -d [^ ]* \\] ; then cd [^ ]* ; find ./ -type f -and -not -type l ; fi",
+    "Regexp": "^if \\[ -d [^ ]* \\] ; then cd [^ ]* ; find ./ .* -type f -and -not -type l ; fi",
     "Local": true,
     "Recurse": false,
     "SkipRefresh": true
