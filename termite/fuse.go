@@ -21,7 +21,6 @@ import (
 
 type workerFSState struct {
 	// Protected by Mirror.fsMutex
-	id      string
 	reaping bool
 
 	// When this reaches zero, we reap the filesystem.
@@ -42,8 +41,8 @@ func newWorkerFSState(fs *workerFS) *workerFSState {
 }
 
 type workerFS struct {
-	fuseFS *fuseFS
-
+	fuseFS  *fuseFS
+	id      string
 	rwDir   string
 	tmpDir  string
 	rootDir string // absolute path of the root of the RPC backed miror FS
@@ -137,9 +136,9 @@ func (fs *fuseFS) SetDebug(debug bool) {
 	fs.fsConnector.SetDebug(debug)
 }
 
-func (fs *workerFSState) Status() (s FuseFsStatus) {
-	s.Id = fs.id
-	for t := range fs.tasks {
+func (state *workerFSState) Status() (s FuseFsStatus) {
+	s.Id = state.fs.id
+	for t := range state.tasks {
 		s.Tasks = append(s.Tasks, t.taskInfo)
 	}
 	return s
@@ -198,13 +197,12 @@ func newFuseFS(tmpDir string, rpcFS *RpcFs, writableRoot string) (*fuseFS, error
 		return nil, err
 	}
 	go fs.server.Serve()
-	fs.rpcNodeFS.SetDebug(true)
-	fs.server.SetDebug(true)
 	return fs, nil
 }
 
 func (fuseFS *fuseFS) newWorkerFS(id string) (*workerFS, error) {
 	fs := &workerFS{
+		id:     id,
 		fuseFS: fuseFS,
 		tmpDir: filepath.Join(fuseFS.tmpDir, id),
 	}
@@ -290,7 +288,11 @@ func (fs *workerFS) update(attrs []*attr.FileAttr) {
 	for _, attr := range attrs {
 		path := strings.TrimLeft(attr.Path, "/")
 		if !strings.HasPrefix(path, fs.fuseFS.writableRoot) {
-			fs.fuseFS.rpcNodeFS.Notify(path)
+			dir, name := filepath.Split(path)
+
+			// As file contents are immutable, we must
+			// invalidate the entry instead
+			fs.fuseFS.rpcNodeFS.EntryNotify(filepath.Join(fs.id, dir), name)
 			continue
 		}
 		path = strings.TrimLeft(path[len(fs.fuseFS.writableRoot):], "/")

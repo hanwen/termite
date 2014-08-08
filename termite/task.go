@@ -36,8 +36,7 @@ func (t *WorkerTask) String() string {
 }
 
 func (t *WorkerTask) Run() error {
-	fuseFS, err := t.mirror.newFs(t)
-
+	fsState, err := t.mirror.newFs(t)
 	if err == ShuttingDownError {
 		// We can't return an error, since that would cause
 		// the master to drop us directly before the other
@@ -53,14 +52,14 @@ func (t *WorkerTask) Run() error {
 	}
 
 	t.mirror.worker.stats.Enter("fuse")
-	err = t.runInFuse(fuseFS)
+	err = t.runInFuse(fsState)
 	t.mirror.worker.stats.Exit("fuse")
 
 	t.mirror.worker.stats.Enter("reap")
-	if t.mirror.considerReap(fuseFS, t) {
-		t.rep.FileSet, t.rep.TaskIds = t.mirror.reapFuse(fuseFS)
+	if t.mirror.considerReap(fsState, t) {
+		t.rep.FileSet, t.rep.TaskIds = t.mirror.reapFuse(fsState)
 	} else {
-		t.mirror.returnFS(fuseFS)
+		t.mirror.returnFS(fsState)
 	}
 	t.mirror.worker.stats.Exit("reap")
 
@@ -109,7 +108,7 @@ func (t *WorkerTask) runInFuse(state *workerFSState) error {
 		printCmd = fmt.Sprintf("%v", cmd)
 	}
 	t.taskInfo = fmt.Sprintf("%v, dir %v, fuse FS %v",
-		printCmd, cmd.Dir, state.id)
+		printCmd, cmd.Dir, state.fs.id)
 	err := cmd.Wait()
 
 	exitErr, ok := err.(*exec.ExitError)

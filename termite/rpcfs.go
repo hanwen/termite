@@ -94,13 +94,22 @@ func (fs *RpcFs) OpenDir(name string, context *fuse.Context) ([]fuse.DirEntry, f
 	return c, fuse.OK
 }
 
-type rpcFsFile struct {
-	nodefs.File
-	fuse.Attr
+func hashIno(in string) uint64 {
+	return uint64(in[0]) | uint64(in[1])<<8 | uint64(in[2])<<16 | uint64(in[3])<<24 | uint64(in[4])<<32 | uint64(in[5])<<40 | uint64(in[6])<<48 | uint64(in[7])<<56
 }
 
-func (fs *rpcFsFile) GetAttr(a *fuse.Attr) fuse.Status {
-	*a = fs.Attr
+type rpcFsFile struct {
+	nodefs.File
+
+	attr fuse.Attr
+	hash string
+}
+
+func (f *rpcFsFile) GetAttr(a *fuse.Attr) fuse.Status {
+	*a = f.attr
+	if a.Size > 0 {
+		a.Ino = hashIno(f.hash)
+	}
 	return fuse.OK
 }
 
@@ -128,8 +137,9 @@ func (fs *RpcFs) Open(name string, flags uint32, context *fuse.Context) (nodefs.
 	fa := *a.Attr
 	return &nodefs.WithFlags{
 		File: &rpcFsFile{
-			NewLazyLoopbackFile(fs.cache.Path(a.Hash)),
-			fa,
+			File: NewLazyLoopbackFile(fs.cache.Path(a.Hash)),
+			attr: fa,
+			hash: a.Hash,
 		},
 		FuseFlags: fuse.FOPEN_KEEP_CACHE,
 	}, fuse.OK
@@ -166,6 +176,10 @@ func (fs *RpcFs) GetAttr(name string, context *fuse.Context) (*fuse.Attr, fuse.S
 	} else {
 		a = nil
 	}
+	if r.Hash != "" && a.Size > 0 {
+		a.Ino = hashIno(r.Hash)
+	}
+
 	return a, r.Status()
 }
 

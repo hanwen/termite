@@ -175,10 +175,11 @@ func (m *Mirror) considerReap(fs *workerFSState, task *WorkerTask) bool {
 	return fs.reaping
 }
 
-func (m *Mirror) reapFuse(fs *workerFSState) (results *attr.FileSet, taskIds []int) {
-	log.Printf("Reaping fuse FS %v", fs.id)
-	ids := fs.taskIds[:]
-	results = m.fillReply(fs)
+func (m *Mirror) reapFuse(state *workerFSState) (results *attr.FileSet, taskIds []int) {
+	log.Printf("Reaping fuse FS %v", state.fs.id)
+
+	ids := state.taskIds[:]
+	results = m.fillReply(state)
 
 	return results, ids
 }
