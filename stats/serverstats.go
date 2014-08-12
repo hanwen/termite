@@ -42,7 +42,9 @@ func CpuStatsWriteHttp(w http.ResponseWriter, stats []CpuStat, disk []DiskStat) 
 	if len(stats) == 0 {
 		return
 	}
-
+	if len(stats) != len(disk) {
+		return
+	}
 	statm := CpuStat{}
 	stat5 := CpuStat{}
 
