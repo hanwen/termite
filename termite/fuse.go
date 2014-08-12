@@ -249,6 +249,7 @@ func (fuseFS *fuseFS) newWorkerFS(id string) (*workerFS, error) {
 		{"dev", termitefs.NewDevFSRoot()},
 		{"var/tmp", nodefs.NewMemNodeFSRoot(tmpBacking + "/vartmp")},
 	}
+
 	for _, s := range mounts {
 		subOpts := nodeFSOptions()
 		if s.mountpoint == "proc" {
@@ -273,10 +274,8 @@ func (fuseFS *fuseFS) newWorkerFS(id string) (*workerFS, error) {
 		fuseFS.rpcFS.GetAttr(fs.fuseFS.writableRoot, nil)
 	}
 
-	code := fs.fuseFS.rpcNodeFS.Mount(filepath.Join(id, fs.fuseFS.writableRoot), fs.unionFs.Root(), nodeFSOptions())
-	os.Lstat(filepath.Join(fuseFS.mount, id, fs.fuseFS.writableRoot))
-
-	if !code.Ok() {
+	if code := fs.fuseFS.rpcNodeFS.Mount(
+		filepath.Join(id, fs.fuseFS.writableRoot), fs.unionFs.Root(), nodeFSOptions()); !code.Ok() {
 		return nil, errors.New(fmt.Sprintf("submount writable root %s: %v", fs.fuseFS.writableRoot, code))
 	}
 
