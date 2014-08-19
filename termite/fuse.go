@@ -49,7 +49,6 @@ type workerFS struct {
 
 	// without leading /
 	unionFs     *termitefs.MemUnionFs
-	procFs      *termitefs.ProcFs
 	unionNodeFs *pathfs.PathNodeFs
 
 	state *workerFSState
@@ -213,15 +212,9 @@ func (fuseFS *fuseFS) newWorkerFS(id string) (*workerFS, error) {
 		val string
 	}
 
-	tmpBacking := ""
-	for _, v := range []dirInit{
-		{&fs.rwDir, "rw"},
-		{&tmpBacking, "tmp-backing"},
-	} {
-		*v.dst = filepath.Join(fs.tmpDir, v.val)
-		if err := os.MkdirAll(*v.dst, 0700); err != nil {
-			return nil, err
-		}
+	fs.rwDir = filepath.Join(fs.tmpDir, "rw")
+	if err := os.MkdirAll(fs.rwDir, 0700); err != nil {
+		return nil, err
 	}
 
 	var err error
@@ -232,53 +225,10 @@ func (fuseFS *fuseFS) newWorkerFS(id string) (*workerFS, error) {
 	}
 
 	fs.rootDir = filepath.Join(fuseFS.mount, id)
-	procFs := termitefs.NewProcFs()
-	procFs.StripPrefix = fs.rootDir
-	if fuseFS.nobody != nil {
-		procFs.Uid = fuseFS.nobody.Uid
-	}
-	type submount struct {
-		mountpoint string
-		root       nodefs.Node
-	}
-
-	mounts := []submount{
-		{"proc", pathfs.NewPathNodeFs(procFs, nil).Root()},
-		{"sys", pathfs.NewPathNodeFs(pathfs.NewReadonlyFileSystem(pathfs.NewLoopbackFileSystem("/sys")), nil).Root()},
-		{"tmp", nodefs.NewMemNodeFSRoot(tmpBacking + "/tmp")},
-		{"dev", termitefs.NewDevFSRoot()},
-		{"var/tmp", nodefs.NewMemNodeFSRoot(tmpBacking + "/vartmp")},
-	}
-
-	for _, s := range mounts {
-		subOpts := nodeFSOptions()
-		if s.mountpoint == "proc" {
-			subOpts = nil
-		}
-
-		if code := fuseFS.rpcNodeFS.Mount(filepath.Join(id, s.mountpoint), s.root, subOpts); !code.Ok() {
-			return nil, errors.New(fmt.Sprintf("submount error for %q: %v", s.mountpoint, code))
-		}
-	}
-
-	if strings.HasPrefix(fs.fuseFS.writableRoot, "tmp/") {
-		parent, _ := filepath.Split(fs.fuseFS.writableRoot)
-		dir := filepath.Join(fuseFS.mount, id, parent)
-		if err := os.MkdirAll(dir, 0755); err != nil {
-			return nil, errors.New(fmt.Sprintf("Mkdir of %q in /tmp fail: %v", parent, err))
-		}
-		// This is hackish, but we don't want rpcfs/fsserver
-		// getting confused by asking for tmp/foo/bar
-		// directly.
-		fuseFS.rpcFS.GetAttr("tmp", nil)
-		fuseFS.rpcFS.GetAttr(fs.fuseFS.writableRoot, nil)
-	}
-
 	if code := fs.fuseFS.rpcNodeFS.Mount(
-		filepath.Join(id, fs.fuseFS.writableRoot), fs.unionFs.Root(), nodeFSOptions()); !code.Ok() {
+		id, fs.unionFs.Root(), nodeFSOptions()); !code.Ok() {
 		return nil, errors.New(fmt.Sprintf("submount writable root %s: %v", fs.fuseFS.writableRoot, code))
 	}
-
 	return fs, nil
 }
 

@@ -1,7 +1,7 @@
 Termite is a generic distributed compilation system.
 
 The master distributes the compilation to workers.  Workers run
-arbitrary binaries chrooted in a FUSE mirror of the master's file
+arbitrary binaries in a containerized FUSE mirror of the master's file
 system, and then ship the results back to the master.
 
 
@@ -19,11 +19,14 @@ COMPILE/INSTALL
   cd /tmp
   mkdir go ; cd go
   export GOPATH=$(pwd)
+  (cd bin/mkbox ; make )
   for d in bin/coordinator bin/worker bin/master bin/shell-wrapper
   done
     go install github.com/hanwen/termite/$d
   done
   sudo cp termite-make /usr/local/bin/
+  sudo cp bin/mkbox/mkbox /usr/local/bin/termite-mkbox
+  sudo cp /tmp/go/bin/* /usr/local/bin/
   sudo cp /tmp/go/bin/* /usr/local/bin/
 
 * Make needs to be patched to use termite's shell wrapper:
@@ -51,7 +54,10 @@ COMPILE/INSTALL
 
 OVERVIEW
 
-There are 4 binaries:
+There are 5 binaries:
+
+* Mkbox: a wrapper that sets up the containerization. Based on Brian Swetland's
+https://github.com/swetland/mkbox
 
 * Coordinator: a simple server that administers a list of live
 workers.  Workers periodically contact the coordinator.
@@ -99,7 +105,7 @@ RUNNING
 
   dd if=/dev/random of=secret.txt bs=1 count=20 && chmod 0600 secret.txt
   ${TERMITE_DIR}/bin/coordinator/coordinator &
-  sudo ${TERMITE_DIR}/bin/worker/worker -jobs 4 -coordinator localhost:1233
+  ${TERMITE_DIR}/bin/worker/worker -jobs 4 -coordinator localhost:1233 
 
   cd ${PROJECT}
   ${TERMITE_DIR}/bin/master/master -jobs 4 \
@@ -114,12 +120,8 @@ See below.  The overhead of running in FUSE is 50 to 100%
 
 SECURITY
 
-* The worker runs binaries as user 'nobody' in a chroot of a FUSE file
-  system.  It needs root permission for the following actions:
-
-  - mount a FUSE fs as allow_other
-  - chroot to FUSE fs
-  - change uid to user 'nobody'
+* The worker runs binaries inside a containerized mount of a FUSE file
+  system.  
 
 * Worker and master use plaintext TCP/IP, and use a shared secret with
   HMAC-SHA1 to authenticate the connection.  See

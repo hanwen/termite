@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"syscall"
 
@@ -71,27 +73,73 @@ func (t *WorkerTask) runInFuse(state *workerFSState) error {
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
 
-	// See /bin/true for the background of
-	// /bin/true. http://code.google.com/p/go/issues/detail?id=2373
-	t.cmd = &exec.Cmd{
-		Path: t.req.Binary,
-		Args: t.req.Argv,
-	}
-	cmd := t.cmd
-	if os.Geteuid() == 0 {
-		attr := &syscall.SysProcAttr{}
-		attr.Credential = &syscall.Credential{
-			Uid: uint32(t.mirror.worker.options.User.Uid),
-			Gid: uint32(t.mirror.worker.options.User.Gid),
-		}
-		attr.Chroot = state.fs.rootDir
-		cmd.SysProcAttr = attr
-		cmd.Dir = t.req.Dir
-	} else {
-		cmd.Path = fastpath.Join(state.fs.rootDir, t.req.Binary)
-		cmd.Dir = fastpath.Join(state.fs.rootDir, t.req.Dir)
+	dir, err := ioutil.TempDir("", "sandbox")
+	if err != nil {
+		return err
 	}
 
+	args := []string{t.mirror.worker.options.Mkbox,
+		"-q",
+		"-B", t.req.Binary,
+		"-s", dir,
+		"-b", "/sys=sys",
+		"-b", "/proc=proc",
+		"-t", "dev",
+		"-b", "/dev/null=dev/null",
+		"-b", "/dev/zero=dev/zero",
+		"-b", "/dev/urandom=dev/urandom", // maybe should use zero for determinism?
+	}
+
+	entries, code := state.fs.fuseFS.rpcFS.OpenDir("", nil)
+	if !code.Ok() {
+		return fmt.Errorf("OpenDir: %v", code)
+	}
+
+	// We can't mount root directly, so we mount the subdirs of the root.
+	for _, e := range entries {
+		if e.Name == "proc" || e.Name == "sys" || e.Name == "dev" || e.Name == "tmp" ||
+			e.Name == "lost+found" || e.Name == "root" {
+			continue
+		}
+		args = append(args, "-b", fmt.Sprintf("/%s=%s", filepath.Join(
+			state.fs.fuseFS.mount, e.Name), e.Name),
+			"-r", e.Name)
+	}
+
+	wrRootMount := fmt.Sprintf("/%s=%s",
+		filepath.Join(state.fs.fuseFS.mount, state.fs.id),
+		state.fs.fuseFS.writableRoot)
+
+	// setup the writable root.
+	if strings.HasPrefix(state.fs.fuseFS.writableRoot, "tmp") {
+		// we're in a test: use the system's /tmp dir
+		args = append(args,
+			"-b", "/tmp=tmp",
+			"-b", "/var/tmp=var/tmp",
+			"-b", wrRootMount)
+	} else {
+		args = append(args,
+			"-b", wrRootMount,
+			// temp dirs must be last, because they might hold the
+			// FUSE mountpoint and we don't want to hide that.
+			"-t", "tmp",
+			"-t", "var/tmp")
+	}
+
+	args = append(args,
+		"-d", t.req.Dir,
+		"-u", "3333",
+		"-g", "3333",
+		"-r", "/dev",
+		"-r", "/sys",
+	)
+
+	args = append(args, t.req.Argv...)
+	t.cmd = &exec.Cmd{
+		Path: args[0],
+		Args: args,
+	}
+	cmd := t.cmd
 	cmd.Env = t.req.Env
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
@@ -102,17 +150,14 @@ func (t *WorkerTask) runInFuse(state *workerFSState) error {
 	if err := cmd.Start(); err != nil {
 		return err
 	}
-
 	printCmd := fmt.Sprintf("%v", cmd.Args)
 	if t.req.Debug {
 		printCmd = fmt.Sprintf("%v", cmd)
 	}
 	t.taskInfo = fmt.Sprintf("%v, dir %v, fuse FS %v",
 		printCmd, cmd.Dir, state.fs.id)
-	err := cmd.Wait()
-
-	exitErr, ok := err.(*exec.ExitError)
-	if ok {
+	err = cmd.Wait()
+	if exitErr, ok := err.(*exec.ExitError); ok {
 		t.rep.Exit = exitErr.Sys().(syscall.WaitStatus)
 		err = nil
 	}

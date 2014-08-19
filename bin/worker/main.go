@@ -6,8 +6,10 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"os/exec"
 	"os/signal"
 	"os/user"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"syscall"
@@ -52,7 +54,9 @@ func OpenUniqueLog(base string) *os.File {
 
 func main() {
 	version := flag.Bool("version", false, "print version and exit.")
-	cachedir := flag.String("cachedir", "/var/cache/termite/worker-cache", "content cache")
+	mkbox := flag.String("mkbox_path", "termite-mkbox", "path to the termite-mkbox binary.")
+	cachedir := flag.String("cachedir", filepath.Join(os.Getenv("HOME"), ".cache", "termite-worker"),
+		"content cache")
 	tmpdir := flag.String("tmpdir", "/var/tmp",
 		"where to create FUSE mounts; should be on same partition as cachedir.")
 	secretFile := flag.String("secret", "secret.txt", "file containing password.")
@@ -74,9 +78,6 @@ func main() {
 		os.Exit(0)
 	}
 
-	if os.Geteuid() != 0 {
-		log.Fatal("This program must run as root")
-	}
 	secret, err := ioutil.ReadFile(*secretFile)
 	if err != nil {
 		log.Fatal("ReadFile", err)
@@ -103,7 +104,16 @@ func main() {
 		f.Close()
 	}
 
+	if _, err := os.Lstat(*mkbox); err != nil {
+		if path, err := exec.LookPath(*mkbox); err == nil {
+			*mkbox = path
+		} else {
+			log.Fatalf("could not find %q", *mkbox)
+		}
+	}
+
 	opts := termite.WorkerOptions{
+		Mkbox:       *mkbox,
 		Secret:      secret,
 		TempDir:     *tmpdir,
 		Jobs:        *jobs,

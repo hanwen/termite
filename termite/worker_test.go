@@ -75,10 +75,6 @@ func pickPort(t *testing.T) int {
 }
 
 func NewTestCase(t *testing.T) *testCase {
-	if os.Geteuid() == 0 {
-		t.Fatal("This test should not run as root")
-	}
-
 	tc := new(testCase)
 	tc.tester = t
 	tc.secret = RandomBytes(20)
@@ -97,6 +93,11 @@ func NewTestCase(t *testing.T) *testCase {
 	tc.coordinatorPort = pickPort(t)
 	go tc.coordinator.ServeHTTP(tc.coordinatorPort)
 	coordinatorAddr := fmt.Sprintf("localhost:%d", tc.coordinatorPort)
+	mkbox, err := filepath.Abs("../bin/mkbox/mkbox")
+	if err != nil {
+		t.Fatalf("filepath.Abs(\"mkbox\"): %v", err)
+	}
+
 	tc.workerOpts = &WorkerOptions{
 		Secret:  tc.secret,
 		TempDir: workerTmp,
@@ -107,6 +108,7 @@ func NewTestCase(t *testing.T) *testCase {
 		ReportInterval: 100 * time.Millisecond,
 		Coordinator:    coordinatorAddr,
 		PortRetry:      10,
+		Mkbox:          mkbox,
 	}
 
 	tc.wd = tc.tmp + "/wd"
@@ -201,7 +203,7 @@ func (tc *testCase) RunFail(req WorkRequest) (rep WorkResponse) {
 func (tc *testCase) RunSuccess(req WorkRequest) (rep WorkResponse) {
 	rep = tc.Run(req, true)
 	if rep.Exit.ExitStatus() != 0 {
-		tc.tester.Fatalf("Got exit status %d for %v", rep.Exit.ExitStatus(), req)
+		tc.tester.Fatalf("Got exit status %d for %v. stderr:\n%s", rep.Exit.ExitStatus(), req, rep.Stderr)
 	}
 	return rep
 }
@@ -259,9 +261,23 @@ func TestEndToEndBasic(t *testing.T) {
 	if fi, _ := os.Lstat(tc.wd + "/output.txt"); fi != nil {
 		t.Error("file should have been deleted", fi)
 	}
+}
+
+func TestEndToEndKeepalive(t *testing.T) {
+	tc := NewTestCase(t)
+	defer tc.Clean()
+
+	req := WorkRequest{
+		Argv: []string{"touch", "output.txt"},
+	}
+
+	tc.RunSuccess(req)
+	if _, err := os.Lstat(tc.wd + "/output.txt"); err != nil {
+		t.Fatalf("output file not found")
+	}
 
 	// Test keepalive.
-	time.Sleep(2e9)
+	time.Sleep(2 * time.Second)
 	statusReq := &WorkerStatusRequest{}
 	statusRep := &WorkerStatusResponse{}
 	for _, w := range tc.workers {
@@ -526,17 +542,6 @@ func TestEndToEndSpecialEntries(t *testing.T) {
 	if out != readlink {
 		t.Errorf("proc/self/exe point to wrong location: got %q, expect %q", out, readlink)
 	}
-}
-
-func TestEndToEndProcDeny(t *testing.T) {
-	tc := NewTestCase(t)
-	defer tc.Clean()
-
-	req := WorkRequest{
-		Argv: []string{"ls", "proc/misc"},
-		Dir:  "/",
-	}
-	tc.RunFail(req)
 }
 
 func TestEndToEndEnvironment(t *testing.T) {

@@ -72,6 +72,9 @@ type WorkerOptions struct {
 	// How long to wait between the last task exit, and shutting
 	// down the server.
 	LameDuckPeriod time.Duration
+
+	// full path to mkbox binary
+	Mkbox string
 }
 
 func NewWorker(options *WorkerOptions) *Worker {
