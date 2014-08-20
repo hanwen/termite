@@ -21,7 +21,7 @@ func TestAuthenticate(t *testing.T) {
 				break
 			}
 
-			if err := Authenticate(c, secret); err != nil {
+			if err := authenticate(c, secret); err != nil {
 				c.Close()
 				ch <- nil
 			} else {

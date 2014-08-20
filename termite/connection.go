@@ -1,11 +1,7 @@
 package termite
 
 import (
-	"bytes"
-	"crypto/hmac"
-	"crypto/sha1"
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -29,79 +25,6 @@ func init() {
 	if err != nil {
 		log.Println("hostname", err)
 	}
-}
-
-func sign(conn net.Conn, challenge []byte, secret []byte, local bool) []byte {
-	h := hmac.New(sha1.New, secret)
-	h.Write(challenge)
-	l := conn.LocalAddr()
-	r := conn.RemoteAddr()
-	connSignature := ""
-	if local {
-		connSignature = fmt.Sprintf("%v-%v", l, r)
-	} else {
-		connSignature = fmt.Sprintf("%v-%v", r, l)
-	}
-	h.Write([]byte(connSignature))
-	return h.Sum(nil)
-}
-
-// Symmetrical authentication using HMAC-SHA1.
-//
-// To authenticate, we do  the following:
-//
-// * Receive 20-byte random challenge
-// * Using the secret, sign (challenge + remote address + local address)
-// * Return the signature
-//
-// TODO - should probably use SSL/TLS? Figure out what is useful and
-// necessary here.
-func Authenticate(conn net.Conn, secret []byte) error {
-	challenge := RandomBytes(challengeLength)
-
-	_, err := conn.Write(challenge)
-	if err != nil {
-		return err
-	}
-	expected := sign(conn, challenge, secret, true)
-
-	remoteChallenge := make([]byte, challengeLength)
-	n, err := conn.Read(remoteChallenge)
-	if err != nil {
-		return err
-	}
-	remoteChallenge = remoteChallenge[:n]
-	_, err = conn.Write(sign(conn, remoteChallenge, secret, false))
-
-	response := make([]byte, len(expected))
-	n, err = conn.Read(response)
-	if err != nil {
-		return err
-	}
-	response = response[:n]
-
-	if bytes.Compare(response, expected) != 0 {
-		log.Println("Authentication failure from", conn.RemoteAddr())
-		conn.Close()
-		return errors.New("Mismatch in response")
-	}
-
-	expectAck := []byte("OK")
-	conn.Write(expectAck)
-
-	ack := make([]byte, len(expectAck))
-	n, err = conn.Read(ack)
-	if err != nil {
-		return err
-	}
-
-	ack = ack[:n]
-	if bytes.Compare(expectAck, ack) != 0 {
-		fmt.Println(expectAck, ack)
-		return errors.New("Missing ack reply")
-	}
-
-	return nil
 }
 
 // ids:
