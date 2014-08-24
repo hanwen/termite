@@ -2,7 +2,6 @@ package termite
 
 import (
 	"fmt"
-	"io"
 	"log"
 	"net"
 	"net/rpc"
@@ -70,13 +69,8 @@ func (m *LocalMaster) start(sock string) {
 	}
 
 	log.Println("accepting connections on", sock)
-	chans := make(chan io.ReadWriteCloser, 1)
-	go func() {
-		for c := range chans {
-			go m.server.ServeConn(c)
-		}
-	}()
-
-	m.listener = newTCPListener(l, nil, chans)
-	m.listener.Wait()
+	m.listener = newTCPListener(l, nil)
+	for c := range m.listener.RPCChan() {
+		go m.server.ServeConn(c)
+	}
 }

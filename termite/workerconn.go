@@ -10,10 +10,12 @@ type connDialer interface {
 	Open(addr string, id string) (io.ReadWriteCloser, error)
 }
 
-// connListener accepts connections that have string IDs
+// connListener accepts connections that have string IDs.
 type connListener interface {
 	Addr() net.Addr
 	Accept(id string) io.ReadWriteCloser
+
+	// RPCChan returns the connection for the primary RPC service.
+	RPCChan() <-chan io.ReadWriteCloser
 	Close() error
-	Wait()
 }

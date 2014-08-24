@@ -101,7 +101,7 @@ func (p *pendingConns) accept(key string) io.ReadWriteCloser {
 
 type tcpListener struct {
 	net.Listener
-	incoming chan<- io.ReadWriteCloser
+	incoming chan io.ReadWriteCloser
 	pending  *pendingConns
 	secret   []byte
 }
@@ -110,15 +110,19 @@ type tcpListener struct {
 // connections, and HMAC-SHA1 for authentication. It should not be
 // used in hostile environments. RPC connections (which use a special
 // connection ID) are posted to the given input channel.
-func newTCPListener(l net.Listener, secret []byte, rpcChans chan<- io.ReadWriteCloser) connListener {
+func newTCPListener(l net.Listener, secret []byte) connListener {
 	tl := &tcpListener{
 		Listener: l,
-		incoming: rpcChans,
+		incoming: make(chan io.ReadWriteCloser, 1),
 		pending:  newPendingConns(),
 		secret:   secret,
 	}
 	go tl.loop()
 	return tl
+}
+
+func (l *tcpListener) RPCChan() <-chan io.ReadWriteCloser {
+	return l.incoming
 }
 
 func (l *tcpListener) loop() {

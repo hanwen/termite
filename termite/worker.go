@@ -193,15 +193,10 @@ func (w *Worker) RunWorkerServer() {
 	go w.PeriodicHouseholding()
 	go w.serveStatus(w.options.Port, w.options.PortRetry)
 
-	incomingRpc := make(chan io.ReadWriteCloser, 1)
-	go func() {
-		for c := range incomingRpc {
-			go w.rpcServer.ServeConn(c)
-		}
-	}()
-
-	w.listener = newTCPListener(listener, w.options.Secret, incomingRpc)
-	w.listener.Wait()
+	w.listener = newTCPListener(listener, w.options.Secret)
+	for c := range w.listener.RPCChan() {
+		go w.rpcServer.ServeConn(c)
+	}
 }
 
 func (w *Worker) Log(req *LogRequest, rep *LogResponse) error {
