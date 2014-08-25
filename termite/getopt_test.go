@@ -129,5 +129,4 @@ func TestGetopt(t *testing.T) {
 		g := Getopt(c.args, c.long, c.short, c.reorder)
 		checkGetopt(c.name, t, g, c.want)
 	}
-
 }

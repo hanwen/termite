@@ -102,7 +102,6 @@ func NewWorker(options *WorkerOptions) *Worker {
 	w := &Worker{
 		content:        cache,
 		contentTimings: timings,
-		rpcServer:      rpc.NewServer(),
 		stats:          stats.NewServerStats(),
 		options:        &copied,
 		accepting:      true,
@@ -111,8 +110,6 @@ func NewWorker(options *WorkerOptions) *Worker {
 	w.stats.PhaseOrder = []string{"run", "fuse", "reap"}
 	w.mirrors = NewWorkerMirrors(w)
 	w.stopListener = make(chan int, 1)
-	w.rpcServer.Register(w)
-
 	return w
 }
 
@@ -142,6 +139,28 @@ func init() {
 		return
 	}
 	cname = strings.TrimRight(cname, ".")
+}
+
+type WorkerService Worker
+
+func (ws *WorkerService) CreateMirror(req *CreateMirrorRequest, rep *CreateMirrorResponse) error {
+	w := (*Worker)(ws)
+	return w.CreateMirror(req, rep)
+}
+
+func (ws *WorkerService) Log(req *LogRequest, rep *LogResponse) error {
+	w := (*Worker)(ws)
+	return w.Log(req, rep)
+}
+
+func (ws *WorkerService) Shutdown(req *ShutdownRequest, rep *ShutdownResponse) error {
+	w := (*Worker)(ws)
+	return w.Shutdown(req, rep)
+}
+
+func (ws *WorkerService) Status(req *WorkerStatusRequest, rep *WorkerStatusResponse) error {
+	w := (*Worker)(ws)
+	return w.Status(req, rep)
 }
 
 func (w *Worker) Report() {
@@ -197,8 +216,14 @@ func (w *Worker) RunWorkerServer() {
 	go w.serveStatus(w.options.Port, w.options.PortRetry)
 
 	w.listener = newTCPListener(listener, w.options.Secret)
+
+	rs := rpc.NewServer()
+	if err := rs.RegisterName("Worker", (*WorkerService)(w)); err != nil {
+		log.Printf("RegisterName(%T): %v", w, err)
+		return
+	}
 	for c := range w.listener.RPCChan() {
-		go w.rpcServer.ServeConn(c)
+		go rs.ServeConn(c)
 	}
 }
 
