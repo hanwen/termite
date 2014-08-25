@@ -7,7 +7,11 @@ import (
 
 // connDialer dials connections that have IDs beyond address.
 type connDialer interface {
-	Open(addr string, id string) (io.ReadWriteCloser, error)
+	Dial(addr string) (connMuxer, error)
+}
+
+type connMuxer interface {
+	Open(id string) (io.ReadWriteCloser, error)
 }
 
 // connListener accepts connections that have string IDs.

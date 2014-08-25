@@ -16,6 +16,11 @@ type tcpDialer struct {
 	secret []byte
 }
 
+type tcpMux struct {
+	dial *tcpDialer
+	addr string
+}
+
 // newTCPDialer returns a connDialer that uses plaintext TCP/IP
 // connections, and HMAC-SHA1 for authentication. It should not
 // be used in hostile environments.
@@ -23,17 +28,21 @@ func newTCPDialer(secret []byte) connDialer {
 	return &tcpDialer{secret}
 }
 
-func (c *tcpDialer) Open(addr string, id string) (io.ReadWriteCloser, error) {
+func (c *tcpDialer) Dial(addr string) (connMuxer, error) {
+	return &tcpMux{c, addr}, nil
+}
+
+func (m *tcpMux) Open(id string) (io.ReadWriteCloser, error) {
 	if len(id) != HEADER_LEN {
 		return nil, fmt.Errorf("len(%q) != %d", id, HEADER_LEN)
 	}
 
-	conn, err := net.Dial("tcp", addr)
+	conn, err := net.Dial("tcp", m.addr)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := authenticate(conn, c.secret); err != nil {
+	if err := authenticate(conn, m.dial.secret); err != nil {
 		return nil, err
 	}
 

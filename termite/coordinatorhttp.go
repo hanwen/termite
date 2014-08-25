@@ -154,7 +154,7 @@ func (c *Coordinator) killHandler(w http.ResponseWriter, req *http.Request) {
 	addr, err := c.getHost(req)
 	var conn io.ReadWriteCloser
 	if err == nil {
-		conn, err = c.dialer.Open(addr, RPC_CHANNEL)
+		conn, err = c.dialWorker(addr)
 	}
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)

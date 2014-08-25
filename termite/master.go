@@ -285,35 +285,41 @@ func (m *Master) createMirror(addr string, jobs int) (*mirrorConnection, error) 
 			c.Close()
 		}
 	}()
-	conn, err := m.dialer.Open(addr, RPC_CHANNEL)
+	mux, err := m.dialer.Dial(addr)
 	if err != nil {
 		return nil, err
 	}
+
+	conn, err := mux.Open(RPC_CHANNEL)
+	if err != nil {
+		return nil, err
+	}
+
 	defer conn.Close()
 
 	rpcId := ConnectionId()
-	rpcConn, err := m.dialer.Open(addr, rpcId)
+	rpcConn, err := mux.Open(rpcId)
 	if err != nil {
 		return nil, err
 	}
 	closeMe = append(closeMe, rpcConn)
 
 	revId := ConnectionId()
-	revConn, err := m.dialer.Open(addr, revId)
+	revConn, err := mux.Open(revId)
 	if err != nil {
 		return nil, err
 	}
 	closeMe = append(closeMe, revConn)
 
 	contentId := ConnectionId()
-	contentConn, err := m.dialer.Open(addr, contentId)
+	contentConn, err := mux.Open(contentId)
 	if err != nil {
 		return nil, err
 	}
 	closeMe = append(closeMe, contentConn)
 
 	revContentId := ConnectionId()
-	revContentConn, err := m.dialer.Open(addr, revContentId)
+	revContentConn, err := mux.Open(revContentId)
 	if err != nil {
 		return nil, err
 	}
@@ -370,7 +376,12 @@ func (m *Master) runOnMirror(mirror *mirrorConnection, req *WorkRequest, rep *Wo
 
 	// Tunnel stdin.
 	if req.StdinConn != nil {
-		destInputConn, err := m.dialer.Open(mirror.workerAddr, req.StdinId)
+		mux, err := m.dialer.Dial(mirror.workerAddr)
+		if err != nil {
+			return err
+		}
+
+		destInputConn, err := mux.Open(req.StdinId)
 		if err != nil {
 			return err
 		}

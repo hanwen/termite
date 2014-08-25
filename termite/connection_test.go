@@ -34,14 +34,17 @@ func TestAuthenticate(t *testing.T) {
 	addr := fmt.Sprintf("%s:%d", hostname, l.Addr().(*net.TCPAddr).Port)
 	dialer := newTCPDialer(secret)
 
-	c, _ := dialer.Open(addr, RPC_CHANNEL)
+	m, _ := dialer.Dial(addr)
+
+	c, _ := m.Open(RPC_CHANNEL)
 	c.Close()
 	if <-ch == nil {
 		t.Fatal("unexpected failure")
 	}
 
 	dialer = newTCPDialer([]byte("foobar"))
-	c, _ = dialer.Open(addr, RPC_CHANNEL)
+	m, _ = dialer.Dial(addr)
+	c, _ = m.Open(RPC_CHANNEL)
 	if c != nil {
 		c.Close()
 	}

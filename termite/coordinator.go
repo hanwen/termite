@@ -1,8 +1,8 @@
 package termite
 
 import (
-	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -91,14 +91,13 @@ func NewCoordinator(opts *CoordinatorOptions) *Coordinator {
 }
 
 func (c *Coordinator) Register(req *RegistrationRequest, rep *Empty) error {
-	conn, err := c.dialer.Open(req.Address, RPC_CHANNEL)
-	if conn != nil {
-		conn.Close()
-	}
+	rwc, err := c.dialWorker(req.Address)
 	if err != nil {
-		return errors.New(fmt.Sprintf(
-			"error contacting address: %v", err))
+		return fmt.Errorf(
+			"Dial(%v).Open(%q): %v", req.Address, RPC_CHANNEL, err)
 	}
+
+	rwc.Close()
 
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
@@ -137,6 +136,15 @@ func (c *Coordinator) List(req *ListRequest, rep *ListResponse) error {
 	return nil
 }
 
+func (c *Coordinator) dialWorker(address string) (io.ReadWriteCloser, error) {
+	mux, err := c.dialer.Dial(address)
+	if err != nil {
+		return nil, err
+	}
+
+	return mux.Open(RPC_CHANNEL)
+}
+
 func (c *Coordinator) checkReachable() {
 	now := time.Now()
 
@@ -144,7 +152,7 @@ func (c *Coordinator) checkReachable() {
 
 	var toDelete []string
 	for _, a := range addrs {
-		conn, err := c.dialer.Open(a, RPC_CHANNEL)
+		conn, err := c.dialWorker(a)
 		if err != nil {
 			toDelete = append(toDelete, a)
 		} else {
@@ -178,7 +186,7 @@ func (c *Coordinator) PeriodicCheck() {
 }
 
 func (c *Coordinator) killWorker(addr string, restart bool) error {
-	conn, err := c.dialer.Open(addr, RPC_CHANNEL)
+	conn, err := c.dialWorker(addr)
 	if err == nil {
 		killReq := ShutdownRequest{Restart: restart}
 		rep := ShutdownResponse{}
@@ -190,7 +198,7 @@ func (c *Coordinator) killWorker(addr string, restart bool) error {
 }
 
 func (c *Coordinator) shutdownWorker(addr string, restart bool) error {
-	conn, err := c.dialer.Open(addr, RPC_CHANNEL)
+	conn, err := c.dialWorker(addr)
 	if err != nil {
 		return err
 	}
