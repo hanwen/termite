@@ -39,7 +39,7 @@ type WorkerRegistration struct {
 	LastReported time.Time
 }
 
-// Coordinator is the registration service for termite.  Workers
+// Coordinator implements CoordinatorService RPC interface for termite.  Workers
 // register here.  A master looking for workers contacts the
 // Coordinator to fetch a list of available workers.  In addition, it
 // has a HTTP interface to inspect each worker.
@@ -55,6 +55,17 @@ type Coordinator struct {
 	cond       *sync.Cond
 	workers    map[string]*WorkerRegistration
 	lastChange time.Time
+}
+
+// RPC interface for Coordinator
+type CoordinatorService Coordinator
+
+func (cs *CoordinatorService) Register(req *RegistrationRequest, rep *Empty) error {
+	return ((*Coordinator)(cs)).Register(req, rep)
+}
+
+func (cs *CoordinatorService) List(req *ListRequest, rep *ListResponse) error {
+	return ((*Coordinator)(cs)).List(req, rep)
 }
 
 type CoordinatorOptions struct {

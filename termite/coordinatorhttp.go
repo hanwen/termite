@@ -85,7 +85,7 @@ func (c *Coordinator) ServeHTTP(port int) {
 		})
 
 	rpcServer := rpc.NewServer()
-	if err := rpcServer.Register(c); err != nil {
+	if err := rpcServer.RegisterName("Coordinator", (*CoordinatorService)(c)); err != nil {
 		log.Fatal("rpcServer.Register:", err)
 	}
 	c.Mux.HandleFunc(rpc.DefaultRPCPath,
