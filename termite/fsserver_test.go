@@ -23,10 +23,7 @@ import (
 	"github.com/hanwen/termite/stats"
 )
 
-// UGH - copy & paste.
-// for tests:
 func StatForTest(t *testing.T, n string) *fuse.Attr {
-	t.Logf("test stat %q", n)
 	f, _ := os.Lstat(n)
 	if f == nil {
 		return nil
@@ -35,7 +32,6 @@ func StatForTest(t *testing.T, n string) *fuse.Attr {
 }
 
 func GetattrForTest(t *testing.T, n string) *attr.FileAttr {
-	t.Logf("test getattr %q", n)
 	fi, _ := os.Lstat(n)
 
 	var fa *fuse.Attr
