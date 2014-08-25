@@ -4,113 +4,130 @@ import (
 	"testing"
 )
 
-func checkGetopt(t *testing.T, got GetoptResult, want GetoptResult) {
+func checkGetopt(name string, t *testing.T, got GetoptResult, want GetoptResult) {
 	if len(got.Args) != len(want.Args) {
-		t.Errorf("args length mismatch. Got %v (%d) want %v (%d)", got.Args, len(got.Args), want.Args, len(want.Args))
+		t.Errorf("%s: args length mismatch. Got %v (%d) want %v (%d)", name, got.Args, len(got.Args), want.Args, len(want.Args))
 	} else {
 		for i, a := range got.Args {
 			if w := want.Args[i]; w != a {
-				t.Errorf("Arg %d mismatch. Got %q want %q", a, w)
+				t.Errorf("%s: arg %d mismatch. Got %q want %q", name, a, w)
 			}
 		}
 	}
 	if len(got.Long) != len(want.Long) {
-		t.Errorf("long options length mismatch. Got %v want %v", got.Long, want.Long)
+		t.Errorf("%s: long options length mismatch. Got %v want %v", name, got.Long, want.Long)
 	}
 	for k, wantv := range want.Long {
 		gotv, ok := got.Long[k]
 		if ok {
 			if wantv != gotv {
-				t.Errorf("Long option %s mismatch. Got %q, want %q", k, gotv, wantv)
+				t.Errorf("%s: long option %s mismatch. Got %q, want %q", name, k, gotv, wantv)
 			}
 		} else {
-			t.Errorf("Missing long option %s", k)
+			t.Errorf("%s: missing long option %s", name, k)
 		}
 	}
 	for k, wantv := range want.Short {
 		gotv, ok := got.Short[k]
 		if ok {
 			if wantv != gotv {
-				t.Errorf("Short option %c mismatch. Got %q, want %q", k, gotv, wantv)
+				t.Errorf("%s: short option %c mismatch. Got %q, want %q", name, k, gotv, wantv)
 			}
 		} else {
-			t.Errorf("Missing short option %c", k)
+			t.Errorf("%s: missing short option %c", name, k)
 		}
 	}
 }
 
 func TestGetopt(t *testing.T) {
-	t.Log("Case: single arg")
-	g := Getopt([]string{"q"}, nil, nil, true)
-	w := GetoptResult{
-		Args: []string{"q"},
+	type testcase struct {
+		name    string
+		args    []string
+		long    []string
+		short   []byte
+		reorder bool
+		want    GetoptResult
 	}
-	checkGetopt(t, g, w)
 
-	t.Log("Case: no options")
-	g = Getopt([]string{"a", "b"}, nil, nil, false)
-	w = GetoptResult{
-		Args: []string{"a", "b"},
+	cases := []testcase{
+		{
+			"Case: single arg",
+			[]string{"q"}, nil, nil, true,
+			GetoptResult{
+				Args: []string{"q"},
+			},
+		},
+		{
+			"Case: no options",
+			[]string{"a", "b"}, nil, nil, false,
+			GetoptResult{
+				Args: []string{"a", "b"},
+			},
+		},
+		{
+			("Case: simple short option"),
+			[]string{"-o", "b"}, nil, nil, false,
+			GetoptResult{
+				Args:  []string{"b"},
+				Short: map[byte]string{'o': ""},
+			},
+		},
+		{
+			"Case: short option with arg",
+			[]string{"-o", "b"},
+			nil, []byte{'o'}, false,
+			GetoptResult{
+				Short: map[byte]string{'o': "b"},
+			},
+		},
+		{
+			"Case: long option",
+			[]string{"--long", "b"},
+			nil, nil, false,
+			GetoptResult{
+				Args: []string{"b"},
+				Long: map[string]string{"long": ""},
+			},
+		},
+		{
+			"Case: long option, with =",
+			[]string{"--long=val", "b"},
+			[]string{"long"}, nil, false,
+			GetoptResult{
+				Args: []string{"b"},
+				Long: map[string]string{"long": "val"},
+			},
+		},
+		{
+			"Case: long option, with =, empty",
+			[]string{"--long=", "b"},
+			[]string{"long"}, nil, false,
+			GetoptResult{
+				Args: []string{"b"},
+				Long: map[string]string{"long": ""},
+			},
+		},
+		{
+			"Case: long option, without =",
+			[]string{"--long", "b"},
+			[]string{"long"}, nil, false,
+			GetoptResult{
+				Long: map[string]string{"long": "b"},
+			},
+		},
+		{
+			"Case: reorder",
+			[]string{"--", "--long", "b"},
+			[]string{"long"}, nil, false,
+			GetoptResult{
+				Args: []string{"--long", "b"},
+			},
+		},
 	}
-	checkGetopt(t, g, w)
 
-	t.Log("Case: simple short option")
-	a := []string{"-o", "b"}
-	g = Getopt(a, nil, nil, false)
-	w = GetoptResult{
-		Args:  []string{"b"},
-		Short: map[byte]string{'o': ""},
+	for _, c := range cases {
+		g := Getopt(c.args, c.long, c.short, c.reorder)
+		checkGetopt(c.name, t, g, c.want)
 	}
-	checkGetopt(t, g, w)
-
-	t.Log("Case: short option with arg")
-	g = Getopt(a, nil, []byte{'o'}, false)
-	w = GetoptResult{
-		Short: map[byte]string{'o': "b"},
-	}
-	checkGetopt(t, g, w)
-
-	t.Log("Case: long option")
-	a = []string{"--long", "b"}
-	g = Getopt(a, nil, nil, false)
-	w = GetoptResult{
-		Args: []string{"b"},
-		Long: map[string]string{"long": ""},
-	}
-	checkGetopt(t, g, w)
-
-	t.Log("Case: long option, with =")
-	a = []string{"--long=val", "b"}
-	g = Getopt(a, []string{"long"}, nil, false)
-	w = GetoptResult{
-		Args: []string{"b"},
-		Long: map[string]string{"long": "val"},
-	}
-	checkGetopt(t, g, w)
-
-	t.Log("Case: long option, with =, empty")
-	a = []string{"--long=", "b"}
-	g = Getopt(a, []string{"long"}, nil, false)
-	w = GetoptResult{
-		Args: []string{"b"},
-		Long: map[string]string{"long": ""},
-	}
-	checkGetopt(t, g, w)
-
-	t.Log("Case: long option, without =")
-	a = []string{"--long", "b"}
-	g = Getopt(a, []string{"long"}, nil, false)
-	w = GetoptResult{
-		Long: map[string]string{"long": "b"},
-	}
-	checkGetopt(t, g, w)
-
-	t.Log("Case: reorder")
-	a = []string{"--", "--long", "b"}
-	g = Getopt(a, []string{"long"}, nil, false)
-	w = GetoptResult{
-		Args: []string{"--long", "b"},
-	}
-	checkGetopt(t, g, w)
 
 }
