@@ -77,11 +77,11 @@ func (m *Mirror) serveRpc() {
 		done <- 1
 	}()
 	<-done
-	m.Shutdown(true)
+	m.shutdown(true)
 	m.worker.DropMirror(m)
 }
 
-func (m *Mirror) Shutdown(aggressive bool) {
+func (m *Mirror) shutdown(aggressive bool) {
 	m.fsMutex.Lock()
 	defer m.fsMutex.Unlock()
 	m.accepting = false

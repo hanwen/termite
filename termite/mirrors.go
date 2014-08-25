@@ -88,7 +88,7 @@ func (wm *WorkerMirrors) shutdown(aggressive bool) {
 	wg.Add(len(mirrors))
 	for _, m := range mirrors {
 		go func(m *Mirror) {
-			m.Shutdown(aggressive)
+			m.shutdown(aggressive)
 			wg.Done()
 		}(m)
 	}
