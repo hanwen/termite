@@ -176,7 +176,6 @@ func (fs *RpcFs) GetAttr(name string, context *fuse.Context) (*fuse.Attr, fuse.S
 	} else {
 		a = r.Attr
 		if r.Hash != "" && a.Size > 0 {
-			log.Printf("hash %x", r.Hash)
 			a.Ino = hashIno(r.Hash)
 		} else {
 			// Clear out inode, so pathfs does
