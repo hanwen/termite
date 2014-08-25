@@ -1,6 +1,7 @@
 package attr
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"net/rpc"
@@ -20,12 +21,15 @@ type AttrResponse struct {
 	Attrs []*FileAttr
 }
 
+// Client is an RPC client for a remote AttrCache.
 type Client struct {
 	client  *rpc.Client
 	id      string
 	timings *stats.TimerStats
 }
 
+// NewClient instantiates a Client. The ID string is used for
+// identifying the client in remote logs.
 func NewClient(c io.ReadWriteCloser, id string) *Client {
 	return &Client{
 		client:  rpc.NewClient(c),
@@ -38,6 +42,7 @@ func (c *Client) Close() {
 	c.client.Close()
 }
 
+// GetAttr returns the attributes for a path.
 func (c *Client) GetAttr(n string, wanted *FileAttr) error {
 	req := &AttrRequest{
 		Name:   n,
@@ -64,24 +69,35 @@ type Server struct {
 	stats      *stats.TimerStats
 }
 
-func NewServer(a *AttributeCache) *Server {
+// NewServer instantiates an RPC server for the given
+// AttributeCache. If timings is optional and will be used for
+// recording timing data.
+func NewServer(a *AttributeCache, timings *stats.TimerStats) *Server {
+	if timings == nil {
+		timings = stats.NewTimerStats()
+	}
 	me := &Server{
 		attributes: a,
-		stats:      stats.NewTimerStats(),
+		stats:      timings,
 	}
 
 	return me
 }
 
-func (s *Server) TimingMessages() []string {
-	return s.stats.TimingMessages()
+// ServeRPC starts an RPC server on rwc. It should typically be used
+// in a goroutine.
+func ServeRPC(s *Server, rwc io.ReadWriteCloser) {
+	rs := rpc.NewServer()
+	rs.Register(s)
+	rs.ServeConn(rwc)
 }
 
+// GetAttr is an RPC entry point. The name in AttrRequest should be absolute
 func (s *Server) GetAttr(req *AttrRequest, rep *AttrResponse) error {
 	start := time.Now()
 	log.Printf("GetAttr %s req %q", req.Origin, req.Name)
 	if req.Name != "" && req.Name[0] == '/' {
-		panic("leading /")
+		return fmt.Errorf("name %q starts with /", req.Name)
 	}
 
 	a := s.attributes.GetDir(req.Name)

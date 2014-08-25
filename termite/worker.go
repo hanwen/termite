@@ -19,10 +19,11 @@ import (
 )
 
 type Worker struct {
-	listener  connListener
-	rpcServer *rpc.Server
-	content   *cba.Store
-	stats     *stats.ServerStats
+	listener       connListener
+	rpcServer      *rpc.Server
+	content        *cba.Store
+	contentTimings *stats.TimerStats
+	stats          *stats.ServerStats
 
 	stopListener   chan int
 	canRestart     bool
@@ -95,15 +96,17 @@ func NewWorker(options *WorkerOptions) *Worker {
 	}
 	// TODO - check that we can do renames from temp to cache.
 
-	cache := cba.NewStore(&options.StoreOptions)
+	timings := stats.NewTimerStats()
+	cache := cba.NewStore(&options.StoreOptions, timings)
 
 	w := &Worker{
-		content:    cache,
-		rpcServer:  rpc.NewServer(),
-		stats:      stats.NewServerStats(),
-		options:    &copied,
-		accepting:  true,
-		canRestart: true,
+		content:        cache,
+		contentTimings: timings,
+		rpcServer:      rpc.NewServer(),
+		stats:          stats.NewServerStats(),
+		options:        &copied,
+		accepting:      true,
+		canRestart:     true,
 	}
 	w.stats.PhaseOrder = []string{"run", "fuse", "reap"}
 	w.mirrors = NewWorkerMirrors(w)

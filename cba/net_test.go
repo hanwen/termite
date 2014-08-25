@@ -39,11 +39,11 @@ func newNetTestCase(t *testing.T) *netTestCase {
 	optS := StoreOptions{
 		Dir: me.tmp + "/server",
 	}
-	me.server = NewStore(&optS)
+	me.server = NewStore(&optS, nil)
 
 	optC := optS
 	optC.Dir = me.tmp + "/client"
-	me.clientStore = NewStore(&optC)
+	me.clientStore = NewStore(&optC, nil)
 	var err error
 	me.sockS, me.sockC = net.Pipe()
 	if err != nil {

@@ -20,6 +20,7 @@ import (
 	"github.com/hanwen/go-fuse/fuse/pathfs"
 	"github.com/hanwen/termite/attr"
 	"github.com/hanwen/termite/cba"
+	"github.com/hanwen/termite/stats"
 )
 
 // UGH - copy & paste.
@@ -55,6 +56,7 @@ type rpcFsTestCase struct {
 	mnt  string
 	orig string
 
+	serverTimings            *stats.TimerStats
 	serverStore, clientStore *cba.Store
 	attr                     *attr.AttributeCache
 	server                   *attr.Server
@@ -109,14 +111,15 @@ func newRpcFsTestCase(t *testing.T) (tc *rpcFsTestCase) {
 	copts := cba.StoreOptions{
 		Dir: srvCache,
 	}
-	tc.serverStore = cba.NewStore(&copts)
+	tc.serverTimings = stats.NewTimerStats()
+	tc.serverStore = cba.NewStore(&copts, tc.serverTimings)
 	tc.attr = attr.NewAttributeCache(
 		func(n string) *attr.FileAttr { return tc.getattr(n) },
 		func(n string) *fuse.Attr {
 			return StatForTest(t, filepath.Join(tc.orig, n))
 		})
 	tc.attr.Paranoia = true
-	tc.server = attr.NewServer(tc.attr)
+	tc.server = attr.NewServer(tc.attr, nil)
 
 	var err error
 	tc.sockL, tc.sockR, err = netPair()
@@ -142,7 +145,7 @@ func newRpcFsTestCase(t *testing.T) (tc *rpcFsTestCase) {
 	cOpts := cba.StoreOptions{
 		Dir: tc.tmp + "/client-cache",
 	}
-	tc.clientStore = cba.NewStore(&cOpts)
+	tc.clientStore = cba.NewStore(&cOpts, nil)
 	attrClient := attr.NewClient(tc.sockR, "id")
 	tc.rpcFs = NewRpcFs(attrClient, tc.clientStore, tc.contentR)
 	tc.rpcFs.id = "rpcfs_test"
@@ -282,7 +285,7 @@ func TestRpcFsFetchOnce(t *testing.T) {
 
 	ioutil.ReadFile(tc.mnt + "/file.txt")
 
-	stats := tc.serverStore.TimingMap()
+	stats := tc.serverTimings.Timings()
 	key := "ContentStore.Save"
 	if stats == nil || stats[key] == nil {
 		t.Fatalf("Stats %q missing: %v", key, stats)

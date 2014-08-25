@@ -3,11 +3,13 @@ package cba
 import (
 	"bytes"
 	"crypto"
-	md5pkg "crypto/md5"
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"testing"
+
+	md5pkg "crypto/md5"
 )
 
 func md5(c []byte) string {
@@ -33,7 +35,7 @@ func newCcTestCase() *ccTestCase {
 	opts := &StoreOptions{
 		Dir: d,
 	}
-	store := NewStore(opts)
+	store := NewStore(opts, nil)
 
 	return &ccTestCase{d, store, opts}
 }
@@ -169,10 +171,15 @@ func TestStoreSave(t *testing.T) {
 
 func TestHashPath(t *testing.T) {
 	h := string([]byte{1, 2, 3, 20, 255})
-	hex := fmt.Sprintf("%x", h)
-	want := "d/" + hex[:2] + "/" + hex[2:]
+	dir, err := ioutil.TempDir("", "cba-test")
+	if err != nil {
+		t.Fatalf("TempDir: %v", err)
+	}
 
-	got := HashPath("d", h)
+	hex := fmt.Sprintf("%x", h)
+	want := filepath.Join(dir, hex[:2], hex[2:])
+
+	got := HashPath(dir, h)
 	if want != got {
 		t.Errorf("got %q want %q", got, want)
 	}

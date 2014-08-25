@@ -53,7 +53,9 @@ func (m *LocalMaster) RefreshAttributeCache(input *int, output *int) error {
 }
 
 func (m *LocalMaster) InspectFile(req *attr.AttrRequest, rep *attr.AttrResponse) error {
-	return m.master.fileServer.GetAttr(req, rep)
+	a := m.master.attributes.GetDir(req.Name)
+	rep.Attrs = append(rep.Attrs, a)
+	return nil
 }
 
 func (m *LocalMaster) start(sock string) {

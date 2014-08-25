@@ -57,7 +57,6 @@ func (st *HashWriter) Close() error {
 	sum := st.Sum()
 	sumpath := HashPath(dir, sum)
 
-	log.Printf("saving hash %x\n", sum)
 	err = os.Rename(src, sumpath)
 	if err != nil {
 		log.Fatal("Rename failed", err)

@@ -34,7 +34,10 @@ type StoreOptions struct {
 // NewStore creates a content cache based in directory d.
 // memorySize sets the maximum number of file contents to keep in
 // memory.
-func NewStore(options *StoreOptions) *Store {
+func NewStore(options *StoreOptions, timings *stats.TimerStats) *Store {
+	if timings == nil {
+		timings = stats.NewTimerStats()
+	}
 	if options.Hash == 0 {
 		options.Hash = crypto.MD5
 	}
@@ -47,7 +50,7 @@ func NewStore(options *StoreOptions) *Store {
 
 	c := &Store{
 		Options: options,
-		timings: stats.NewTimerStats(),
+		timings: timings,
 	}
 	c.initThroughputSampler()
 	return c
@@ -103,14 +106,6 @@ func (store *Store) NewHashWriter() *HashWriter {
 }
 
 const _BUFSIZE = 32 * 1024
-
-func (st *Store) TimingMessages() []string {
-	return st.timings.TimingMessages()
-}
-
-func (st *Store) TimingMap() map[string]*stats.RpcTiming {
-	return st.timings.Timings()
-}
 
 func (st *Store) DestructiveSavePath(path string) (hash string, err error) {
 	start := time.Now()

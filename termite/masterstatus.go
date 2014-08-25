@@ -51,8 +51,7 @@ func (m *Master) statusHandler(w http.ResponseWriter, req *http.Request) {
 		fmt.Fprintf(w, "%d%s: %d (%d %%), ", 1<<uint(e), suffix, h, (100*cum)/total)
 	}
 
-	msgs := m.fileServer.TimingMessages()
-	msgs = append(msgs, m.contentStore.TimingMessages()...)
+	msgs := m.timing.TimingMessages()
 	fmt.Fprintf(w, "<ul>")
 	for _, msg := range msgs {
 		fmt.Fprintf(w, "<li>%s", msg)

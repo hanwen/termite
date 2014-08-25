@@ -17,12 +17,14 @@ import (
 	"github.com/hanwen/go-fuse/splice"
 	"github.com/hanwen/termite/attr"
 	"github.com/hanwen/termite/cba"
+	"github.com/hanwen/termite/stats"
 )
 
 type Master struct {
 	contentStore  *cba.Store
 	fileServer    *attr.Server
 	fileServerRpc *rpc.Server
+	timing        *stats.TimerStats
 	excluded      map[string]bool
 	attributes    *attr.AttributeCache
 	mirrors       *mirrorConnections
@@ -164,14 +166,14 @@ func (m *Master) path(n string) string {
 }
 
 func NewMaster(options *MasterOptions) *Master {
-	contentStore := cba.NewStore(&options.StoreOptions)
-
 	m := &Master{
-		contentStore:  contentStore,
 		taskIds:       make(chan int, 100),
 		replayChannel: make(chan *replayRequest, 1),
 		quit:          make(chan int, 0),
+		timing:        stats.NewTimerStats(),
 	}
+	m.contentStore = cba.NewStore(&options.StoreOptions, m.timing)
+
 	o := *options
 	if o.Period <= 0.0 {
 		o.Period = 60.0
@@ -205,9 +207,7 @@ func NewMaster(options *MasterOptions) *Master {
 			fi, _ := os.Lstat(m.path(n))
 			return fuse.ToAttr(fi)
 		})
-	m.fileServer = attr.NewServer(m.attributes)
-	m.fileServerRpc = rpc.NewServer()
-	m.fileServerRpc.Register(m.fileServer)
+	m.fileServer = attr.NewServer(m.attributes, m.timing)
 
 	m.CheckPrivate()
 
@@ -338,7 +338,8 @@ func (m *Master) createMirror(addr string, jobs int) (*mirrorConnection, error) 
 	closeMe = nil
 
 	log.Print("serving fileServerRpc on ", revConn.(net.Conn).LocalAddr())
-	go m.fileServerRpc.ServeConn(revConn)
+	go attr.ServeRPC(m.fileServer, revConn)
+
 	go m.contentStore.ServeConn(revContentConn)
 
 	mc := &mirrorConnection{

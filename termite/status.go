@@ -18,7 +18,7 @@ func (m *Mirror) Status(req *MirrorStatusRequest, rep *MirrorStatusResponse) err
 		rep.Fses = append(rep.Fses, fs.Status())
 	}
 	rep.RpcTimings = append(m.rpcFs.timings.TimingMessages(),
-		m.worker.content.TimingMessages()...)
+		m.worker.contentTimings.TimingMessages()...)
 	return nil
 }
 
