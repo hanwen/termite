@@ -60,11 +60,11 @@ func TestAuthenticate(t *testing.T) {
 func testDialerMux(t *testing.T, dialer connDialer, listener connListener) {
 	found := make(chan bool, 10)
 	go func() {
-		for c := range listener.RPCChan() {
+		for c := range listener.Pending().rpcChan() {
 			go func() {
 				var b [HEADER_LEN]byte
 				n, _ := c.Read(b[:])
-				conn := listener.Accept(string(b[:n]))
+				conn := listener.Pending().accept(string(b[:n]))
 				found <- conn != nil
 			}()
 		}

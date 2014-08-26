@@ -78,15 +78,10 @@ type sshListener struct {
 	id       ssh.Signer
 	listener net.Listener
 	pending  *pendingConns
-	rpcChans chan io.ReadWriteCloser
 }
 
 func (l *sshListener) Addr() net.Addr {
 	return l.listener.Addr()
-}
-
-func (l *sshListener) Accept(id string) io.ReadWriteCloser {
-	return l.pending.accept(id)
 }
 
 func (l *sshListener) Close() error {
@@ -95,8 +90,8 @@ func (l *sshListener) Close() error {
 	return err
 }
 
-func (l *sshListener) RPCChan() <-chan io.ReadWriteCloser {
-	return l.rpcChans
+func (l *sshListener) Pending() *pendingConns {
+	return l.pending
 }
 
 func (l *sshListener) checkLogin(conn ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error) {
@@ -112,7 +107,6 @@ func newSSHListener(listener net.Listener, id ssh.Signer) connListener {
 		id:       id,
 		pending:  newPendingConns(),
 		listener: listener,
-		rpcChans: make(chan io.ReadWriteCloser, 1),
 	}
 	go l.loop()
 
@@ -154,11 +148,24 @@ func (l *sshListener) handle(c net.Conn) error {
 		}
 		go ssh.DiscardRequests(reqs)
 
-		if id == RPC_CHANNEL {
-			l.rpcChans <- ch
-		} else {
-			l.pending.add(id, ch)
-		}
+		l.pending.add(id, ch)
 	}
 	return nil
+}
+
+func newWorkerDialer(secret []byte) connDialer {
+	key, err := ssh.ParsePrivateKey(secret)
+	if err != nil {
+		return newTCPDialer(secret)
+	}
+
+	return newSSHDialer(key)
+}
+
+func newWorkerListener(listener net.Listener, secret []byte) connListener {
+	key, err := ssh.ParsePrivateKey(secret)
+	if err != nil {
+		return newTCPListener(listener, secret)
+	}
+	return newSSHListener(listener, key)
 }

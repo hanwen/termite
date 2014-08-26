@@ -190,10 +190,11 @@ func (w *Worker) CreateMirror(req *CreateMirrorRequest, rep *CreateMirrorRespons
 	if !w.accepting {
 		return errors.New("Worker is shutting down.")
 	}
-	rpcConn := w.listener.Accept(req.RpcId)
-	revConn := w.listener.Accept(req.RevRpcId)
-	contentConn := w.listener.Accept(req.ContentId)
-	revContentConn := w.listener.Accept(req.RevContentId)
+	pending := w.listener.Pending()
+	rpcConn := pending.accept(req.RpcId)
+	revConn := pending.accept(req.RevRpcId)
+	contentConn := pending.accept(req.ContentId)
+	revContentConn := pending.accept(req.RevContentId)
 	mirror, err := w.mirrors.getMirror(rpcConn, revConn, contentConn, revContentConn, req.MaxJobCount, req.WritableRoot)
 	if err != nil {
 		rpcConn.Close()
@@ -215,14 +216,14 @@ func (w *Worker) RunWorkerServer() {
 	go w.PeriodicHouseholding()
 	go w.serveStatus(w.options.Port, w.options.PortRetry)
 
-	w.listener = newTCPListener(listener, w.options.Secret)
+	w.listener = newWorkerListener(listener, w.options.Secret)
 
 	rs := rpc.NewServer()
 	if err := rs.RegisterName("Worker", (*WorkerService)(w)); err != nil {
 		log.Printf("RegisterName(%T): %v", w, err)
 		return
 	}
-	for c := range w.listener.RPCChan() {
+	for c := range w.listener.Pending().rpcChan() {
 		go rs.ServeConn(c)
 	}
 }

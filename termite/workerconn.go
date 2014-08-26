@@ -20,24 +20,27 @@ type connMuxer interface {
 // connListener accepts connections that have string IDs.
 type connListener interface {
 	Addr() net.Addr
-	Accept(id string) io.ReadWriteCloser
-
-	// RPCChan returns the connection for the primary RPC service.
-	RPCChan() <-chan io.ReadWriteCloser
 	Close() error
+	Pending() *pendingConns
 }
 
 type pendingConns struct {
-	conns map[string]io.ReadWriteCloser
-	cond  sync.Cond
+	rpcChans chan io.ReadWriteCloser
+	conns    map[string]io.ReadWriteCloser
+	cond     sync.Cond
 }
 
 func newPendingConns() *pendingConns {
 	p := &pendingConns{
-		conns: map[string]io.ReadWriteCloser{},
+		conns:    map[string]io.ReadWriteCloser{},
+		rpcChans: make(chan io.ReadWriteCloser, 1),
 	}
 	p.cond.L = new(sync.Mutex)
 	return p
+}
+
+func (p *pendingConns) rpcChan() <-chan io.ReadWriteCloser {
+	return p.rpcChans
 }
 
 func (p *pendingConns) fail() {
@@ -56,6 +59,11 @@ func (p *pendingConns) wait() {
 }
 
 func (p *pendingConns) add(key string, conn io.ReadWriteCloser) {
+	if key == RPC_CHANNEL {
+		p.rpcChans <- conn
+		return
+	}
+
 	p.cond.L.Lock()
 	defer p.cond.L.Unlock()
 	if p.conns == nil {

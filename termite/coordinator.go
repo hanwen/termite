@@ -84,7 +84,7 @@ func NewCoordinator(opts *CoordinatorOptions) *Coordinator {
 		options: &o,
 		workers: make(map[string]*WorkerRegistration),
 		Mux:     http.NewServeMux(),
-		dialer:  newTCPDialer(o.Secret),
+		dialer:  newWorkerDialer(o.Secret),
 	}
 	c.cond = sync.NewCond(&c.mutex)
 	return c

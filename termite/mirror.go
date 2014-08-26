@@ -246,7 +246,7 @@ const _DELETIONS = "DELETIONS"
 func (m *Mirror) newWorkerTask(req *WorkRequest, rep *WorkResponse) (*WorkerTask, error) {
 	var stdin io.ReadWriteCloser
 	if req.StdinId != "" {
-		stdin = m.worker.listener.Accept(req.StdinId)
+		stdin = m.worker.listener.Pending().accept(req.StdinId)
 	}
 	task := &WorkerTask{
 		req:       req,

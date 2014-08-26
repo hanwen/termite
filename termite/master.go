@@ -191,7 +191,7 @@ func NewMaster(options *MasterOptions) *Master {
 	}
 
 	m.options = &o
-	m.dialer = newTCPDialer(o.Secret)
+	m.dialer = newWorkerDialer(o.Secret)
 	m.excluded = make(map[string]bool)
 	for _, e := range options.Excludes {
 		m.excluded[e] = true

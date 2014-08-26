@@ -67,7 +67,9 @@ type tcpListener struct {
 // newTCPListener returns a connListener that uses plaintext TCP/IP
 // connections, and HMAC-SHA1 for authentication. It should not be
 // used in hostile environments. RPC connections (which use a special
-// connection ID) are posted to the given input channel.
+// connection ID) are posted to the given input channel. If the secret
+// is nil, the authentication step is skipped, so it can be used for
+// Unix domain sockets too.
 func newTCPListener(l net.Listener, secret []byte) connListener {
 	tl := &tcpListener{
 		Listener: l,
@@ -79,8 +81,8 @@ func newTCPListener(l net.Listener, secret []byte) connListener {
 	return tl
 }
 
-func (l *tcpListener) RPCChan() <-chan io.ReadWriteCloser {
-	return l.incoming
+func (l *tcpListener) Pending() *pendingConns {
+	return l.pending
 }
 
 func (l *tcpListener) loop() {
@@ -94,10 +96,6 @@ func (l *tcpListener) loop() {
 	}
 
 	l.pending.fail()
-}
-
-func (l *tcpListener) Wait() {
-	l.pending.wait()
 }
 
 func (l *tcpListener) handleConn(c net.Conn) {
@@ -115,15 +113,7 @@ func (l *tcpListener) handleConn(c net.Conn) {
 	}
 
 	chType := string(h[:])
-	if chType == RPC_CHANNEL {
-		l.incoming <- c
-	} else {
-		l.pending.add(chType, c)
-	}
-}
-
-func (l *tcpListener) Accept(id string) io.ReadWriteCloser {
-	return l.pending.accept(id)
+	l.pending.add(chType, c)
 }
 
 func sign(conn net.Conn, challenge []byte, secret []byte, local bool) []byte {

@@ -35,7 +35,7 @@ func (m *LocalMaster) Run(req *WorkRequest, rep *WorkResponse) error {
 		return fmt.Errorf("Path to binary is not absolute: %q", req.Binary)
 	}
 	if req.StdinId != "" {
-		req.StdinConn = m.listener.Accept(req.StdinId)
+		req.StdinConn = m.listener.Pending().accept(req.StdinId)
 	}
 	return m.master.run(req, rep)
 }
@@ -72,7 +72,7 @@ func (m *LocalMaster) start(sock string) {
 
 	log.Println("accepting connections on", sock)
 	m.listener = newTCPListener(l, nil)
-	for c := range m.listener.RPCChan() {
+	for c := range m.listener.Pending().rpcChan() {
 		go m.server.ServeConn(c)
 	}
 }
