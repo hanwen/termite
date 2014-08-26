@@ -9,7 +9,6 @@ import (
 	"os/exec"
 	"os/signal"
 	"os/user"
-	"path/filepath"
 	"runtime"
 	"strconv"
 	"syscall"
@@ -55,11 +54,10 @@ func OpenUniqueLog(base string) *os.File {
 func main() {
 	version := flag.Bool("version", false, "print version and exit.")
 	mkbox := flag.String("mkbox_path", "termite-mkbox", "path to the termite-mkbox binary.")
-	cachedir := flag.String("cachedir", filepath.Join(os.Getenv("HOME"), ".cache", "termite-worker"),
-		"content cache")
+	cachedir := flag.String("cachedir", "/var/tmp/_termite_cache_"+os.Getenv("USER"), "termite worker content cache")
 	tmpdir := flag.String("tmpdir", "/var/tmp",
 		"where to create FUSE mounts; should be on same partition as cachedir.")
-	secretFile := flag.String("secret", "secret.txt", "file containing password.")
+	secretFile := flag.String("secret", "secret.txt", "file containing password or SSH key.")
 	port := flag.Int("port", 1232, "Start of port to try.")
 	portRetry := flag.Int("port-retry", 10, "How many other ports to try.")
 	coordinator := flag.String("coordinator", "", "Where to register the worker.")

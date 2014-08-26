@@ -5,7 +5,6 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
-	"net"
 	"net/rpc"
 	"os"
 	"path/filepath"
@@ -343,7 +342,6 @@ func (m *Master) createMirror(addr string, jobs int) (*mirrorConnection, error) 
 	}
 	closeMe = nil
 
-	log.Print("serving fileServerRpc on ", revConn.(net.Conn).LocalAddr())
 	go attr.ServeRPC(m.fileServer, revConn)
 
 	go m.contentStore.ServeConn(revContentConn)

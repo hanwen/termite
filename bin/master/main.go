@@ -27,7 +27,7 @@ func main() {
 	paranoia := flag.Bool("paranoia", false, "Check attribute cache.")
 	port := flag.Int("port", 1231, "http status port")
 	retry := flag.Int("retry", 3, "how often to retry faulty jobs")
-	secretFile := flag.String("secret", "secret.txt", "file containing password.")
+	secretFile := flag.String("secret", "secret.txt", "file containing password or SSH identity.")
 	socket := flag.String("socket", ".termite-socket", "socket to listen for commands")
 	srcRoot := flag.String("sourcedir", "", "root of corresponding source directory")
 	xattr := flag.Bool("xattr", true, "cache hashes in filesystem attribute.")

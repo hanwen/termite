@@ -103,13 +103,14 @@ this with SkipRefresh: true.
 
 RUNNING
 
-  dd if=/dev/random of=secret.txt bs=1 count=20 && chmod 0600 secret.txt
-  ${TERMITE_DIR}/bin/coordinator/coordinator &
-  ${TERMITE_DIR}/bin/worker/worker -jobs 4 -coordinator localhost:1233 
+  ssh-keygen -t rsa -b 1024 -f termite_rsa
+  ${TERMITE_DIR}/bin/coordinator/coordinator -secret termite_rsa &
+  ${TERMITE_DIR}/bin/worker/worker -jobs 4 -coordinator localhost:1233 \
+    -secret termite_rsa  				  
 
   cd ${PROJECT}
   ${TERMITE_DIR}/bin/master/master -jobs 4 \
-    -secret ${TERMITE_DIR}/secret.txt &
+    -secret termite_rsa &
   termite-make -j20
 
 

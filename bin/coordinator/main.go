@@ -31,7 +31,7 @@ func serveBin(name string) func(w http.ResponseWriter, req *http.Request) {
 func main() {
 	port := flag.Int("port", 1230, "Where to listen for work requests.")
 	webPassword := flag.String("web-password", "killkillkill", "password for authorizing worker kills.")
-	secretFile := flag.String("secret", "secret.txt", "file containing password.")
+	secretFile := flag.String("secret", "secret.txt", "file containing password or SSH identity.")
 	flag.Parse()
 	log.SetPrefix("C")
 
