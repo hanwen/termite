@@ -15,8 +15,6 @@ import (
 
 const _SOCKET = ".termite-socket"
 
-const challengeLength = 20
-
 var Hostname string
 
 func init() {

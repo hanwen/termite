@@ -9,8 +9,9 @@ import (
 	"io"
 	"log"
 	"net"
-	"sync"
 )
+
+const challengeLength = 20
 
 type tcpDialer struct {
 	secret []byte
@@ -32,6 +33,10 @@ func (c *tcpDialer) Dial(addr string) (connMuxer, error) {
 	return &tcpMux{c, addr}, nil
 }
 
+func (m *tcpMux) Close() error {
+	return nil
+}
+
 func (m *tcpMux) Open(id string) (io.ReadWriteCloser, error) {
 	if len(id) != HEADER_LEN {
 		return nil, fmt.Errorf("len(%q) != %d", id, HEADER_LEN)
@@ -50,62 +55,6 @@ func (m *tcpMux) Open(id string) (io.ReadWriteCloser, error) {
 		return nil, err
 	}
 	return conn, nil
-}
-
-type pendingConns struct {
-	conns map[string]io.ReadWriteCloser
-	cond  sync.Cond
-}
-
-func newPendingConns() *pendingConns {
-	p := &pendingConns{
-		conns: map[string]io.ReadWriteCloser{},
-	}
-	p.cond.L = new(sync.Mutex)
-	return p
-}
-
-func (p *pendingConns) fail() {
-	p.cond.L.Lock()
-	defer p.cond.L.Unlock()
-	p.conns = nil
-	p.cond.Broadcast()
-}
-
-func (p *pendingConns) wait() {
-	p.cond.L.Lock()
-	defer p.cond.L.Unlock()
-	for p.conns != nil {
-		p.cond.Wait()
-	}
-}
-
-func (p *pendingConns) add(key string, conn io.ReadWriteCloser) {
-	p.cond.L.Lock()
-	defer p.cond.L.Unlock()
-	if p.conns == nil {
-		panic("shut down")
-	}
-	if p.conns[key] != nil {
-		panic("collision")
-	}
-	p.conns[key] = conn
-	p.cond.Broadcast()
-}
-
-func (p *pendingConns) accept(key string) io.ReadWriteCloser {
-	p.cond.L.Lock()
-	defer p.cond.L.Unlock()
-	for p.conns != nil && p.conns[key] == nil {
-		p.cond.Wait()
-	}
-	if p.conns == nil {
-		return nil
-	}
-
-	ch := p.conns[key]
-	delete(p.conns, key)
-	return ch
 }
 
 type tcpListener struct {
