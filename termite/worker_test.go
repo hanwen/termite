@@ -373,6 +373,36 @@ func TestEndToEndNegativeNotify(t *testing.T) {
 	}
 }
 
+func TestEndToEndTrackReads(t *testing.T) {
+	tc := NewTestCase(t)
+	defer tc.Clean()
+
+	if err := ioutil.WriteFile(tc.tmp+"/wd/file1.txt", []byte("hello"), 0644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	if err := ioutil.WriteFile(tc.tmp+"/wd/file2.txt", []byte("hello"), 0644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	tc.refresh()
+
+	rep := tc.RunSuccess(WorkRequest{
+		Argv:       []string{"wc", "file1.txt", "file2.txt"},
+		TrackReads: false,
+	})
+	if len(rep.Reads) > 0 {
+		t.Errorf("rep.Reads: %v, want [] for TrackReads=false", rep.Reads)
+	}
+
+	rep = tc.RunSuccess(WorkRequest{
+		Argv:       []string{"wc", "file1.txt", "file2.txt"},
+		TrackReads: true,
+	})
+	if len(rep.Reads) != 2 {
+		t.Errorf("got %v, want 2 reads", rep.Reads)
+	}
+}
+
 func TestEndToEndMoveFile(t *testing.T) {
 	tc := NewTestCase(t)
 	defer tc.Clean()
@@ -431,8 +461,8 @@ func TestEndToEndStdout(t *testing.T) {
 	if string(rep.Stdout) != string(shcmd) {
 		t.Errorf("Reply mismatch %s expect %s", string(rep.Stdout), string(shcmd))
 	}
-}
 
+}
 func TestEndToEndModeChange(t *testing.T) {
 	tc := NewTestCase(t)
 	defer tc.Clean()

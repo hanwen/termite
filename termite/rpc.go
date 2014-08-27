@@ -100,6 +100,9 @@ type WorkRequest struct {
 	// Signal that a command ran locally.  Used for logging in the master.
 	RanLocally bool
 
+	// if TrackReads is set, the worker will return files read by the task.
+	TrackReads bool
+
 	// If set, must run on this worker. Used for debugging.
 	Worker string
 }

@@ -219,10 +219,12 @@ func (fuseFS *fuseFS) newWorkerFS(id string) (*workerFS, error) {
 	}
 
 	prefixFS := pathfs.NewPrefixFileSystem(fuseFS.rpcFS, fs.fuseFS.writableRoot)
+
 	fs.annotatingFS = NewAnnotatingFS(prefixFS)
+
 	var err error
 	fs.unionFs, err = termitefs.NewMemUnionFs(
-		fs.rwDir, prefixFS)
+		fs.rwDir, fs.annotatingFS)
 	if err != nil {
 		return nil, err
 	}

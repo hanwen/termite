@@ -63,6 +63,10 @@ func (t *WorkerTask) Run() error {
 	} else {
 		t.mirror.returnFS(fsState)
 	}
+	if !t.req.TrackReads {
+		// TODO - don't even collect this data if TrackReads is unset.
+		t.rep.Reads = nil
+	}
 	t.mirror.worker.stats.Exit("reap")
 
 	return err
