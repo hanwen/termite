@@ -1,12 +1,8 @@
 package main
 
 import (
-	"crypto"
-	_ "crypto/md5"
-	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/rpc"
 	"os"
@@ -202,68 +198,6 @@ func RunLocally(req *termite.WorkRequest, rule *termite.LocalRule) syscall.WaitS
 }
 
 func DumpAnnotations(req *termite.WorkRequest, rep *termite.WorkResponse, dur time.Duration) {
-	d := filepath.Join(topDir, ".annotation")
-	if fi, err := os.Stat(d); err != nil || !fi.IsDir() {
-		if err := os.MkdirAll(d, 0755); err != nil {
-			log.Fatalf("MkdirAll: %v", err)
-		}
-	}
-
-	depStr := os.Getenv("MAKE_DEPS")
-	a := analyze.Command{
-		Deps:    strings.Split(depStr, " "),
-		Dir:     req.Dir,
-		Target:  os.Getenv("MAKE_TARGET"),
-		Reads:   rep.Reads,
-		Command: strings.Join(req.Argv, " "),
-	}
-
-	slashTopDir := topDir + "/"
-	if rep.FileSet != nil {
-		for _, f := range rep.Files {
-			if f.IsDir() {
-				continue
-			}
-
-			p := "/" + f.Path
-			p = strings.TrimPrefix(p, slashTopDir)
-			if f.Deletion() {
-				a.Deletions = append(a.Deletions, p)
-			} else {
-				a.Writes = append(a.Writes, p)
-			}
-		}
-	}
-	sort.Strings(a.Deletions)
-	sort.Strings(a.Writes)
-	sort.Strings(a.Deps)
-	sort.Strings(a.Reads)
-	out, err := json.Marshal(&a)
-	if err != nil {
-		log.Fatalf("Marshal: %v", err)
-	}
-	h := crypto.MD5.New()
-	if err != nil {
-		log.Fatalf("MD5: %v", err)
-	}
-	h.Write(out)
-	fn := fmt.Sprintf("%x", h.Sum(nil))
-
-	// Don't hash timestamps.
-	a.Time = time.Now()
-	a.Duration = dur
-	a.Filename = fn
-
-	out, err = json.Marshal(&a)
-	if err != nil {
-		log.Fatalf("Marshal: %v", err)
-	}
-
-	out = append(out, '\n')
-
-	if err := ioutil.WriteFile(filepath.Join(d, fn), out, 0644); err != nil {
-		log.Fatalf("WriteFile: %v", err)
-	}
 }
 
 func main() {
@@ -329,6 +263,11 @@ func main() {
 	} else {
 		req.Debug = req.Debug || os.Getenv("TERMITE_DEBUG") != "" || *debug
 		req.Worker = *worker
+
+		req.TrackReads = true
+		req.DeclaredDeps = strings.Split(os.Getenv("MAKE_DEPS"), " ")
+		req.DeclaredTarget = os.Getenv("MAKE_TARGET")
+
 		rpc, err := Rpc()
 		if err != nil {
 			log.Fatalf("rpc connection problem (%s): %v", *command, err)
@@ -340,7 +279,7 @@ func main() {
 			log.Fatal("LocalMaster.Run: ", err)
 		}
 
-		DumpAnnotations(req, &rep, time.Since(start))
+		analyze.DumpAnnotations(req, &rep, time.Since(start), topDir)
 
 		os.Stdout.Write([]byte(rep.Stdout))
 		os.Stderr.Write([]byte(rep.Stderr))

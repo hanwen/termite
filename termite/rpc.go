@@ -105,6 +105,10 @@ type WorkRequest struct {
 
 	// If set, must run on this worker. Used for debugging.
 	Worker string
+
+	// The following is used with TrackReads and can be injected from the Makefile.
+	DeclaredDeps   []string
+	DeclaredTarget string
 }
 
 func (r *WorkRequest) Summary() string {
