@@ -2,7 +2,8 @@
 
 set -eux
 
-rm -f termite/version.gen.go
+DIR=$(PWD)
+(cd bin/mkbox && make && ln -sf ${DIR}/bin/mkbox/mkbox $GOPATH/bin/termite-mkbox )
 
 for target in "clean" "install"
 do
@@ -18,4 +19,3 @@ for d in stats attr cba termite
 do
   (cd $d && go test . )
 done
-
