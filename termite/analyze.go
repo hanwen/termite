@@ -1,4 +1,4 @@
-package analyze
+package termite
 
 import (
 	"crypto"
@@ -7,24 +7,18 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 	"time"
 
-	"github.com/hanwen/termite/termite"
+	"github.com/hanwen/termite/analyze"
 )
 
-func DumpAnnotations(req *termite.WorkRequest, rep *termite.WorkResponse, dur time.Duration, topDir string) {
-	d := filepath.Join(topDir, ".annotation")
-	if fi, err := os.Stat(d); err != nil || !fi.IsDir() {
-		if err := os.MkdirAll(d, 0755); err != nil {
-			log.Fatalf("MkdirAll: %v", err)
-		}
-	}
-
-	a := Command{
+func DumpAnnotations(req *WorkRequest, rep *WorkResponse, start time.Time,
+	outDir string, topDir string) {
+	dur := time.Since(start)
+	a := analyze.Command{
 		Deps:    req.DeclaredDeps,
 		Dir:     req.Dir,
 		Target:  req.DeclaredTarget,
@@ -75,7 +69,7 @@ func DumpAnnotations(req *termite.WorkRequest, rep *termite.WorkResponse, dur ti
 
 	out = append(out, '\n')
 
-	if err := ioutil.WriteFile(filepath.Join(d, fn), out, 0644); err != nil {
+	if err := ioutil.WriteFile(filepath.Join(outDir, fn), out, 0644); err != nil {
 		log.Fatalf("WriteFile: %v", err)
 	}
 }

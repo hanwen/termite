@@ -31,7 +31,7 @@ func main() {
 	socket := flag.String("socket", ".termite-socket", "socket to listen for commands")
 	srcRoot := flag.String("sourcedir", "", "root of corresponding source directory")
 	xattr := flag.Bool("xattr", true, "cache hashes in filesystem attribute.")
-
+	analysisDir := flag.String("analysis-dir", "", "where to store dumps of the action graph")
 	flag.Parse()
 
 	if *logfile != "" {
@@ -67,10 +67,11 @@ func main() {
 		StoreOptions: cba.StoreOptions{
 			Dir: *cachedir,
 		},
-		RetryCount: *retry,
-		XAttrCache: *xattr,
-		LogFile:    *logfile,
-		Socket:     sock,
+		RetryCount:  *retry,
+		XAttrCache:  *xattr,
+		LogFile:     *logfile,
+		Socket:      sock,
+		AnalysisDir: *analysisDir,
 	}
 	master := termite.NewMaster(&opts)
 

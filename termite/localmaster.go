@@ -48,6 +48,7 @@ func (m *LocalMaster) Shutdown(req *int, rep *int) error {
 func (m *LocalMaster) RefreshAttributeCache(input *int, output *int) error {
 	log.Println("Refreshing attribute cache")
 	m.master.refreshAttributeCache()
+	m.master.setAnalysisDir()
 	log.Println("Refresh done")
 	return nil
 }

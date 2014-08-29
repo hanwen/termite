@@ -13,7 +13,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/hanwen/termite/analyze"
 	"github.com/hanwen/termite/attr"
 	"github.com/hanwen/termite/termite"
 )
@@ -273,13 +272,10 @@ func main() {
 			log.Fatalf("rpc connection problem (%s): %v", *command, err)
 		}
 
-		start := time.Now()
 		err = rpc.Call("LocalMaster.Run", req, &rep)
 		if err != nil {
 			log.Fatal("LocalMaster.Run: ", err)
 		}
-
-		analyze.DumpAnnotations(req, &rep, time.Since(start), topDir)
 
 		os.Stdout.Write([]byte(rep.Stdout))
 		os.Stderr.Write([]byte(rep.Stderr))

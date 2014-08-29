@@ -32,6 +32,9 @@ type Master struct {
 	replayChannel chan *replayRequest
 	quit          chan int
 	dialer        connDialer
+
+	analysisDirMu sync.Mutex
+	analysisDir   string
 }
 
 // Immutable state and options for master.
@@ -80,6 +83,9 @@ type MasterOptions struct {
 
 	// Path to the socket file.
 	Socket string
+
+	// Dump action graph data into this directory
+	AnalysisDir string
 }
 
 type replayRequest struct {
@@ -207,8 +213,8 @@ func NewMaster(options *MasterOptions) *Master {
 			return fuse.ToAttr(fi)
 		})
 	m.fileServer = attr.NewServer(m.attributes, m.timing)
-
 	m.CheckPrivate()
+	m.setAnalysisDir()
 
 	// Generate taskids.
 	go func() {
@@ -422,9 +428,34 @@ func (m *Master) runOnce(req *WorkRequest, rep *WorkResponse) error {
 	return err
 }
 
+func (m *Master) setAnalysisDir() {
+	m.analysisDirMu.Lock()
+	defer m.analysisDirMu.Unlock()
+
+	if m.options.AnalysisDir == "" {
+		m.analysisDir = ""
+		return
+	}
+	d := filepath.Join(m.options.AnalysisDir,
+		time.Now().Format(time.RFC3339))
+	if err := os.MkdirAll(d, 0755); err != nil {
+		log.Println("Analyze mkdir failed, disabling analysis: %v", err)
+		d = ""
+	}
+	m.analysisDir = d
+}
+
 func (m *Master) run(req *WorkRequest, rep *WorkResponse) (err error) {
 	m.mirrors.stats.Enter("run")
 	defer m.mirrors.stats.Exit("run")
+
+	m.analysisDirMu.Lock()
+	if m.analysisDir != "" {
+		req.TrackReads = true
+		defer DumpAnnotations(req, rep, time.Now(), m.analysisDir, m.options.WritableRoot)
+	}
+	m.analysisDirMu.Unlock()
+
 	req.TaskId = <-m.taskIds
 	if m.MaybeRunInMaster(req, rep) {
 		log.Println("Ran in master:", req.Summary())
