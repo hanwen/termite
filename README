@@ -24,7 +24,7 @@ COMPILE/INSTALL
   git clone https://github.com/hanwen/termite
   mkdir go ; cd go
   export GOPATH=$(pwd)
-  cd bin/mkbox; make
+  (cd bin/mkbox ; make )
   for d in bin/coordinator bin/worker bin/master bin/shell-wrapper
   do
     go install github.com/hanwen/termite/$d
