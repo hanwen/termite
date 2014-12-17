@@ -106,7 +106,7 @@ RUNNING
   ssh-keygen -t rsa -b 1024 -f termite_rsa
   ${TERMITE_DIR}/bin/coordinator/coordinator -secret termite_rsa &
   ${TERMITE_DIR}/bin/worker/worker -jobs 4 -coordinator localhost:1233 \
-    -secret termite_rsa  				  
+    -secret termite_rsa
 
   cd ${PROJECT}
   ${TERMITE_DIR}/bin/master/master -jobs 4 \
@@ -122,7 +122,7 @@ See below.  The overhead of running in FUSE is 50 to 100%
 SECURITY
 
 * The worker runs binaries inside a containerized mount of a FUSE file
-  system.  
+  system.
 
 * Worker and master use plaintext TCP/IP, and use a shared secret with
   HMAC-SHA1 to authenticate the connection.  See
@@ -177,3 +177,8 @@ machine.  The smaller the package, the larger the overhead.
  - Must run in srcdir.
 
 * Android Gingerbread.
+
+
+DISCLAIMER
+
+This is not an official Google product.
