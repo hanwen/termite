@@ -116,15 +116,23 @@ The choice between remote and local can be set through the file
 json format, and you can find examples in the patches/ subdirectory.
 The default
 
-``[{
+  [{
+
     "Regexp": ".*termite-make",
+
     "Local": true,
+
     "Recurse": true,
+
     "SkipRefresh": true
+
   }, {
+
     "Regexp": ".*",
+
     "Local": false
-  }]``
+
+  }]
   
 
 (ie., only recursive make calls are run locally) should work for most
@@ -140,9 +148,8 @@ By default, after executing a local command, the termite master scans
 for changed files.  If you know this is not the case, you can skip
 this with SkipRefresh: true.
 
-# How to Running
-
-  ssh-keygen -t rsa -b 1024 -f termite_rsa
+# How to Run
+ssh-keygen -t rsa -b 1024 -f termite_rsa
   ${TERMITE_DIR}/bin/coordinator/coordinator -secret termite_rsa &
   ${TERMITE_DIR}/bin/worker/worker -jobs 4 -coordinator localhost:1233 \
     -secret termite_rsa
@@ -156,7 +163,7 @@ this with SkipRefresh: true.
 # Performance
 See below.  The overhead of running in FUSE is 50 to 100%
 
-SECURITY
+Security
 
 * The worker runs binaries inside a containerized mount of a FUSE file
   system.
@@ -181,7 +188,7 @@ SECURITY
 * Wrapper and master run as the same user and use IPC unix domain
   sockets to communicate.  The socket mode is 0700.
 
-CAVEATS
+Caveats
 
 * Hardlinks on the workers are translated to copies on the master.
 
@@ -189,7 +196,6 @@ CAVEATS
 
 * Worker -> worker fetch
 * Connection scheme: exp/ssh, security review?
-
 
 # Successful Compiles
 Termite timings by running master and single worker on the same
@@ -210,7 +216,6 @@ machine.  The smaller the package, the larger the overhead.
  - Must run in srcdir.
 
 * Android Gingerbread.
-
 
 # Disclaimer
 This is not an official Google product.
