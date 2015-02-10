@@ -1,3 +1,4 @@
+# Introduction
 Termite is a generic distributed compilation system.
 
 The master distributes the compilation to workers.  Workers run
