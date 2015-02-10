@@ -117,7 +117,6 @@ json format, and you can find examples in the patches/ subdirectory.
 The default
 
   [{
-
     "Regexp": ".*termite-make",
 
     "Local": true,
@@ -131,7 +130,6 @@ The default
     "Regexp": ".*",
 
     "Local": false
-
   }]
   
 
@@ -163,7 +161,7 @@ ssh-keygen -t rsa -b 1024 -f termite_rsa
 # Performance
 See below.  The overhead of running in FUSE is 50 to 100%
 
-Security
+# Security
 
 * The worker runs binaries inside a containerized mount of a FUSE file
   system.
@@ -188,11 +186,11 @@ Security
 * Wrapper and master run as the same user and use IPC unix domain
   sockets to communicate.  The socket mode is 0700.
 
-Caveats
+# Caveats
 
 * Hardlinks on the workers are translated to copies on the master.
 
-# TODO (by decreasing priority)
+# TODO
 
 * Worker -> worker fetch
 * Connection scheme: exp/ssh, security review?
