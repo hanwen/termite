@@ -34,7 +34,7 @@ $ export GOPATH=$(pwd)
 ```bash
 $ (cd bin/mkbox ; make )
 ```    
-> for d in bin/coordinator bin/worker bin/master bin/shell-wrapper
+> Note: for d in bin/coordinator bin/worker bin/master bin/shell-wrapper
 
 do
 
@@ -56,13 +56,24 @@ $ sudo cp bin/mkbox/mkbox /usr/local/bin/termite-mkbox
 $ sudo cp /tmp/go/bin/* /usr/local/bin/
 ```    
   
-* Make needs to be patched to use termite's shell wrapper:
+# Make needs to be patched to use termite's shell wrapper:
+Add MAKE_SHELL variable to make.
+```bash
+$ wget http://ftp.gnu.org/gnu/make/make-3.82.tar.bz2
+```
 
-  # Add MAKE_SHELL variable to make.
-  wget http://ftp.gnu.org/gnu/make/make-3.82.tar.bz2
-  tar xjf make-3.28.tar.bz2
-  cd make-3.82 && patch -p1 < ../termite/patches/make-*patch
-  ./configure && make && make install
+```bash
+$ tar xjf make-3.28.tar.bz2
+```  
+
+```bash
+$ cd make-3.82 && patch -p1 < ../termite/patches/make-*patch
+```   
+
+```bash
+$ ./configure && make && make install
+```  
+  
 
 * Coreutils before 8.0 has buggy directory traversal, making 'rm -rf' flaky.
 
@@ -76,27 +87,28 @@ $ sudo cp /tmp/go/bin/* /usr/local/bin/
 * Mount the source/object directories so termite can write xattrs, and
   noatime for performance improvements:
 
-  mount -o remount,user_xattr,noatime my/device my/mountpoint
-
-
-OVERVIEW
+```bash
+$ mount -o remount,user_xattr,noatime my/device my/mountpointh
+``` 
+  
+# Overview
 
 There are 5 binaries:
 
-* Mkbox: a wrapper that sets up the containerization. Based on Brian Swetland's
+1. Mkbox: a wrapper that sets up the containerization. Based on Brian Swetland's
 https://github.com/swetland/mkbox
 
-* Coordinator: a simple server that administers a list of live
+2. Coordinator: a simple server that administers a list of live
 workers.  Workers periodically contact the coordinator.
 
-* Worker: should run as root, and typically runs on multiple machines.
+3. Worker: should run as root, and typically runs on multiple machines.
 
-* Master: the daemon that runs on the machine.  It contacts the
+4. Master: the daemon that runs on the machine.  It contacts the
 coordinator to get a list of workers, and reserves job slots on the
 workers.  Run it in the root of the writable directory for the
 compile.  It creates a .termite-socket that the wrapper below uses.
 
-* Shell-wrapper: a wrapper to use with make's SHELL variable.
+5. Shell-wrapper: a wrapper to use with make's SHELL variable.
 
 The choice between remote and local can be set through the file
 .termite-localrc in the same dir as .termite-socket.  The file is in
