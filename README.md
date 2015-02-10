@@ -117,13 +117,21 @@ json format, and you can find examples in the patches/ subdirectory.
 The default
 
 ``[{
+
     "Regexp": ".*termite-make",
+
     "Local": true,
+
     "Recurse": true,
+
     "SkipRefresh": true
+
   }, {
+
     "Regexp": ".*",
+
     "Local": false
+
   }]``
   
 
