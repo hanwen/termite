@@ -17,10 +17,15 @@ $ go install github.com/hanwen/go-fuse/fuse
 ```
 
 
-* Compiling:
+# Compiling:
+```bash
+$ git clone https://github.com/hanwen/termite
+```
 
-  git clone https://github.com/hanwen/termite
-  mkdir go ; cd go
+```bash
+$ mkdir go ; cd go
+```  
+  
   export GOPATH=$(pwd)
   (cd bin/mkbox ; make )
   for d in bin/coordinator bin/worker bin/master bin/shell-wrapper
