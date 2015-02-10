@@ -6,12 +6,13 @@ CAVEATS
 Work in progress.
 
 # Requirement
-1. Go.
+1. Go Programming Language.
 
 # Prerequisites:
 ```bash
 $ go install code.google.com/p/go.crypto/ssh
 ```
+
 ```bash
 $ go install github.com/hanwen/go-fuse/fuse
 ```
@@ -25,17 +26,36 @@ $ git clone https://github.com/hanwen/termite
 ```bash
 $ mkdir go ; cd go
 ```  
-  
-  export GOPATH=$(pwd)
-  (cd bin/mkbox ; make )
-  for d in bin/coordinator bin/worker bin/master bin/shell-wrapper
-  do
-    go install github.com/hanwen/termite/$d
-  done
-  sudo cp termite-make /usr/local/bin/
-  sudo cp bin/mkbox/mkbox /usr/local/bin/termite-mkbox
-  sudo cp /tmp/go/bin/* /usr/local/bin/
 
+```bash
+$ export GOPATH=$(pwd)
+```  
+
+```bash
+$ (cd bin/mkbox ; make )
+```    
+> for d in bin/coordinator bin/worker bin/master bin/shell-wrapper
+
+do
+
+```bash
+$ go install github.com/hanwen/termite/$d
+```     
+ 
+Done.
+
+```bash
+$ sudo cp termite-make /usr/local/bin/
+``` 
+
+```bash
+$ sudo cp bin/mkbox/mkbox /usr/local/bin/termite-mkbox
+```   
+
+```bash
+$ sudo cp /tmp/go/bin/* /usr/local/bin/
+```    
+  
 * Make needs to be patched to use termite's shell wrapper:
 
   # Add MAKE_SHELL variable to make.
