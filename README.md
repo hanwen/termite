@@ -1,24 +1,21 @@
 # Introduction
-Termite is a generic distributed compilation system.
-
-The master distributes the compilation to workers.  Workers run
-arbitrary binaries in a containerized FUSE mirror of the master's file
-system, and then ship the results back to the master.
-
+Termite is a generic distributed compilation system. The master distributes the compilation to workers.  Workers run arbitrary binaries in a containerized FUSE mirror of the master's file system, and then ship the results back to the master.
 
 CAVEATS
 
 Work in progress.
 
+# Requirement
+1. Go.
 
-COMPILE/INSTALL
+# Prerequisites:
+```bash
+$ go install code.google.com/p/go.crypto/ssh
+```
+```bash
+$ go install github.com/hanwen/go-fuse/fuse
+```
 
-* Install go.
-
-* Install prerequisites:
-
-  go install code.google.com/p/go.crypto/ssh
-  go install github.com/hanwen/go-fuse/fuse
 
 * Compiling:
 
@@ -184,6 +181,5 @@ machine.  The smaller the package, the larger the overhead.
 * Android Gingerbread.
 
 
-DISCLAIMER
-
+# Disclaimer
 This is not an official Google product.
