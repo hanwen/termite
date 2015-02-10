@@ -117,6 +117,7 @@ json format, and you can find examples in the patches/ subdirectory.
 The default
 
   [{
+
     "Regexp": ".*termite-make",
 
     "Local": true,
@@ -132,7 +133,6 @@ The default
     "Local": false
   }]
   
-
 (ie., only recursive make calls are run locally) should work for most
 projects, but for performance reasons, you might want to run more
 commands locally.
