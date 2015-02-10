@@ -8,7 +8,7 @@ Work in progress.
 # Requirement
 1. Go Programming Language.
 
-# Prerequisites:
+# Prerequisites
 ```bash
 $ go install code.google.com/p/go.crypto/ssh
 ```
@@ -18,7 +18,7 @@ $ go install github.com/hanwen/go-fuse/fuse
 ```
 
 
-# Compiling:
+# Compiling
 ```bash
 $ git clone https://github.com/hanwen/termite
 ```
@@ -56,7 +56,7 @@ $ sudo cp bin/mkbox/mkbox /usr/local/bin/termite-mkbox
 $ sudo cp /tmp/go/bin/* /usr/local/bin/
 ```    
   
-# Make needs to be patched to use termite's shell wrapper:
+# Patched termite's shell wrapper
 Add MAKE_SHELL variable to make.
 ```bash
 $ wget http://ftp.gnu.org/gnu/make/make-3.82.tar.bz2
@@ -73,16 +73,17 @@ $ cd make-3.82 && patch -p1 < ../termite/patches/make-*patch
 ```bash
 $ ./configure && make && make install
 ```  
-  
 
 * Coreutils before 8.0 has buggy directory traversal, making 'rm -rf' flaky.
-
 * Set resource limits: add the following to your /etc/security/limits.conf
 
   root  soft    nofile       5000
+
   root  hard    nofile       5000
-  *  soft    nofile       5000
-  *  hard    nofile       5000
+
+    soft    nofile       5000
+
+    hard    nofile       5000
 
 * Mount the source/object directories so termite can write xattrs, and
   noatime for performance improvements:
@@ -115,7 +116,7 @@ The choice between remote and local can be set through the file
 json format, and you can find examples in the patches/ subdirectory.
 The default
 
-  [{
+``[{
     "Regexp": ".*termite-make",
     "Local": true,
     "Recurse": true,
@@ -123,7 +124,8 @@ The default
   }, {
     "Regexp": ".*",
     "Local": false
-  }]
+  }]``
+  
 
 (ie., only recursive make calls are run locally) should work for most
 projects, but for performance reasons, you might want to run more
