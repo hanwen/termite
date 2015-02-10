@@ -8,7 +8,7 @@ Work in progress.
 # Requirement
 1. Go Programming Language.
 
-# Prerequisites
+# Prerequisites Install
 ```bash
 $ go install code.google.com/p/go.crypto/ssh
 ```
@@ -117,21 +117,13 @@ json format, and you can find examples in the patches/ subdirectory.
 The default
 
 ``[{
-
     "Regexp": ".*termite-make",
-
     "Local": true,
-
     "Recurse": true,
-
     "SkipRefresh": true
-
   }, {
-
     "Regexp": ".*",
-
     "Local": false
-
   }]``
   
 
@@ -148,9 +140,7 @@ By default, after executing a local command, the termite master scans
 for changed files.  If you know this is not the case, you can skip
 this with SkipRefresh: true.
 
-
-
-RUNNING
+# How to Running
 
   ssh-keygen -t rsa -b 1024 -f termite_rsa
   ${TERMITE_DIR}/bin/coordinator/coordinator -secret termite_rsa &
@@ -163,10 +153,8 @@ RUNNING
   termite-make -j20
 
 
-PERFORMANCE
-
+# Performance
 See below.  The overhead of running in FUSE is 50 to 100%
-
 
 SECURITY
 
@@ -193,21 +181,17 @@ SECURITY
 * Wrapper and master run as the same user and use IPC unix domain
   sockets to communicate.  The socket mode is 0700.
 
-
-
 CAVEATS
 
 * Hardlinks on the workers are translated to copies on the master.
 
-
-TODO (by decreasing priority)
+# TODO (by decreasing priority)
 
 * Worker -> worker fetch
 * Connection scheme: exp/ssh, security review?
 
 
-SUCCESSFUL COMPILES
-
+# Successful Compiles
 Termite timings by running master and single worker on the same
 machine.  The smaller the package, the larger the overhead.
 
