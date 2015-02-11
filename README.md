@@ -1,79 +1,115 @@
-Termite is a generic distributed compilation system.
-
-The master distributes the compilation to workers.  Workers run
-arbitrary binaries in a containerized FUSE mirror of the master's file
-system, and then ship the results back to the master.
-
+# Introduction
+Termite is a generic distributed compilation system. The master distributes the compilation to workers.  Workers run arbitrary binaries in a containerized FUSE mirror of the master's file system, and then ship the results back to the master.
 
 CAVEATS
 
 Work in progress.
 
+# Requirement
+1. Go Programming Language.
 
-COMPILE/INSTALL
+# Prerequisites Install
+```bash
+$ go install code.google.com/p/go.crypto/ssh
+```
 
-* Install go.
+```bash
+$ go install github.com/hanwen/go-fuse/fuse
+```
 
-* Install prerequisites:
 
-  go install code.google.com/p/go.crypto/ssh
-  go install github.com/hanwen/go-fuse/fuse
+# Compiling
+```bash
+$ git clone https://github.com/hanwen/termite
+```
 
-* Compiling:
+```bash
+$ mkdir go ; cd go
+```  
 
-  git clone https://github.com/hanwen/termite
-  mkdir go ; cd go
-  export GOPATH=$(pwd)
-  (cd bin/mkbox ; make )
-  for d in bin/coordinator bin/worker bin/master bin/shell-wrapper
-  do
-    go install github.com/hanwen/termite/$d
-  done
-  sudo cp termite-make /usr/local/bin/
-  sudo cp bin/mkbox/mkbox /usr/local/bin/termite-mkbox
-  sudo cp /tmp/go/bin/* /usr/local/bin/
+```bash
+$ export GOPATH=$(pwd)
+```  
 
-* Make needs to be patched to use termite's shell wrapper:
+```bash
+$ (cd bin/mkbox ; make )
+```    
+> Note: for d in bin/coordinator bin/worker bin/master bin/shell-wrapper
 
-  # Add MAKE_SHELL variable to make.
-  wget http://ftp.gnu.org/gnu/make/make-3.82.tar.bz2
-  tar xjf make-3.28.tar.bz2
-  cd make-3.82 && patch -p1 < ../termite/patches/make-*patch
-  ./configure && make && make install
+do
+
+```bash
+$ go install github.com/hanwen/termite/$d
+```     
+ 
+Done.
+
+```bash
+$ sudo cp termite-make /usr/local/bin/
+``` 
+
+```bash
+$ sudo cp bin/mkbox/mkbox /usr/local/bin/termite-mkbox
+```   
+
+```bash
+$ sudo cp /tmp/go/bin/* /usr/local/bin/
+```    
+  
+# Patched termite's shell wrapper
+Add MAKE_SHELL variable to make.
+```bash
+$ wget http://ftp.gnu.org/gnu/make/make-3.82.tar.bz2
+```
+
+```bash
+$ tar xjf make-3.28.tar.bz2
+```  
+
+```bash
+$ cd make-3.82 && patch -p1 < ../termite/patches/make-*patch
+```   
+
+```bash
+$ ./configure && make && make install
+```  
 
 * Coreutils before 8.0 has buggy directory traversal, making 'rm -rf' flaky.
-
 * Set resource limits: add the following to your /etc/security/limits.conf
 
   root  soft    nofile       5000
+
   root  hard    nofile       5000
-  *  soft    nofile       5000
-  *  hard    nofile       5000
+
+    soft    nofile       5000
+
+    hard    nofile       5000
 
 * Mount the source/object directories so termite can write xattrs, and
   noatime for performance improvements:
 
-  mount -o remount,user_xattr,noatime my/device my/mountpoint
-
-
-OVERVIEW
+```bash
+$ mount -o remount,user_xattr,noatime my/device my/mountpointh
+``` 
+  
+# Overview
 
 There are 5 binaries:
 
-* Mkbox: a wrapper that sets up the containerization. Based on Brian Swetland's
+1. Mkbox: a wrapper that sets up the containerization. Based on Brian Swetland's
 https://github.com/swetland/mkbox
 
-* Coordinator: a simple server that administers a list of live
+2. Coordinator: a simple server that administers a list of live
 workers.  Workers periodically contact the coordinator.
 
-* Worker: should run as root, and typically runs on multiple machines.
+3. Worker: should run as root, and typically runs on multiple machines.
 
-* Master: the daemon that runs on the machine.  It contacts the
+4. Master: the daemon that runs on the machine.  It contacts the
 coordinator to get a list of workers, and reserves job slots on the
 workers.  Run it in the root of the writable directory for the
 compile.  It creates a .termite-socket that the wrapper below uses.
 
-* Shell-wrapper: a wrapper to use with make's SHELL variable.
+5. Shell-wrapper: a wrapper to use with make's SHELL variable.
 
 The choice between remote and local can be set through the file
 .termite-localrc in the same dir as .termite-socket.  The file is in
@@ -81,15 +117,22 @@ json format, and you can find examples in the patches/ subdirectory.
 The default
 
   [{
+
     "Regexp": ".*termite-make",
+
     "Local": true,
+
     "Recurse": true,
+
     "SkipRefresh": true
+
   }, {
+
     "Regexp": ".*",
+
     "Local": false
   }]
-
+  
 (ie., only recursive make calls are run locally) should work for most
 projects, but for performance reasons, you might want to run more
 commands locally.
@@ -103,11 +146,8 @@ By default, after executing a local command, the termite master scans
 for changed files.  If you know this is not the case, you can skip
 this with SkipRefresh: true.
 
-
-
-RUNNING
-
-  ssh-keygen -t rsa -b 1024 -f termite_rsa
+# How to Run
+ssh-keygen -t rsa -b 1024 -f termite_rsa
   ${TERMITE_DIR}/bin/coordinator/coordinator -secret termite_rsa &
   ${TERMITE_DIR}/bin/worker/worker -jobs 4 -coordinator localhost:1233 \
     -secret termite_rsa
@@ -118,12 +158,10 @@ RUNNING
   termite-make -j20
 
 
-PERFORMANCE
-
+# Performance
 See below.  The overhead of running in FUSE is 50 to 100%
 
-
-SECURITY
+# Security
 
 * The worker runs binaries inside a containerized mount of a FUSE file
   system.
@@ -148,21 +186,16 @@ SECURITY
 * Wrapper and master run as the same user and use IPC unix domain
   sockets to communicate.  The socket mode is 0700.
 
-
-
-CAVEATS
+# Caveats
 
 * Hardlinks on the workers are translated to copies on the master.
 
-
-TODO (by decreasing priority)
+# TODO
 
 * Worker -> worker fetch
 * Connection scheme: exp/ssh, security review?
 
-
-SUCCESSFUL COMPILES
-
+# Successful Compiles
 Termite timings by running master and single worker on the same
 machine.  The smaller the package, the larger the overhead.
 
@@ -182,7 +215,5 @@ machine.  The smaller the package, the larger the overhead.
 
 * Android Gingerbread.
 
-
-DISCLAIMER
-
+# Disclaimer
 This is not an official Google product.
